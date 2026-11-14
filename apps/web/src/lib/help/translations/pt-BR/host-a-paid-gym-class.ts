@@ -79,7 +79,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Os participantes se inscrevem e pagam na web, veem **Você está inscrito** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].',
+						'Os participantes se inscrevem e pagam na web, veem **Inscrição feita** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].',
 						'Quando as vagas acabam, aparece **Esgotado** com a opção **Entrar na lista de espera**: veja [[guide:waitlist-and-claim-window|Listas de espera e o prazo de 12 horas para garantir a vaga]].',
 						'Marque quem compareceu: [[guide:take-attendance|Registrar a presença]].',
 						'Cancelar uma sessão reembolsa todos que pagaram: [[guide:cancel-a-class|Cancelar uma aula]].',

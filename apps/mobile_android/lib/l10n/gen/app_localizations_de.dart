@@ -253,7 +253,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return '$label-Berechtigung wird angefordert...';
+    return '$label-Berechtigung wird angefordert…';
   }
 
   @override
@@ -262,7 +262,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'Workouts werden gelesen...';
+  String get importHealthReadingWorkouts => 'Workouts werden gelesen…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -270,7 +270,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'Wird lokal gespeichert...';
+  String get importStatusSavingLocally => 'Wird lokal gespeichert…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -289,8 +289,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud =>
-      'Wird in die Cloud synchronisiert...';
+  String get importStatusSyncingToCloud => 'Wird in die Cloud synchronisiert…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -298,7 +297,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'CSV wird gelesen...';
+  String get importStatusReadingCsv => 'CSV wird gelesen…';
 
   @override
   String importCsvFailed(Object error) {
@@ -362,7 +361,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'Export wird gelesen...';
+  String get importStatusReadingExport => 'Export wird gelesen…';
 
   @override
   String importStravaFailed(Object error) {
@@ -436,7 +435,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... und $count weitere';
+    return '… und $count weitere';
   }
 
   @override
@@ -627,7 +626,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Kartenzugriff wird bei Health Connect angefragt...';
+      'Kartenzugriff wird bei Health Connect angefragt…';
 
   @override
   String get importHealthRoutesDenied =>
@@ -635,7 +634,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthRoutesAdding =>
-      'Karten werden zu importierten Aktivitäten hinzugefügt...';
+      'Karten werden zu importierten Aktivitäten hinzugefügt…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -3393,7 +3392,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailDelete => 'Löschen';
 
   @override
-  String get runDetailLoadingGps => 'GPS-Daten werden geladen...';
+  String get runDetailLoadingGps => 'GPS-Daten werden geladen…';
 
   @override
   String get runDetailGpsUnavailable =>
@@ -4545,7 +4544,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$checkpoints Kontrollpunkte',
       one: '$checkpoints Kontrollpunkt',
     );
-    return 'Strecke ($_temp0) und Rennplan ($_temp1) an die Uhr gesendet';
+    return 'Strecke ($_temp0) und Zeitplan ($_temp1) an die Uhr gesendet';
   }
 
   @override
@@ -4566,7 +4565,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$checkpoints Kontrollpunkte',
       one: '$checkpoints Kontrollpunkt',
     );
-    return 'Strecke ($_temp0) gesendet. Rennplan von $source auf $_temp1 reduziert, damit er auf die Uhr passt';
+    return 'Strecke ($_temp0) gesendet. Zeitplan von $source auf $_temp1 reduziert, damit er auf die Uhr passt';
   }
 
   @override
@@ -4583,7 +4582,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$unresolved Cut-offs mit Tageszeit brauchen',
       one: '$unresolved Cut-off mit Tageszeit braucht',
     );
-    return 'Rennplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen';
+    return 'Zeitplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen';
   }
 
   @override
@@ -4604,7 +4603,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$cutoffs Cut-offs',
       one: '$cutoffs Cut-off',
     );
-    return 'Strecke ($_temp0) gesendet, aber der Rennplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
+    return 'Strecke ($_temp0) gesendet, aber der Zeitplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
   }
 
   @override
@@ -5163,7 +5162,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'In meiner Nähe';
 
   @override
-  String get exploreRoutesSearchHint => 'Routen nach Namen suchen...';
+  String get exploreRoutesSearchHint => 'Routen nach Namen suchen…';
 
   @override
   String get exploreRoutesFeatured => 'Empfohlen';
@@ -7382,15 +7381,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewSeasonAssumptionRaceDroppedInvalid =>
-      'Ein Wettkampf, der nicht gelesen werden konnte, wurde weggelassen.';
+      'Ein Rennen, das nicht gelesen werden konnte, wurde weggelassen.';
 
   @override
   String get planNewSeasonAssumptionRaceDroppedDate =>
-      'Ein Wettkampf wurde weggelassen, weil sein Datum nicht übernommen werden konnte — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
+      'Ein Rennen wurde weggelassen, weil sein Datum nicht übernommen werden konnte — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
 
   @override
   String get planNewSeasonAssumptionRaceDroppedDistance =>
-      'Ein Wettkampf wurde weggelassen, weil seine Distanz außerhalb dessen liegt, was der Planer unterstützt (5 km bis 400 km).';
+      'Ein Rennen wurde weggelassen, weil seine Distanz außerhalb dessen liegt, was der Planer unterstützt (5 km bis 400 km).';
 
   @override
   String get planNewSeasonAssumptionRaceDateNextYear =>
@@ -7398,23 +7397,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewSeasonAssumptionGoalTimeDropped =>
-      'Eine Zielzeit wirkte für ihre Distanz unrealistisch, daher hat dieser Wettkampf keine Zielzeit.';
+      'Eine Zielzeit wirkte für ihre Distanz unrealistisch, daher hat dieses Rennen keine Zielzeit.';
 
   @override
   String get planNewSeasonAssumptionRaceDuplicateMerged =>
-      'Ein doppelt genannter Wettkampf wird nur einmal aufgeführt.';
+      'Ein doppelt genanntes Rennen wird nur einmal aufgeführt.';
 
   @override
   String get planNewSeasonAssumptionRacesCapped =>
-      'Nur die ersten 12 Wettkämpfe werden aufgeführt — eine Saison umfasst höchstens 12.';
+      'Nur die ersten 12 Rennen werden aufgeführt — eine Saison umfasst höchstens 12.';
 
   @override
   String get planNewSeasonAssumptionPriorityDefault =>
-      'Wettkämpfe ohne Priorität wurden auf B gesetzt.';
+      'Rennen ohne Priorität wurden auf B gesetzt.';
 
   @override
   String get planNewSeasonAssumptionPriorityAAssigned =>
-      'Kein Wettkampf war als A-Wettkampf markiert, daher ist es der längste.';
+      'Kein Rennen war als A-Rennen markiert, daher ist es das längste.';
 
   @override
   String get planNewAiErrorConsent =>
@@ -7956,15 +7955,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Schaut auf deine letzten drei abgeschlossenen Wochen und schlägt Änderungen vor, wenn mindestens zwei über oder unter Plan lagen — so verschiebt eine einzelne Ausreißerwoche deinen Plan nicht. Nutze das, wenn du länger vom Plan abweichst.';
 
   @override
-  String get planDetailRaceTaper => 'Tapering rund um B/C-Wettkämpfe';
+  String get planDetailRaceTaper => 'Tapering rund um B/C-Rennen';
 
   @override
   String get planDetailAdjustRaceTaperDesc =>
-      'Entlastet die Tage vor jedem anstehenden B- oder C-Wettkampf und die Tage danach, damit du ihn frisch läufst und dich erholst, bevor das Training wieder anzieht. Dein A-Wettkampf und sein Tapering bleiben unverändert.';
+      'Entlastet die Tage vor jedem anstehenden B- oder C-Rennen und die Tage danach, damit du es frisch läufst und dich erholst, bevor das Training wieder anzieht. Dein A-Rennen und sein Tapering bleiben unverändert.';
 
   @override
   String get planDetailRaceTaperNone =>
-      'Kein anstehender B- oder C-Wettkampf braucht ein Tapering.';
+      'Kein anstehendes B- oder C-Rennen braucht ein Tapering.';
 
   @override
   String get planDetailRaceTaperPreviewTitle =>
@@ -12181,19 +12180,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutEditRaceNameLabel => 'Name des Wettkampfs';
 
   @override
-  String get workoutEditRacePriorityLabel => 'Wettkampfpriorität';
+  String get workoutEditRacePriorityLabel => 'Rennpriorität';
 
   @override
   String get workoutEditRacePriorityAuto => 'Automatisch';
 
   @override
-  String get racePriorityOptionA => 'A — Zielwettkampf';
+  String get workoutEditRacePriorityHint =>
+      'Ein A-Rennen ist das, auf das der Plan seine Formspitze ausrichtet. Ein B-Rennen ist ein Vorbereitungsrennen, das du voll läufst; ein C-Rennen läufst du als Training. B- und C-Rennen bekommen einen eigenen Countdown, ohne das Ziel des Plans zu ändern.';
 
   @override
-  String get racePriorityOptionB => 'B — wichtiger Wettkampf';
+  String get racePriorityOptionA => 'A — Zielrennen';
 
   @override
-  String get racePriorityOptionC => 'C — Vorbereitungswettkampf';
+  String get racePriorityOptionB => 'B — Vorbereitungsrennen';
+
+  @override
+  String get racePriorityOptionC => 'C — Trainingsrennen';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Zielzeit';
@@ -12609,7 +12612,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'Warte auf GPS...';
+  String get liveRunMapWaitingGps => 'Warte auf GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>
@@ -20160,7 +20163,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — Zielrennen';
 
   @override
-  String get seasonPlanPriorityB => 'B — Vorbereitung';
+  String get seasonPlanPriorityB => 'B — Vorbereitungsrennen';
 
   @override
   String get seasonPlanPriorityC => 'C — Trainingsrennen';

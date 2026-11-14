@@ -2441,7 +2441,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // failed (location services off, permission denied), the recorder is
     // still marked prepared and we proceed into a time-only run — the
     // stopwatch ticks, distance stays 0, and the live map shows its
-    // "Waiting for GPS..." placeholder until a fix arrives (if ever). The
+    // "Waiting for GPS…" placeholder until a fix arrives (if ever). The
     // runner chose that at START (_confirmStartWithoutGps), so it is only
     // reported here when it was not foreseen there.
     await _prepareFuture;
@@ -3937,7 +3937,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   /// Non-blocking notification that GPS isn't available for this run. The
   /// run still starts — the stopwatch ticks and the map shows its
-  /// "Waiting for GPS..." placeholder — so a treadmill / indoor session
+  /// "Waiting for GPS…" placeholder — so a treadmill / indoor session
   /// still gets recorded. The snackbar carries a Settings shortcut so the
   /// user can enable the missing piece mid-run if they change their mind.
   void _notifyGpsUnavailable(Object? error) {

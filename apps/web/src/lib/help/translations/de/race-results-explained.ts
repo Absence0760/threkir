@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Kein Abzeichen**: Das Handy oder die Uhr der teilnehmenden Person hat den Zieleinlauf gestoppt, in dem Moment, in dem sie die Ziellinie überquert hat, oder am 30-m-Kreis um das Ziel bei einer Strecke ohne Ziellinie. Das ist der Normalfall, daher kennzeichnen ihn weder das Web noch die Handy-App.',
+						'*Kein Abzeichen*: Das Handy oder die Uhr der teilnehmenden Person hat den Zieleinlauf gestoppt, in dem Moment, in dem sie die Ziellinie überquert hat, oder am 30-m-Kreis um das Ziel bei einer Strecke ohne Ziellinie. Das ist der Normalfall, daher kennzeichnen ihn weder das Web noch die Handy-App.',
 						'**Manuell**: Die teilnehmende Person hat das Rennen von Hand beendet, entweder mit **Rennen beenden** nach mindestens 90 % der Strecke oder während des Rennens mit **Meine Zeit einreichen** im Web.',
 						'**Veranstalter** (im Web **Vom Veranstalter bearbeitet**): Der Veranstalter hat dieses Ergebnis eingetragen oder korrigiert, oder die teilnehmende Person wurde als DNF markiert, als der Veranstalter das Rennen beendet hat.',
 					],
@@ -131,7 +131,7 @@ export const translation: GuideTranslation = {
 		's1.b0': '86d271497a41304f',
 		's1.b1': '692dd04c06057463',
 		's2.heading': '6e3b7d9c6cfced31',
-		's2.b0.i0': '35a51ea02054bef1',
+		's2.b0.i0': '8376fb6f54bdb6f2',
 		's2.b0.i1': '53388c67a2b02b1b',
 		's2.b0.i2': '811f16eecd7e7ab7',
 		's3.heading': '6a340a4c16d7e613',

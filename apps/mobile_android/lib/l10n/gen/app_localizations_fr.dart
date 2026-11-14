@@ -980,7 +980,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardTrendGroupPerformanceHint =>
-      'Records personnels et temps de course prévus';
+      'Records personnels et temps prévus en compétition';
 
   @override
   String get dashboardTrendGroupEffort => 'Effort';
@@ -3399,7 +3399,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailDelete => 'Supprimer';
 
   @override
-  String get runDetailLoadingGps => 'Chargement des données GPS...';
+  String get runDetailLoadingGps => 'Chargement des données GPS…';
 
   @override
   String get runDetailGpsUnavailable => 'Aucune trace GPS hors ligne';
@@ -4471,7 +4471,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$points points',
       one: '$points point',
     );
-    return 'Parcours envoyé à la montre ($_temp0), mais ses repères n\'ont pas pu être chargés : aucun horaire n\'a été envoyé avec.';
+    return 'Parcours envoyé à la montre ($_temp0), mais ses repères n\'ont pas pu être chargés : aucun tableau de marche n\'a été envoyé avec.';
   }
 
   @override
@@ -4546,7 +4546,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$checkpoints points de contrôle',
       one: '$checkpoints point de contrôle',
     );
-    return 'Parcours ($_temp0) et plan de course ($_temp1) envoyés à la montre';
+    return 'Parcours ($_temp0) et tableau de marche ($_temp1) envoyés à la montre';
   }
 
   @override
@@ -4567,7 +4567,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$checkpoints points de contrôle',
       one: '$checkpoints point de contrôle',
     );
-    return 'Parcours ($_temp0) envoyé. Plan de course réduit de $source à $_temp1 pour tenir dans la montre';
+    return 'Parcours ($_temp0) envoyé. Tableau de marche réduit de $source à $_temp1 pour tenir dans la montre';
   }
 
   @override
@@ -4585,7 +4585,7 @@ class AppLocalizationsFr extends AppLocalizations {
           '$unresolved barrières exprimées en heure de la journée nécessitent',
       one: '$unresolved barrière exprimée en heure de la journée nécessite',
     );
-    return 'Plan de course envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'assistance pour que la montre les reçoive';
+    return 'Tableau de marche envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'assistance pour que la montre les reçoive';
   }
 
   @override
@@ -4606,7 +4606,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$cutoffs barrières horaires',
       one: '$cutoffs barrière horaire',
     );
-    return 'Parcours ($_temp0) envoyé, mais le plan de course compte $_temp1 et la montre en accepte $max — supprimez-en pour l\'envoyer';
+    return 'Parcours ($_temp0) envoyé, mais le tableau de marche compte $_temp1 et la montre en accepte $max — supprimez-en pour l\'envoyer';
   }
 
   @override
@@ -5160,7 +5160,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'À proximité';
 
   @override
-  String get exploreRoutesSearchHint => 'Rechercher des itinéraires par nom...';
+  String get exploreRoutesSearchHint => 'Rechercher des itinéraires par nom…';
 
   @override
   String get exploreRoutesFeatured => 'En vedette';
@@ -10396,7 +10396,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en course et le ton du coach.';
+      'Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en compétition et le ton du coach.';
 
   @override
   String get prefsPagePrivacy => 'Confidentialité et partage';
@@ -10653,7 +10653,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prefsSectionFueling => 'Ravitaillement de course';
+  String get prefsSectionFueling => 'Ravitaillement en compétition';
 
   @override
   String get prefsCarbsPerHour => 'Glucides par heure';
@@ -11259,7 +11259,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fitnessStatVdotTooltip =>
-      'Le score de forme de course de Daniels d\'après votre meilleur effort récent. Détermine vos allures d\'entraînement.';
+      'Le score de forme de course de Daniels d\'après votre meilleur effort récent en compétition. Détermine vos allures d\'entraînement.';
 
   @override
   String get fitnessStatRuns => 'Courses';
@@ -12217,13 +12217,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automatique';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Une épreuve A est celle pour laquelle le plan atteint son pic de forme. Une épreuve B est une épreuve de préparation courue à fond ; une épreuve C est courue à l\'entraînement. Les épreuves B et C ont leur propre compte à rebours sans changer l\'objectif du plan.';
+
+  @override
   String get racePriorityOptionA => 'A — épreuve objectif';
 
   @override
-  String get racePriorityOptionB => 'B — épreuve importante';
+  String get racePriorityOptionB => 'B — épreuve de préparation';
 
   @override
-  String get racePriorityOptionC => 'C — épreuve de préparation';
+  String get racePriorityOptionC => 'C — épreuve d\'entraînement';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Temps visé';
@@ -12639,7 +12643,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'En attente du GPS...';
+  String get liveRunMapWaitingGps => 'En attente du GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>
@@ -17085,7 +17089,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Un parcours de parc terminé pendant 24 mois différents';
 
   @override
-  String get racePredictorTitle => 'Prédicteur de temps de course';
+  String get racePredictorTitle => 'Prédicteur de temps en compétition';
 
   @override
   String racePredictorAnchoredOn(String distance, String time) {
@@ -17799,7 +17803,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get phaseIntentSettle => 'Calage';
 
   @override
-  String get phaseIntentRace => 'Course';
+  String get phaseIntentRace => 'Compétition';
 
   @override
   String get phaseIntentEven => 'Régulier';
@@ -17987,7 +17991,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get watchMetricWorkoutRemaining => 'Étape de séance';
 
   @override
-  String get watchMetricRacePrediction => 'Prévision de course';
+  String get watchMetricRacePrediction => 'Temps prévu en compétition';
 
   @override
   String get watchMetricCutoffMargin => 'Marge avant barrière';
@@ -20208,7 +20212,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — épreuve objectif';
 
   @override
-  String get seasonPlanPriorityB => 'B — préparation';
+  String get seasonPlanPriorityB => 'B — épreuve de préparation';
 
   @override
   String get seasonPlanPriorityC => 'C — épreuve d\'entraînement';
@@ -22791,7 +22795,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      'Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C\'est un contre-la-montre, pas une course : le sentier reste ouvert à tous et personne ne l\'encadre.';
+      'Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C\'est un contre-la-montre, pas une compétition : le sentier reste ouvert à tous et personne ne l\'encadre.';
 
   @override
   String get parksNotAffiliated =>

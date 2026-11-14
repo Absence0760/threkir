@@ -52,16 +52,16 @@
   "importStatusImported": "{count, plural, one{{count} carrera importada} other{{count} carreras importadas}} desde {label}",
   "importStatusImportedWithErrors": "{count, plural, one{{count} carrera importada} other{{count} carreras importadas}} ({errors} con error)",
   "importStatusNoGpsNote": "{base}. {label} no tiene datos de ruta, así que estas carreras no tienen mapa.",
-  "importHealthRequestingPermission": "Solicitando permiso de {label}...",
+  "importHealthRequestingPermission": "Solicitando permiso de {label}…",
   "importHealthPermissionDenied": "Permiso de {label} denegado",
-  "importHealthReadingWorkouts": "Leyendo entrenamientos...",
+  "importHealthReadingWorkouts": "Leyendo entrenamientos…",
   "importHealthFailed": "Error al importar desde {label}: {error}",
-  "importStatusSavingLocally": "Guardando localmente...",
+  "importStatusSavingLocally": "Guardando localmente…",
   "importStatusSkippedDuplicates": "{count, plural, one{Se omitió {count} duplicado ya importado} other{Se omitieron {count} duplicados ya importados}} desde otra fuente",
   "importStatusSavedProgress": "{done} de {total} guardadas localmente",
-  "importStatusSyncingToCloud": "Sincronizando con la nube...",
+  "importStatusSyncingToCloud": "Sincronizando con la nube…",
   "importStatusSyncProgress": "{done} de {total} sincronizadas",
-  "importStatusReadingCsv": "Leyendo CSV...",
+  "importStatusReadingCsv": "Leyendo CSV…",
   "importCsvFailed": "Error al importar el CSV: {error}",
   "importFileUnreadable": "Este archivo no tiene el formato esperado.",
   "importRefusedTooLarge": "Este archivo ocupa {sizeMb} MB y supera el límite de {limitMb} MB. Divídelo en exportaciones más pequeñas e impórtalas una a una.",
@@ -72,7 +72,7 @@
   "importStatusRestoringBackup": "Restaurando copia de seguridad…",
   "importStatusBackupRestored": "Restaurado: {runs, plural, one{{runs} carrera} other{{runs} carreras}} · {tracks, plural, one{{tracks} traza} other{{tracks} trazas}} · {routes, plural, one{{routes} ruta} other{{routes} rutas}}",
   "importBackupFailed": "Error al restaurar la copia de seguridad: {error}",
-  "importStatusReadingExport": "Leyendo exportación...",
+  "importStatusReadingExport": "Leyendo exportación…",
   "importStravaFailed": "Error al importar: {error}",
   "importTitle": "Importar carreras",
   "importStravaCardTitle": "Strava",
@@ -93,7 +93,7 @@
   "importBackupMakeOne": "Crear una copia de seguridad",
   "importBackupButton": "Restaurar ZIP de copia de seguridad",
   "importErrorsHeader": "Errores",
-  "importErrorsMore": "... y {count} más",
+  "importErrorsMore": "… y {count} más",
   "importRestoreWarnOffline": "Restaurado sin conexión: las carreras se guardan en este dispositivo y se sincronizarán cuando inicies sesión. Se omitieron el perfil y los ajustes.",
   "importRestoreWarnArchiveIncomplete": "Esta copia indica que estaba incompleta cuando se creó. No se sobrescribió nada: restaura una copia completa para cubrir lo que falta.",
   "importRestoreWarnProfile": "No se restauraron el perfil ni los ajustes: {error}",
@@ -131,9 +131,9 @@
   "importHealthDescriptionAndroid": "Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Salud conectada deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.",
   "importHealthRoutesWithheld": "{count, plural, one{1 actividad importada tiene un mapa GPS que Threkir no puede leer.} other{{count} actividades importadas tienen mapas GPS que Threkir no puede leer.}} Salud conectada protege la ruta de un entrenamiento con un permiso aparte.",
   "importHealthRoutesAllowButton": "Permitir importar mapas",
-  "importHealthRoutesRequesting": "Solicitando acceso a los mapas a Salud conectada...",
+  "importHealthRoutesRequesting": "Solicitando acceso a los mapas a Salud conectada…",
   "importHealthRoutesDenied": "Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Salud conectada cuando quieras.",
-  "importHealthRoutesAdding": "Añadiendo mapas a las actividades importadas...",
+  "importHealthRoutesAdding": "Añadiendo mapas a las actividades importadas…",
   "importHealthRoutesAdded": "{count, plural, =0{No se pudo añadir ningún mapa.} one{Se añadió un mapa a 1 actividad.} other{Se añadieron mapas a {count} actividades.}}",
   "peopleFollowFailedBanner": "No se pudo actualizar el seguimiento: {error}",
   "peopleSearchHint": "Buscar corredores por nombre",
@@ -892,7 +892,7 @@
   "runDetailSave": "Guardar",
   "runDetailCancel": "Cancelar",
   "runDetailDelete": "Eliminar",
-  "runDetailLoadingGps": "Cargando datos GPS...",
+  "runDetailLoadingGps": "Cargando datos GPS…",
   "runDetailGpsUnavailable": "Traza GPS no disponible sin conexión",
   "runDetailPauseReplay": "Pausar reproducción",
   "runDetailReplay": "Reproducir esta carrera",
@@ -1167,7 +1167,7 @@
   "routeDetailShareLink": "Compartir enlace",
   "routeDetailSendToWatch": "Enviar al reloj",
   "routeDetailWatchCourseSent": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}})",
-  "routeDetailWatchCourseSentMarkersFailed": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}}), pero no se pudieron cargar sus marcadores, así que no se envió ningún plan de carrera.",
+  "routeDetailWatchCourseSentMarkersFailed": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}}), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario de carrera.",
   "routeDetailWatchCourseSimplified": "Recorrido enviado al reloj: reducido de {source} a {points, plural, one{{points} punto} other{{points} puntos}} para que quepa",
   "routeDetailWatchCourseTooShort": "Esta ruta tiene muy pocos puntos para seguirla en el reloj",
   "routeDetailWatchPushRejected": "El reloj rechazó el envío y conservó lo que ya tenía. Inténtalo de nuevo.",
@@ -1177,7 +1177,7 @@
   "routeDetailAppleWatchRouteSimplified": "Ruta enviada al Apple Watch: reducida de {source} a {points, plural, one{{points} punto} other{{points} puntos}} para que quepa",
   "routeDetailAppleWatchRouteTooShort": "Esta ruta tiene muy pocos puntos para seguirla en el Apple Watch",
   "routeDetailAppleWatchRouteFailed": "No se pudo enviar la ruta al Apple Watch: {error}",
-  "routeDetailWatchCourseAndScheduleSent": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) y plan de carrera ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}) enviados al reloj",
+  "routeDetailWatchCourseAndScheduleSent": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) y horario de carrera ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}) enviados al reloj",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -1189,7 +1189,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado. Plan de carrera reducido de {source} a {checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}} para caber en el reloj",
+  "routeDetailWatchScheduleThinned": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado. Horario de carrera reducido de {source} a {checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}} para caber en el reloj",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Plan de carrera enviado ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}), pero {unresolved, plural, one{{unresolved} corte por hora necesita} other{{unresolved} cortes por hora necesitan}} una hora de salida — defínela en la hoja de equipo para que lleguen al reloj",
+  "routeDetailWatchScheduleClockCutoffs": "Horario de carrera enviado ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}), pero {unresolved, plural, one{{unresolved} corte por hora necesita} other{{unresolved} cortes por hora necesitan}} una hora de salida — defínela en la hoja de equipo para que lleguen al reloj",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado, pero el plan de carrera tiene {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}} y el reloj admite {max} — elimina algunos para enviarlo",
+  "routeDetailWatchScheduleTooManyCutoffs": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado, pero el horario de carrera tiene {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}} y el reloj admite {max} — elimina algunos para enviarlo",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -1354,7 +1354,7 @@
   "routeDetailClubMemberCount": "{location} · {count, plural, one{{count} miembro} other{{count} miembros}}",
   "exploreRoutesTitle": "Explorar rutas",
   "exploreRoutesModeNearMe": "Cerca de mí",
-  "exploreRoutesSearchHint": "Buscar rutas por nombre...",
+  "exploreRoutesSearchHint": "Buscar rutas por nombre…",
   "exploreRoutesFeatured": "Destacadas",
   "exploreRoutesSignInRequired": "Inicia sesión y conéctate a Internet para explorar rutas",
   "exploreRoutesTimeout": "Se agotó el tiempo de conexión. Comprueba tu red e inténtalo de nuevo.",
@@ -3187,9 +3187,10 @@
   "workoutEditRaceNameLabel": "Nombre de la carrera",
   "workoutEditRacePriorityLabel": "Prioridad de la carrera",
   "workoutEditRacePriorityAuto": "Automática",
+  "workoutEditRacePriorityHint": "Una carrera A es aquella para la que el plan alcanza su pico. Una carrera B es una carrera de preparación que corres a fondo; una C la corres como entrenamiento. Las carreras B y C tienen su propia cuenta atrás sin cambiar el objetivo del plan.",
   "racePriorityOptionA": "A — carrera objetivo",
-  "racePriorityOptionB": "B — carrera importante",
-  "racePriorityOptionC": "C — carrera de preparación",
+  "racePriorityOptionB": "B — carrera de preparación",
+  "racePriorityOptionC": "C — carrera de entrenamiento",
   "workoutEditRaceGoalTimeLabel": "Tiempo objetivo",
   "workoutEditRaceGoalTimeHint": "p. ej. 6:30:00",
   "workoutEditErrRaceGoalTime": "El tiempo objetivo debe tener el formato 6:30:00",
@@ -3306,7 +3307,7 @@
   "gearWearLogDeleteError": "No se pudo eliminar la observación: {error}",
   "notificationBellTooltip": "Notificaciones",
   "notificationBellUnread": "{count, plural, one{Notificaciones, {count} sin leer} other{Notificaciones, {count} sin leer}}",
-  "liveRunMapWaitingGps": "Esperando GPS...",
+  "liveRunMapWaitingGps": "Esperando GPS…",
   "liveRunMapApproximateLocation": "La ubicación exacta está desactivada — el mapa no puede mostrar dónde estás",
   "liveRunMapRecentre": "Centrar en mi ubicación",
   "ttsRunStarted": "Carrera iniciada",
@@ -5429,7 +5430,7 @@
   "seasonPlanRaceDistance": "Distancia ({unit})",
   "seasonPlanRacePriority": "Prioridad",
   "seasonPlanPriorityA": "A — carrera objetivo",
-  "seasonPlanPriorityB": "B — preparación",
+  "seasonPlanPriorityB": "B — carrera de preparación",
   "seasonPlanPriorityC": "C — carrera de entrenamiento",
   "seasonPlanRaceGoal": "Tiempo objetivo (opcional)",
   "seasonPlanAddRace": "Añadir una carrera",

@@ -1685,7 +1685,7 @@ void main() {
       expect(find.text('Approximate location — distance paused'),
           findsOneWidget,
           reason: 'shown at the start, not after a rejected fix');
-      expect(find.text('Waiting for GPS...'), findsNothing,
+      expect(find.text('Waiting for GPS…'), findsNothing,
           reason: 'no precise fix is coming, so the map must not promise one');
       expect(
           find.text("Precise location is off — the map can't show where you "

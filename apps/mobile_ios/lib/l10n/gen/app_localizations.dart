@@ -422,7 +422,7 @@ abstract class AppLocalizations {
   /// Status while requesting the platform health-store permission
   ///
   /// In en, this message translates to:
-  /// **'Requesting {label} permission...'**
+  /// **'Requesting {label} permission…'**
   String importHealthRequestingPermission(Object label);
 
   /// Status when the health-store permission was denied
@@ -434,7 +434,7 @@ abstract class AppLocalizations {
   /// Status while reading workouts from the health store
   ///
   /// In en, this message translates to:
-  /// **'Reading workouts...'**
+  /// **'Reading workouts…'**
   String get importHealthReadingWorkouts;
 
   /// Status when a health-store import fails
@@ -446,7 +446,7 @@ abstract class AppLocalizations {
   /// Status while saving imported runs to the local store
   ///
   /// In en, this message translates to:
-  /// **'Saving locally...'**
+  /// **'Saving locally…'**
   String get importStatusSavingLocally;
 
   /// Status when cross-source duplicate runs are skipped during import
@@ -464,7 +464,7 @@ abstract class AppLocalizations {
   /// Status while pushing imported runs to the cloud
   ///
   /// In en, this message translates to:
-  /// **'Syncing to cloud...'**
+  /// **'Syncing to cloud…'**
   String get importStatusSyncingToCloud;
 
   /// Per-run progress status while syncing imported runs to the cloud
@@ -476,7 +476,7 @@ abstract class AppLocalizations {
   /// Status while reading the selected CSV file
   ///
   /// In en, this message translates to:
-  /// **'Reading CSV...'**
+  /// **'Reading CSV…'**
   String get importStatusReadingCsv;
 
   /// Status when the CSV import fails
@@ -542,7 +542,7 @@ abstract class AppLocalizations {
   /// Status while reading the Strava export ZIP
   ///
   /// In en, this message translates to:
-  /// **'Reading export...'**
+  /// **'Reading export…'**
   String get importStatusReadingExport;
 
   /// Status when the Strava ZIP import fails
@@ -668,7 +668,7 @@ abstract class AppLocalizations {
   /// Truncation line when more than ten import errors exist
   ///
   /// In en, this message translates to:
-  /// **'... and {count} more'**
+  /// **'… and {count} more'**
   String importErrorsMore(Object count);
 
   /// Backup-restore warning: the restore ran without a session
@@ -896,7 +896,7 @@ abstract class AppLocalizations {
   /// No description provided for @importHealthRoutesRequesting.
   ///
   /// In en, this message translates to:
-  /// **'Asking Health Connect for map access...'**
+  /// **'Asking Health Connect for map access…'**
   String get importHealthRoutesRequesting;
 
   /// No description provided for @importHealthRoutesDenied.
@@ -908,7 +908,7 @@ abstract class AppLocalizations {
   /// No description provided for @importHealthRoutesAdding.
   ///
   /// In en, this message translates to:
-  /// **'Adding maps to imported activities...'**
+  /// **'Adding maps to imported activities…'**
   String get importHealthRoutesAdding;
 
   /// Status after backfilling maps onto already-imported activities
@@ -3932,7 +3932,7 @@ abstract class AppLocalizations {
   /// Status on the finish summary while the run is uploading
   ///
   /// In en, this message translates to:
-  /// **'Syncing...'**
+  /// **'Syncing…'**
   String get runSyncing;
 
   /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)
@@ -5504,7 +5504,7 @@ abstract class AppLocalizations {
   /// Overlay shown on the run-detail map while the GPS track downloads
   ///
   /// In en, this message translates to:
-  /// **'Loading GPS data...'**
+  /// **'Loading GPS data…'**
   String get runDetailLoadingGps;
 
   /// Overlay shown on the run-detail map when the track can't be fetched offline
@@ -8003,7 +8003,7 @@ abstract class AppLocalizations {
   /// Placeholder in the explore search field
   ///
   /// In en, this message translates to:
-  /// **'Search routes by name...'**
+  /// **'Search routes by name…'**
   String get exploreRoutesSearchHint;
 
   /// Featured-only filter-chip label on the explore screen
@@ -19030,22 +19030,28 @@ abstract class AppLocalizations {
   /// **'Automatic'**
   String get workoutEditRacePriorityAuto;
 
+  /// Helper text under the race priority picker in the workout editor: what A, B and C mean (docs/features/training.md § Race priority). Mirrors web workoutEditor.racePriorityHint
+  ///
+  /// In en, this message translates to:
+  /// **'An A race is the one the plan peaks for. A B race is a tune-up you race properly, and a C race is run as training. B and C races get their own countdown without changing the plan\'s goal.'**
+  String get workoutEditRacePriorityHint;
+
   /// Race priority picker option A: the race the plan is built for. Keep the letter A
   ///
   /// In en, this message translates to:
   /// **'A — goal race'**
   String get racePriorityOptionA;
 
-  /// Race priority picker option B: a race that matters but is not the main goal. Keep the letter B
+  /// Race priority picker option B: a tune-up race, raced properly inside the block (a short taper before it and easy days after; docs/features/training.md § Race priority). Keep the letter B
   ///
   /// In en, this message translates to:
-  /// **'B — important race'**
+  /// **'B — tune-up race'**
   String get racePriorityOptionB;
 
-  /// Race priority picker option C: a low-key race run as training. Keep the letter C
+  /// Race priority picker option C: a training race, run as part of training (a light easing either side). Keep the letter C
   ///
   /// In en, this message translates to:
-  /// **'C — tune-up race'**
+  /// **'C — training race'**
   String get racePriorityOptionC;
 
   /// Label for the race goal finish time field in the workout editor (Race workouts only)
@@ -19747,7 +19753,7 @@ abstract class AppLocalizations {
   /// Overlay shown while waiting for the first GPS fix
   ///
   /// In en, this message translates to:
-  /// **'Waiting for GPS...'**
+  /// **'Waiting for GPS…'**
   String get liveRunMapWaitingGps;
 
   /// Live map placeholder shown instead of liveRunMapWaitingGps while the run records under an approximate location grant and no fix has arrived
@@ -31654,7 +31660,7 @@ abstract class AppLocalizations {
   /// Season planner (issue #1181)
   ///
   /// In en, this message translates to:
-  /// **'B — tune-up'**
+  /// **'B — tune-up race'**
   String get seasonPlanPriorityB;
 
   /// Season planner (issue #1181)

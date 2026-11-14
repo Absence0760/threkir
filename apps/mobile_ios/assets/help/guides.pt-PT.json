@@ -1280,7 +1280,7 @@
           {
             "type": "list",
             "items": [
-              "**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva-o à sua conta Stripe. É isto que significa “cobranças ativadas”, e é o único estado em que o interruptor **Cobrar por este evento** de um novo evento pode ser ativado.",
+              "**Tudo pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva-o à sua conta Stripe. É isto que significa “cobranças ativadas”, e é o único estado em que o interruptor **Cobrar por este evento** de um novo evento pode ser ativado.",
               "**Registo incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo da sua parte antes de aceitar uma cobrança.",
               "**A sua conta de pagamentos precisa de atenção antes de poder receber**: o Stripe restringiu a conta, normalmente porque quer mais informações. **Concluir a configuração de pagamentos** leva-o ao que está a ser pedido."
             ]
@@ -1435,7 +1435,7 @@
           {
             "type": "list",
             "items": [
-              "Os participantes inscrevem-se e pagam na web, veem **Está inscrito** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
+              "Os participantes inscrevem-se e pagam na web, veem **Inscrição feita** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
               "Quando as vagas se esgotam, aparece **Esgotado** e a opção **Entrar na lista de espera**: consulte [[guide:waitlist-and-claim-window|Listas de espera e o prazo de 12 horas para garantir o lugar]].",
               "Marque quem compareceu: [[guide:take-attendance|Registar presenças]].",
               "Cancelar uma sessão reembolsa todos os que pagaram: [[guide:cancel-a-class|Cancelar uma aula]]."
@@ -1490,7 +1490,7 @@
           {
             "type": "list",
             "items": [
-              "Tem de ser administrador ou organizador de eventos do clube. A página do clube indica qual dos dois é com **É administrador** ou **É organizador de eventos**.",
+              "Tem de ser administrador ou organizador de eventos do clube. A página do clube indica qual dos dois é com **Tem a função de administrador** ou **Tem a função de organizador de eventos**.",
               "O preço, a capacidade, o calendário de repetição e o plano de sessão definem-se todos na web. A app do telemóvel pode criar uma aula e mostra-a aos membros, mas não tem campos de preço, capacidade nem plano de sessão.",
               "Se quiser associar uma sequência, crie-a primeiro: consulte [[guide:build-a-session-plan|Criar um plano de sessão]]."
             ]
@@ -1541,7 +1541,7 @@
             "type": "list",
             "items": [
               "A disciplina, a hora, o local, o **Preço** e uma linha sobre o cancelamento, como **Cancelamento gratuito até 24 horas antes do início**.",
-              "Um botão com *Inscrever-se · 22,00 US$* (com o seu preço) que os leva ao pagamento. Quando voltam, aparece **Pagamento confirmado — está inscrito.**",
+              "Um botão com *Inscrever-se · 22,00 US$* (com o seu preço) que os leva ao pagamento. Quando voltam, aparece **Pagamento confirmado — a sua inscrição está feita.**",
               "**Esgotado** quando os tapetes estão todos ocupados, com **Entrar na lista de espera** enquanto as vendas estão abertas ([[guide:waitlist-and-claim-window|como funciona a lista de espera]]), e **Inscrições encerradas** quando as vendas terminam.",
               "A sua sequência em **Sequência da sessão**. Podem abri-la e premir **Iniciar sessão** para a seguir em casa."
             ]
@@ -1645,7 +1645,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o evento na web. Onde diz **Está inscrito**, prima **Cancelar inscrição**.",
+              "Abra o evento na web. Onde diz **Inscrição feita**, prima **Cancelar inscrição**.",
               "Leia a caixa de diálogo. Dentro do prazo de reembolso, indica que será reembolsado no seu método de pagamento original e que o seu lugar fica disponível para alguém na lista de espera.",
               "Prima **Cancelar inscrição** para avançar, ou **Manter o meu lugar** para desistir."
             ]
@@ -2385,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sem marca**: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.",
+              "*Sem marca*: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.",
               "**Manual**: o corredor terminou à mão, com **Terminar prova** depois de percorrer pelo menos 90% do percurso, ou usando **Enviar o meu tempo** na web durante a prova.",
               "**Organizador** (na web, **Editado pelo organizador**): o organizador introduziu ou corrigiu este resultado, ou o corredor ficou como DNF quando o organizador encerrou a prova."
             ]

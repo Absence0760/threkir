@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 
 import {
 	appendPage,
+	KEYSET_WALK_PAGE_SIZE,
 	keysetAfter,
 	keysetCursor,
 	type KeysetKey,
@@ -11,6 +13,7 @@ import {
 	literalSubstringTerm,
 	nextCursor,
 	publicRouteOrder,
+	POSTGREST_MAX_ROWS,
 	walkKeyset,
 } from './keyset_page.ts';
 
@@ -334,27 +337,53 @@ test('walkKeyset: a row inserted mid-walk behind the cursor repeats nothing, as 
 	assert.equal(offsetRows.filter((r) => r.id === sorted[1].id).length, 2);
 });
 
-test('walkKeyset: a server capping below the page size is not read as exhausted', async () => {
-	const { fetchPage } = walkServer(WALK_KEYS, () => DATA, { cap: 2 });
-	const walk = await walkKeyset(WALK_KEYS, fetchPage, { pageSize: 5 });
+test('walkKeyset: a server capping below the ask at the declared cap is read on, not taken as exhausted', async () => {
+	const server = walkServer(WALK_KEYS, () => DATA, { cap: 2 });
+	const walk = await walkKeyset(WALK_KEYS, server.fetchPage, { pageSize: 5, maxRows: 2 });
 	assert.equal(walk.complete, true);
 	assert.deepEqual(walkIds(walk.rows), walkIds(sortRows(WALK_KEYS, DATA)));
+	assert.equal(server.calls.length, 4, 'pages of 2, 2, 2 and the short 1');
 });
 
-test('walkKeyset: a short first page costs one confirming read; a full last page one empty read', async () => {
+test('walkKeyset: with no known cap a short first page costs one confirming read, and later pages learn the cap', async () => {
 	const short = walkServer(WALK_KEYS, () => DATA);
-	assert.equal((await walkKeyset(WALK_KEYS, short.fetchPage, { pageSize: 10 })).rows.length, 7);
+	const walk = await walkKeyset(WALK_KEYS, short.fetchPage, { pageSize: 10, maxRows: null });
+	assert.equal(walk.rows.length, 7);
 	assert.equal(short.calls.length, 2);
 	assert.equal(short.calls[0].after, null, 'the first page is unfiltered');
 
+	const capping = walkServer(WALK_KEYS, () => DATA, { cap: 2 });
+	const capped = await walkKeyset(WALK_KEYS, capping.fetchPage, { pageSize: 5, maxRows: null });
+	assert.deepEqual(walkIds(capped.rows), walkIds(sortRows(WALK_KEYS, DATA)));
+	assert.equal(capping.calls.length, 4, 'the page of 1 is shorter than the 2 the server already sent');
+});
+
+test('walkKeyset: a short page under the declared cap is the end, in one request', async () => {
+	const asked = walkServer(WALK_KEYS, () => DATA);
+	const walk = await walkKeyset(WALK_KEYS, asked.fetchPage, { pageSize: 10 });
+	assert.deepEqual(walk, { rows: sortRows(WALK_KEYS, DATA), complete: true, error: null });
+	assert.equal(asked.calls.length, 1);
+
+	const defaults = walkServer(WALK_KEYS, () => DATA);
+	assert.equal((await walkKeyset(WALK_KEYS, defaults.fetchPage)).rows.length, 7);
+	assert.deepEqual(defaults.calls, [{ after: null, limit: POSTGREST_MAX_ROWS }]);
+});
+
+test('walkKeyset: an exact multiple of the page or the cap costs one empty read', async () => {
 	const exact = walkServer(WALK_KEYS, () => DATA.slice(0, 6));
 	assert.equal((await walkKeyset(WALK_KEYS, exact.fetchPage, { pageSize: 3 })).rows.length, 6);
 	assert.equal(exact.calls.length, 3);
 
+	const atCap = walkServer(WALK_KEYS, () => DATA.slice(0, 6), { cap: 2 });
+	assert.equal((await walkKeyset(WALK_KEYS, atCap.fetchPage, { pageSize: 5, maxRows: 2 })).rows.length, 6);
+	assert.equal(atCap.calls.length, 4);
+});
+
+test('walkKeyset: an empty result is one request', async () => {
 	const empty = walkServer(WALK_KEYS, () => []);
 	const none = await walkKeyset(WALK_KEYS, empty.fetchPage);
 	assert.deepEqual(none, { rows: [], complete: true, error: null });
-	assert.equal(empty.calls[0].limit, 1000);
+	assert.deepEqual(empty.calls, [{ after: null, limit: 1000 }]);
 });
 
 test('walkKeyset: a page error returns the rows read so far, flagged short, and never throws', async () => {
@@ -392,6 +421,21 @@ test('walkKeyset: a start cursor walks only the rows after it', async () => {
 test('walkKeyset: a non-positive page size is refused', async () => {
 	const { fetchPage } = walkServer(WALK_KEYS, () => DATA);
 	await assert.rejects(walkKeyset(WALK_KEYS, fetchPage, { pageSize: 0 }), /positive integer/);
+});
+
+test('walkKeyset: a non-positive max rows is refused', async () => {
+	const { fetchPage } = walkServer(WALK_KEYS, () => DATA);
+	await assert.rejects(walkKeyset(WALK_KEYS, fetchPage, { maxRows: 0 }), /positive integer or null/);
+	await assert.rejects(walkKeyset(WALK_KEYS, fetchPage, { maxRows: -1 }), /positive integer or null/);
+});
+
+test('walkKeyset: the declared cap is the db.max-rows config.toml pins', () => {
+	const config = readFileSync(new URL('../../../../backend/supabase/config.toml', import.meta.url), 'utf8');
+	const api = /^\[api\]\n([\s\S]*?)(?=^\[)/m.exec(config)?.[1] ?? '';
+	const pinned = /^max_rows\s*=\s*(\d+)\s*$/m.exec(api);
+	assert.ok(pinned, '[api] must pin max_rows');
+	assert.equal(Number(pinned[1]), POSTGREST_MAX_ROWS);
+	assert.equal(KEYSET_WALK_PAGE_SIZE, POSTGREST_MAX_ROWS);
 });
 
 // ── literalSubstringPattern ────────────────────────────────────────────────

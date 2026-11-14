@@ -245,6 +245,25 @@ test('the park catalogue lists are walked whole, and a short walk fails', () => 
 	assert.match(source, /const PARK_ORDER: readonly KeysetKey\[\] = \[[\s\S]*?'region_code'[\s\S]*?'name'[\s\S]*?'id'/);
 });
 
+test('the NPS alert review queue is walked whole, and a short walk fails', () => {
+	// The queue's history grows every day the sweep runs. The RPC used to stop
+	// at 200 rows and one read stops at db.max-rows, each with a 200 and no
+	// flag, so an admin saw part of a state as all of it.
+	const fn = body('fetchParkNpsAlerts');
+	assert.match(fn, /walkKeyset\(NPS_ALERT_ID_ORDER, /);
+	assert.match(fn, /\.rpc\('admin_park_nps_alerts'/, 'the queue must be read inside the walk');
+	assert.match(fn, /if \(after\) q = q\.or\(after\)/, 'each page must start after the last');
+	assert.match(
+		fn,
+		/for \(const k of NPS_ALERT_ID_ORDER\)[\s\S]*?\.order\(k\.column/,
+		'the walk must sort by the order its cursor is taken in',
+	);
+	assert.match(fn, /return q\.limit\(limit\)/);
+	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/, 'a short walk must fail, not read as the queue');
+	assert.match(fn, /orderNpsAlertQueue\(walk\.rows\)/, 'the rows must be put back in queue order');
+	assert.match(source, /const NPS_ALERT_ID_ORDER: readonly KeysetKey\[\] = \[\{ column: 'id', /);
+});
+
 test('the recap park lines walk the runner\'s efforts whole', () => {
 	// A year of catalogue efforts passes `db.max-rows` for a regular, and a
 	// cut read undercounts their parks and courses (issue #1374).
@@ -252,16 +271,4 @@ test('the recap park lines walk the runner\'s efforts whole', () => {
 	assert.match(fn, /walkKeyset\(EFFORT_ID_ORDER, /);
 	assert.match(fn, /\.select\('id, global_segment_id'\)/, 'the cursor reads id off each effort');
 	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/);
-});
-
-test('the sitemap lists every park course, walked rather than limited', () => {
-	const sitemap = stripComments(
-		readFileSync(resolve(import.meta.dirname, '../../routes/sitemap.xml/+server.ts'), 'utf-8'),
-	);
-	assert.match(sitemap, /walkKeyset\(SITEMAP_COURSE_ORDER, /);
-	assert.doesNotMatch(
-		sitemap,
-		/\.from\(TABLES\.park_courses\)[\s\S]{0,300}?\.limit\(MAX_ENTITIES\)/,
-		'a .limit() past db.max-rows is cut there with a 200',
-	);
 });

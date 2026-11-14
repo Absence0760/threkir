@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test/test.dart';
@@ -10,8 +11,11 @@ import 'package:test/test.dart';
 /// flag) silently lost courses from Races & courses and the park index
 /// (issue #1374). Each read must walk the whole set by keyset cursor. The
 /// fake sits at the http boundary and plays a server capping every response
-/// at [_FakeHttp.cap] rows, far below the 1000 the client asks for; the
-/// PostgREST builders and ApiClient above it are real.
+/// at [_FakeHttp.cap] rows, the deployment's declared `db.max-rows`; the
+/// PostgREST builders and ApiClient above it are real. A read shorter than
+/// the cap is the whole set, so the small reads (a park's courses, a month's
+/// runner counts) cost one request; a read that lands on the cap is
+/// confirmed by one more.
 class _FakeHttp extends http.BaseClient {
   _FakeHttp(this.cap);
 
@@ -97,7 +101,7 @@ void main() {
   late ApiClient api;
 
   setUp(() {
-    fake = _FakeHttp(3);
+    fake = _FakeHttp(kPostgrestMaxRows);
     client = SupabaseClient(
       'http://127.0.0.1:24321',
       'test-anon-key',
@@ -108,21 +112,31 @@ void main() {
 
   tearDown(() => client.dispose());
 
+  const past = kPostgrestMaxRows + 1;
+
   test('every park course arrives from a server that caps each page', () async {
-    fake.rowsByPath[_coursesPath] = [for (var i = 1; i <= 7; i++) _course(i)];
+    fake.rowsByPath[_coursesPath] = [for (var i = 1; i <= past; i++) _course(i)];
     final courses = await api.fetchAllParkCourses();
-    expect(courses.map((c) => c.course.id), [for (var i = 1; i <= 7; i++) 'c$i']);
+    expect(courses, hasLength(past));
+    expect(courses.last.course.id, 'c$past');
     final reqs = fake.to(_coursesPath);
-    expect(reqs, hasLength(3));
+    expect(reqs, hasLength(2));
     expect(reqs.first.url.queryParameters['order'], 'id.asc.nullslast');
     expect(reqs.first.url.queryParameters['limit'], '1000');
     expect(reqs.first.url.queryParameters.containsKey('or'), isFalse);
-    expect(reqs[1].url.queryParameters['or'], contains('id.gt."c3"'));
-    expect(reqs[2].url.queryParameters['or'], contains('id.gt."c6"'));
+    expect(reqs[1].url.queryParameters['or'], contains('id.gt."c1000"'));
+  });
+
+  test('a read that lands exactly on the cap is confirmed by one empty read', () async {
+    fake.rowsByPath[_coursesPath] = [
+      for (var i = 1; i <= kPostgrestMaxRows; i++) _course(i),
+    ];
+    expect(await api.fetchAllParkCourses(), hasLength(kPostgrestMaxRows));
+    expect(fake.to(_coursesPath), hasLength(2));
   });
 
   test('a page that fails fails the course read rather than listing part of it', () async {
-    fake.rowsByPath[_coursesPath] = [for (var i = 1; i <= 7; i++) _course(i)];
+    fake.rowsByPath[_coursesPath] = [for (var i = 1; i <= past; i++) _course(i)];
     fake
       ..failPath = _coursesPath
       ..failOn = 2;
@@ -130,45 +144,50 @@ void main() {
   });
 
   test('every park arrives, walked in region, name, id order', () async {
-    fake.rowsByPath[_parksPath] = [for (var i = 1; i <= 5; i++) _park(i)];
+    fake.rowsByPath[_parksPath] = [for (var i = 1; i <= past; i++) _park(i)];
     final parks = await api.fetchParks();
-    expect(parks.map((p) => p.park.id), ['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(parks, hasLength(past));
     final reqs = fake.to(_parksPath);
+    expect(reqs, hasLength(2));
     expect(reqs.first.url.queryParameters['order'],
         'region_code.asc.nullslast,name.asc.nullslast,id.asc.nullslast');
     expect(reqs.first.url.queryParameters['select'], '*,park_season,park_month');
-    expect(reqs[1].url.queryParameters['or'], contains('id.gt."p3"'));
+    expect(reqs[1].url.queryParameters['or'], contains('id.gt."p1000"'));
   });
 
-  test('a park\'s own courses are walked too, by slug', () async {
+  test('a park\'s own courses are walked too, by slug, in one request', () async {
     fake.rowsByPath[_coursesPath] = [for (var i = 1; i <= 4; i++) _course(i)];
     final courses = await api.fetchParkCourses('p1');
     expect(courses, hasLength(4));
     final reqs = fake.to(_coursesPath);
+    expect(reqs, hasLength(1), reason: '4 rows is short of the cap, so it is the whole set');
     expect(reqs.first.url.queryParameters['park_id'], 'eq.p1');
     expect(reqs.first.url.queryParameters['order'], 'slug.asc.nullslast,id.asc.nullslast');
   });
 
   test('every course\'s season record arrives from the capped RPC', () async {
     fake.rowsByPath[_recordsPath] = [
-      for (var i = 1; i <= 5; i++)
+      for (var i = 1; i <= past; i++)
         {'course_id': 'c$i', 'season': 2026, 'user_id': 'u$i', 'display_name': null, 'time_seconds': 600 + i},
     ];
     final records = await api.fetchParkCourseRecords();
-    expect(records.keys, ['c1', 'c2', 'c3', 'c4', 'c5']);
+    expect(records, hasLength(past));
     expect(records['c5']!.timeSeconds, 605);
     final reqs = fake.to(_recordsPath);
+    expect(reqs, hasLength(2));
     expect(reqs.first.method, 'GET');
     expect(reqs.first.url.queryParameters['order'], 'course_id.asc.nullslast');
-    expect(reqs[1].url.queryParameters['or'], contains('course_id.gt."c3"'));
+    expect(reqs[1].url.queryParameters['or'], contains('course_id.gt."c1000"'));
   });
 
-  test('every course\'s runner count arrives from the capped RPC', () async {
+  test('a month\'s runner counts arrive in one request', () async {
     fake.rowsByPath[_runnersPath] = [
       for (var i = 1; i <= 4; i++) {'course_id': 'c$i', 'runners': i},
     ];
     final counts = await api.fetchParkCourseMonthRunners('p1');
     expect(counts, {'c1': 1, 'c2': 2, 'c3': 3, 'c4': 4});
-    expect(fake.to(_runnersPath).first.url.queryParameters['p_park_id'], 'p1');
+    final reqs = fake.to(_runnersPath);
+    expect(reqs, hasLength(1));
+    expect(reqs.first.url.queryParameters['p_park_id'], 'p1');
   });
 }

@@ -20,6 +20,11 @@
 // tasks in apps/backend/ops/tasks/. The config is guarded before any stage
 // runs.
 //
+// Then the PostgREST row cap check (decisions § 987, § 1936): read-only, it
+// fails the release when production's db.max-rows is below the one
+// config.toml pins, since the clients' keyset walk ends on a page shorter
+// than that without a confirming read.
+//
 // The official content catalogue comes last (issue #1190, decisions § 2446),
 // after the config, so a flag the same release turns on (official_race_courses)
 // is the one its load reads.
@@ -31,10 +36,17 @@ import { fileURLToPath } from 'node:url';
 import { officialCatalogueStage } from '../official/sync.mjs';
 import { parkCatalogueStage } from '../parks/sync.mjs';
 import { prodConfigStages } from './config.mjs';
+import { pinnedMaxRows, postgrestCapStage } from './lib/postgrest_cap.mjs';
 import { runStages } from './lib/stages.mjs';
 
 /** @type {(() => import('./lib/stages.mjs').Stage | import('./lib/stages.mjs').Stage[])[]} */
-export const STAGES = [parkCatalogueStage, prodConfigStages, officialCatalogueStage];
+export const STAGES = [parkCatalogueStage, prodConfigStages, postgrestCapCheck, officialCatalogueStage];
+
+export function postgrestCapCheck() {
+	const config = fileURLToPath(new URL('../../apps/backend/supabase/config.toml', import.meta.url));
+	const reader = fileURLToPath(new URL('./postgrest_max_rows.mjs', import.meta.url));
+	return postgrestCapStage(pinnedMaxRows(fs.readFileSync(config, 'utf8')), reader);
+}
 
 function main() {
 	const args = process.argv.slice(2);

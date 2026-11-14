@@ -25,8 +25,9 @@ Disallow: /help
 Disallow: /nutrition
 Disallow: /auth
 
-# Sitemap — prerendered at build time from `public_routes` + `public_runs`
-# (see `src/routes/sitemap.xml/+server.ts`). PUBLIC_SITE_URL is baked into
+# Sitemap — a sitemap index prerendered at build time over child files under
+# /sitemaps/ (see `src/routes/sitemap.xml/+server.ts` and docs/features/seo.md).
+# PUBLIC_SITE_URL is baked into
 # the <loc> values; this Sitemap directive itself is a relative pointer
 # that every major crawler resolves against the request host.
 Sitemap: /sitemap.xml

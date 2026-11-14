@@ -54,8 +54,8 @@ names stay in Latin script.
 - Spacing between Latin/digits and Japanese is mixed (unspaced 498 / 536
   vs spaced 280 / 384 strings). Prefer **no space** ("Stravaを開く",
   "{count}件"), except keep the space the English puts before a unit
-  symbol in a literal sample ("1000 km"). Between a number and its
-  counter or date unit it is a rule, not a preference: 「#日」「1月1日」 (see the glossary row).
+  symbol in a literal sample ("1000 km"). Before a day, week, month or
+  year unit and in a date it is a rule, not a preference: 「#日」「1月1日」 (see the glossary row).
 - Numbers in literal samples keep the decimal point ("5.0 km · 5:00 /km").
 
 ## Plurals
@@ -125,7 +125,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | age grade (the score against the best for your age and sex) | **年齢別評価** — 「年齢別評価」（stat and metric label）、「年齢別評価 {percent}」、「年齢別評価の結果」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 年齢グレード |
 | age band (the board filter and the consent statement) | **年齢区分** (already one term) | checked 2026-11-13; 年代別 stays for a race's own age category in results (`races.ageGroup`) |
 | name search (the profile search that 「名前検索に表示する」 controls, and that keeps under-18 accounts out) | **名前検索** everywhere, the DOB notes included | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 公開ユーザー検索 / 人物検索 for it. 「人を検索」 stays for a field that searches people you follow or message |
-| a number and its counter or date unit | **no space**: 「#日」「{n}日前」「あと#日で終了」「最大{n}日」「1月1日」「12月31日 22:00」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the last spaced day counts (web `challenges.*`, `notificationBell.daysAgo`, `trainingLoad.hintTrimp`, `seasonPlanner.recoveryLine`) and the park-courses guide's dates moved. Typography's « prefer no space » is now the rule for counters |
+| a day count, a span of days, weeks, months or years, and a date | **no space** between the number (or `#`, `{n}`) and 日, 週間, か月, 年 or 月: 「#日」「{n}日前」「あと#日で終了」「最大{n}日」「直近90日」「#週間」「直近6か月」「最長1年前」「1月1日」「12月31日 22:00」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the last spaced ones on web (`challenges.*`, `notificationBell.daysAgo`, `trainingLoad.*`, `seasonPlanner.*`, the Strava lookback options, `coaching.roster.hrDriftHint`, `clubVerification.emailHint`) and the park-courses guide's dates moved. Other counters (件, 回, 人, 分, 時間) are still mixed — inconsistency 7; 「# 件のキュー」 stays as settled |
 | "Nobody you follow has logged a public run in the last N days…" (`profile.feedNoActivityText`, `socialFeed.noActivityText`) | 「フォロー中の人は過去#日間に公開ランを記録していません。それより前のランは、各ランナーのプロフィールで見られます。」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the two keys share one English and now one Japanese |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)

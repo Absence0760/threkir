@@ -2740,14 +2740,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runPreRunPermissionBlockedBody =>
-      'El acceso a la ubicación está desactivado para esta app. Permítelo en los ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
+      'El acceso a la ubicación está desactivado para esta app. Permítelo en Ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
 
   @override
   String get runPreRunSearching => 'Buscando GPS…';
 
   @override
   String get runPreRunSearchingHint =>
-      'Con el cielo despejado a la vista, el GPS se fija antes.';
+      'Con una vista despejada del cielo, el GPS obtiene la posición antes.';
 
   @override
   String runPreRunGpsWeak(String accuracy) {
@@ -3759,7 +3759,13 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$kept puntos de paso',
       one: '$kept punto de paso',
     );
-    return '«$name» guardada — $_temp0 ($smoothed suavizados)';
+    String _temp1 = intl.Intl.pluralLogic(
+      smoothed,
+      locale: localeName,
+      other: '$smoothed suavizados',
+      one: '$smoothed suavizado',
+    );
+    return '«$name» guardada — $_temp0 ($_temp1)';
   }
 
   @override
@@ -4460,7 +4466,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$points puntos',
       one: '$points punto',
     );
-    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario.';
+    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún plan de carrera.';
   }
 
   @override
@@ -4535,7 +4541,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Ruta ($_temp0) y plan de carrera ($_temp1) enviados al reloj';
+    return 'Recorrido ($_temp0) y plan de carrera ($_temp1) enviados al reloj';
   }
 
   @override
@@ -4556,7 +4562,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Ruta ($_temp0) enviada. Plan de carrera reducido de $source a $_temp1 para caber en el reloj';
+    return 'Recorrido ($_temp0) enviado. Plan de carrera reducido de $source a $_temp1 para caber en el reloj';
   }
 
   @override
@@ -4594,7 +4600,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Ruta ($_temp0) enviada, pero el plan de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
+    return 'Recorrido ($_temp0) enviado, pero el plan de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
   }
 
   @override
@@ -9002,7 +9008,7 @@ class AppLocalizationsEs extends AppLocalizations {
       total,
       locale: localeName,
       other: 'las $total carreras',
-      one: 'la $total carrera',
+      one: '$total carrera',
     );
     return 'Tu última exportación es parcial: contiene $count de $_temp0 de tu cuenta. No se borró nada; vuelve a exportar para reintentarlo. El archivo completo de la cuenta indica cada sección incompleta en su manifest.json.';
   }
@@ -14687,7 +14693,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String sessionStepReps(Object name, int reps) {
-    return '$name · $reps reps.';
+    String _temp0 = intl.Intl.pluralLogic(
+      reps,
+      locale: localeName,
+      other: '$reps reps.',
+      one: '$reps rep.',
+    );
+    return '$name · $_temp0';
   }
 
   @override
@@ -17510,7 +17522,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$sec segundos',
       one: '$sec segundo',
     );
-    return 'Reduce $_temp0 por kilómetro';
+    return 'Ve $_temp0 más lento por kilómetro';
   }
 
   @override
@@ -17521,7 +17533,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$sec segundos',
       one: '$sec segundo',
     );
-    return 'Reduce $_temp0 por milla';
+    return 'Ve $_temp0 más lento por milla';
   }
 
   @override

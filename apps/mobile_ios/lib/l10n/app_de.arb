@@ -11,7 +11,7 @@
   "clubWaiverAck": "Ich verstehe die körperlichen Risiken des Gruppenlaufens und nehme auf eigenes Risiko teil.",
   "clubWaiverAccept": "Bestätigen und beitreten",
   "recapShareHeadline": "Mein Laufjahr {year}:",
-  "recapShareTotals": "{total} über {count, plural, one{{count} Lauf} other{{count} Läufe}}",
+  "recapShareTotals": "{total} in {count, plural, one{{count} Lauf} other{{count} Läufen}}",
   "recapShareLongestRun": "Längster Lauf: {distance}",
   "recapShareBestStreak": "Beste Serie: {days, plural, one{{days} Tag} other{{days} Tage}}",
   "recapShareSubject": "Rückblick {year}",
@@ -541,7 +541,7 @@
   "setupGoalHalf": "Halbmarathon laufen",
   "setupGoalMarathon": "Marathon laufen",
   "setupAboutTitle": "Ein bisschen über dich",
-  "setupAboutHint": "Optional. Hilft, Tempo- und Kalorienschätzungen anzupassen. Du entscheidest, ob du die Einwilligung zu Gesundheitsdaten erteilst.",
+  "setupAboutHint": "Optional. Hilft, Tempo- und Kalorienschätzungen auf dich abzustimmen. Du entscheidest, ob du die Einwilligung zu Gesundheitsdaten erteilst.",
   "setupGenderLabel": "Geschlecht",
   "setupGenderPreferNot": "Keine Angabe",
   "setupGenderFemale": "Weiblich",
@@ -1168,13 +1168,13 @@
   "routeDetailSendToWatch": "An Uhr senden",
   "routeDetailWatchCourseSent": "Strecke an die Uhr gesendet ({points, plural, one{{points} Punkt} other{{points} Punkte}})",
   "routeDetailWatchCourseSentMarkersFailed": "Strecke an die Uhr gesendet ({points, plural, one{{points} Punkt} other{{points} Punkte}}), aber die Streckenmarker konnten nicht geladen werden – daher wurde kein Zeitplan mitgesendet.",
-  "routeDetailWatchCourseSimplified": "Strecke an die Uhr gesendet — von {source} auf {points, plural, one{{points} Punkt} other{{points} Punkte}} ausgedünnt",
+  "routeDetailWatchCourseSimplified": "Strecke an die Uhr gesendet — von {source} auf {points, plural, one{{points} Punkt} other{{points} Punkte}} ausgedünnt, damit sie auf die Uhr passt",
   "routeDetailWatchCourseTooShort": "Diese Route hat zu wenige Punkte, um ihr auf der Uhr zu folgen",
   "routeDetailWatchPushRejected": "Die Uhr hat die Übertragung abgelehnt und behält, was sie bereits hatte. Bitte erneut versuchen.",
   "routeDetailWatchCourseFailed": "Strecke konnte nicht an die Uhr gesendet werden: {error}",
   "routeDetailSendToAppleWatch": "An Apple Watch senden",
   "routeDetailAppleWatchRouteSent": "Route an die Apple Watch gesendet ({points, plural, one{{points} Punkt} other{{points} Punkte}})",
-  "routeDetailAppleWatchRouteSimplified": "Route an die Apple Watch gesendet — von {source} auf {points, plural, one{{points} Punkt} other{{points} Punkte}} ausgedünnt",
+  "routeDetailAppleWatchRouteSimplified": "Route an die Apple Watch gesendet — von {source} auf {points, plural, one{{points} Punkt} other{{points} Punkte}} ausgedünnt, damit sie auf die Apple Watch passt",
   "routeDetailAppleWatchRouteTooShort": "Diese Route hat zu wenige Punkte, um ihr auf der Apple Watch zu folgen",
   "routeDetailAppleWatchRouteFailed": "Route konnte nicht an die Apple Watch gesendet werden: {error}",
   "routeDetailWatchCourseAndScheduleSent": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) und Rennplan ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}) an die Uhr gesendet",
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Rennplan gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}), aber {unresolved, plural, one{{unresolved} Uhrzeit-Cutoff braucht} other{{unresolved} Uhrzeit-Cutoffs brauchen}} eine Startzeit — lege sie im Crew-Blatt fest, damit sie auf die Uhr kommen",
+  "routeDetailWatchScheduleClockCutoffs": "Rennplan gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}), aber {unresolved, plural, one{{unresolved} Cut-off mit Tageszeit braucht} other{{unresolved} Cut-offs mit Tageszeit brauchen}} eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet, aber der Rennplan hat {cutoffs, plural, one{{cutoffs} Cutoff} other{{cutoffs} Cutoffs}} und die Uhr fasst {max} — entferne einige, um ihn zu senden",
+  "routeDetailWatchScheduleTooManyCutoffs": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet, aber der Rennplan hat {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}} und die Uhr fasst {max} — entferne einige, um ihn zu senden",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -4644,7 +4644,7 @@
   "@simWatchPushRoadbookAction": {
     "description": "Tooltip for the dev sim-watch action that pushes the canned RBK1 roadbook schedule"
   },
-  "simWatchRoadbookPushed": "Rennplan an die Uhr gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}, {cutoffs, plural, one{{cutoffs} Cutoff} other{{cutoffs} Cutoffs}})",
+  "simWatchRoadbookPushed": "Rennplan an die Uhr gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}, {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}})",
   "@simWatchRoadbookPushed": {
     "placeholders": {
       "checkpoints": {
@@ -4704,10 +4704,10 @@
   "setupImportStravaDesc": "Lade das Archiv hoch, das Strava dir per E-Mail schickt – mit allen Aktivitäten, die du erfasst hast",
   "planNewDefaultName": "{goal}-Plan",
   "planNewDefaultNameBeginner": "Geh-Lauf zu {goal}",
-  "ttsPaceAlertSpeedUpByKm": "Beschleunige um {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Kilometer",
-  "ttsPaceAlertSpeedUpByMi": "Beschleunige um {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Meile",
-  "ttsPaceAlertSlowDownByKm": "Verlangsame um {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Kilometer",
-  "ttsPaceAlertSlowDownByMi": "Verlangsame um {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Meile",
+  "ttsPaceAlertSpeedUpByKm": "Lauf {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Kilometer schneller",
+  "ttsPaceAlertSpeedUpByMi": "Lauf {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Meile schneller",
+  "ttsPaceAlertSlowDownByKm": "Lauf {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Kilometer langsamer",
+  "ttsPaceAlertSlowDownByMi": "Lauf {sec, plural, one{{sec} Sekunde} other{{sec} Sekunden}} pro Meile langsamer",
   "ttsCutoffCatchUp": "Nächster Cut-off in {distance}. Du brauchst {pace}, um es zu schaffen.",
   "ttsCutoffUnreachable": "Nächster Cut-off: Das Zeitlimit ist abgelaufen.",
   "ttsMarkerAheadOfPlan": "{label}: {time} vor dem Plan",

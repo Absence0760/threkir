@@ -52,10 +52,10 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Läufe',
+      other: '$count Läufen',
       one: '$count Lauf',
     );
-    return '$total über $_temp0';
+    return '$total in $_temp0';
   }
 
   @override
@@ -2072,7 +2072,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Optional. Hilft, Tempo- und Kalorienschätzungen anzupassen. Du entscheidest, ob du die Einwilligung zu Gesundheitsdaten erteilst.';
+      'Optional. Hilft, Tempo- und Kalorienschätzungen auf dich abzustimmen. Du entscheidest, ob du die Einwilligung zu Gesundheitsdaten erteilst.';
 
   @override
   String get setupGenderLabel => 'Geschlecht';
@@ -4481,7 +4481,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$points Punkte',
       one: '$points Punkt',
     );
-    return 'Strecke an die Uhr gesendet — von $source auf $_temp0 ausgedünnt';
+    return 'Strecke an die Uhr gesendet — von $source auf $_temp0 ausgedünnt, damit sie auf die Uhr passt';
   }
 
   @override
@@ -4519,7 +4519,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$points Punkte',
       one: '$points Punkt',
     );
-    return 'Route an die Apple Watch gesendet — von $source auf $_temp0 ausgedünnt';
+    return 'Route an die Apple Watch gesendet — von $source auf $_temp0 ausgedünnt, damit sie auf die Apple Watch passt';
   }
 
   @override
@@ -4580,10 +4580,10 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       unresolved,
       locale: localeName,
-      other: '$unresolved Uhrzeit-Cutoffs brauchen',
-      one: '$unresolved Uhrzeit-Cutoff braucht',
+      other: '$unresolved Cut-offs mit Tageszeit brauchen',
+      one: '$unresolved Cut-off mit Tageszeit braucht',
     );
-    return 'Rennplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Blatt fest, damit sie auf die Uhr kommen';
+    return 'Rennplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen';
   }
 
   @override
@@ -4601,8 +4601,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       cutoffs,
       locale: localeName,
-      other: '$cutoffs Cutoffs',
-      one: '$cutoffs Cutoff',
+      other: '$cutoffs Cut-offs',
+      one: '$cutoffs Cut-off',
     );
     return 'Strecke ($_temp0) gesendet, aber der Rennplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
   }
@@ -17369,8 +17369,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       cutoffs,
       locale: localeName,
-      other: '$cutoffs Cutoffs',
-      one: '$cutoffs Cutoff',
+      other: '$cutoffs Cut-offs',
+      one: '$cutoffs Cut-off',
     );
     return 'Rennplan an die Uhr gesendet ($_temp0, $_temp1)';
   }
@@ -17498,7 +17498,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$sec Sekunden',
       one: '$sec Sekunde',
     );
-    return 'Beschleunige um $_temp0 pro Kilometer';
+    return 'Lauf $_temp0 pro Kilometer schneller';
   }
 
   @override
@@ -17509,7 +17509,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$sec Sekunden',
       one: '$sec Sekunde',
     );
-    return 'Beschleunige um $_temp0 pro Meile';
+    return 'Lauf $_temp0 pro Meile schneller';
   }
 
   @override
@@ -17520,7 +17520,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$sec Sekunden',
       one: '$sec Sekunde',
     );
-    return 'Verlangsame um $_temp0 pro Kilometer';
+    return 'Lauf $_temp0 pro Kilometer langsamer';
   }
 
   @override
@@ -17531,7 +17531,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$sec Sekunden',
       one: '$sec Sekunde',
     );
-    return 'Verlangsame um $_temp0 pro Meile';
+    return 'Lauf $_temp0 pro Meile langsamer';
   }
 
   @override

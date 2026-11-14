@@ -724,9 +724,9 @@
   "runPreRunPermissionBody": "Permite el acceso a la ubicación para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.",
   "runPreRunAllowLocation": "Permitir ubicación",
   "runPreRunPermissionBlockedTitle": "El acceso a la ubicación está bloqueado",
-  "runPreRunPermissionBlockedBody": "El acceso a la ubicación está desactivado para esta app. Permítelo en los ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.",
+  "runPreRunPermissionBlockedBody": "El acceso a la ubicación está desactivado para esta app. Permítelo en Ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.",
   "runPreRunSearching": "Buscando GPS…",
-  "runPreRunSearchingHint": "Con el cielo despejado a la vista, el GPS se fija antes.",
+  "runPreRunSearchingHint": "Con una vista despejada del cielo, el GPS obtiene la posición antes.",
   "runPreRunGpsWeak": "GPS débil · ±{accuracy}",
   "runPreRunGpsWeakA11y": "GPS débil, con una precisión de {accuracy}",
   "runPreRunGpsReady": "GPS listo · ±{accuracy}",
@@ -989,7 +989,7 @@
   "runDetailRecalculateDistanceNotOwner": "Solo quien registró esta carrera puede recalcular su distancia.",
   "runDetailRecalculateDistanceNoTrack": "Esta carrera no tiene una ruta GPS a partir de la cual recalcular.",
   "runDetailOriginallyRecorded": "Registrada originalmente: {distance}",
-  "runDetailRouteSaved": "«{name}» guardada — {kept, plural, one{{kept} punto de paso} other{{kept} puntos de paso}} ({smoothed} suavizados)",
+  "runDetailRouteSaved": "«{name}» guardada — {kept, plural, one{{kept} punto de paso} other{{kept} puntos de paso}} ({smoothed, plural, one{{smoothed} suavizado} other{{smoothed} suavizados}})",
   "runDetailRouteSaveFailed": "No se pudo guardar «{name}» como ruta.",
   "runDetailMakePublicFailed": "No se pudo hacer pública la carrera: {error}",
   "runDetailShareZonesUnknown": "No se pudieron cargar tus zonas de privacidad, así que no se compartió nada. Comprueba tu conexión e inténtalo de nuevo.",
@@ -1167,7 +1167,7 @@
   "routeDetailShareLink": "Compartir enlace",
   "routeDetailSendToWatch": "Enviar al reloj",
   "routeDetailWatchCourseSent": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}})",
-  "routeDetailWatchCourseSentMarkersFailed": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}}), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario.",
+  "routeDetailWatchCourseSentMarkersFailed": "Recorrido enviado al reloj ({points, plural, one{{points} punto} other{{points} puntos}}), pero no se pudieron cargar sus marcadores, así que no se envió ningún plan de carrera.",
   "routeDetailWatchCourseSimplified": "Recorrido enviado al reloj: reducido de {source} a {points, plural, one{{points} punto} other{{points} puntos}} para que quepa",
   "routeDetailWatchCourseTooShort": "Esta ruta tiene muy pocos puntos para seguirla en el reloj",
   "routeDetailWatchPushRejected": "El reloj rechazó el envío y conservó lo que ya tenía. Inténtalo de nuevo.",
@@ -1177,7 +1177,7 @@
   "routeDetailAppleWatchRouteSimplified": "Ruta enviada al Apple Watch: reducida de {source} a {points, plural, one{{points} punto} other{{points} puntos}} para que quepa",
   "routeDetailAppleWatchRouteTooShort": "Esta ruta tiene muy pocos puntos para seguirla en el Apple Watch",
   "routeDetailAppleWatchRouteFailed": "No se pudo enviar la ruta al Apple Watch: {error}",
-  "routeDetailWatchCourseAndScheduleSent": "Ruta ({points, plural, one{{points} punto} other{{points} puntos}}) y plan de carrera ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}) enviados al reloj",
+  "routeDetailWatchCourseAndScheduleSent": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) y plan de carrera ({checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}}) enviados al reloj",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -1189,7 +1189,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Ruta ({points, plural, one{{points} punto} other{{points} puntos}}) enviada. Plan de carrera reducido de {source} a {checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}} para caber en el reloj",
+  "routeDetailWatchScheduleThinned": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado. Plan de carrera reducido de {source} a {checkpoints, plural, one{{checkpoints} punto de control} other{{checkpoints} puntos de control}} para caber en el reloj",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Ruta ({points, plural, one{{points} punto} other{{points} puntos}}) enviada, pero el plan de carrera tiene {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}} y el reloj admite {max} — elimina algunos para enviarlo",
+  "routeDetailWatchScheduleTooManyCutoffs": "Recorrido ({points, plural, one{{points} punto} other{{points} puntos}}) enviado, pero el plan de carrera tiene {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}} y el reloj admite {max} — elimina algunos para enviarlo",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -2343,7 +2343,7 @@
   "settingsAccountBackupShareText": "Copia de seguridad de Threkir",
   "settingsAccountBackupFailed": "Error en la copia de seguridad: {error}",
   "settingsAccountBackupPartial": "Exportación parcial: {count} de {total, plural, one{{total} carrera} other{{total} carreras}}.",
-  "settingsAccountBackupPartialNotice": "Tu última exportación es parcial: contiene {count} de {total, plural, one{la {total} carrera} other{las {total} carreras}} de tu cuenta. No se borró nada; vuelve a exportar para reintentarlo. El archivo completo de la cuenta indica cada sección incompleta en su manifest.json.",
+  "settingsAccountBackupPartialNotice": "Tu última exportación es parcial: contiene {count} de {total, plural, one{{total} carrera} other{las {total} carreras}} de tu cuenta. No se borró nada; vuelve a exportar para reintentarlo. El archivo completo de la cuenta indica cada sección incompleta en su manifest.json.",
   "settingsAccountBackupTracksPartial": "A la copia de seguridad le faltan {missing} de {total} archivos GPS.",
   "settingsAccountBackupTracksPartialNotice": "Tu última copia de seguridad no pudo descargar {missing} de {total} archivos de trazado GPS. Todas las carreras están en el archivo; vuelve a exportar para recuperar los trazados. Su manifest.json indica complete: false.",
   "settingsAccountRestoreIncompleteArchive": "Ese archivo se declaraba incompleto. {runs, plural, one{Se restauró {runs} carrera} other{Se restauraron {runs} carreras}} y no se sobrescribió nada: restaura desde una copia completa para rellenar los huecos.",
@@ -3942,7 +3942,7 @@
   "sessionVisibilityError": "No se pudo cambiar la visibilidad.",
   "sessionSteps": "Secuencia",
   "sessionStepHold": "{name} · mantener {seconds}s",
-  "sessionStepReps": "{name} · {reps} reps.",
+  "sessionStepReps": "{name} · {reps, plural, one{{reps} rep.} other{{reps} reps.}}",
   "sessionStepFlow": "{name} · flujo {seconds}s",
   "sessionSideLeft": "{name} (izquierda)",
   "sessionSideRight": "{name} (derecha)",
@@ -4706,8 +4706,8 @@
   "planNewDefaultNameBeginner": "Caminar-correr hasta {goal}",
   "ttsPaceAlertSpeedUpByKm": "Acelera {sec, plural, one{{sec} segundo} other{{sec} segundos}} por kilómetro",
   "ttsPaceAlertSpeedUpByMi": "Acelera {sec, plural, one{{sec} segundo} other{{sec} segundos}} por milla",
-  "ttsPaceAlertSlowDownByKm": "Reduce {sec, plural, one{{sec} segundo} other{{sec} segundos}} por kilómetro",
-  "ttsPaceAlertSlowDownByMi": "Reduce {sec, plural, one{{sec} segundo} other{{sec} segundos}} por milla",
+  "ttsPaceAlertSlowDownByKm": "Ve {sec, plural, one{{sec} segundo} other{{sec} segundos}} más lento por kilómetro",
+  "ttsPaceAlertSlowDownByMi": "Ve {sec, plural, one{{sec} segundo} other{{sec} segundos}} más lento por milla",
   "ttsCutoffCatchUp": "Próximo corte en {distance}. Necesitas {pace} para llegar.",
   "ttsCutoffUnreachable": "Próximo corte: el límite de tiempo ya pasó.",
   "ttsMarkerAheadOfPlan": "{label}: {time} por delante del plan",

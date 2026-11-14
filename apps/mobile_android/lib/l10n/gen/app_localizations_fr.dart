@@ -2093,7 +2093,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Sert à exclure les comptes de moins de 18 ans de la recherche de personnes, et pour les résultats ajustés à l\'âge si vous donnez votre consentement aux données de santé.';
+      'Utilisée pour exclure les comptes des moins de 18 ans de la recherche de personnes, et pour les résultats avec indice d\'âge si vous donnez votre consentement aux données de santé.';
 
   @override
   String get setupDobPlaceholder => 'Touchez pour choisir';
@@ -2704,7 +2704,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runGpsBlockedSettings =>
-      'Pas de GPS — autorisation bloquée. Activez-la pour suivre le parcours.';
+      'Pas de GPS — autorisation bloquée. Activez-la pour enregistrer la trace.';
 
   @override
   String get runGpsPermissionPending =>
@@ -2729,7 +2729,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPreRunLocationOffBody =>
-      'Activez la localisation pour enregistrer votre parcours, votre distance et votre allure. Sans elle, une course n\'enregistre que le temps.';
+      'Activez la localisation pour enregistrer votre trace GPS, votre distance et votre allure. Sans elle, une course n\'enregistre que le temps.';
 
   @override
   String get runPreRunTurnOnLocation => 'Activer la localisation';
@@ -2739,7 +2739,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPreRunPermissionBody =>
-      'Autorisez l\'accès à la localisation pour enregistrer votre parcours, votre distance et votre allure. Sans lui, une course n\'enregistre que le temps.';
+      'Autorisez l\'accès à la localisation pour enregistrer votre trace GPS, votre distance et votre allure. Sans lui, une course n\'enregistre que le temps.';
 
   @override
   String get runPreRunAllowLocation => 'Autoriser la localisation';
@@ -2750,14 +2750,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPreRunPermissionBlockedBody =>
-      'L\'accès à la localisation est désactivé pour cette app. Autorisez-le dans les réglages pour enregistrer votre parcours, votre distance et votre allure. Sans lui, une course n\'enregistre que le temps.';
+      'L\'accès à la localisation est désactivé pour cette app. Autorisez-le dans les réglages du téléphone pour enregistrer votre trace GPS, votre distance et votre allure. Sans lui, une course n\'enregistre que le temps.';
 
   @override
-  String get runPreRunSearching => 'Recherche du GPS…';
+  String get runPreRunSearching => 'Recherche du signal GPS…';
 
   @override
   String get runPreRunSearchingHint =>
-      'Avec une vue dégagée sur le ciel, le GPS se fixe plus vite.';
+      'Avec une vue dégagée sur le ciel, le signal GPS est capté plus vite.';
 
   @override
   String runPreRunGpsWeak(String accuracy) {
@@ -2809,7 +2809,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPreciseLocationOff =>
-      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d\'enregistrer. Activez la position exacte dans les Réglages pour une trace précise.';
+      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d\'enregistrer. Activez la position exacte dans les réglages du téléphone pour une trace précise.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3765,8 +3765,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       kept,
       locale: localeName,
-      other: '$kept points de cheminement',
-      one: '$kept point de cheminement',
+      other: '$kept points',
+      one: '$kept point',
     );
     return '« $name » enregistré — $_temp0 ($smoothed lissés)';
   }
@@ -4581,10 +4581,11 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       unresolved,
       locale: localeName,
-      other: '$unresolved barrières horaires nécessitent',
-      one: '$unresolved barrière horaire nécessite',
+      other:
+          '$unresolved barrières exprimées en heure de la journée nécessitent',
+      one: '$unresolved barrière exprimée en heure de la journée nécessite',
     );
-    return 'Plan de course envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'équipe pour qu\'elles atteignent la montre';
+    return 'Plan de course envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'assistance pour que la montre les reçoive';
   }
 
   @override
@@ -4602,8 +4603,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       cutoffs,
       locale: localeName,
-      other: '$cutoffs barrières',
-      one: '$cutoffs barrière',
+      other: '$cutoffs barrières horaires',
+      one: '$cutoffs barrière horaire',
     );
     return 'Parcours ($_temp0) envoyé, mais le plan de course compte $_temp1 et la montre en accepte $max — supprimez-en pour l\'envoyer';
   }
@@ -10337,7 +10338,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyZonesRemoveBody =>
-      'Cette zone masque vos parcours à proximité dans les partages publics. La supprimer réexpose cette zone.';
+      'Cette zone masque vos traces à proximité dans les partages publics. La supprimer réexpose cette zone.';
 
   @override
   String get privacyZonesRemoveSemantics =>
@@ -14736,7 +14737,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sessionStepReps(Object name, int reps) {
-    return '$name · $reps répét.';
+    return '$name · $reps rép.';
   }
 
   @override
@@ -17412,8 +17413,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       cutoffs,
       locale: localeName,
-      other: '$cutoffs barrières',
-      one: '$cutoffs barrière',
+      other: '$cutoffs barrières horaires',
+      one: '$cutoffs barrière horaire',
     );
     return 'Plan de course envoyé à la montre ($_temp0, $_temp1)';
   }

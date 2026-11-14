@@ -547,7 +547,7 @@
   "setupGenderFemale": "Femme",
   "setupGenderMale": "Homme",
   "setupDobLabel": "Date de naissance",
-  "setupDobNote": "Sert à exclure les comptes de moins de 18 ans de la recherche de personnes, et pour les résultats ajustés à l'âge si vous donnez votre consentement aux données de santé.",
+  "setupDobNote": "Utilisée pour exclure les comptes des moins de 18 ans de la recherche de personnes, et pour les résultats avec indice d'âge si vous donnez votre consentement aux données de santé.",
   "setupDobPlaceholder": "Touchez pour choisir",
   "setupWeightLabel": "Poids (kg)",
   "setupWeightPlaceholder": "ex. 70",
@@ -711,22 +711,22 @@
   "runSavedOffline": "Enregistré hors ligne.",
   "runSplitTick": "{distance} — {pace}",
   "runGpsNoServiceSettings": "Pas de GPS — le suivi démarrera quand la localisation sera activée.",
-  "runGpsBlockedSettings": "Pas de GPS — autorisation bloquée. Activez-la pour suivre le parcours.",
+  "runGpsBlockedSettings": "Pas de GPS — autorisation bloquée. Activez-la pour enregistrer la trace.",
   "runGpsPermissionPending": "Pas de GPS — le suivi démarrera quand l'autorisation sera accordée.",
   "runNoGpsStartTitle": "Démarrer sans GPS ?",
   "runNoGpsStartServicesOffBody": "La localisation est désactivée sur ce téléphone : cette course n'enregistrerait que le temps — ni parcours, ni distance, ni allure.",
   "runNoGpsStartPermissionBody": "L'accès à la localisation est désactivé pour cette app : cette course n'enregistrerait que le temps — ni parcours, ni distance, ni allure.",
   "runNoGpsStartTimeOnly": "Enregistrer le temps seul",
   "runPreRunLocationOffTitle": "La localisation est désactivée",
-  "runPreRunLocationOffBody": "Activez la localisation pour enregistrer votre parcours, votre distance et votre allure. Sans elle, une course n'enregistre que le temps.",
+  "runPreRunLocationOffBody": "Activez la localisation pour enregistrer votre trace GPS, votre distance et votre allure. Sans elle, une course n'enregistre que le temps.",
   "runPreRunTurnOnLocation": "Activer la localisation",
   "runPreRunPermissionTitle": "Accès à la localisation requis",
-  "runPreRunPermissionBody": "Autorisez l'accès à la localisation pour enregistrer votre parcours, votre distance et votre allure. Sans lui, une course n'enregistre que le temps.",
+  "runPreRunPermissionBody": "Autorisez l'accès à la localisation pour enregistrer votre trace GPS, votre distance et votre allure. Sans lui, une course n'enregistre que le temps.",
   "runPreRunAllowLocation": "Autoriser la localisation",
   "runPreRunPermissionBlockedTitle": "L'accès à la localisation est bloqué",
-  "runPreRunPermissionBlockedBody": "L'accès à la localisation est désactivé pour cette app. Autorisez-le dans les réglages pour enregistrer votre parcours, votre distance et votre allure. Sans lui, une course n'enregistre que le temps.",
-  "runPreRunSearching": "Recherche du GPS…",
-  "runPreRunSearchingHint": "Avec une vue dégagée sur le ciel, le GPS se fixe plus vite.",
+  "runPreRunPermissionBlockedBody": "L'accès à la localisation est désactivé pour cette app. Autorisez-le dans les réglages du téléphone pour enregistrer votre trace GPS, votre distance et votre allure. Sans lui, une course n'enregistre que le temps.",
+  "runPreRunSearching": "Recherche du signal GPS…",
+  "runPreRunSearchingHint": "Avec une vue dégagée sur le ciel, le signal GPS est capté plus vite.",
   "runPreRunGpsWeak": "GPS faible · ±{accuracy}",
   "runPreRunGpsWeakA11y": "GPS faible, précis à {accuracy} près",
   "runPreRunGpsReady": "GPS prêt · ±{accuracy}",
@@ -739,7 +739,7 @@
   "runNoDistanceBody": "Cette course n'a reçu ni position GPS ni distance par les pas. L'enregistrer avec le temps seul, ou l'abandonner ?",
   "runNoDistanceSaveTimeOnly": "Garder le temps seul",
   "runBackgroundLocationPaused": "Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n'a été perdu, mais la distance parcourue hors écran n'a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.",
-  "runPreciseLocationOff": "La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d'enregistrer. Activez la position exacte dans les Réglages pour une trace précise.",
+  "runPreciseLocationOff": "La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d'enregistrer. Activez la position exacte dans les réglages du téléphone pour une trace précise.",
   "runGpsSensorFailed": "Enregistrement sans GPS — impossible de démarrer le capteur.",
   "runWorkoutAbandonedBand": "Séance abandonnée · course libre",
   "runWorkoutCompleteBand": "Séance terminée · touchez stop pour enregistrer",
@@ -989,7 +989,7 @@
   "runDetailRecalculateDistanceNotOwner": "Seule la personne qui a enregistré cette course peut en recalculer la distance.",
   "runDetailRecalculateDistanceNoTrack": "Cette course n'a pas de trace GPS à partir de laquelle recalculer la distance.",
   "runDetailOriginallyRecorded": "Enregistrée à l'origine : {distance}",
-  "runDetailRouteSaved": "« {name} » enregistré — {kept, plural, one{{kept} point de cheminement} other{{kept} points de cheminement}} ({smoothed} lissés)",
+  "runDetailRouteSaved": "« {name} » enregistré — {kept, plural, one{{kept} point} other{{kept} points}} ({smoothed} lissés)",
   "runDetailRouteSaveFailed": "Impossible d'enregistrer « {name} » comme itinéraire.",
   "runDetailMakePublicFailed": "Impossible de rendre la course publique : {error}",
   "runDetailShareZonesUnknown": "Impossible de charger vos zones de confidentialité, rien n'a donc été partagé. Vérifiez votre connexion et réessayez.",
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Plan de course envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière horaire nécessite} other{{unresolved} barrières horaires nécessitent}} une heure de départ — définissez-la sur la feuille d'équipe pour qu'elles atteignent la montre",
+  "routeDetailWatchScheduleClockCutoffs": "Plan de course envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière exprimée en heure de la journée nécessite} other{{unresolved} barrières exprimées en heure de la journée nécessitent}} une heure de départ — définissez-la sur la feuille d'assistance pour que la montre les reçoive",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le plan de course compte {cutoffs, plural, one{{cutoffs} barrière} other{{cutoffs} barrières}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
+  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le plan de course compte {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -2668,7 +2668,7 @@
   "privacyZonesCount": "{count, plural, one{{count} zone — touchez un repère pour la supprimer.} other{{count} zones — touchez un repère pour le supprimer.}}",
   "privacyZonesClearAll": "Tout effacer",
   "privacyZonesRemoveTitle": "Supprimer la zone de confidentialité ?",
-  "privacyZonesRemoveBody": "Cette zone masque vos parcours à proximité dans les partages publics. La supprimer réexpose cette zone.",
+  "privacyZonesRemoveBody": "Cette zone masque vos traces à proximité dans les partages publics. La supprimer réexpose cette zone.",
   "privacyZonesRemoveSemantics": "Supprimer la zone de confidentialité",
   "privacyZonesClearAllTitle": "Effacer toutes les zones de confidentialité ?",
   "privacyZonesClearAllBody": "Cela supprime toutes les zones et réexpose toutes ces zones dans les partages publics.",
@@ -3942,7 +3942,7 @@
   "sessionVisibilityError": "Impossible de modifier la visibilité.",
   "sessionSteps": "Séquence",
   "sessionStepHold": "{name} · tenue {seconds}s",
-  "sessionStepReps": "{name} · {reps} répét.",
+  "sessionStepReps": "{name} · {reps} rép.",
   "sessionStepFlow": "{name} · flow {seconds}s",
   "sessionSideLeft": "{name} (gauche)",
   "sessionSideRight": "{name} (droite)",
@@ -4644,7 +4644,7 @@
   "@simWatchPushRoadbookAction": {
     "description": "Tooltip for the dev sim-watch action that pushes the canned RBK1 roadbook schedule"
   },
-  "simWatchRoadbookPushed": "Plan de course envoyé à la montre ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}, {cutoffs, plural, one{{cutoffs} barrière} other{{cutoffs} barrières}})",
+  "simWatchRoadbookPushed": "Plan de course envoyé à la montre ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}, {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}})",
   "@simWatchRoadbookPushed": {
     "placeholders": {
       "checkpoints": {

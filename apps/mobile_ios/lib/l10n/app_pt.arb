@@ -541,13 +541,13 @@
   "setupGoalHalf": "Correr uma meia maratona",
   "setupGoalMarathon": "Correr uma maratona",
   "setupAboutTitle": "Um pouco sobre si",
-  "setupAboutHint": "Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Decide se dá o seu consentimento de dados de saúde.",
+  "setupAboutHint": "Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Cabe-lhe a si decidir se dá o seu consentimento de dados de saúde.",
   "setupGenderLabel": "Género",
   "setupGenderPreferNot": "Prefiro não dizer",
   "setupGenderFemale": "Feminino",
   "setupGenderMale": "Masculino",
   "setupDobLabel": "Data de nascimento",
-  "setupDobNote": "Utilizada para manter contas de menores de 18 anos fora da pesquisa de pessoas e para resultados ajustados por idade, se der o seu consentimento de dados de saúde.",
+  "setupDobNote": "Utilizada para manter as contas de menores de 18 anos fora da pesquisa de pessoas e, se der o seu consentimento de dados de saúde, para resultados ajustados por idade.",
   "setupDobPlaceholder": "Toque para escolher",
   "setupWeightLabel": "Peso (kg)",
   "setupWeightPlaceholder": "ex.: 70",
@@ -989,7 +989,7 @@
   "runDetailRecalculateDistanceNotOwner": "Só quem gravou esta corrida pode recalcular a distância.",
   "runDetailRecalculateDistanceNoTrack": "Esta corrida não tem percurso GPS a partir do qual recalcular.",
   "runDetailOriginallyRecorded": "Gravada originalmente: {distance}",
-  "runDetailRouteSaved": "“{name}” guardada — {kept, plural, one{{kept} ponto de passagem} other{{kept} pontos de passagem}} ({smoothed} suavizados)",
+  "runDetailRouteSaved": "“{name}” guardada — {kept, plural, one{{kept} ponto de passagem} other{{kept} pontos de passagem}} (a suavização retirou {smoothed})",
   "runDetailRouteSaveFailed": "Não foi possível guardar “{name}” como rota.",
   "runDetailMakePublicFailed": "Não foi possível tornar a corrida pública: {error}",
   "runDetailShareZonesUnknown": "Não foi possível carregar as suas zonas de privacidade, por isso nada foi partilhado. Verifique a sua ligação e tente novamente.",
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Plano de prova enviado ({checkpoints, plural, one{{checkpoints} ponto de controlo} other{{checkpoints} pontos de controlo}}), mas {unresolved, plural, one{{unresolved} corte por hora precisa} other{{unresolved} cortes por hora precisam}} de uma hora de partida — defina uma na folha de equipa para chegarem ao relógio",
+  "routeDetailWatchScheduleClockCutoffs": "Plano de prova enviado ({checkpoints, plural, one{{checkpoints} ponto de controlo} other{{checkpoints} pontos de controlo}}), mas {unresolved, plural, one{{unresolved} corte com hora do dia precisa} other{{unresolved} cortes com hora do dia precisam}} de uma hora de partida — defina uma na folha da equipa para que cheguem ao relógio",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -3942,7 +3942,7 @@
   "sessionVisibilityError": "Não foi possível alterar a visibilidade.",
   "sessionSteps": "Sequência",
   "sessionStepHold": "{name} · sustentar {seconds}s",
-  "sessionStepReps": "{name} · {reps} reps.",
+  "sessionStepReps": "{name} · {reps, plural, one{{reps} repetição} other{{reps} repetições}}",
   "sessionStepFlow": "{name} · flow {seconds}s",
   "sessionSideLeft": "{name} (esquerda)",
   "sessionSideRight": "{name} (direita)",
@@ -4644,7 +4644,7 @@
   "@simWatchPushRoadbookAction": {
     "description": "Tooltip for the dev sim-watch action that pushes the canned RBK1 roadbook schedule"
   },
-  "simWatchRoadbookPushed": "Plano de corrida enviado para o relógio ({checkpoints, plural, one{{checkpoints} ponto de controlo} other{{checkpoints} pontos de controlo}}, {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}})",
+  "simWatchRoadbookPushed": "Roadbook enviado para o relógio ({checkpoints, plural, one{{checkpoints} ponto de controlo} other{{checkpoints} pontos de controlo}}, {cutoffs, plural, one{{cutoffs} corte} other{{cutoffs} cortes}})",
   "@simWatchRoadbookPushed": {
     "placeholders": {
       "checkpoints": {
@@ -5555,7 +5555,7 @@
   "planNewRecent5kConfirmHint": "Sem marcar, os seus ritmos vêm do seu tempo-objetivo, e não do tempo acima.",
   "planNewGoalAheadOfRecent": "O seu objetivo é mais rápido do que as suas corridas recentes indicam: apontam para cerca de {predicted} nesta distância. Os ritmos vêm do objetivo, por isso, se for ambicioso, todos os ritmos do plano também o serão. Um objetivo mais lento, ou um 5K recente que confirme abaixo, ajusta-os ao que consegue correr agora.",
   "planNewReturnTitle": "Regresso depois de uma pausa",
-  "planNewReturnBody": "Esteve cerca de {weeks, plural, one{{weeks} semana} other{{weeks} semanas}} parado. Antes disso, corria em média {pre} por semana, por isso a semana 1 pede no máximo {cap} e cada semana aumenta no máximo 10% até o plano chegar ao seu próprio calendário. Os treinos de velocidade dessas semanas passam a corridas leves.",
+  "planNewReturnBody": "Passou cerca de {weeks, plural, one{{weeks} semana} other{{weeks} semanas}} sem correr. Antes disso, corria em média {pre} por semana, por isso a semana 1 pede no máximo {cap} e cada semana aumenta no máximo 10% até o plano retomar o seu próprio calendário. Os treinos de velocidade dessas semanas passam a ser corridas leves.",
   "planNewReturnEaseBack": "Regressar aos poucos",
   "planNewReturnWalkRun": "Regressar com intervalos de caminhada-corrida",
   "planNewThinHistory": "Correu em menos de 3 das últimas 4 semanas, por isso este plano não pode ser comparado com o seu treino recente. Se a semana 1 ({opening}) for mais do que tem corrido, menos dias ou intervalos de caminhada-corrida são um início mais suave.",

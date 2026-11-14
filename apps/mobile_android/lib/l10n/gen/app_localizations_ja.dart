@@ -1944,7 +1944,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      '任意です。ペースやカロリーの推定を最適化します。健康データの利用に同意するかはあなたが選べます。';
+      '任意です。ペースとカロリーの推定をあなたに合わせるのに役立ちます。健康データの利用に同意するかどうかは、ご自身で選べます。';
 
   @override
   String get setupGenderLabel => '性別';
@@ -1963,7 +1963,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      '18歳未満のアカウントを人物検索から除外するため、また健康データの利用に同意した場合は年齢補正結果のために使用します。';
+      '18歳未満のアカウントを名前検索から除外するために使用します。健康データの利用に同意した場合は、年齢別評価の結果にも使用します。';
 
   @override
   String get setupDobPlaceholder => 'タップして選択';
@@ -4232,7 +4232,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'レーススケジュールを送信しました（$checkpoints チェックポイント）。ただし $unresolved 件の時刻制限にはスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
+    return 'レーススケジュールを送信しました（$checkpoints チェックポイント）。ただし $unresolved 件の時刻指定の関門にはレースのスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
   }
 
   @override
@@ -8127,7 +8127,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String coachDailyLimitError(int limit) {
-    return '1日の上限に達しました（$limitメッセージ）。明日また来てください！';
+    return '1日の上限（$limit件のメッセージ）に達しました。明日また来てください！';
   }
 
   @override

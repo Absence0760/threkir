@@ -2076,7 +2076,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Decide se dá o seu consentimento de dados de saúde.';
+      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Cabe-lhe a si decidir se dá o seu consentimento de dados de saúde.';
 
   @override
   String get setupGenderLabel => 'Género';
@@ -2095,7 +2095,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Utilizada para manter contas de menores de 18 anos fora da pesquisa de pessoas e para resultados ajustados por idade, se der o seu consentimento de dados de saúde.';
+      'Utilizada para manter as contas de menores de 18 anos fora da pesquisa de pessoas e, se der o seu consentimento de dados de saúde, para resultados ajustados por idade.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';
@@ -3768,7 +3768,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$kept pontos de passagem',
       one: '$kept ponto de passagem',
     );
-    return '“$name” guardada — $_temp0 ($smoothed suavizados)';
+    return '“$name” guardada — $_temp0 (a suavização retirou $smoothed)';
   }
 
   @override
@@ -4580,10 +4580,10 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       unresolved,
       locale: localeName,
-      other: '$unresolved cortes por hora precisam',
-      one: '$unresolved corte por hora precisa',
+      other: '$unresolved cortes com hora do dia precisam',
+      one: '$unresolved corte com hora do dia precisa',
     );
-    return 'Plano de prova enviado ($_temp0), mas $_temp1 de uma hora de partida — defina uma na folha de equipa para chegarem ao relógio';
+    return 'Plano de prova enviado ($_temp0), mas $_temp1 de uma hora de partida — defina uma na folha da equipa para que cheguem ao relógio';
   }
 
   @override
@@ -14721,7 +14721,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String sessionStepReps(Object name, int reps) {
-    return '$name · $reps reps.';
+    String _temp0 = intl.Intl.pluralLogic(
+      reps,
+      locale: localeName,
+      other: '$reps repetições',
+      one: '$reps repetição',
+    );
+    return '$name · $_temp0';
   }
 
   @override
@@ -17401,7 +17407,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Plano de corrida enviado para o relógio ($_temp0, $_temp1)';
+    return 'Roadbook enviado para o relógio ($_temp0, $_temp1)';
   }
 
   @override
@@ -20717,7 +20723,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$weeks semanas',
       one: '$weeks semana',
     );
-    return 'Esteve cerca de $_temp0 parado. Antes disso, corria em média $pre por semana, por isso a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano chegar ao seu próprio calendário. Os treinos de velocidade dessas semanas passam a corridas leves.';
+    return 'Passou cerca de $_temp0 sem correr. Antes disso, corria em média $pre por semana, por isso a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano retomar o seu próprio calendário. Os treinos de velocidade dessas semanas passam a ser corridas leves.';
   }
 
   @override
@@ -26225,7 +26231,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupDobNote =>
-      'Usada para manter contas de menores de 18 anos fora da busca de pessoas e para resultados ajustados por idade, se você der seu consentimento de dados de saúde.';
+      'Usada para manter contas de menores de 18 anos fora da busca de pessoas e, se você der seu consentimento de dados de saúde, para resultados ajustados por idade.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';
@@ -27308,7 +27314,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$waypoints pontos',
       one: '$waypoints ponto',
     );
-    return 'Seu trajeto de GPS ($_temp0) é maior do que o armazenamento na nuvem permite, então tentar de novo nunca vai funcionar. Todo o resto da corrida — distância, tempo, ritmo, ganho de elevação — ainda pode ser salvo.';
+    return 'O trajeto de GPS desta corrida ($_temp0) é maior do que o armazenamento na nuvem permite, então tentar de novo nunca vai funcionar. Todo o resto da corrida — distância, tempo, ritmo, elevação — ainda pode ser salvo.';
   }
 
   @override
@@ -27897,7 +27903,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$kept pontos de passagem',
       one: '$kept ponto de passagem',
     );
-    return '“$name” salva — $_temp0 ($smoothed suavizados)';
+    return '“$name” salva — $_temp0 (suavizados: $smoothed)';
   }
 
   @override
@@ -28711,7 +28717,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$unresolved cortes por horário precisam',
       one: '$unresolved corte por horário precisa',
     );
-    return 'Plano de corrida enviado ($_temp0), mas $_temp1 de um horário de largada — defina um na folha da equipe para chegarem ao relógio';
+    return 'Plano de corrida enviado ($_temp0), mas $_temp1 de um horário de largada — defina um na planilha da equipe para que cheguem ao relógio';
   }
 
   @override
@@ -38840,7 +38846,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String sessionStepReps(Object name, int reps) {
-    return '$name · $reps reps.';
+    String _temp0 = intl.Intl.pluralLogic(
+      reps,
+      locale: localeName,
+      other: '$reps repetições',
+      one: '$reps repetição',
+    );
+    return '$name · $_temp0';
   }
 
   @override
@@ -40253,7 +40265,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesSearchAllPlaceholder =>
-      'Pesquisar corridas, parques e percursos…';
+      'Buscar corridas, parques e percursos…';
 
   @override
   String racesNearChip(String place) {
@@ -41665,7 +41677,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$sec segundos',
       one: '$sec segundo',
     );
-    return 'Diminua $_temp0 por quilômetro';
+    return 'Diminua o ritmo em $_temp0 por quilômetro';
   }
 
   @override
@@ -41676,7 +41688,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$sec segundos',
       one: '$sec segundo',
     );
-    return 'Diminua $_temp0 por milha';
+    return 'Diminua o ritmo em $_temp0 por milha';
   }
 
   @override
@@ -44830,7 +44842,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$weeks semanas',
       one: '$weeks semana',
     );
-    return 'Você ficou cerca de $_temp0 parado. Antes disso, corria em média $pre por semana, então a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano chegar ao próprio cronograma. Os treinos de velocidade dessas semanas viram corridas leves.';
+    return 'Você ficou cerca de $_temp0 sem correr. Antes disso, corria em média $pre por semana, então a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano chegar ao próprio cronograma. Os treinos de velocidade dessas semanas viram corridas leves.';
   }
 
   @override
@@ -46700,7 +46712,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Ainda não há percursos. Os primeiros estão a caminho.';
 
   @override
-  String get parksSearchPlaceholder => 'Pesquisar parques e percursos…';
+  String get parksSearchPlaceholder => 'Buscar parques e percursos…';
 
   @override
   String parksNoMatch(String query) {

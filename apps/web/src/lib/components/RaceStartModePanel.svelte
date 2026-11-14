@@ -187,6 +187,7 @@
 		<h3>{mode === 'scheduled' ? m('raceStart.scheduledTitle') : m('raceStart.selfTimedTitle')}</h3>
 		<a class="btn-link" href={`/live/event/${eventId}/${encodeURIComponent(instanceStart)}`} target="_blank" rel="noopener">
 			{m('clubEvent.spectatorView')}
+			<span class="material-symbols external-mark" aria-hidden="true">arrow_outward</span>
 		</a>
 	</div>
 	{#if isDirector}
@@ -296,6 +297,10 @@
 </section>
 
 <style>
+	.external-mark {
+		font-size: 1em;
+		vertical-align: -0.125em;
+	}
 	.race-mode-panel .head {
 		display: flex;
 		justify-content: space-between;

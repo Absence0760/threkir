@@ -2963,6 +2963,7 @@
 					<h3>{m('clubEvent.raceControlTitle')}</h3>
 					<a class="btn-link" href={`/live/event/${event.id}/${encodeURIComponent(activeInstance ?? '')}`} target="_blank" rel="noopener">
 						{m('clubEvent.spectatorView')}
+						<span class="material-symbols external-mark" aria-hidden="true">arrow_outward</span>
 					</a>
 				</div>
 				{#if !raceSession || raceSession.status === 'finished' || raceSession.status === 'cancelled'}
@@ -3845,6 +3846,10 @@
 {/if}
 
 <style>
+	.external-mark {
+		font-size: 1em;
+		vertical-align: -0.125em;
+	}
 	.session-plan-name {
 		display: inline-block;
 		font-weight: 600;

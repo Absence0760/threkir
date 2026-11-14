@@ -20,7 +20,7 @@
 // tasks in apps/backend/ops/tasks/. The config is guarded before any stage
 // runs.
 //
-// Then the PostgREST row cap check (decisions § 987, § 1936): read-only, it
+// Then the PostgREST row cap check (decisions § 2531): read-only, it
 // fails the release when production's db.max-rows is below the one
 // config.toml pins, since the clients' keyset walk ends on a page shorter
 // than that without a confirming read.

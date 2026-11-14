@@ -524,7 +524,9 @@ the map failed). Three guards, pinned by `consent_guards.test.ts`:
     (1,000) with a 200 and no flag, so a limited read listed the first 1,000
     of each kind and silently dropped the rest. A walk that ends short (a
     page error, or a stalled cursor) logs `sitemap: <kind> walk ended short`
-    and keeps the rows it read.
+    and keeps the rows it read. During a build that partial set is shared by
+    the index and its children, so a transient read error ships a shorter
+    sitemap with a green build; the warning in the build log is the signal.
   - **No file can pass the protocol limit.** The split is by id digit, not
     by count, so the set of child names is fixed and `entries()` enumerates
     all 97 without reading the database (it runs in a separate process from

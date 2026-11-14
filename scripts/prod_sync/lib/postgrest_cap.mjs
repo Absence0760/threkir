@@ -1,4 +1,4 @@
-// The PostgREST row cap check (decisions § 987, § 1936): the keyset walk on
+// The PostgREST row cap check (decisions § 2531): the keyset walk on
 // web, Deno and Dart (POSTGREST_MAX_ROWS / kPostgrestMaxRows) ends on a page
 // shorter than the declared `db.max-rows` without a confirming read, which is
 // sound only while the server's real cap is at least that. config.toml pins

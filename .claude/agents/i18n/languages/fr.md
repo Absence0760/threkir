@@ -97,7 +97,8 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | heart rate zone | Zones de fréquence cardiaque | |
 | cadence (steps/min) | Cadence | `runStatCadence`; "Fréquence" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plan d'entraînement; short Plan(s) | |
-| race | Course; "Course officielle" for a run's race source | collides with *run* — inconsistency 1 |
+| race (a competition you find, enter, browse or are listed for: the race calendar, a race page, a listing; and a race in a training plan or season) | **épreuve** / épreuves — « Calendrier des épreuves », « Rechercher des épreuves par nom… », « Ajouter une épreuve », « Page de l'épreuve et inscription », « Nom de l'épreuve », « Épreuves de ce plan », « épreuve objectif », « épreuves A, B ou C », « date de l'épreuve », « semaine de l'épreuve »; race day is « jour J » (« Jour J », « Le jour J reste le {date} ») | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces: the race calendar page and the plan pages put a race beside runs (« Vos courses à cette épreuve », the plan countdown « Épreuve dans N jours »), so the race is never « course » there. Feminine like *course*, but elide: « l'épreuve », « d'épreuve », and « mon épreuve ». "Course officielle" stays for a run's race source |
+| race (a club-hosted live race: arm, start, end, cancel, the live page, race director) | **course** — « Armer la course », « Course armée », « Terminer la course », « Course en direct », « directeur de course » | settled 2026-11-10 and kept 2026-11-13: the live race-control vocabulary is « course », as es keeps *carrera* for it; where such a string also names the run, the run is « course enregistrée » or « activité » |
 | race page (a race's public page, its photo gallery) | **page de l'épreuve** — « Afficher sur la page de l'épreuve » | settled 2026-11-13 (#1374 round 3.5), both surfaces; the run beside it is « course », so the race is « épreuve » (inconsistency 1) |
 | streaming app | « app de streaming » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « application de streaming » |
 | cue (guided run) | **repère** / repères everywhere | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « indication » for a cue |
@@ -135,17 +136,25 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | arm / armed (race control) | **Armer** (vous: "Armez la course"), state **armé(e)** — "Armer la course", "Course armée", "Armer plus tôt", "Armer quand même" | settled 2026-11-10; never the tu-form "Arme" |
 | self-timed (race) | **en chrono libre** ("course en chrono libre", "Fenêtre en chrono libre") | settled 2026-11-10; never "chronométrée en autonomie" / "chronométrée par chacun" |
 | GO (the start signal) | **GO** — the button on the web and in the phone app, "GO par l'organisateur", "GO programmé"; prose "donner le GO", "le GO", "après le GO", "en attente du GO" | settled 2026-11-10; never "Lancer le Go" for the button. *Départ* stays for the start line and the time fields ("ligne de départ", "Heure de départ", "Départ à {when}"); the Wear armed banner is "COURSE ARMÉE" |
+| age grade (the score against the best for your age and sex) | **indice d'âge**; an age-graded result is a **résultat avec indice d'âge** | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never « résultats ajustés par âge ». « calibration selon l'âge » stays only where the English says *age calibration* (`onboarding.dobNote`) |
+| age band (the board filter and the consent statement) | **tranche d'âge** (already one term) | checked 2026-11-13; **catégorie d'âge** stays for a race's own age category in results (`races.ageGroup`) |
+| name search (the profile search that « M'afficher dans la recherche par nom » controls, and that keeps under-18 accounts out) | **recherche par nom** everywhere, the DOB notes included; under-18s are « les comptes **des** moins de 18 ans » (the accounts of under-18s, not accounts younger than 18) | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never « recherche (publique) de personnes » for it |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
-1. **run vs race are both "course".** Web `runSurface.tabRuns` and
-   `runSurface.tabRaces` both render "Courses" side by side in
-   `RunSurfaceTabs.svelte`; `nav.races` / `navRaces` (unused keys) too.
-   "Course officielle" exists for one key. Since 2026-11-12 a run is always
-   « course », so a string that names both says « épreuve » / « compétition »
-   / « jour J » for the race (`raceRetime.loadFailed`, `raceRetime.undone`,
-   `clubHome.emptyEventsNonAdmin`, `planRecapRaceNotRun`, the race help
-   guides); the two tab labels are still both "Courses".
+1. **run vs race are both "course".** Since 2026-11-12 a run is always
+   « course ». Since 2026-11-13 a listed race and a training-plan race are
+   « épreuve » (see the two *race* rows): the race calendar (`races.*`), its
+   shared names (`shareRace.calendar`, `integrations.*Open`,
+   `learn.ctaRacing`, `courseAlerts.browseRaces`), the plan pages
+   (`planDetail.*`, `planEditor.*`, `plansNew.*`, `plansPage.*`,
+   `planRecap.*`, `planImport.*`, `planBreak.*`, `seasonPlanner.*`,
+   `workoutEditor.race*`, `workoutDetail.taglineRace`, `planPhase.race`,
+   the dashboard's plan card) on web. Still « course » for a race and owed
+   the same move: the race-course tools (`raceCourse.*` claim and suggest,
+   `routeHeatmap.races*`, `admin.reports.kind.raceListing`), the
+   notifications about a race you are going to, the race-day panel and
+   predictor, and the fuelling preferences.
 2. **split**: web `prefs.cue.splits` "Fractionnés" (wrong sense) vs mobile
    `prefsCueSplits` "Intermédiaires"; web `landing.previewSplits` "Temps
    au km".

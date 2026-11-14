@@ -43,7 +43,7 @@ Ein Monat, der leer beginnt, ist eine neue Chance für alle, nicht nur für die,
 
 ## Zwei Listen, zwei Wege zu gewinnen
 
-- **Schnellste** ordnet jede Person nach ihrer Bestzeit, einmal pro Person. Wechsle zwischen diesem Monat, diesem Jahr und allen Zeiten und filtere nach Geschlecht oder Altersklasse.
+- **Schnellste** ordnet jede Person nach ihrer Bestzeit, einmal pro Person. Wechsle zwischen diesem Monat, diesem Jahr und allen Zeiten und filtere nach Geschlecht oder Altersgruppe.
 - **Meiste Läufe** zählt die Tage, an denen du die Strecke in der Saison absolviert hast. Mehrere Runden an einem Tag zählen als einer, also belohnt die Liste Stammgäste, die Woche für Woche wiederkommen, statt eines langen Tages voller Runden.
 
 Private Läufe bleiben privat: Eine Zeit aus einem Lauf, den andere nicht sehen können, wird ihnen nicht angezeigt.

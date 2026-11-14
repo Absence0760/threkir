@@ -10,6 +10,12 @@ project_id = "project-running"
 # the range.
 [api]
 port = 24321
+# PostgREST's db.max-rows, the CLI default written down. The keyset walk
+# (POSTGREST_MAX_ROWS / kPostgrestMaxRows) ends on a page shorter than this
+# without a confirming read, so the clients' constants must equal it
+# (keyset_page tests) and production must not be lower (the backend release's
+# "Sync production state" step checks it).
+max_rows = 1000
 
 [db]
 port = 24322

@@ -80,6 +80,15 @@ allow-list, paired web flags, cron invokers and task file names. Its tests are
 `scripts/prod_sync/lib/config_stages.test.mjs`; the database half is
 `apps/backend/supabase/tests/prod_config_sync_test.sql`.
 
+The sync also checks, read-only, that production's PostgREST `max_rows` (the
+Data API "Max rows" setting, read from the Management API by
+`scripts/prod_sync/postgrest_max_rows.mjs`, which prints only that integer)
+is at least the `[api] max_rows` that `apps/backend/supabase/config.toml`
+pins. The clients' keyset walk ends on a page shorter than that pin without a
+confirming read, so a lower production cap would cut every walk short while it
+reported itself complete; the stage fails the release instead and names the
+value to raise. Its tests are `scripts/prod_sync/lib/postgrest_cap.test.mjs`.
+
 ## Emergency fallback
 
 If a release cannot run, the SQL each stage calls works by hand in the SQL

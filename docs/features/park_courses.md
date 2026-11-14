@@ -326,7 +326,12 @@ because a course is something you go and do, not a stretch you happen to run.
   park cards and nearest first all need every course. If the catalogue
   reaches the tens of thousands, the payload (every segment's waypoints)
   is the cost to move server-side first, with an ordered, searched,
-  keyset-paged RPC; until then one walk is a handful of requests. Typing
+  keyset-paged RPC; until then one walk is a handful of requests. A list
+  shorter than `db.max-rows` is one request: the walk takes a page short of
+  both the ask and the declared cap (`POSTGREST_MAX_ROWS` /
+  `kPostgrestMaxRows`, pinned to `config.toml` and checked against
+  production by the backend release) as the end, so a park's courses or a
+  month's runner counts no longer pay a second, empty read. Typing
   settles for 250 ms before either list changes; the race search is not run
   while Courses hides the races, and runs when they show again. The hint
   names what the view finds ("Search races, parks and courses…" in All,

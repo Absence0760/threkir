@@ -47,7 +47,6 @@ test.describe('/sitemap.xml past db.max-rows', () => {
 	});
 
 	test('every seeded race reaches a child sitemap, each once', async ({ request }) => {
-		test.slow();
 		const locs = await allSitemapLocs(request);
 		const raceIds = locs
 			.map((loc) => /\/share\/race\/([0-9a-f-]{36})$/.exec(loc)?.[1])

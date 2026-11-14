@@ -26,7 +26,7 @@ class PreRunHomeLayoutTest {
 
     /// PreRunScreen's own text, signature to the next top-level `private fun`.
     private fun preRun(): String {
-        val start = ui.indexOf("private fun PreRunScreen(")
+        val start = ui.indexOf("internal fun PreRunScreen(")
         assertTrue("PreRunScreen is gone or renamed — this guard reads nothing", start >= 0)
         val end = ui.indexOf("\nprivate fun ", start + 1)
         assertTrue("could not find the end of PreRunScreen", end > start)

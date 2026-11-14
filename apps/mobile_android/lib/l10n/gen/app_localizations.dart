@@ -3398,7 +3398,7 @@ abstract class AppLocalizations {
   /// Setup wizard date-of-birth field note
   ///
   /// In en, this message translates to:
-  /// **'Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.'**
+  /// **'Used to keep accounts of under-18s out of name search, and for age-graded results if you give health-data consent.'**
   String get setupDobNote;
 
   /// Setup wizard date-of-birth empty-state text
@@ -25176,7 +25176,7 @@ abstract class AppLocalizations {
   /// Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, one {See all {n} course} other {See all {n} courses}}'**
+  /// **'{n, plural, =1{See the course} other{See all {n} courses}}'**
   String racesAnyTimeSeeAll(int n);
 
   /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed

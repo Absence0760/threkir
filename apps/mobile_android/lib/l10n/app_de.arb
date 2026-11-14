@@ -547,7 +547,7 @@
   "setupGenderFemale": "Weiblich",
   "setupGenderMale": "Männlich",
   "setupDobLabel": "Geburtsdatum",
-  "setupDobNote": "Wird verwendet, um Konten von unter 18-Jährigen aus der Personensuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du die Einwilligung zu Gesundheitsdaten erteilst.",
+  "setupDobNote": "Wird verwendet, um Konten von unter 18-Jährigen aus der Namenssuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du die Einwilligung zu Gesundheitsdaten erteilst.",
   "setupDobPlaceholder": "Zum Auswählen tippen",
   "setupWeightLabel": "Gewicht (kg)",
   "setupWeightPlaceholder": "z. B. 70",
@@ -902,7 +902,7 @@
   "runDetailHrCoveragePercent": "{pct} %",
   "runDetailHrCoverageOnly": "{pct} % abgedeckt",
   "runDetailStatAvgHr": "Ø HF",
-  "runDetailStatAgeGrade": "Altersklassen-Wertung",
+  "runDetailStatAgeGrade": "Altersbewertung",
   "runDetailStatGradeAdjPace": "Höhenkorr. Pace",
   "runDetailSectionElevation": "Höhenmeter",
   "elevationChartSummary": "Höhenprofil über {distance}: tiefster Punkt {min}, höchster Punkt {max}, {gain} Anstieg",
@@ -2796,7 +2796,7 @@
   "prefsDefaultRunPrivacy": "Standard-Datenschutz für Läufe",
   "prefsStravaAutoShare": "Strava-Autoshare",
   "prefsStravaAutoShareSubtitle": "Jeden neuen Lauf automatisch an Strava senden. Erfordert eine verbundene Strava-Integration, sobald diese verfügbar ist.",
-  "prefsDiscoverable": "In der Namenssuche anzeigen",
+  "prefsDiscoverable": "Mich in der Namenssuche anzeigen",
   "prefsDiscoverableSubtitle": "Wenn deaktiviert, erscheint dein Konto nicht, wenn andere Läufer nach Anzeigenamen suchen. Deine öffentlichen Läufe und dein Profil bleiben für jeden mit der URL erreichbar.",
   "dashboardCoachTooltip": "Coach",
   "dashboardRecapTooltip": "Jahresrückblick im Laufen",
@@ -4640,11 +4640,11 @@
   "simWatchPushWorkoutAction": "Workout an Uhr senden",
   "simWatchWorkoutPushed": "Workout an die Uhr gesendet ({steps, plural, one{{steps} Schritt} other{{steps} Schritte}})",
   "simWatchPushWorkoutFailed": "Senden des Workouts fehlgeschlagen: {error}",
-  "simWatchPushRoadbookAction": "Rennplan an die Uhr senden",
+  "simWatchPushRoadbookAction": "Roadbook an die Uhr senden",
   "@simWatchPushRoadbookAction": {
     "description": "Tooltip for the dev sim-watch action that pushes the canned RBK1 roadbook schedule"
   },
-  "simWatchRoadbookPushed": "Rennplan an die Uhr gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}, {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}})",
+  "simWatchRoadbookPushed": "Roadbook an die Uhr gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}, {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}})",
   "@simWatchRoadbookPushed": {
     "placeholders": {
       "checkpoints": {
@@ -4656,7 +4656,7 @@
     },
     "description": "Status line after the dev sim-watch roadbook push succeeds"
   },
-  "simWatchPushRoadbookFailed": "Senden des Rennplans fehlgeschlagen: {error}",
+  "simWatchPushRoadbookFailed": "Senden des Roadbooks fehlgeschlagen: {error}",
   "@simWatchPushRoadbookFailed": {
     "placeholders": {
       "error": {
@@ -6189,7 +6189,7 @@
   "racesAnyTimeNoTimeYet": "In dieser Saison noch keine Zeit. Deine könnte die erste sein.",
   "racesAnyTimeAway": "{distance} entfernt",
   "racesAnyTimeNoMatch": "Keine Strecken passen zu „{query}“",
-  "racesAnyTimeSeeAll": "{n, plural, one {Alle {n} Strecke ansehen} other {Alle {n} Strecken ansehen}}",
+  "racesAnyTimeSeeAll": "{n, plural, =1{Strecke ansehen} other{Alle {n} Strecken ansehen}}",
   "racesAnyTimeFastestFailed": "Die schnellsten Zeiten dieser Saison konnten nicht geladen werden.",
   "reportReasonOrganiserDispute": "Ahmt meine Organisation nach oder kopiert sie",
   "reportReasonOrganiserDisputeHint": "Für Eigentümer und Admins eines verifizierten Clubs. Ein Prüfer entscheidet; nichts wird automatisch ausgeblendet.",

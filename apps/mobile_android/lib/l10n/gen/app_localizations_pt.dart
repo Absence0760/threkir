@@ -209,7 +209,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routePickerNoRoute => 'Sem rota';
 
   @override
-  String get routePickerSearchHint => 'Procurar rotas por nome…';
+  String get routePickerSearchHint => 'Pesquisar rotas por nome…';
 
   @override
   String get routePickerEmptyNoRoutes => 'Nenhuma rota guardada ainda';
@@ -662,7 +662,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get peopleSearchHint => 'Procurar corredores por nome';
+  String get peopleSearchHint => 'Pesquisar corredores por nome';
 
   @override
   String get peopleClearSearchTooltip => 'Limpar pesquisa';
@@ -678,7 +678,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get placeSearchUnavailable =>
-      'A pesquisa de locais está indisponível de momento';
+      'A pesquisa de lugares está indisponível de momento';
 
   @override
   String get placeSearchRetry => 'Tentar novamente';
@@ -787,14 +787,14 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get nearbyAreaSearchHint => 'Procurar uma cidade ou bairro';
+  String get nearbyAreaSearchHint => 'Pesquisar uma cidade ou bairro';
 
   @override
   String get nearbyAreaSearchUnavailable =>
-      'A pesquisa de locais está indisponível neste momento.';
+      'A pesquisa de lugares está indisponível neste momento.';
 
   @override
-  String get nearbyAreaNoResults => 'Nenhum local corresponde a essa pesquisa.';
+  String get nearbyAreaNoResults => 'Nenhum lugar corresponde a essa pesquisa.';
 
   @override
   String get nearbyAreaSaved => 'Área guardada';
@@ -881,14 +881,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get readinessNextHigh =>
-      'Está pronto para um esforço mais duro, se estiver planeado.';
+      'Tem condições para um esforço mais duro, se estiver planeado.';
 
   @override
   String get readinessReasonHeavyFatigue =>
       'Fadiga intensa — a carga de treino recente está bem acima do seu condicionamento';
 
   @override
-  String get readinessReasonFatigued => 'Cansado do treino recente';
+  String get readinessReasonFatigued => 'Fadiga do treino recente';
 
   @override
   String get readinessReasonSlightFatigue => 'Ligeira fadiga';
@@ -901,7 +901,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get readinessReasonVeryFresh =>
-      'Muito descansado — quase em polimento';
+      'Recuperação muito elevada — quase em polimento';
 
   @override
   String get readinessReasonOverTapered =>
@@ -919,7 +919,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Um pouco abaixo do seu objetivo de sono';
 
   @override
-  String get readinessReasonWellRested => 'Bem descansado';
+  String get readinessReasonWellRested => 'Bom descanso';
 
   @override
   String get readinessReasonExtendedSleep =>
@@ -1667,7 +1667,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runSafetyNudgeSolo =>
-      'Vai correr sozinho(a) depois de escurecer? Partilhe um link em direto com alguém';
+      'Vai correr sem companhia depois de escurecer? Partilhe um link em direto com alguém';
 
   @override
   String get runSafetyNudgeShareAction => 'Partilhar';
@@ -1995,7 +1995,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get setupCreatePlanCta => 'Criar o meu plano de treino';
 
   @override
-  String get setupWelcomeToast => 'Bem-vindo ao Threkir!';
+  String get setupWelcomeToast => 'Boas-vindas ao Threkir!';
 
   @override
   String setupSaveError(String message) {
@@ -2095,7 +2095,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Utilizada para manter as contas de menores de 18 anos fora da pesquisa de pessoas e, se der o seu consentimento de dados de saúde, para resultados ajustados por idade.';
+      'Utilizada para manter as contas de menores de 18 anos fora da pesquisa por nome e, se der o seu consentimento de dados de saúde, para resultados com índice por idade.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';
@@ -2605,7 +2605,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runNoRoutesSaved =>
-      'Nenhuma rota guardada. Importe uma na separador Rotas.';
+      'Nenhuma rota guardada. Importe uma no separador Rotas.';
 
   @override
   String get runNotificationsOffHint =>
@@ -3294,7 +3294,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get addRunClearRoute => 'Remover rota';
 
   @override
-  String get addRunSearchRoutes => 'Procurar rotas guardadas';
+  String get addRunSearchRoutes => 'Pesquisar rotas guardadas';
 
   @override
   String get addRunNoRoutes =>
@@ -4065,7 +4065,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routesHeatmapTooltip => 'Mapa de calor das rotas';
 
   @override
-  String get routesSearchHint => 'Procurar rotas por nome…';
+  String get routesSearchHint => 'Pesquisar rotas por nome…';
 
   @override
   String get routesClearSearch => 'Limpar pesquisa';
@@ -5160,7 +5160,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'Perto de mim';
 
   @override
-  String get exploreRoutesSearchHint => 'Procurar rotas por nome...';
+  String get exploreRoutesSearchHint => 'Pesquisar rotas por nome…';
 
   @override
   String get exploreRoutesFeatured => 'Destaque';
@@ -6110,7 +6110,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get socialTabEvents => 'Eventos';
 
   @override
-  String get discoverSearchPlaceholder => 'Procurar aulas, clubes…';
+  String get discoverSearchPlaceholder => 'Pesquisar aulas, clubes…';
 
   @override
   String get discoverActivityAll => 'Todas as atividades';
@@ -6188,7 +6188,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get discoverPaid => 'Pago';
 
   @override
-  String get discoverLoading => 'A procurar…';
+  String get discoverLoading => 'A pesquisar…';
 
   @override
   String get discoverEmpty =>
@@ -7438,7 +7438,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planNewCreating => 'A criar…';
 
   @override
-  String get planNewPreviewTitle => 'Prévia';
+  String get planNewPreviewTitle => 'Pré-visualização';
 
   @override
   String get planNewPaceEasy => 'Leve';
@@ -7511,7 +7511,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Planos publicados por outros corredores. Clone um na sua conta para começar a treinar.';
 
   @override
-  String get planLibrarySearchHint => 'Procurar planos por nome';
+  String get planLibrarySearchHint => 'Pesquisar planos por nome';
 
   @override
   String get planLibraryLoadError =>
@@ -7921,7 +7921,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailMissedLongTaper =>
-      'Perdeu um longão, mas está em polimento — deixe para lá e chegue descansado para a prova.';
+      'Perdeu um longão, mas está em polimento — deixe para lá e chegue à prova com as pernas frescas.';
 
   @override
   String get planDetailMissedLongRecovery =>
@@ -7953,7 +7953,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdjustRaceTaperDesc =>
-      'Alivia os dias antes de cada próxima prova B ou C e os dias a seguir, para que a corra descansado e recupere antes de o treino voltar a aumentar. A sua prova A e o respetivo polimento ficam como estão.';
+      'Alivia os dias antes de cada próxima prova B ou C e os dias a seguir, para que a corra com as pernas frescas e recupere antes de o treino voltar a aumentar. A sua prova A e o respetivo polimento ficam como estão.';
 
   @override
   String get planDetailRaceTaperNone =>
@@ -7992,7 +7992,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdjustResumeDesc =>
-      'Volta a tornar este o seu plano ativo. Use quando estiver pronto para o retomar.';
+      'Volta a tornar este o seu plano ativo. Use quando estiver em condições de retomar o plano.';
 
   @override
   String get planDetailPausePlan => 'Pausar plano';
@@ -8092,7 +8092,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$n semanas',
       one: '$n semana',
     );
-    return 'Esteve afastado do plano durante $_temp0. Há uma alteração sugerida para que as próximas semanas voltem a subir a partir do que correu por último.';
+    return 'Passou $_temp0 sem seguir o plano. Há uma alteração sugerida para que as próximas semanas voltem a subir a partir do que correu por último.';
   }
 
   @override
@@ -8165,7 +8165,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$n semanas',
       one: '$n semana',
     );
-    return 'Esteve afastado do plano durante $_temp0. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O polimento mantém-se como planeado.';
+    return 'Passou $_temp0 sem seguir o plano. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O polimento mantém-se como planeado.';
   }
 
   @override
@@ -8417,7 +8417,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutAdviceLong =>
-      'Fique relaxado. Procure uma respiração constante. Reduza 10% da distância se o tempo estiver mau ou estiver dolorido — mas não salte.';
+      'Mantenha a descontração. Procure uma respiração constante. Reduza 10% da distância se o tempo estiver mau ou se tiver dores — mas não salte.';
 
   @override
   String get workoutAdviceTempo =>
@@ -8433,7 +8433,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutAdviceWalkRun =>
-      'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
+      'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo quando tiver energia de sobra.';
 
   @override
   String get planDetailWeekAdviceRace =>
@@ -9706,7 +9706,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get proWelcome => 'Bem-vindo ao Pro! A carregar os seus benefícios…';
+  String get proWelcome => 'Boas-vindas ao Pro! A carregar os seus benefícios…';
 
   @override
   String get proPurchaseFailed =>
@@ -10280,7 +10280,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Toque no mapa para adicionar uma zona. Trajetos em superfícies públicas têm o início e o fim cortados além do raio da zona.';
 
   @override
-  String get privacyZonesSearchHint => 'Procurar lugares…';
+  String get privacyZonesSearchHint => 'Pesquisar lugares…';
 
   @override
   String get privacyZonesRadius => 'Raio';
@@ -10787,7 +10787,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsDiscoverableSubtitle =>
-      'Quando desativado, a sua conta não aparece quando outros corredores procuram pelo nome de exibição. As suas corridas públicas e o seu perfil continuam acessíveis para qualquer pessoa com o URL.';
+      'Quando desativado, a sua conta não aparece quando outros corredores pesquisam pelo nome de exibição. As suas corridas públicas e o seu perfil continuam acessíveis para qualquer pessoa com o URL.';
 
   @override
   String get dashboardCoachTooltip => 'Coach';
@@ -10796,7 +10796,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardRecapTooltip => 'Ano em corrida';
 
   @override
-  String get dashboardWelcomeTitle => 'Bem-vindo!';
+  String get dashboardWelcomeTitle => 'Boas-vindas!';
 
   @override
   String get dashboardWelcomeBody =>
@@ -10873,7 +10873,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String dashboardPbAgeGrade(String percent) {
-    return '$percent classificação por idade';
+    return 'Índice por idade de $percent';
   }
 
   @override
@@ -11127,7 +11127,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadReadingLoaded =>
-      'Carregado — siga em frente e recupere quando estiver pronto.';
+      'Carga elevada — siga em frente e recupere quando estiver em condições.';
 
   @override
   String get trainingLoadReadingTapered =>
@@ -11200,7 +11200,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get fitnessRecoveryAdviceWelcomeBack =>
-      'Bem-vindo de volta. Os seus valores de forma reiniciaram após a pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
+      'Bom regresso. Os seus valores de forma reiniciaram após a pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
 
   @override
   String get fitnessRecoveryAdviceHeavyLoad =>
@@ -11224,7 +11224,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get fitnessRecoveryAdviceVeryFresh =>
-      'Muito descansado — se está em polimento de propósito, faça a prova em breve. Caso contrário, é altura de voltar a construir.';
+      'Recuperação muito elevada — se está em polimento de propósito, faça a prova em breve. Caso contrário, é altura de voltar a construir.';
 
   @override
   String get fitnessStatVo2Max => 'VO₂ máx';
@@ -11277,7 +11277,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get fitnessStatTsbTooltip =>
-      'Condicionamento menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
+      'Condicionamento menos fadiga. Positivo = frescura e condições para competir; negativo = fadiga acumulada.';
 
   @override
   String get runSocialActivity => 'Atividade';
@@ -11949,7 +11949,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventEditorMembersOnlyHint =>
-      'Apenas membros do clube podem ver este evento, e ele não aparecerá na pesquisa pública.';
+      'Apenas membros do clube podem ver este evento, e não aparecerá nas listagens públicas.';
 
   @override
   String get eventEditorDiscipline => 'Modalidade';
@@ -13003,7 +13003,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guidedEasy30Cue5 =>
-      'Faltam cinco minutos. Mantenha-se relaxado. Não acelere.';
+      'Faltam cinco minutos. Mantenha o ritmo tranquilo. Não acelere.';
 
   @override
   String get guidedEasy30Cue6 => 'Falta um minuto. Termine leve.';
@@ -13588,7 +13588,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymCatalogueTitle => 'Catálogo de exercícios';
 
   @override
-  String get gymCatalogueSearchPlaceholder => 'Procurar exercícios';
+  String get gymCatalogueSearchPlaceholder => 'Pesquisar exercícios';
 
   @override
   String get gymCatalogueCategoryLabel => 'Categoria';
@@ -13763,7 +13763,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymLibraryTitle => 'Biblioteca pública de rotinas';
 
   @override
-  String get gymLibrarySearchHint => 'Procurar rotinas por nome';
+  String get gymLibrarySearchHint => 'Pesquisar rotinas por nome';
 
   @override
   String get gymLibraryLoadError => 'Não foi possível carregar a biblioteca.';
@@ -14452,10 +14452,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nutritionLogTitle => 'Registar comida';
 
   @override
-  String get nutritionSearchHint => 'Procurar um alimento';
+  String get nutritionSearchHint => 'Pesquisar um alimento';
 
   @override
-  String get nutritionSearching => 'A procurar…';
+  String get nutritionSearching => 'A pesquisar…';
 
   @override
   String nutritionSearchKcalPer100g(int kcal) {
@@ -14499,7 +14499,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionScanPermissionDenied =>
-      'É necessário acesso à câmara para digitalizar um código de barras. Ainda pode procurar ou inserir o alimento manualmente.';
+      'É necessário acesso à câmara para digitalizar um código de barras. Ainda pode pesquisar ou inserir o alimento manualmente.';
 
   @override
   String get nutritionScanOpenSettings => 'Abrir definições';
@@ -15060,7 +15060,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get coachingReview => 'Revisar';
+  String get coachingReview => 'Rever';
 
   @override
   String get coachingRemove => 'Remover';
@@ -15667,7 +15667,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get challengesTitle => 'Desafios';
 
   @override
-  String get challengesSearchHint => 'Procurar desafios';
+  String get challengesSearchHint => 'Pesquisar desafios';
 
   @override
   String get challengesNoMatch => 'Nenhum desafio corresponde à sua pesquisa';
@@ -16128,7 +16128,7 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other: 'Ver os $n percursos',
-      one: 'Ver $n percurso',
+      one: 'Ver o percurso',
     );
     return '$_temp0';
   }
@@ -16138,11 +16138,11 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível carregar os tempos mais rápidos desta época.';
 
   @override
-  String get racesSearchPlaceholder => 'Procurar provas por nome…';
+  String get racesSearchPlaceholder => 'Pesquisar provas por nome…';
 
   @override
   String get racesSearchAllPlaceholder =>
-      'Procurar provas, parques e percursos…';
+      'Pesquisar provas, parques e percursos…';
 
   @override
   String racesNearChip(String place) {
@@ -16153,7 +16153,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesDistanceGroup => 'Distância';
 
   @override
-  String get racesNearPlace => 'Perto de um local…';
+  String get racesNearPlace => 'Perto de um lugar…';
 
   @override
   String racesDistanceAway(String distance) {
@@ -17390,8 +17390,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushRoadbookAction =>
-      'Enviar plano de corrida para o relógio';
+  String get simWatchPushRoadbookAction => 'Enviar o roadbook para o relógio';
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
@@ -17412,7 +17411,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'Falha ao enviar o plano de corrida: $error';
+    return 'Falha ao enviar o roadbook: $error';
   }
 
   @override
@@ -18344,7 +18343,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Subidas, pontes e voltas de parque selecionadas no mundo todo. Corra um deles e o seu tempo entra no ranking automaticamente.';
 
   @override
-  String get segmentCatalogueSearchLabel => 'Procurar';
+  String get segmentCatalogueSearchLabel => 'Pesquisar';
 
   @override
   String get segmentCatalogueSearchHint => 'Nome ou lugar';
@@ -19864,7 +19863,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Continua privada: só a pessoa a quem a envia pode abrir o link, e pode deixar de partilhar a qualquer momento.';
 
   @override
-  String get routeDetailSendDmSearchPlaceholder => 'Procurar pessoas';
+  String get routeDetailSendDmSearchPlaceholder => 'Pesquisar pessoas';
 
   @override
   String get routeDetailSendDmLoadFailed =>
@@ -21458,7 +21457,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get missedPromptTaperBody =>
-      'Está no polimento, por isso deixe passar: chegar fresco ao dia da prova conta mais do que mais um longão.';
+      'Está no polimento, por isso deixe passar: chegar ao dia da prova com as pernas frescas conta mais do que mais um longão.';
 
   @override
   String get missedPromptRecoveryBody =>
@@ -22589,7 +22588,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há percursos. Os primeiros estão a caminho.';
 
   @override
-  String get parksSearchPlaceholder => 'Procurar parques e percursos…';
+  String get parksSearchPlaceholder => 'Pesquisar parques e percursos…';
 
   @override
   String parksNoMatch(String query) {
@@ -23710,17 +23709,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get messagesReactionRefused => 'Não pode reagir a esta mensagem.';
 
   @override
-  String get messagesSearchPlaceholder => 'Procurar mensagens';
+  String get messagesSearchPlaceholder => 'Pesquisar mensagens';
 
   @override
-  String get messagesSearchLabel => 'Procurar nas suas mensagens';
+  String get messagesSearchLabel => 'Pesquisar nas suas mensagens';
 
   @override
   String get messagesSearchEmpty => 'Nenhuma mensagem corresponde.';
 
   @override
   String get messagesSearchFailed =>
-      'Não foi possível procurar nas suas mensagens. Tente novamente.';
+      'Não foi possível pesquisar nas suas mensagens. Tente novamente.';
 
   @override
   String get messagesPhotoAttach => 'Anexar uma fotografia';
@@ -23890,7 +23889,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há ninguém para convidar. Pode convidar quem segue ou quem o segue.';
 
   @override
-  String get groupsPeopleSearch => 'Procurar pessoas';
+  String get groupsPeopleSearch => 'Pesquisar pessoas';
 
   @override
   String groupsPeopleSelected(int count, int max) {
@@ -24929,10 +24928,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nearbyAreaSearchUnavailable =>
-      'A busca de locais está indisponível neste momento.';
+      'A busca de lugares está indisponível neste momento.';
 
   @override
-  String get nearbyAreaNoResults => 'Nenhum local corresponde a essa busca.';
+  String get nearbyAreaNoResults => 'Nenhum lugar corresponde a essa busca.';
 
   @override
   String get nearbyAreaSaved => 'Área salva';
@@ -24970,7 +24969,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get peopleSignedOutMessage =>
-      'Faça login para pesquisar e seguir outros corredores.';
+      'Faça login para buscar e seguir outros corredores.';
 
   @override
   String get peopleSuggestionsLoadFailed =>
@@ -25019,14 +25018,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessNextHigh =>
-      'Você está pronto para um esforço mais duro, se estiver planejado.';
+      'Você tem condições para um esforço mais duro, se estiver planejado.';
 
   @override
   String get readinessReasonHeavyFatigue =>
       'Fadiga intensa — a carga de treino recente está bem acima do seu condicionamento';
 
   @override
-  String get readinessReasonFatigued => 'Cansado do treino recente';
+  String get readinessReasonFatigued => 'Fadiga do treino recente';
 
   @override
   String get readinessReasonSlightFatigue => 'Leve fadiga';
@@ -25039,7 +25038,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessReasonVeryFresh =>
-      'Muito descansado — quase em polimento';
+      'Recuperação muito alta — quase em polimento';
 
   @override
   String get readinessReasonOverTapered =>
@@ -25056,7 +25055,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessReasonUnderSleep => 'Um pouco abaixo da sua meta de sono';
 
   @override
-  String get readinessReasonWellRested => 'Bem descansado';
+  String get readinessReasonWellRested => 'Bom descanso';
 
   @override
   String get readinessReasonExtendedSleep =>
@@ -25803,7 +25802,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runSafetyNudgeSolo =>
-      'Correndo sozinho(a) depois do escurecer? Compartilhe um link ao vivo para alguém acompanhar.';
+      'Correndo sem companhia depois do escurecer? Compartilhe um link ao vivo para alguém acompanhar.';
 
   @override
   String get runSafetyNudgeShareAction => 'Compartilhar';
@@ -26131,7 +26130,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get setupCreatePlanCta => 'Criar meu plano de treino';
 
   @override
-  String get setupWelcomeToast => 'Bem-vindo ao Threkir!';
+  String get setupWelcomeToast => 'Boas-vindas ao Threkir!';
 
   @override
   String setupSaveError(String message) {
@@ -26231,7 +26230,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupDobNote =>
-      'Usada para manter contas de menores de 18 anos fora da busca de pessoas e, se você der seu consentimento de dados de saúde, para resultados ajustados por idade.';
+      'Usada para manter contas de menores de 18 anos fora da busca por nome e, se você der seu consentimento de dados de saúde, para resultados com índice por idade.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';
@@ -28420,7 +28419,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get routeBuilderSearchHint => 'Pesquisar lugares…';
+  String get routeBuilderSearchHint => 'Buscar lugares…';
 
   @override
   String get routeBuilderGenerateLoop => 'Gerar circuito';
@@ -29295,7 +29294,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get exploreRoutesModeNearMe => 'Perto de mim';
 
   @override
-  String get exploreRoutesSearchHint => 'Buscar rotas por nome...';
+  String get exploreRoutesSearchHint => 'Buscar rotas por nome…';
 
   @override
   String get exploreRoutesFeatured => 'Destaque';
@@ -29408,7 +29407,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get exploreRoutesDistanceUltraMi => '13 mi+';
 
   @override
-  String get heatmapSearchHint => 'Pesquisar lugares…';
+  String get heatmapSearchHint => 'Buscar lugares…';
 
   @override
   String get heatmapFilters => 'Filtros';
@@ -30354,7 +30353,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get clubsJoinWithCode => 'Entrar com código de convite';
 
   @override
-  String get clubsSearchHint => 'Pesquisar por nome ou local';
+  String get clubsSearchHint => 'Buscar por nome ou local';
 
   @override
   String get clubsSearchMineHint => 'Buscar nos seus clubes';
@@ -30386,8 +30385,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get clubsEmptyBrowseTitle =>
-      'Nenhum clube corresponde a essa pesquisa.';
+  String get clubsEmptyBrowseTitle => 'Nenhum clube corresponde a essa busca.';
 
   @override
   String get clubsEmptyMineTitle => 'Você ainda não entrou em nenhum clube.';
@@ -32055,7 +32053,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailMissedLongTaper =>
-      'Você perdeu um longão, mas está em polimento — deixe pra lá e chegue descansado para a prova.';
+      'Você perdeu um longão, mas está em polimento — deixe pra lá e chegue à prova com as pernas descansadas.';
 
   @override
   String get planDetailMissedLongRecovery =>
@@ -32087,7 +32085,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailAdjustRaceTaperDesc =>
-      'Alivia os dias antes de cada prova B ou C futura e os dias depois dela, para você correr descansado e se recuperar antes de o treino voltar a apertar. Sua prova A e o polimento dela continuam como estão.';
+      'Alivia os dias antes de cada prova B ou C futura e os dias depois dela, para você correr com as pernas descansadas e se recuperar antes de o treino voltar a apertar. Sua prova A e o polimento dela continuam como estão.';
 
   @override
   String get planDetailRaceTaperNone =>
@@ -32126,7 +32124,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailAdjustResumeDesc =>
-      'Volta a tornar este o seu plano ativo. Use quando você estiver pronto para retomá-lo.';
+      'Volta a tornar este o seu plano ativo. Use quando estiver em condições de retomar o plano.';
 
   @override
   String get planDetailPausePlan => 'Pausar plano';
@@ -32552,7 +32550,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutAdviceLong =>
-      'Fique relaxado. Busque uma respiração constante. Reduza 10% da distância se o clima estiver ruim ou você estiver dolorido — mas não pule.';
+      'Mantenha o corpo solto. Busque uma respiração constante. Reduza 10% da distância se o clima estiver ruim ou se você estiver com dores — mas não pule.';
 
   @override
   String get workoutAdviceTempo =>
@@ -32568,7 +32566,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutAdviceWalkRun =>
-      'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
+      'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo quando estiver com energia de sobra.';
 
   @override
   String get planDetailWeekAdviceRace =>
@@ -33830,7 +33828,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get proWelcome => 'Bem-vindo ao Pro! Carregando seus benefícios…';
+  String get proWelcome => 'Boas-vindas ao Pro! Carregando seus benefícios…';
 
   @override
   String get proPurchaseFailed =>
@@ -34919,7 +34917,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardRecapTooltip => 'Ano em corrida';
 
   @override
-  String get dashboardWelcomeTitle => 'Bem-vindo!';
+  String get dashboardWelcomeTitle => 'Boas-vindas!';
 
   @override
   String get dashboardWelcomeBody =>
@@ -34996,7 +34994,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String dashboardPbAgeGrade(String percent) {
-    return '$percent classificação por idade';
+    return 'Índice por idade de $percent';
   }
 
   @override
@@ -35250,7 +35248,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadReadingLoaded =>
-      'Carregado — siga em frente e recupere quando estiver pronto.';
+      'Carga elevada — siga em frente e recupere quando estiver em condições.';
 
   @override
   String get trainingLoadReadingTapered =>
@@ -35323,7 +35321,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get fitnessRecoveryAdviceWelcomeBack =>
-      'Bem-vindo de volta. Seus valores de forma zeraram depois da pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
+      'Que bom ter você de volta. Seus valores de forma zeraram depois da pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
 
   @override
   String get fitnessRecoveryAdviceHeavyLoad =>
@@ -35347,7 +35345,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get fitnessRecoveryAdviceVeryFresh =>
-      'Muito descansado — se você está em polimento de propósito, faça a prova logo. Se não, é hora de voltar a construir.';
+      'Recuperação muito alta — se você está em polimento de propósito, faça a prova logo. Se não, é hora de voltar a construir.';
 
   @override
   String get fitnessStatVo2Max => 'VO₂ máx';
@@ -35400,7 +35398,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get fitnessStatTsbTooltip =>
-      'Condicionamento menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
+      'Condicionamento menos fadiga. Positivo = descanso e condições para competir; negativo = fadiga acumulada.';
 
   @override
   String get runSocialActivity => 'Atividade';
@@ -37128,7 +37126,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get guidedEasy30Cue5 =>
-      'Faltam cinco minutos. Mantenha-se relaxado. Não acelere.';
+      'Faltam cinco minutos. Mantenha o ritmo tranquilo. Não acelere.';
 
   @override
   String get guidedEasy30Cue6 => 'Falta um minuto. Termine leve.';
@@ -40251,7 +40249,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       n,
       locale: localeName,
       other: 'Ver os $n percursos',
-      one: 'Ver $n percurso',
+      one: 'Ver o percurso',
     );
     return '$_temp0';
   }
@@ -40261,7 +40259,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível carregar os tempos mais rápidos desta temporada.';
 
   @override
-  String get racesSearchPlaceholder => 'Pesquisar corridas por nome…';
+  String get racesSearchPlaceholder => 'Buscar corridas por nome…';
 
   @override
   String get racesSearchAllPlaceholder =>
@@ -40276,7 +40274,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesDistanceGroup => 'Distância';
 
   @override
-  String get racesNearPlace => 'Perto de um local…';
+  String get racesNearPlace => 'Perto de um lugar…';
 
   @override
   String racesDistanceAway(String distance) {
@@ -41514,8 +41512,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get simWatchPushRoadbookAction =>
-      'Enviar plano de corrida para o relógio';
+  String get simWatchPushRoadbookAction => 'Enviar o roadbook para o relógio';
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
@@ -41531,12 +41528,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Plano de corrida enviado para o relógio ($_temp0, $_temp1)';
+    return 'Roadbook enviado para o relógio ($_temp0, $_temp1)';
   }
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'Falha ao enviar o plano de corrida: $error';
+    return 'Falha ao enviar o roadbook: $error';
   }
 
   @override
@@ -45578,7 +45575,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get missedPromptTaperBody =>
-      'Você está no polimento, então deixe passar: chegar descansado no dia da prova importa mais do que mais um longão.';
+      'Você está no polimento, então deixe passar: chegar ao dia da prova com as pernas descansadas importa mais do que mais um longão.';
 
   @override
   String get missedPromptRecoveryBody =>

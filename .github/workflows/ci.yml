@@ -525,9 +525,9 @@ jobs:
       - name: Production config is well-formed and matches the repo
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
-          if ! node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs || ! node scripts/prod_sync/check_prod_config.mjs; then
-            echo "::error::apps/backend/ops/prod_config.json, apps/backend/ops/tasks/ or the stages that apply them (scripts/prod_sync/) regressed: an entry with a bad shape, an enabled entry with no signoff, a flag no migration defines, a function_env key off the allow-list, a web flag the build does not read, paired flags that disagree, a cron function with no invoker, or a malformed task file. See apps/backend/ops/README.md. Nothing here touches the network."
-            echo "Reproduce with: node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs && node scripts/prod_sync/check_prod_config.mjs"
+          if ! node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs scripts/prod_sync/lib/postgrest_cap.test.mjs || ! node scripts/prod_sync/check_prod_config.mjs; then
+            echo "::error::apps/backend/ops/prod_config.json, apps/backend/ops/tasks/ or the stages that apply them (scripts/prod_sync/) regressed: an entry with a bad shape, an enabled entry with no signoff, a flag no migration defines, a function_env key off the allow-list, a web flag the build does not read, paired flags that disagree, a cron function with no invoker, or a malformed task file; or the PostgREST row cap stage (scripts/prod_sync/lib/postgrest_cap.mjs) no longer fails a production db.max-rows below the config.toml pin. See apps/backend/ops/README.md. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs scripts/prod_sync/lib/postgrest_cap.test.mjs && node scripts/prod_sync/check_prod_config.mjs"
             exit 1
           fi
       # The stack-start wait loop is shell inside a composite action, so it

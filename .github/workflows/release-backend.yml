@@ -30,7 +30,10 @@ name: Release Backend
 # set, compared by digest, so it needs the CLI, SUPABASE_ACCESS_TOKEN and
 # SUPABASE_PROJECT_REF), cron URL entries in Vault (invoked once when armed,
 # 2xx required), and the one-off tasks in apps/backend/ops/tasks/. An entry
-# absent from the file is left untouched. Last, it publishes the official
+# absent from the file is left untouched. Then it checks, read-only, that
+# the project's PostgREST max_rows is at least config.toml's [api] max_rows
+# (the Management API, SUPABASE_ACCESS_TOKEN again), since the clients' keyset
+# walk ends on a page shorter than that pin. Last, it publishes the official
 # content catalogue (scripts/official/, issue #1190, decisions § 2446) through
 # private.load_official_catalogue: library plans, gym routines and challenge
 # boards as the official club, reported created / updated / unchanged /

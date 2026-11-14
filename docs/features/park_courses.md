@@ -320,7 +320,9 @@ because a course is something you go and do, not a stretch you happen to run.
   (`park_course_records`) and a park's month runner counts
   (`park_course_month_runners`), both RPCs by `course_id`, the recap's
   effort read (`fetchRecapParkCourses`, by effort id) and the sitemap's
-  course list. A walk that ends short fails the read, so a page error shows
+  course list (which, like every sitemap list, logs a short walk and keeps
+  the rows it read rather than failing the build). A walk that ends short
+  fails the read, so a page error shows
   the section's error and Retry rather than a shorter list. The walk holds
   the whole catalogue in the client, which is the point: the count, the
   park cards and nearest first all need every course. If the catalogue
@@ -764,8 +766,8 @@ stacks have something to render.
 A course's indexable page is `/share/course/<region>/<park>/<course>`, served
 by the `share-entity` Lambda (seo.md's dynamic-but-public path, decisions
 § 2394). The key is the in-app URL's own three slugs; the in-app course page
-canonicals onto it, and `/sitemap.xml` lists every course
-(`courseEntries`). Its head is canonical English (`share_course_meta.ts`):
+canonicals onto it, and the sitemap lists every course
+(`courseEntries`, in the `courses-<hex>` children of `/sitemap.xml`). Its head is canonical English (`share_course_meta.ts`):
 "<course> at <park> — Threkir", a description with distance, shape, park and
 region that says *time trial* and never *race* (a closed course says so), and
 a `SportsActivityLocation` JSON-LD placed at the course start and contained

@@ -83,6 +83,10 @@ abstract final class StoreSelectors {
         training: app.training,
         initialPlanId: kDemoPlanId,
       );
+  /// The phrase is the thread's last question, below the fold until the
+  /// Coach has scrolled the thread to its latest exchange, so an on-screen
+  /// match also proves that scroll landed: the panel shows the answer, not
+  /// the start of the conversation.
   static final Finder coachReady =
       find.textContaining(kDemoCoachPhrase, findRichText: true);
 }

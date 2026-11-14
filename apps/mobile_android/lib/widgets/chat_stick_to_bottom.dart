@@ -59,8 +59,11 @@ class ChatStickToBottom {
       _lastPixels = null;
       showJump.value = false;
     }
-    // Let the new content lay out so maxScrollExtent includes it.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    // Wait for the frame that lays the new content out, so the list is
+    // attached and maxScrollExtent includes it. A fixed delay raced that
+    // frame: a thread that loaded quickly was still unbuilt when it expired,
+    // and the scroll gave up with the log open at its first message.
+    await WidgetsBinding.instance.endOfFrame;
     if (!context.mounted || !scroll.hasClients) return;
     if (!_stick) {
       showJump.value = true;

@@ -196,7 +196,7 @@
     "id": "using-help",
     "lang": "pt-BR",
     "title": "Como encontrar ajuda no app",
-    "summary": "Onde ficam os guias de ajuda, como pesquisar neles e como ir de uma tela direto para o guia que a explica.",
+    "summary": "Onde ficam os guias de ajuda, como buscar neles e como ir de uma tela direto para o guia que a explica.",
     "kind": "start",
     "category": "account",
     "audience": [
@@ -227,11 +227,11 @@
         ]
       },
       {
-        "heading": "Como pesquisar nos guias",
+        "heading": "Como buscar nos guias",
         "blocks": [
           {
             "type": "p",
-            "text": "Digite uma ou duas palavras em **Pesquisar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Pesquisar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto."
+            "text": "Digite uma ou duas palavras em **Buscar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Buscar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto."
           },
           {
             "type": "note",
@@ -513,7 +513,7 @@
               "Abra [[route:/social|Social]] e escolha a aba **Clubes**.",
               "Selecione **Criar clube**.",
               "Preencha o **Nome**. Os membros procuram o clube por esse nome, e o endereço web do clube é criado a partir dele quando você cria o clube. Renomear o clube depois não muda esse endereço.",
-              "Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando pesquisam a própria região.",
+              "Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando buscam a própria região.",
               "Escolha uma **Visibilidade**: clubes **Público** aparecem em **Explorar**, enquanto clubes **Privado** ficam ocultos e as pessoas só podem entrar por um link de convite.",
               "Em **Quem pode entrar?**, escolha **Qualquer pessoa pode entrar**, **Requer aprovação** ou **Somente por convite**.",
               "Marque **Exigir o reconhecimento dos riscos da atividade para entrar** se quiser que cada novo membro confirme que entende os riscos das corridas em grupo. Isso só pode ser definido agora, enquanto o clube está sendo criado.",
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra sempre que o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando você define um local, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar só os percursos, um a um, sem o calendário de provas."
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra sempre que o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando você define um lugar, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar só os percursos, um a um, sem o calendário de provas."
           },
           {
             "type": "list",

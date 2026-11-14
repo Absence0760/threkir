@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 						'Abra [[route:/social|Social]] e escolha a aba **Clubes**.',
 						'Selecione **Criar clube**.',
 						'Preencha o **Nome**. Os membros procuram o clube por esse nome, e o endereço web do clube é criado a partir dele quando você cria o clube. Renomear o clube depois não muda esse endereço.',
-						'Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando pesquisam a própria região.',
+						'Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando buscam a própria região.',
 						'Escolha uma **Visibilidade**: clubes **Público** aparecem em **Explorar**, enquanto clubes **Privado** ficam ocultos e as pessoas só podem entrar por um link de convite.',
 						'Em **Quem pode entrar?**, escolha **Qualquer pessoa pode entrar**, **Requer aprovação** ou **Somente por convite**.',
 						'Marque **Exigir o reconhecimento dos riscos da atividade para entrar** se quiser que cada novo membro confirme que entende os riscos das corridas em grupo. Isso só pode ser definido agora, enquanto o clube está sendo criado.',

@@ -641,7 +641,7 @@ Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file
 
 `AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing under Account in the You tab and at the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
 
-### `apps/mobile_ios/test/` — 949 files, byte-for-byte
+### `apps/mobile_ios/test/` — 950 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 

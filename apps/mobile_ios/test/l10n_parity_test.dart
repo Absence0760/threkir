@@ -61,6 +61,17 @@ List<String> _countlessOne(String value) => [
 /// `x1`. A literal count in a `one` branch is what this finds.
 final _literalOne = RegExp(r'(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])', unicode: true);
 
+// Japanese writes a count against its counter or unit with no space on
+// either side when the neighbour is Japanese: 「{n}件中{m}件」「約15分」
+// 「2点以上」. A Latin neighbour keeps its space (「Pro 8回」, 「5.0 km」).
+// Settled in .claude/agents/i18n/languages/ja.md; web twin
+// apps/web/src/lib/i18n/ja_counter_spacing.test.ts.
+const _jaCounter =
+    r'(?:時間|週間|か月|ヶ月|か所|種類|セット|ポイント|文字|件|回|人|名|分|秒|個|枚|本|歳|位|周|点|つ|日|年|月)';
+const _jaNumber = r'(?:\d+(?:[.,]\d+)?|\{[A-Za-z0-9_]+\}|#)';
+const _jaChar = r'[぀-ヿ㐀-鿿　-〿＀-￯]';
+final _jaSpacedCounter = RegExp('$_jaNumber +$_jaCounter|$_jaChar +$_jaNumber$_jaCounter');
+
 /// Whether [locale]'s CLDR `one` category, as gen-l10n's generated getters
 /// resolve it through `Intl.pluralLogic`, covers a count other than 1. In
 /// such a locale (`fr` and `pt` take 0 as well) a `one` branch that spells
@@ -307,6 +318,21 @@ void main() {
     );
     expect(_oneCoversMoreThanOne('en'), isFalse);
     expect(_oneCoversMoreThanOne('de'), isFalse);
+  });
+
+  test('ja writes a count against its counter with no space', () {
+    expect(_jaSpacedCounter.hasMatch('{count} 件のラン'), isTrue);
+    expect(_jaSpacedCounter.hasMatch('さらに {count}件'), isTrue);
+    expect(_jaSpacedCounter.hasMatch('Pro 8回'), isFalse);
+    expect(_jaSpacedCounter.hasMatch('{gain} m ↑'), isFalse);
+    final ja = _readArb('ja');
+    final offenders = [
+      for (final key in _messageKeys(ja))
+        if (_jaSpacedCounter.hasMatch(ja[key] as String)) '$key: ${ja[key]}',
+    ]..sort();
+    expect(offenders, isEmpty,
+        reason: 'app_ja.arb: drop the space between a number and its counter '
+            '(「{count}件」, 「約{minutes}分」)');
   });
 
   test('no catalogue declares the same key twice', () {

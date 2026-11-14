@@ -136,7 +136,7 @@ test.describe('saga: discover a public route, save it, review it (cross-user)', 
 				// (it never settles); poll for the concrete card instead.
 				await page.goto('/routes?tab=explore');
 
-				const searchBox = page.getByPlaceholder('Search routes by name...');
+				const searchBox = page.getByPlaceholder('Search routes by name…');
 				await expect(searchBox).toBeVisible({ timeout: 15_000 });
 				await searchBox.fill(routeName);
 				await searchBox.press('Enter');

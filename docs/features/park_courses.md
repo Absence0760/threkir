@@ -308,10 +308,25 @@ because a course is something you go and do, not a stretch you happen to run.
   of the query matching somewhere, case and accents ignored
   (`parkSearchTerms` / `parkSearchMatches` in the `any_time_courses` parity
   pair, on the catalogue's `fold`). Courses are matched on the client: the
-  section already loads every course in one read (`fetchAllParkCourses`), so
-  a server query per keystroke would buy nothing at hundreds of courses. It
-  outgrows that read near PostgREST's 1,000-row `max_rows`, at which point
-  the course read has to page or the search move to the server. Typing
+  section already holds every course (`fetchAllParkCourses`), so a server
+  query per keystroke would buy nothing at thousands of courses. That read
+  is a keyset walk (`walkKeyset`, by `id`), not one select: PostgREST stops
+  a select at `db.max-rows` (1000) with a 200 and no flag, which past that
+  many courses silently cut the list, its "See all N courses" count,
+  nearest first and the search to part of the catalogue (issue #1374). The
+  other catalogue lists are walked the same way, on web and in
+  `api_client`: the parks (`fetchParks`, region, name, id), a park's own
+  courses (`fetchParkCourses`, slug, id), this season's records
+  (`park_course_records`) and a park's month runner counts
+  (`park_course_month_runners`), both RPCs by `course_id`, the recap's
+  effort read (`fetchRecapParkCourses`, by effort id) and the sitemap's
+  course list. A walk that ends short fails the read, so a page error shows
+  the section's error and Retry rather than a shorter list. The walk holds
+  the whole catalogue in the client, which is the point: the count, the
+  park cards and nearest first all need every course. If the catalogue
+  reaches the tens of thousands, the payload (every segment's waypoints)
+  is the cost to move server-side first, with an ordered, searched,
+  keyset-paged RPC; until then one walk is a handful of requests. Typing
   settles for 250 ms before either list changes; the race search is not run
   while Courses hides the races, and runs when they show again. The hint
   names what the view finds ("Search races, parks and courses…" in All,

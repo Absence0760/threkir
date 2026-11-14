@@ -213,3 +213,55 @@ test('the follow graph a picker filters is walked to its end in both directions'
 		assert.doesNotMatch(src, /fetchFollowers\(|fetchFollowing\(/, `${file} must not read one page of follows`);
 	}
 });
+
+test('the park catalogue lists are walked whole, and a short walk fails', () => {
+	// Races & courses and /parks read every course once and search, order and
+	// count it on the client. One unranged select stopped at PostgREST's
+	// `db.max-rows` with a 200 and no flag, so past 1000 courses the list, its
+	// "See all N courses" count, nearest-first and the search all saw a
+	// partial catalogue (issue #1374). The records map, the parks, a park's
+	// own courses and its runner counts are lists of the same catalogue.
+	const helper = fnBody('walkWholeCatalogue');
+	assert.match(helper, /walkKeyset\(keys, fetchPage\)/);
+	assert.match(helper, /if \(!walk\.complete\) throw dbError\(/, 'a short walk must fail, not read as the catalogue');
+	for (const [name, order, read] of [
+		['fetchAllParkCourses', 'PARK_COURSE_ID_ORDER', /\.from\(TABLES\.park_courses\)/],
+		['fetchParks', 'PARK_ORDER', /\.from\(TABLES\.parks\)/],
+		['fetchParkCourses', 'PARK_COURSE_SLUG_ORDER', /\.from\(TABLES\.park_courses\)/],
+		['fetchParkCourseRecords', 'COURSE_ID_ORDER', /\.rpc\('park_course_records'/],
+		['fetchParkCourseMonthRunners', 'COURSE_ID_ORDER', /\.rpc\('park_course_month_runners'/],
+	] as const) {
+		const fn = body(name);
+		assert.match(fn, new RegExp(`walkWholeCatalogue\\(${order}, `), `${name} must walk by cursor`);
+		assert.match(fn, read, `${name} must read inside the walk`);
+		assert.match(fn, /if \(after\) q = q\.or\(after\)/, `${name} must start each page after the last`);
+		assert.match(
+			fn,
+			new RegExp(`for \\(const k of ${order}\\)[\\s\\S]*?\\.order\\(k\\.column`),
+			`${name} must sort by the order its cursor is taken in`,
+		);
+		assert.match(fn, /return q\.limit\(limit\)/, `${name} must ask for one page`);
+	}
+	assert.match(source, /const PARK_ORDER: readonly KeysetKey\[\] = \[[\s\S]*?'region_code'[\s\S]*?'name'[\s\S]*?'id'/);
+});
+
+test('the recap park lines walk the runner\'s efforts whole', () => {
+	// A year of catalogue efforts passes `db.max-rows` for a regular, and a
+	// cut read undercounts their parks and courses (issue #1374).
+	const fn = body('fetchRecapParkCourses');
+	assert.match(fn, /walkKeyset\(EFFORT_ID_ORDER, /);
+	assert.match(fn, /\.select\('id, global_segment_id'\)/, 'the cursor reads id off each effort');
+	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/);
+});
+
+test('the sitemap lists every park course, walked rather than limited', () => {
+	const sitemap = stripComments(
+		readFileSync(resolve(import.meta.dirname, '../../routes/sitemap.xml/+server.ts'), 'utf-8'),
+	);
+	assert.match(sitemap, /walkKeyset\(SITEMAP_COURSE_ORDER, /);
+	assert.doesNotMatch(
+		sitemap,
+		/\.from\(TABLES\.park_courses\)[\s\S]{0,300}?\.limit\(MAX_ENTITIES\)/,
+		'a .limit() past db.max-rows is cut there with a 200',
+	);
+});

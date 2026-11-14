@@ -176,8 +176,8 @@ abstract class AppLocalizations {
   /// Distance-and-run-count line in the shared recap summary
   ///
   /// In en, this message translates to:
-  /// **'{total} across {count} runs'**
-  String recapShareTotals(Object total, Object count);
+  /// **'{total} across {count, plural, one{{count} run} other{{count} runs}}'**
+  String recapShareTotals(Object total, int count);
 
   /// Longest-run line in the shared recap summary
   ///
@@ -188,8 +188,8 @@ abstract class AppLocalizations {
   /// Best-streak line in the shared recap summary
   ///
   /// In en, this message translates to:
-  /// **'Best streak: {days} days'**
-  String recapShareBestStreak(Object days);
+  /// **'Best streak: {days, plural, one{{days} day} other{{days} days}}'**
+  String recapShareBestStreak(int days);
 
   /// OS share-sheet subject for the year-in-running recap
   ///
@@ -404,14 +404,14 @@ abstract class AppLocalizations {
   /// Status line after a successful import with no errors
   ///
   /// In en, this message translates to:
-  /// **'Imported {count} runs from {label}'**
-  String importStatusImported(Object count, Object label);
+  /// **'Imported {count, plural, one{{count} run} other{{count} runs}} from {label}'**
+  String importStatusImported(int count, Object label);
 
   /// Status line after an import that had some failures
   ///
   /// In en, this message translates to:
-  /// **'Imported {count} runs ({errors} failed)'**
-  String importStatusImportedWithErrors(Object count, Object errors);
+  /// **'Imported {count, plural, one{{count} run} other{{count} runs}} ({errors} failed)'**
+  String importStatusImportedWithErrors(int count, int errors);
 
   /// Appended note when an imported source has no GPS route data
   ///
@@ -4922,7 +4922,7 @@ abstract class AppLocalizations {
   /// Lift row secondary: number of sets
   ///
   /// In en, this message translates to:
-  /// **'{n} sets'**
+  /// **'{n, plural, one{{n} set} other{{n} sets}}'**
   String historySetCount(int n);
 
   /// Meal row secondary: calories
@@ -5150,7 +5150,7 @@ abstract class AppLocalizations {
   /// Body of the parked-push card when the run's GPS trace is larger than the cloud store allows
   ///
   /// In en, this message translates to:
-  /// **'Its GPS trace ({waypoints} points) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.'**
+  /// **'Its GPS trace ({waypoints, plural, one{{waypoints} point} other{{waypoints} points}}) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.'**
   String runDetailBlockedTrackTooLarge(int waypoints);
 
   /// Body of the confirmation dialog for uploading a run without its GPS trace
@@ -6096,7 +6096,7 @@ abstract class AppLocalizations {
   /// Banner shown after saving a run's track as a route, with waypoint counts
   ///
   /// In en, this message translates to:
-  /// **'Saved \"{name}\" — {kept} waypoints ({smoothed} smoothed out)'**
+  /// **'Saved \"{name}\" — {kept, plural, one{{kept} waypoint} other{{kept} waypoints}} ({smoothed} smoothed out)'**
   String runDetailRouteSaved(String name, int kept, int smoothed);
 
   /// Banner shown when saving a run's track as a route fails
@@ -7158,19 +7158,19 @@ abstract class AppLocalizations {
   /// Banner after the route was pushed to the watch unchanged
   ///
   /// In en, this message translates to:
-  /// **'Course sent to the watch ({points} points)'**
+  /// **'Course sent to the watch ({points, plural, one{{points} point} other{{points} points}})'**
   String routeDetailWatchCourseSent(int points);
 
   /// Banner after the course reached the watch but the course-markers read failed, so no roadbook schedule was sent
   ///
   /// In en, this message translates to:
-  /// **'Course sent to the watch ({points} points), but its course markers couldn\'t be loaded, so no schedule went with it.'**
+  /// **'Course sent to the watch ({points, plural, one{{points} point} other{{points} points}}), but its course markers couldn\'t be loaded, so no schedule went with it.'**
   String routeDetailWatchCourseSentMarkersFailed(int points);
 
   /// Banner after a route too long for the watch was simplified before being pushed
   ///
   /// In en, this message translates to:
-  /// **'Course sent to the watch — thinned from {source} points to {points} to fit'**
+  /// **'Course sent to the watch — thinned from {source, plural, one{{source} point} other{{source} points}} to {points} to fit'**
   String routeDetailWatchCourseSimplified(int source, int points);
 
   /// Banner when a route cannot be sent to the watch because it has fewer than two positions
@@ -7200,13 +7200,13 @@ abstract class AppLocalizations {
   /// Banner after the route was pushed to the Apple Watch unchanged
   ///
   /// In en, this message translates to:
-  /// **'Route sent to Apple Watch ({points} points)'**
+  /// **'Route sent to Apple Watch ({points, plural, one{{points} point} other{{points} points}})'**
   String routeDetailAppleWatchRouteSent(int points);
 
   /// Banner after a route too dense for one Apple Watch push was thinned before being sent
   ///
   /// In en, this message translates to:
-  /// **'Route sent to Apple Watch — thinned from {source} points to {points} to fit'**
+  /// **'Route sent to Apple Watch — thinned from {source, plural, one{{source} point} other{{source} points}} to {points} to fit'**
   String routeDetailAppleWatchRouteSimplified(int source, int points);
 
   /// Banner when a route cannot be sent to the Apple Watch because it has fewer than two positions
@@ -7224,13 +7224,13 @@ abstract class AppLocalizations {
   /// Banner when both the course and its full race schedule reached the watch
   ///
   /// In en, this message translates to:
-  /// **'Course ({points} points) and race schedule ({checkpoints} checkpoints) sent to the watch'**
+  /// **'Course ({points, plural, one{{points} point} other{{points} points}}) and race schedule ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}) sent to the watch'**
   String routeDetailWatchCourseAndScheduleSent(int points, int checkpoints);
 
   /// Banner when the race schedule had to be reduced to the watch's checkpoint cap
   ///
   /// In en, this message translates to:
-  /// **'Course ({points} points) sent. Race schedule thinned from {source} to {checkpoints} checkpoints to fit the watch'**
+  /// **'Course ({points, plural, one{{points} point} other{{points} points}}) sent. Race schedule thinned from {source} to {checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}} to fit the watch'**
   String routeDetailWatchScheduleThinned(
     int points,
     int source,
@@ -7240,13 +7240,13 @@ abstract class AppLocalizations {
   /// Banner when clock-only cutoffs could not be resolved without a race start time
   ///
   /// In en, this message translates to:
-  /// **'Race schedule sent ({checkpoints} checkpoints), but {unresolved} clock cut-offs need a race start time — set one on the crew sheet so the watch gets them'**
+  /// **'Race schedule sent ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}), but {unresolved, plural, one{{unresolved} clock cut-off needs} other{{unresolved} clock cut-offs need}} a race start time — set one on the crew sheet so the watch gets them'**
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved);
 
   /// Banner when the route has more cutoffs than the watch frame carries, so the schedule was refused
   ///
   /// In en, this message translates to:
-  /// **'Course ({points} points) sent, but the race schedule has {cutoffs} cut-offs and the watch holds {max} — remove some to send it'**
+  /// **'Course ({points, plural, one{{points} point} other{{points} points}}) sent, but the race schedule has {cutoffs, plural, one{{cutoffs} cut-off} other{{cutoffs} cut-offs}} and the watch holds {max} — remove some to send it'**
   String routeDetailWatchScheduleTooManyCutoffs(
     int points,
     int cutoffs,
@@ -7394,7 +7394,7 @@ abstract class AppLocalizations {
   /// Stat label for the review count on the route-detail screen
   ///
   /// In en, this message translates to:
-  /// **'{count} reviews'**
+  /// **'{count, plural, one{{count} review} other{{count} reviews}}'**
   String routeDetailStatReviews(int count);
 
   /// Stat label for the waypoint count on the route-detail screen
@@ -8213,7 +8213,7 @@ abstract class AppLocalizations {
   /// Header of the cluster sheet listing routes that share a start point
   ///
   /// In en, this message translates to:
-  /// **'{count} routes start here'**
+  /// **'{count, plural, one{{count} route starts here} other{{count} routes start here}}'**
   String heatmapRoutesStartHere(int count);
 
   /// Route-count text on the heatmap results pill and list header
@@ -8987,13 +8987,13 @@ abstract class AppLocalizations {
   /// Actor name for a collapsed notification group (Alice and 4 others)
   ///
   /// In en, this message translates to:
-  /// **'{name} and {count} others'**
+  /// **'{name} and {count, plural, one{{count} other} other{{count} others}}'**
   String profileNotifNameAndOthers(String name, int count);
 
   /// Expand toggle label for a collapsed notification group
   ///
   /// In en, this message translates to:
-  /// **'and {count} others'**
+  /// **'{count, plural, one{and {count} other} other{and {count} others}}'**
   String profileNotifAndOthers(int count);
 
   /// Collapse toggle label for an expanded notification group
@@ -10259,7 +10259,7 @@ abstract class AppLocalizations {
   /// Exercise count meta on a club gym-routine-template row
   ///
   /// In en, this message translates to:
-  /// **'{n} exercises'**
+  /// **'{n, plural, one{{n} exercise} other{{n} exercises}}'**
   String clubDetailRoutineExerciseCount(int n);
 
   /// Shown when the event does not exist
@@ -11315,7 +11315,7 @@ abstract class AppLocalizations {
   /// Days-per-week dropdown option
   ///
   /// In en, this message translates to:
-  /// **'{count} days'**
+  /// **'{count, plural, one{{count} day} other{{count} days}}'**
   String planNewDaysOption(int count);
 
   /// Goal-time section label
@@ -11693,7 +11693,7 @@ abstract class AppLocalizations {
   /// Active-sessions count on a preview week row
   ///
   /// In en, this message translates to:
-  /// **'{count} sessions'**
+  /// **'{count, plural, one{{count} session} other{{count} sessions}}'**
   String planNewSessions(int count);
 
   /// Plan-new club-template picker
@@ -12503,7 +12503,7 @@ abstract class AppLocalizations {
   /// Home plan card body: under-run trend. n of the last total completed weeks were under plan
   ///
   /// In en, this message translates to:
-  /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
+  /// **'You\'ve run less than planned in {n} of the last {total, plural, one{{total} week} other{{total} weeks}}. There\'s a suggested adjustment to the weeks ahead.'**
   String planNudgeUnderBody(int n, int total);
 
   /// Home plan card title: last week came in well under plan (comeback ramp)
@@ -12551,7 +12551,7 @@ abstract class AppLocalizations {
   /// Home plan card body: runs on rest days in n of the last total completed weeks
   ///
   /// In en, this message translates to:
-  /// **'You\'ve run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.'**
+  /// **'You\'ve run on rest days in {n} of the last {total, plural, one{{total} week} other{{total} weeks}}. Those runs count toward your week, but rest days are where the training sinks in.'**
   String planNudgeRestBody(int n, int total);
 
   /// Home plan card: open the existing re-plan preview
@@ -13589,7 +13589,7 @@ abstract class AppLocalizations {
   /// Error on 429: daily limit reached
   ///
   /// In en, this message translates to:
-  /// **'Daily limit reached ({limit} messages). Come back tomorrow!'**
+  /// **'Daily limit reached ({limit, plural, one{{limit} message} other{{limit} messages}}). Come back tomorrow!'**
   String coachDailyLimitError(int limit);
 
   /// Generic error with HTTP status code
@@ -13943,13 +13943,13 @@ abstract class AppLocalizations {
   /// Banner shown after a server-built export that came back short of the account run history
   ///
   /// In en, this message translates to:
-  /// **'Export is partial — {count} of {total} runs.'**
+  /// **'Export is partial — {count} of {total, plural, one{{total} run} other{{total} runs}}.'**
   String settingsAccountBackupPartial(int count, int total);
 
   /// Persistent notice under the full-backup tile naming how short the last export was
   ///
   /// In en, this message translates to:
-  /// **'Your last export is partial: it holds {count} of the {total} runs on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.'**
+  /// **'Your last export is partial: it holds {count} of the {total, plural, one{{total} run} other{{total} runs}} on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.'**
   String settingsAccountBackupPartialNotice(int count, int total);
 
   /// Banner shown after a locally-built backup whose GPS track downloads came up short
@@ -14284,7 +14284,7 @@ abstract class AppLocalizations {
   /// Banner when the export quota refused the request
   ///
   /// In en, this message translates to:
-  /// **'Export limit reached — try again in {seconds} seconds.'**
+  /// **'Export limit reached — try again in {seconds, plural, one{{seconds} second} other{{seconds} seconds}}.'**
   String settingsAccountExportRateLimited(int seconds);
 
   /// Banner when the enqueue call failed
@@ -14302,7 +14302,7 @@ abstract class AppLocalizations {
   /// Banner raised when a watched export job finishes while the screen is open
   ///
   /// In en, this message translates to:
-  /// **'Your account export is ready — {count} runs.'**
+  /// **'Your account export is ready — {count, plural, one{{count} run} other{{count} runs}}.'**
   String settingsAccountExportReadyBanner(int count);
 
   /// Tile title for the full backup export
@@ -17134,7 +17134,7 @@ abstract class AppLocalizations {
   /// Training-load subtitle when HR-based TRIMP is available
   ///
   /// In en, this message translates to:
-  /// **'Heart-rate TRIMP over the last {days} days.'**
+  /// **'Heart-rate TRIMP over the last {days, plural, one{{days} day} other{{days} days}}.'**
   String trainingLoadSubtitleHr(int days);
 
   /// Training-load subtitle when only volume-based load is available
@@ -17233,7 +17233,7 @@ abstract class AppLocalizations {
   /// Window caption on the intensity card
   ///
   /// In en, this message translates to:
-  /// **'last {days} days'**
+  /// **'{days, plural, one{last {days} day} other{last {days} days}}'**
   String intensityWindow(int days);
 
   /// Caption stating how many HR-tracked runs the intensity breakdown is based on
@@ -19129,7 +19129,7 @@ abstract class AppLocalizations {
   /// Relative time: in N days
   ///
   /// In en, this message translates to:
-  /// **'In {count} days'**
+  /// **'{count, plural, one{In {count} day} other{In {count} days}}'**
   String upcomingEventInDays(int count);
 
   /// Badge when today's workout is already done
@@ -19453,7 +19453,7 @@ abstract class AppLocalizations {
   /// Relative time: N days ago
   ///
   /// In en, this message translates to:
-  /// **'{count} days ago'**
+  /// **'{count, plural, one{{count} day ago} other{{count} days ago}}'**
   String billingDaysAgo(int count);
 
   /// Banner headline when a Pro renewal failed
@@ -19771,7 +19771,7 @@ abstract class AppLocalizations {
   /// Spoken cue at the end of a run, with total distance and minutes
   ///
   /// In en, this message translates to:
-  /// **'Run complete. {distance} in {mins} minutes.'**
+  /// **'Run complete. {distance} in {mins, plural, one{{mins} minute} other{{mins} minutes}}.'**
   String ttsRunComplete(String distance, int mins);
 
   /// Spoken cue when the runner drifts off the selected route
@@ -19825,25 +19825,25 @@ abstract class AppLocalizations {
   /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre
   ///
   /// In en, this message translates to:
-  /// **'Ease up — {delta} seconds per kilometre ahead of pace.'**
+  /// **'Ease up — {delta, plural, one{{delta} second} other{{delta} seconds}} per kilometre ahead of pace.'**
   String ttsPaceDriftAheadKm(int delta);
 
   /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile
   ///
   /// In en, this message translates to:
-  /// **'Ease up — {delta} seconds per mile ahead of pace.'**
+  /// **'Ease up — {delta, plural, one{{delta} second} other{{delta} seconds}} per mile ahead of pace.'**
   String ttsPaceDriftAheadMi(int delta);
 
   /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre
   ///
   /// In en, this message translates to:
-  /// **'Pick it up — {delta} seconds per kilometre behind pace.'**
+  /// **'Pick it up — {delta, plural, one{{delta} second} other{{delta} seconds}} per kilometre behind pace.'**
   String ttsPaceDriftBehindKm(int delta);
 
   /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile
   ///
   /// In en, this message translates to:
-  /// **'Pick it up — {delta} seconds per mile behind pace.'**
+  /// **'Pick it up — {delta, plural, one{{delta} second} other{{delta} seconds}} per mile behind pace.'**
   String ttsPaceDriftBehindMi(int delta);
 
   /// Spoken speed in km/h appended to a split cue
@@ -19861,13 +19861,13 @@ abstract class AppLocalizations {
   /// Spoken pace in minutes/seconds per kilometre appended to a split cue
   ///
   /// In en, this message translates to:
-  /// **'Pace, {min} minutes {sec} seconds per kilometre'**
+  /// **'Pace, {min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre'**
   String ttsPaceKm(int min, int sec);
 
   /// Spoken pace in minutes/seconds per mile appended to a split cue
   ///
   /// In en, this message translates to:
-  /// **'Pace, {min} minutes {sec} seconds per mile'**
+  /// **'Pace, {min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per mile'**
   String ttsPaceMi(int min, int sec);
 
   /// Spoken distance in kilometres (value may be integer or decimal string)
@@ -19885,7 +19885,7 @@ abstract class AppLocalizations {
   /// Spoken distance in metres
   ///
   /// In en, this message translates to:
-  /// **'{value} metres'**
+  /// **'{value, plural, one{{value} metre} other{{value} metres}}'**
   String ttsDistanceMetres(int value);
 
   /// Spoken distance in whole miles
@@ -19903,7 +19903,7 @@ abstract class AppLocalizations {
   /// Spoken sub-mile distance in yards
   ///
   /// In en, this message translates to:
-  /// **'{value} yards'**
+  /// **'{value, plural, one{{value} yard} other{{value} yards}}'**
   String ttsDistanceYards(int value);
 
   /// Spoken split cue: distance count, unit word, then pace/speed tail
@@ -19999,31 +19999,31 @@ abstract class AppLocalizations {
   /// Workout-step pace tail in min/sec per kilometre
   ///
   /// In en, this message translates to:
-  /// **'{min} minutes {sec} seconds per kilometre'**
+  /// **'{min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre'**
   String ttsStepPaceKm(int min, int sec);
 
   /// Workout-step pace tail, whole minutes per kilometre
   ///
   /// In en, this message translates to:
-  /// **'{min} minutes per kilometre'**
+  /// **'{min, plural, one{{min} minute} other{{min} minutes}} per kilometre'**
   String ttsStepPaceKmWhole(int min);
 
   /// Workout-step pace tail in min/sec per mile
   ///
   /// In en, this message translates to:
-  /// **'{min} minutes {sec} seconds per mile'**
+  /// **'{min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per mile'**
   String ttsStepPaceMi(int min, int sec);
 
   /// Workout-step pace tail, whole minutes per mile
   ///
   /// In en, this message translates to:
-  /// **'{min} minutes per mile'**
+  /// **'{min, plural, one{{min} minute} other{{min} minutes}} per mile'**
   String ttsStepPaceMiWhole(int min);
 
   /// Spoken duration: seconds only
   ///
   /// In en, this message translates to:
-  /// **'{sec} seconds'**
+  /// **'{sec, plural, one{{sec} second} other{{sec} seconds}}'**
   String ttsDurationSeconds(int sec);
 
   /// Spoken duration: whole minutes
@@ -20035,7 +20035,7 @@ abstract class AppLocalizations {
   /// Spoken duration: a minutes phrase followed by seconds
   ///
   /// In en, this message translates to:
-  /// **'{minutes} {sec} seconds'**
+  /// **'{minutes} {sec, plural, one{{sec} second} other{{sec} seconds}}'**
   String ttsDurationMinutesSeconds(String minutes, int sec);
 
   /// Workout-step cue: intro then duration
@@ -22255,7 +22255,7 @@ abstract class AppLocalizations {
   /// Age in whole years. {n} is the age.
   ///
   /// In en, this message translates to:
-  /// **'{n} years'**
+  /// **'{n, plural, one{{n} year} other{{n} years}}'**
   String nutritionTargetsAgeYears(int n);
 
   /// Body-metrics row value when a date of birth is on record but the Art 9 health-data consent is not, so the age cannot be used for the calorie target
@@ -22345,7 +22345,7 @@ abstract class AppLocalizations {
   /// Weekly trend chip: logged days that hit the protein goal, out of total logged days
   ///
   /// In en, this message translates to:
-  /// **'Protein {met}/{total} days'**
+  /// **'Protein {met}/{total, plural, one{{total} day} other{{total} days}}'**
   String nutritionWeekProtein(int met, int total);
 
   /// No description provided for @nutritionGoalLine.
@@ -22693,7 +22693,7 @@ abstract class AppLocalizations {
   /// Banner after logging a meal template: n items from the named template
   ///
   /// In en, this message translates to:
-  /// **'Logged {n} items from {name}.'**
+  /// **'Logged {n, plural, one{{n} item} other{{n} items}} from {name}.'**
   String nutritionTemplateLogged(int n, String name);
 
   /// Banner when logging a meal template fails
@@ -22711,7 +22711,7 @@ abstract class AppLocalizations {
   /// Subtitle on a meal-template row: number of items
   ///
   /// In en, this message translates to:
-  /// **'{n} items'**
+  /// **'{n, plural, one{{n} item} other{{n} items}}'**
   String nutritionTemplateItems(int n);
 
   /// No description provided for @nutritionDeleteTemplate.
@@ -22819,7 +22819,7 @@ abstract class AppLocalizations {
   /// Subtitle on a recipe row: ingredient count + servings
   ///
   /// In en, this message translates to:
-  /// **'{n} ingredients · {servings} servings'**
+  /// **'{n, plural, one{{n} ingredient} other{{n} ingredients}} · {servings, plural, one{{servings} serving} other{{servings} servings}}'**
   String nutritionRecipeMeta(int n, num servings);
 
   /// No description provided for @nutritionDeleteRecipe.
@@ -22903,8 +22903,8 @@ abstract class AppLocalizations {
   /// A counted-reps step in the sequence
   ///
   /// In en, this message translates to:
-  /// **'{name} · {reps} reps'**
-  String sessionStepReps(Object name, Object reps);
+  /// **'{name} · {reps, plural, one{{reps} rep} other{{reps} reps}}'**
+  String sessionStepReps(Object name, int reps);
 
   /// A continuous flow step in the sequence
   ///
@@ -23702,7 +23702,7 @@ abstract class AppLocalizations {
   /// Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date
   ///
   /// In en, this message translates to:
-  /// **'{name} has {count} plans still ahead: {plans}. A plan you assign can\'t overlap any of them, so start it after {end} or in a gap between them.'**
+  /// **'{name} has {count, plural, one{{count} plan} other{{count} plans}} still ahead: {plans}. A plan you assign can\'t overlap any of them, so start it after {end} or in a gap between them.'**
   String coachingAthleteAssignAfterMany(
     String name,
     int count,
@@ -24936,7 +24936,7 @@ abstract class AppLocalizations {
   /// Active-days value
   ///
   /// In en, this message translates to:
-  /// **'{n} days'**
+  /// **'{n, plural, one{{n} day} other{{n} days}}'**
   String challengesUnitDays(int n);
 
   /// Activity-count value
@@ -25050,7 +25050,7 @@ abstract class AppLocalizations {
   /// Donor count under the thermometer
   ///
   /// In en, this message translates to:
-  /// **'{count} supporters'**
+  /// **'{count, plural, one{{count} supporter} other{{count} supporters}}'**
   String fundraiserDonorCount(int count);
 
   /// Shown when a fundraiser exceeds its goal
@@ -25368,13 +25368,13 @@ abstract class AppLocalizations {
   /// Races screen: explains the Recent results choice; {days} is the look-back window in days
   ///
   /// In en, this message translates to:
-  /// **'Recent results lists races from the last {days} days, newest first, so you can find a race you ran and import your result.'**
+  /// **'Recent results lists races from the last {days, plural, one{{days} day} other{{days} days}}, newest first, so you can find a race you ran and import your result.'**
   String racesWhenHint(int days);
 
   /// Races screen: no recent races match; {days} is the look-back window in days
   ///
   /// In en, this message translates to:
-  /// **'No races in the last {days} days match these filters.'**
+  /// **'No races in the last {days, plural, one{{days} day} other{{days} days}} match these filters.'**
   String racesEmptyRecent(int days);
 
   /// Race detail screen: the listing failed to load
@@ -27196,7 +27196,7 @@ abstract class AppLocalizations {
   /// No description provided for @simWatchWorkoutPushed.
   ///
   /// In en, this message translates to:
-  /// **'Workout pushed to the watch ({steps} steps)'**
+  /// **'Workout pushed to the watch ({steps, plural, one{{steps} step} other{{steps} steps}})'**
   String simWatchWorkoutPushed(int steps);
 
   /// No description provided for @simWatchPushWorkoutFailed.
@@ -27214,7 +27214,7 @@ abstract class AppLocalizations {
   /// Status line after the dev sim-watch roadbook push succeeds
   ///
   /// In en, this message translates to:
-  /// **'Roadbook pushed to the watch ({checkpoints} checkpoints, {cutoffs} cut-offs)'**
+  /// **'Roadbook pushed to the watch ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}, {cutoffs, plural, one{{cutoffs} cut-off} other{{cutoffs} cut-offs}})'**
   String simWatchRoadbookPushed(int checkpoints, int cutoffs);
 
   /// Status line after the dev sim-watch roadbook push fails
@@ -27232,7 +27232,7 @@ abstract class AppLocalizations {
   /// No description provided for @simWatchCoursePushed.
   ///
   /// In en, this message translates to:
-  /// **'Course pushed to the watch ({points} points)'**
+  /// **'Course pushed to the watch ({points, plural, one{{points} point} other{{points} points}})'**
   String simWatchCoursePushed(int points);
 
   /// No description provided for @simWatchPushCourseFailed.
@@ -27406,25 +27406,25 @@ abstract class AppLocalizations {
   /// Voice cues / race strategy
   ///
   /// In en, this message translates to:
-  /// **'Speed up by {sec} seconds per kilometre'**
+  /// **'Speed up by {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre'**
   String ttsPaceAlertSpeedUpByKm(int sec);
 
   /// Voice cues / race strategy
   ///
   /// In en, this message translates to:
-  /// **'Speed up by {sec} seconds per mile'**
+  /// **'Speed up by {sec, plural, one{{sec} second} other{{sec} seconds}} per mile'**
   String ttsPaceAlertSpeedUpByMi(int sec);
 
   /// Voice cues / race strategy
   ///
   /// In en, this message translates to:
-  /// **'Slow down by {sec} seconds per kilometre'**
+  /// **'Slow down by {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre'**
   String ttsPaceAlertSlowDownByKm(int sec);
 
   /// Voice cues / race strategy
   ///
   /// In en, this message translates to:
-  /// **'Slow down by {sec} seconds per mile'**
+  /// **'Slow down by {sec, plural, one{{sec} second} other{{sec} seconds}} per mile'**
   String ttsPaceAlertSlowDownByMi(int sec);
 
   /// Voice cues / race strategy
@@ -28642,7 +28642,7 @@ abstract class AppLocalizations {
   /// How long the runner was away, in whole weeks
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks without a run'**
+  /// **'{weeks, plural, one{{weeks} week without a run} other{{weeks} weeks without a run}}'**
   String comebackLayoff(int weeks);
 
   /// Caption under the share-of-pre-break-base figure
@@ -29308,7 +29308,7 @@ abstract class AppLocalizations {
   /// Plan detail: the Week by week expander hint; n is the plan length in weeks
   ///
   /// In en, this message translates to:
-  /// **'All {n} weeks, day by day'**
+  /// **'{n, plural, one{{n} week, day by day} other{All {n} weeks, day by day}}'**
   String planDetailSectionWeeksHint(int n);
 
   /// Plan detail: a named expander (title or its one-line hint)
@@ -32415,7 +32415,7 @@ abstract class AppLocalizations {
   /// Body of the comeback note. {weeks} whole weeks off; {pre} and {cap} are formatted distances
   ///
   /// In en, this message translates to:
-  /// **'You\'ve had about {weeks} weeks off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.'**
+  /// **'You\'ve had about {weeks, plural, one{{weeks} week} other{{weeks} weeks}} off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.'**
   String planNewReturnBody(int weeks, String pre, String cap);
 
   /// Switch on the comeback note: cap the opening weeks
@@ -34561,7 +34561,7 @@ abstract class AppLocalizations {
   /// Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit
   ///
   /// In en, this message translates to:
-  /// **'{count} splits · avg {pace}'**
+  /// **'{count, plural, one{{count} split} other{{count} splits}} · avg {pace}'**
   String shareCardSplitsHeading(int count, String pace);
 
   /// Under the day count on the streak sticker

@@ -48,8 +48,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String recapShareTotals(Object total, Object count) {
-    return '$total across $count runs';
+  String recapShareTotals(Object total, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return '$total across $_temp0';
   }
 
   @override
@@ -58,8 +64,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String recapShareBestStreak(Object days) {
-    return 'Best streak: $days days';
+  String recapShareBestStreak(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'Best streak: $_temp0';
   }
 
   @override
@@ -212,13 +224,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routePickerAllRoutesHeader => 'All routes';
 
   @override
-  String importStatusImported(Object count, Object label) {
-    return 'Imported $count runs from $label';
+  String importStatusImported(int count, Object label) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return 'Imported $_temp0 from $label';
   }
 
   @override
-  String importStatusImportedWithErrors(Object count, Object errors) {
-    return 'Imported $count runs ($errors failed)';
+  String importStatusImportedWithErrors(int count, int errors) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return 'Imported $_temp0 ($errors failed)';
   }
 
   @override
@@ -2948,7 +2972,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String historySetCount(int n) {
-    return '$n sets';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sets',
+      one: '$n set',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3095,7 +3125,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String runDetailBlockedTrackTooLarge(int waypoints) {
-    return 'Its GPS trace ($waypoints points) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.';
+    String _temp0 = intl.Intl.pluralLogic(
+      waypoints,
+      locale: localeName,
+      other: '$waypoints points',
+      one: '$waypoints point',
+    );
+    return 'Its GPS trace ($_temp0) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.';
   }
 
   @override
@@ -3674,7 +3710,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return 'Saved \"$name\" — $kept waypoints ($smoothed smoothed out)';
+    String _temp0 = intl.Intl.pluralLogic(
+      kept,
+      locale: localeName,
+      other: '$kept waypoints',
+      one: '$kept waypoint',
+    );
+    return 'Saved \"$name\" — $_temp0 ($smoothed smoothed out)';
   }
 
   @override
@@ -4352,17 +4394,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeDetailWatchCourseSent(int points) {
-    return 'Course sent to the watch ($points points)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    return 'Course sent to the watch ($_temp0)';
   }
 
   @override
   String routeDetailWatchCourseSentMarkersFailed(int points) {
-    return 'Course sent to the watch ($points points), but its course markers couldn\'t be loaded, so no schedule went with it.';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    return 'Course sent to the watch ($_temp0), but its course markers couldn\'t be loaded, so no schedule went with it.';
   }
 
   @override
   String routeDetailWatchCourseSimplified(int source, int points) {
-    return 'Course sent to the watch — thinned from $source points to $points to fit';
+    String _temp0 = intl.Intl.pluralLogic(
+      source,
+      locale: localeName,
+      other: '$source points',
+      one: '$source point',
+    );
+    return 'Course sent to the watch — thinned from $_temp0 to $points to fit';
   }
 
   @override
@@ -4383,12 +4443,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeDetailAppleWatchRouteSent(int points) {
-    return 'Route sent to Apple Watch ($points points)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    return 'Route sent to Apple Watch ($_temp0)';
   }
 
   @override
   String routeDetailAppleWatchRouteSimplified(int source, int points) {
-    return 'Route sent to Apple Watch — thinned from $source points to $points to fit';
+    String _temp0 = intl.Intl.pluralLogic(
+      source,
+      locale: localeName,
+      other: '$source points',
+      one: '$source point',
+    );
+    return 'Route sent to Apple Watch — thinned from $_temp0 to $points to fit';
   }
 
   @override
@@ -4402,7 +4474,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeDetailWatchCourseAndScheduleSent(int points, int checkpoints) {
-    return 'Course ($points points) and race schedule ($checkpoints checkpoints) sent to the watch';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints checkpoints',
+      one: '$checkpoints checkpoint',
+    );
+    return 'Course ($_temp0) and race schedule ($_temp1) sent to the watch';
   }
 
   @override
@@ -4411,12 +4495,36 @@ class AppLocalizationsEn extends AppLocalizations {
     int source,
     int checkpoints,
   ) {
-    return 'Course ($points points) sent. Race schedule thinned from $source to $checkpoints checkpoints to fit the watch';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints checkpoints',
+      one: '$checkpoints checkpoint',
+    );
+    return 'Course ($_temp0) sent. Race schedule thinned from $source to $_temp1 to fit the watch';
   }
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'Race schedule sent ($checkpoints checkpoints), but $unresolved clock cut-offs need a race start time — set one on the crew sheet so the watch gets them';
+    String _temp0 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints checkpoints',
+      one: '$checkpoints checkpoint',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      unresolved,
+      locale: localeName,
+      other: '$unresolved clock cut-offs need',
+      one: '$unresolved clock cut-off needs',
+    );
+    return 'Race schedule sent ($_temp0), but $_temp1 a race start time — set one on the crew sheet so the watch gets them';
   }
 
   @override
@@ -4425,7 +4533,19 @@ class AppLocalizationsEn extends AppLocalizations {
     int cutoffs,
     int max,
   ) {
-    return 'Course ($points points) sent, but the race schedule has $cutoffs cut-offs and the watch holds $max — remove some to send it';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      cutoffs,
+      locale: localeName,
+      other: '$cutoffs cut-offs',
+      one: '$cutoffs cut-off',
+    );
+    return 'Course ($_temp0) sent, but the race schedule has $_temp1 and the watch holds $max — remove some to send it';
   }
 
   @override
@@ -4503,7 +4623,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeDetailStatReviews(int count) {
-    return '$count reviews';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reviews',
+      one: '$count review',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5089,7 +5215,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String heatmapRoutesStartHere(int count) {
-    return '$count routes start here';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count routes start here',
+      one: '$count route starts here',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5563,12 +5695,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String profileNotifNameAndOthers(String name, int count) {
-    return '$name and $count others';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count others',
+      one: '$count other',
+    );
+    return '$name and $_temp0';
   }
 
   @override
   String profileNotifAndOthers(int count) {
-    return 'and $count others';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'and $count others',
+      one: 'and $count other',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -6367,7 +6511,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String clubDetailRoutineExerciseCount(int n) {
-    return '$n exercises';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n exercises',
+      one: '$n exercise',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7012,7 +7162,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNewDaysOption(int count) {
-    return '$count days';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7255,7 +7411,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNewSessions(int count) {
-    return '$count sessions';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '$count session',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7823,7 +7985,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNudgeUnderBody(int n, int total) {
-    return 'You\'ve run less than planned in $n of the last $total weeks. There\'s a suggested adjustment to the weeks ahead.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total weeks',
+      one: '$total week',
+    );
+    return 'You\'ve run less than planned in $n of the last $_temp0. There\'s a suggested adjustment to the weeks ahead.';
   }
 
   @override
@@ -7859,7 +8027,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNudgeRestBody(int n, int total) {
-    return 'You\'ve run on rest days in $n of the last $total weeks. Those runs count toward your week, but rest days are where the training sinks in.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total weeks',
+      one: '$total week',
+    );
+    return 'You\'ve run on rest days in $n of the last $_temp0. Those runs count toward your week, but rest days are where the training sinks in.';
   }
 
   @override
@@ -8509,7 +8683,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String coachDailyLimitError(int limit) {
-    return 'Daily limit reached ($limit messages). Come back tomorrow!';
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other: '$limit messages',
+      one: '$limit message',
+    );
+    return 'Daily limit reached ($_temp0). Come back tomorrow!';
   }
 
   @override
@@ -8728,12 +8908,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountBackupPartial(int count, int total) {
-    return 'Export is partial — $count of $total runs.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total runs',
+      one: '$total run',
+    );
+    return 'Export is partial — $count of $_temp0.';
   }
 
   @override
   String settingsAccountBackupPartialNotice(int count, int total) {
-    return 'Your last export is partial: it holds $count of the $total runs on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total runs',
+      one: '$total run',
+    );
+    return 'Your last export is partial: it holds $count of the $_temp0 on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.';
   }
 
   @override
@@ -8985,7 +9177,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountExportRateLimited(int seconds) {
-    return 'Export limit reached — try again in $seconds seconds.';
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds seconds',
+      one: '$seconds second',
+    );
+    return 'Export limit reached — try again in $_temp0.';
   }
 
   @override
@@ -9000,7 +9198,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountExportReadyBanner(int count) {
-    return 'Your account export is ready — $count runs.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return 'Your account export is ready — $_temp0.';
   }
 
   @override
@@ -10748,7 +10952,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String trainingLoadSubtitleHr(int days) {
-    return 'Heart-rate TRIMP over the last $days days.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'Heart-rate TRIMP over the last $_temp0.';
   }
 
   @override
@@ -10815,7 +11025,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String intensityWindow(int days) {
-    return 'last $days days';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'last $days days',
+      one: 'last $days day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11911,7 +12127,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String upcomingEventInDays(int count) {
-    return 'In $count days';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count days',
+      one: 'In $count day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12080,7 +12302,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String billingDaysAgo(int count) {
-    return '$count days ago';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+      one: '$count day ago',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12266,7 +12494,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsRunComplete(String distance, int mins) {
-    return 'Run complete. $distance in $mins minutes.';
+    String _temp0 = intl.Intl.pluralLogic(
+      mins,
+      locale: localeName,
+      other: '$mins minutes',
+      one: '$mins minute',
+    );
+    return 'Run complete. $distance in $_temp0.';
   }
 
   @override
@@ -12295,22 +12529,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsPaceDriftAheadKm(int delta) {
-    return 'Ease up — $delta seconds per kilometre ahead of pace.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta seconds',
+      one: '$delta second',
+    );
+    return 'Ease up — $_temp0 per kilometre ahead of pace.';
   }
 
   @override
   String ttsPaceDriftAheadMi(int delta) {
-    return 'Ease up — $delta seconds per mile ahead of pace.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta seconds',
+      one: '$delta second',
+    );
+    return 'Ease up — $_temp0 per mile ahead of pace.';
   }
 
   @override
   String ttsPaceDriftBehindKm(int delta) {
-    return 'Pick it up — $delta seconds per kilometre behind pace.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta seconds',
+      one: '$delta second',
+    );
+    return 'Pick it up — $_temp0 per kilometre behind pace.';
   }
 
   @override
   String ttsPaceDriftBehindMi(int delta) {
-    return 'Pick it up — $delta seconds per mile behind pace.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta seconds',
+      one: '$delta second',
+    );
+    return 'Pick it up — $_temp0 per mile behind pace.';
   }
 
   @override
@@ -12325,12 +12583,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsPaceKm(int min, int sec) {
-    return 'Pace, $min minutes $sec seconds per kilometre';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Pace, $_temp0 $_temp1 per kilometre';
   }
 
   @override
   String ttsPaceMi(int min, int sec) {
-    return 'Pace, $min minutes $sec seconds per mile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Pace, $_temp0 $_temp1 per mile';
   }
 
   @override
@@ -12351,7 +12633,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsDistanceMetres(int value) {
-    return '$value metres';
+    String _temp0 = intl.Intl.pluralLogic(
+      value,
+      locale: localeName,
+      other: '$value metres',
+      one: '$value metre',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12372,7 +12660,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsDistanceYards(int value) {
-    return '$value yards';
+    String _temp0 = intl.Intl.pluralLogic(
+      value,
+      locale: localeName,
+      other: '$value yards',
+      one: '$value yard',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12434,27 +12728,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsStepPaceKm(int min, int sec) {
-    return '$min minutes $sec seconds per kilometre';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return '$_temp0 $_temp1 per kilometre';
   }
 
   @override
   String ttsStepPaceKmWhole(int min) {
-    return '$min minutes per kilometre';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    return '$_temp0 per kilometre';
   }
 
   @override
   String ttsStepPaceMi(int min, int sec) {
-    return '$min minutes $sec seconds per mile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return '$_temp0 $_temp1 per mile';
   }
 
   @override
   String ttsStepPaceMiWhole(int min) {
-    return '$min minutes per mile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min minutes',
+      one: '$min minute',
+    );
+    return '$_temp0 per mile';
   }
 
   @override
   String ttsDurationSeconds(int sec) {
-    return '$sec seconds';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12470,7 +12806,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsDurationMinutesSeconds(String minutes, int sec) {
-    return '$minutes $sec seconds';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return '$minutes $_temp0';
   }
 
   @override
@@ -13784,7 +14126,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String nutritionTargetsAgeYears(int n) {
-    return '$n years';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n years',
+      one: '$n year',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -13845,7 +14193,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String nutritionWeekProtein(int met, int total) {
-    return 'Protein $met/$total days';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total days',
+      one: '$total day',
+    );
+    return 'Protein $met/$_temp0';
   }
 
   @override
@@ -14043,7 +14397,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String nutritionTemplateLogged(int n, String name) {
-    return 'Logged $n items from $name.';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n items',
+      one: '$n item',
+    );
+    return 'Logged $_temp0 from $name.';
   }
 
   @override
@@ -14058,7 +14418,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String nutritionTemplateItems(int n) {
-    return '$n items';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n items',
+      one: '$n item',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14129,7 +14495,19 @@ class AppLocalizationsEn extends AppLocalizations {
         intl.NumberFormat.decimalPattern(localeName);
     final String servingsString = servingsNumberFormat.format(servings);
 
-    return '$n ingredients · $servingsString servings';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n ingredients',
+      one: '$n ingredient',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      servings,
+      locale: localeName,
+      other: '$servingsString servings',
+      one: '$servingsString serving',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -14177,8 +14555,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String sessionStepReps(Object name, Object reps) {
-    return '$name · $reps reps';
+  String sessionStepReps(Object name, int reps) {
+    String _temp0 = intl.Intl.pluralLogic(
+      reps,
+      locale: localeName,
+      other: '$reps reps',
+      one: '$reps rep',
+    );
+    return '$name · $_temp0';
   }
 
   @override
@@ -14663,7 +15047,13 @@ class AppLocalizationsEn extends AppLocalizations {
     String plans,
     String end,
   ) {
-    return '$name has $count plans still ahead: $plans. A plan you assign can\'t overlap any of them, so start it after $end or in a gap between them.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plans',
+      one: '$count plan',
+    );
+    return '$name has $_temp0 still ahead: $plans. A plan you assign can\'t overlap any of them, so start it after $end or in a gap between them.';
   }
 
   @override
@@ -15392,7 +15782,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String challengesUnitDays(int n) {
-    return '$n days';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '$n day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -15468,7 +15864,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String fundraiserDonorCount(int count) {
-    return '$count supporters';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count supporters',
+      one: '$count supporter',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -15678,12 +16080,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String racesWhenHint(int days) {
-    return 'Recent results lists races from the last $days days, newest first, so you can find a race you ran and import your result.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'Recent results lists races from the last $_temp0, newest first, so you can find a race you ran and import your result.';
   }
 
   @override
   String racesEmptyRecent(int days) {
-    return 'No races in the last $days days match these filters.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'No races in the last $_temp0 match these filters.';
   }
 
   @override
@@ -16767,7 +17181,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String simWatchWorkoutPushed(int steps) {
-    return 'Workout pushed to the watch ($steps steps)';
+    String _temp0 = intl.Intl.pluralLogic(
+      steps,
+      locale: localeName,
+      other: '$steps steps',
+      one: '$steps step',
+    );
+    return 'Workout pushed to the watch ($_temp0)';
   }
 
   @override
@@ -16780,7 +17200,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
-    return 'Roadbook pushed to the watch ($checkpoints checkpoints, $cutoffs cut-offs)';
+    String _temp0 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints checkpoints',
+      one: '$checkpoints checkpoint',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      cutoffs,
+      locale: localeName,
+      other: '$cutoffs cut-offs',
+      one: '$cutoffs cut-off',
+    );
+    return 'Roadbook pushed to the watch ($_temp0, $_temp1)';
   }
 
   @override
@@ -16793,7 +17225,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String simWatchCoursePushed(int points) {
-    return 'Course pushed to the watch ($points points)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points points',
+      one: '$points point',
+    );
+    return 'Course pushed to the watch ($_temp0)';
   }
 
   @override
@@ -16889,22 +17327,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ttsPaceAlertSpeedUpByKm(int sec) {
-    return 'Speed up by $sec seconds per kilometre';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Speed up by $_temp0 per kilometre';
   }
 
   @override
   String ttsPaceAlertSpeedUpByMi(int sec) {
-    return 'Speed up by $sec seconds per mile';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Speed up by $_temp0 per mile';
   }
 
   @override
   String ttsPaceAlertSlowDownByKm(int sec) {
-    return 'Slow down by $sec seconds per kilometre';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Slow down by $_temp0 per kilometre';
   }
 
   @override
   String ttsPaceAlertSlowDownByMi(int sec) {
-    return 'Slow down by $sec seconds per mile';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec seconds',
+      one: '$sec second',
+    );
+    return 'Slow down by $_temp0 per mile';
   }
 
   @override
@@ -17638,7 +18100,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String comebackLayoff(int weeks) {
-    return '$weeks weeks without a run';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks without a run',
+      one: '$weeks week without a run',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -18067,7 +18535,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planDetailSectionWeeksHint(int n) {
-    return 'All $n weeks, day by day';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'All $n weeks, day by day',
+      one: '$n week, day by day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -20015,7 +20489,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNewReturnBody(int weeks, String pre, String cap) {
-    return 'You\'ve had about $weeks weeks off. Before that you averaged $pre a week, so week 1 asks for no more than $cap and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    return 'You\'ve had about $_temp0 off. Before that you averaged $pre a week, so week 1 asks for no more than $cap and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.';
   }
 
   @override
@@ -21450,7 +21930,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String shareCardSplitsHeading(int count, String pace) {
-    return '$count splits · avg $pace';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count splits',
+      one: '$count split',
+    );
+    return '$_temp0 · avg $pace';
   }
 
   @override

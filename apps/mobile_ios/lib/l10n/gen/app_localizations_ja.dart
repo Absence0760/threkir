@@ -45,7 +45,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String recapShareTotals(Object total, Object count) {
+  String recapShareTotals(Object total, int count) {
     return '$count件のランで$total';
   }
 
@@ -55,7 +55,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String recapShareBestStreak(Object days) {
+  String recapShareBestStreak(int days) {
     return '最高の連続記録: $days日';
   }
 
@@ -205,12 +205,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routePickerAllRoutesHeader => 'すべてのルート';
 
   @override
-  String importStatusImported(Object count, Object label) {
+  String importStatusImported(int count, Object label) {
     return '$labelから$count件のランをインポートしました';
   }
 
   @override
-  String importStatusImportedWithErrors(Object count, Object errors) {
+  String importStatusImportedWithErrors(int count, int errors) {
     return '$count件のランをインポートしました（$errors件失敗）';
   }
 
@@ -13620,7 +13620,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String sessionStepReps(Object name, Object reps) {
+  String sessionStepReps(Object name, int reps) {
     return '$name・$reps回';
   }
 

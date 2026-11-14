@@ -48,8 +48,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String recapShareTotals(Object total, Object count) {
-    return '$total über $count Läufe';
+  String recapShareTotals(Object total, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Läufe',
+      one: '$count Lauf',
+    );
+    return '$total über $_temp0';
   }
 
   @override
@@ -58,8 +64,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String recapShareBestStreak(Object days) {
-    return 'Beste Serie: $days Tage';
+  String recapShareBestStreak(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '$days Tag',
+    );
+    return 'Beste Serie: $_temp0';
   }
 
   @override
@@ -213,13 +225,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routePickerAllRoutesHeader => 'Alle Routen';
 
   @override
-  String importStatusImported(Object count, Object label) {
-    return '$count Läufe aus $label importiert';
+  String importStatusImported(int count, Object label) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Läufe',
+      one: '$count Lauf',
+    );
+    return '$_temp0 aus $label importiert';
   }
 
   @override
-  String importStatusImportedWithErrors(Object count, Object errors) {
-    return '$count Läufe importiert ($errors fehlgeschlagen)';
+  String importStatusImportedWithErrors(int count, int errors) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Läufe',
+      one: '$count Lauf',
+    );
+    return '$_temp0 importiert ($errors fehlgeschlagen)';
   }
 
   @override
@@ -2987,7 +3011,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String historySetCount(int n) {
-    return '$n Sätze';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Sätze',
+      one: '$n Satz',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3137,7 +3167,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String runDetailBlockedTrackTooLarge(int waypoints) {
-    return 'Seine GPS-Aufzeichnung ($waypoints Punkte) ist größer, als der Cloud-Speicher zulässt — ein erneuter Versuch kann daher nie gelingen. Alles andere zu diesem Lauf — Distanz, Zeit, Tempo, Höhenmeter — lässt sich weiterhin speichern.';
+    String _temp0 = intl.Intl.pluralLogic(
+      waypoints,
+      locale: localeName,
+      other: '$waypoints Punkte',
+      one: '$waypoints Punkt',
+    );
+    return 'Seine GPS-Aufzeichnung ($_temp0) ist größer, als der Cloud-Speicher zulässt — ein erneuter Versuch kann daher nie gelingen. Alles andere zu diesem Lauf — Distanz, Zeit, Tempo, Höhenmeter — lässt sich weiterhin speichern.';
   }
 
   @override
@@ -3721,7 +3757,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '„$name“ gespeichert — $kept Wegpunkte ($smoothed geglättet)';
+    String _temp0 = intl.Intl.pluralLogic(
+      kept,
+      locale: localeName,
+      other: '$kept Wegpunkte',
+      one: '$kept Wegpunkt',
+    );
+    return '„$name“ gespeichert — $_temp0 ($smoothed geglättet)';
   }
 
   @override
@@ -4411,17 +4453,35 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routeDetailWatchCourseSent(int points) {
-    return 'Strecke an die Uhr gesendet ($points Punkte)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Strecke an die Uhr gesendet ($_temp0)';
   }
 
   @override
   String routeDetailWatchCourseSentMarkersFailed(int points) {
-    return 'Strecke an die Uhr gesendet ($points Punkte), aber die Streckenmarker konnten nicht geladen werden – daher wurde kein Zeitplan mitgesendet.';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Strecke an die Uhr gesendet ($_temp0), aber die Streckenmarker konnten nicht geladen werden – daher wurde kein Zeitplan mitgesendet.';
   }
 
   @override
   String routeDetailWatchCourseSimplified(int source, int points) {
-    return 'Strecke an die Uhr gesendet — von $source auf $points Punkte ausgedünnt';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Strecke an die Uhr gesendet — von $source auf $_temp0 ausgedünnt';
   }
 
   @override
@@ -4442,12 +4502,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routeDetailAppleWatchRouteSent(int points) {
-    return 'Route an die Apple Watch gesendet ($points Punkte)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Route an die Apple Watch gesendet ($_temp0)';
   }
 
   @override
   String routeDetailAppleWatchRouteSimplified(int source, int points) {
-    return 'Route an die Apple Watch gesendet — von $source auf $points Punkte ausgedünnt';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Route an die Apple Watch gesendet — von $source auf $_temp0 ausgedünnt';
   }
 
   @override
@@ -4461,7 +4533,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routeDetailWatchCourseAndScheduleSent(int points, int checkpoints) {
-    return 'Strecke ($points Punkte) und Rennplan ($checkpoints Kontrollpunkte) an die Uhr gesendet';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints Kontrollpunkte',
+      one: '$checkpoints Kontrollpunkt',
+    );
+    return 'Strecke ($_temp0) und Rennplan ($_temp1) an die Uhr gesendet';
   }
 
   @override
@@ -4470,12 +4554,36 @@ class AppLocalizationsDe extends AppLocalizations {
     int source,
     int checkpoints,
   ) {
-    return 'Strecke ($points Punkte) gesendet. Rennplan von $source auf $checkpoints Kontrollpunkte reduziert, damit er auf die Uhr passt';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints Kontrollpunkte',
+      one: '$checkpoints Kontrollpunkt',
+    );
+    return 'Strecke ($_temp0) gesendet. Rennplan von $source auf $_temp1 reduziert, damit er auf die Uhr passt';
   }
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'Rennplan gesendet ($checkpoints Kontrollpunkte), aber $unresolved Uhrzeit-Cutoffs brauchen eine Startzeit — lege sie im Crew-Blatt fest, damit sie auf die Uhr kommen';
+    String _temp0 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints Kontrollpunkte',
+      one: '$checkpoints Kontrollpunkt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      unresolved,
+      locale: localeName,
+      other: '$unresolved Uhrzeit-Cutoffs brauchen',
+      one: '$unresolved Uhrzeit-Cutoff braucht',
+    );
+    return 'Rennplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Blatt fest, damit sie auf die Uhr kommen';
   }
 
   @override
@@ -4484,7 +4592,19 @@ class AppLocalizationsDe extends AppLocalizations {
     int cutoffs,
     int max,
   ) {
-    return 'Strecke ($points Punkte) gesendet, aber der Rennplan hat $cutoffs Cutoffs und die Uhr fasst $max — entferne einige, um ihn zu senden';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      cutoffs,
+      locale: localeName,
+      other: '$cutoffs Cutoffs',
+      one: '$cutoffs Cutoff',
+    );
+    return 'Strecke ($_temp0) gesendet, aber der Rennplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
   }
 
   @override
@@ -4563,7 +4683,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routeDetailStatReviews(int count) {
-    return '$count Bewertungen';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Bewertungen',
+      one: '$count Bewertung',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5158,7 +5284,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String heatmapRoutesStartHere(int count) {
-    return '$count Routen beginnen hier';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Routen beginnen hier',
+      one: '$count Route beginnt hier',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -6454,7 +6586,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String clubDetailRoutineExerciseCount(int n) {
-    return '$n Übungen';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Übungen',
+      one: '$n Übung',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7103,7 +7241,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNewDaysOption(int count) {
-    return '$count Tage';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '$count Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7347,7 +7491,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNewSessions(int count) {
-    return '$count Einheiten';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einheiten',
+      one: '$count Einheit',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7921,7 +8071,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNudgeUnderBody(int n, int total) {
-    return 'Du bist in $n der letzten $total Wochen weniger gelaufen als geplant. Für die kommenden Wochen gibt es eine vorgeschlagene Anpassung.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: 'der letzten $total Wochen',
+      one: 'von $total Woche',
+    );
+    return 'Du bist in $n $_temp0 weniger gelaufen als geplant. Für die kommenden Wochen gibt es eine vorgeschlagene Anpassung.';
   }
 
   @override
@@ -7957,7 +8113,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNudgeRestBody(int n, int total) {
-    return 'Du bist in $n der letzten $total Wochen an Ruhetagen gelaufen. Diese Läufe zählen für deine Woche, aber an Ruhetagen setzt sich das Training erst richtig fest.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: 'der letzten $total Wochen',
+      one: 'von $total Woche',
+    );
+    return 'Du bist in $n $_temp0 an Ruhetagen gelaufen. Diese Läufe zählen für deine Woche, aber an Ruhetagen setzt sich das Training erst richtig fest.';
   }
 
   @override
@@ -8620,7 +8782,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String coachDailyLimitError(int limit) {
-    return 'Tageslimit erreicht ($limit Nachrichten). Komm morgen wieder!';
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other: '$limit Nachrichten',
+      one: '$limit Nachricht',
+    );
+    return 'Tageslimit erreicht ($_temp0). Komm morgen wieder!';
   }
 
   @override
@@ -8842,12 +9010,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountBackupPartial(int count, int total) {
-    return 'Export unvollständig — $count von $total Läufen.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total Läufen',
+      one: '$total Lauf',
+    );
+    return 'Export unvollständig — $count von $_temp0.';
   }
 
   @override
   String settingsAccountBackupPartialNotice(int count, int total) {
-    return 'Dein letzter Export ist unvollständig: Er enthält $count der $total Läufe in deinem Konto. Es wurde nichts gelöscht — exportiere erneut, um es noch einmal zu versuchen. Das vollständige Kontoarchiv nennt jeden unvollständigen Abschnitt in seiner manifest.json.';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$count der $total Läufe',
+      one: '$count von $total Lauf',
+    );
+    return 'Dein letzter Export ist unvollständig: Er enthält $_temp0 in deinem Konto. Es wurde nichts gelöscht — exportiere erneut, um es noch einmal zu versuchen. Das vollständige Kontoarchiv nennt jeden unvollständigen Abschnitt in seiner manifest.json.';
   }
 
   @override
@@ -9100,7 +9280,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountExportRateLimited(int seconds) {
-    return 'Exportlimit erreicht — versuche es in $seconds Sekunden erneut.';
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds Sekunden',
+      one: '$seconds Sekunde',
+    );
+    return 'Exportlimit erreicht — versuche es in $_temp0 erneut.';
   }
 
   @override
@@ -9115,7 +9301,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountExportReadyBanner(int count) {
-    return 'Dein Kontoexport ist fertig — $count Läufe.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Läufe',
+      one: '$count Lauf',
+    );
+    return 'Dein Kontoexport ist fertig — $_temp0.';
   }
 
   @override
@@ -10879,7 +11071,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String trainingLoadSubtitleHr(int days) {
-    return 'Herzfrequenz-TRIMP der letzten $days Tage.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'der letzten $days Tage',
+      one: 'des letzten $days Tages',
+    );
+    return 'Herzfrequenz-TRIMP $_temp0.';
   }
 
   @override
@@ -10946,7 +11144,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String intensityWindow(int days) {
-    return 'letzte $days Tage';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'letzte $days Tage',
+      one: 'letzter $days Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12049,7 +12253,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String upcomingEventInDays(int count) {
-    return 'In $count Tagen';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count Tagen',
+      one: 'In $count Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12218,7 +12428,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String billingDaysAgo(int count) {
-    return 'vor $count Tagen';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'vor $count Tagen',
+      one: 'vor $count Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12407,7 +12623,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsRunComplete(String distance, int mins) {
-    return 'Lauf beendet. $distance in $mins Minuten.';
+    String _temp0 = intl.Intl.pluralLogic(
+      mins,
+      locale: localeName,
+      other: '$mins Minuten',
+      one: '$mins Minute',
+    );
+    return 'Lauf beendet. $distance in $_temp0.';
   }
 
   @override
@@ -12436,22 +12658,46 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsPaceDriftAheadKm(int delta) {
-    return 'Etwas lockerer — $delta Sekunden pro Kilometer zu schnell.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta Sekunden',
+      one: '$delta Sekunde',
+    );
+    return 'Etwas lockerer — $_temp0 pro Kilometer zu schnell.';
   }
 
   @override
   String ttsPaceDriftAheadMi(int delta) {
-    return 'Etwas lockerer — $delta Sekunden pro Meile zu schnell.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta Sekunden',
+      one: '$delta Sekunde',
+    );
+    return 'Etwas lockerer — $_temp0 pro Meile zu schnell.';
   }
 
   @override
   String ttsPaceDriftBehindKm(int delta) {
-    return 'Etwas schneller — $delta Sekunden pro Kilometer zu langsam.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta Sekunden',
+      one: '$delta Sekunde',
+    );
+    return 'Etwas schneller — $_temp0 pro Kilometer zu langsam.';
   }
 
   @override
   String ttsPaceDriftBehindMi(int delta) {
-    return 'Etwas schneller — $delta Sekunden pro Meile zu langsam.';
+    String _temp0 = intl.Intl.pluralLogic(
+      delta,
+      locale: localeName,
+      other: '$delta Sekunden',
+      one: '$delta Sekunde',
+    );
+    return 'Etwas schneller — $_temp0 pro Meile zu langsam.';
   }
 
   @override
@@ -12466,12 +12712,36 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsPaceKm(int min, int sec) {
-    return 'Pace, $min Minuten $sec Sekunden pro Kilometer';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Pace, $_temp0 $_temp1 pro Kilometer';
   }
 
   @override
   String ttsPaceMi(int min, int sec) {
-    return 'Pace, $min Minuten $sec Sekunden pro Meile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Pace, $_temp0 $_temp1 pro Meile';
   }
 
   @override
@@ -12513,7 +12783,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsDistanceYards(int value) {
-    return '$value Yards';
+    String _temp0 = intl.Intl.pluralLogic(
+      value,
+      locale: localeName,
+      other: '$value Yards',
+      one: '$value Yard',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12575,27 +12851,69 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsStepPaceKm(int min, int sec) {
-    return '$min Minuten $sec Sekunden pro Kilometer';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return '$_temp0 $_temp1 pro Kilometer';
   }
 
   @override
   String ttsStepPaceKmWhole(int min) {
-    return '$min Minuten pro Kilometer';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    return '$_temp0 pro Kilometer';
   }
 
   @override
   String ttsStepPaceMi(int min, int sec) {
-    return '$min Minuten $sec Sekunden pro Meile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return '$_temp0 $_temp1 pro Meile';
   }
 
   @override
   String ttsStepPaceMiWhole(int min) {
-    return '$min Minuten pro Meile';
+    String _temp0 = intl.Intl.pluralLogic(
+      min,
+      locale: localeName,
+      other: '$min Minuten',
+      one: '$min Minute',
+    );
+    return '$_temp0 pro Meile';
   }
 
   @override
   String ttsDurationSeconds(int sec) {
-    return '$sec Sekunden';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12611,7 +12929,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsDurationMinutesSeconds(String minutes, int sec) {
-    return '$minutes $sec Sekunden';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return '$minutes $_temp0';
   }
 
   @override
@@ -13941,7 +14265,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String nutritionTargetsAgeYears(int n) {
-    return '$n Jahre';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Jahre',
+      one: '$n Jahr',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14004,7 +14334,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String nutritionWeekProtein(int met, int total) {
-    return 'Protein $met/$total Tage';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total Tage',
+      one: '$total Tag',
+    );
+    return 'Protein $met/$_temp0';
   }
 
   @override
@@ -14204,7 +14540,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String nutritionTemplateLogged(int n, String name) {
-    return '$n Einträge aus $name erfasst.';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Einträge',
+      one: '$n Eintrag',
+    );
+    return '$_temp0 aus $name erfasst.';
   }
 
   @override
@@ -14219,7 +14561,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String nutritionTemplateItems(int n) {
-    return '$n Einträge';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Einträge',
+      one: '$n Eintrag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14290,7 +14638,19 @@ class AppLocalizationsDe extends AppLocalizations {
         intl.NumberFormat.decimalPattern(localeName);
     final String servingsString = servingsNumberFormat.format(servings);
 
-    return '$n Zutaten · $servingsString Portionen';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Zutaten',
+      one: '$n Zutat',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      servings,
+      locale: localeName,
+      other: '$servingsString Portionen',
+      one: '$servingsString Portion',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -14339,7 +14699,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String sessionStepReps(Object name, Object reps) {
+  String sessionStepReps(Object name, int reps) {
     return '$name · $reps Wdh.';
   }
 
@@ -14828,7 +15188,13 @@ class AppLocalizationsDe extends AppLocalizations {
     String plans,
     String end,
   ) {
-    return '$name hat noch $count Pläne vor sich: $plans. Ein zugewiesener Plan darf sich mit keinem davon überschneiden, beginne ihn also nach $end oder in einer Lücke dazwischen.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Pläne',
+      one: '$count Plan',
+    );
+    return '$name hat noch $_temp0 vor sich: $plans. Ein zugewiesener Plan darf sich mit keinem davon überschneiden, beginne ihn also nach $end oder in einer Lücke dazwischen.';
   }
 
   @override
@@ -15567,7 +15933,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String challengesUnitDays(int n) {
-    return '$n Tage';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Tage',
+      one: '$n Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -15853,12 +16225,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String racesWhenHint(int days) {
-    return '„Letzte Ergebnisse“ zeigt Rennen der letzten $days Tage, die neuesten zuerst, damit du ein gelaufenes Rennen findest und dein Ergebnis importierst.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'der letzten $days Tage',
+      one: 'des letzten $days Tages',
+    );
+    return '„Letzte Ergebnisse“ zeigt Rennen $_temp0, die neuesten zuerst, damit du ein gelaufenes Rennen findest und dein Ergebnis importierst.';
   }
 
   @override
   String racesEmptyRecent(int days) {
-    return 'Keine Rennen der letzten $days Tage passen zu diesen Filtern.';
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'der letzten $days Tage',
+      one: 'des letzten $days Tages',
+    );
+    return 'Keine Rennen $_temp0 passen zu diesen Filtern.';
   }
 
   @override
@@ -16957,7 +17341,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String simWatchWorkoutPushed(int steps) {
-    return 'Workout an die Uhr gesendet ($steps Schritte)';
+    String _temp0 = intl.Intl.pluralLogic(
+      steps,
+      locale: localeName,
+      other: '$steps Schritte',
+      one: '$steps Schritt',
+    );
+    return 'Workout an die Uhr gesendet ($_temp0)';
   }
 
   @override
@@ -16970,7 +17360,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
-    return 'Rennplan an die Uhr gesendet ($checkpoints Kontrollpunkte, $cutoffs Cutoffs)';
+    String _temp0 = intl.Intl.pluralLogic(
+      checkpoints,
+      locale: localeName,
+      other: '$checkpoints Kontrollpunkte',
+      one: '$checkpoints Kontrollpunkt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      cutoffs,
+      locale: localeName,
+      other: '$cutoffs Cutoffs',
+      one: '$cutoffs Cutoff',
+    );
+    return 'Rennplan an die Uhr gesendet ($_temp0, $_temp1)';
   }
 
   @override
@@ -16983,7 +17385,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String simWatchCoursePushed(int points) {
-    return 'Strecke an die Uhr gesendet ($points Punkte)';
+    String _temp0 = intl.Intl.pluralLogic(
+      points,
+      locale: localeName,
+      other: '$points Punkte',
+      one: '$points Punkt',
+    );
+    return 'Strecke an die Uhr gesendet ($_temp0)';
   }
 
   @override
@@ -17084,22 +17492,46 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String ttsPaceAlertSpeedUpByKm(int sec) {
-    return 'Beschleunige um $sec Sekunden pro Kilometer';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Beschleunige um $_temp0 pro Kilometer';
   }
 
   @override
   String ttsPaceAlertSpeedUpByMi(int sec) {
-    return 'Beschleunige um $sec Sekunden pro Meile';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Beschleunige um $_temp0 pro Meile';
   }
 
   @override
   String ttsPaceAlertSlowDownByKm(int sec) {
-    return 'Verlangsame um $sec Sekunden pro Kilometer';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Verlangsame um $_temp0 pro Kilometer';
   }
 
   @override
   String ttsPaceAlertSlowDownByMi(int sec) {
-    return 'Verlangsame um $sec Sekunden pro Meile';
+    String _temp0 = intl.Intl.pluralLogic(
+      sec,
+      locale: localeName,
+      other: '$sec Sekunden',
+      one: '$sec Sekunde',
+    );
+    return 'Verlangsame um $_temp0 pro Meile';
   }
 
   @override
@@ -17839,7 +18271,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String comebackLayoff(int weeks) {
-    return '$weeks Wochen ohne Lauf';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks Wochen ohne Lauf',
+      one: '$weeks Woche ohne Lauf',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -18270,7 +18708,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailSectionWeeksHint(int n) {
-    return 'Alle $n Wochen, Tag für Tag';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Alle $n Wochen, Tag für Tag',
+      one: '$n Woche, Tag für Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -20246,7 +20690,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNewReturnBody(int weeks, String pre, String cap) {
-    return 'Du hattest etwa $weeks Wochen Pause. Davor bist du im Schnitt $pre pro Woche gelaufen, also verlangt Woche 1 höchstens $cap, und jede Woche kommen höchstens 10 % dazu, bis der Plan seinen eigenen Ablauf erreicht. Tempoeinheiten in diesen Wochen werden zu lockeren Läufen.';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks Wochen',
+      one: '$weeks Woche',
+    );
+    return 'Du hattest etwa $_temp0 Pause. Davor bist du im Schnitt $pre pro Woche gelaufen, also verlangt Woche 1 höchstens $cap, und jede Woche kommen höchstens 10 % dazu, bis der Plan seinen eigenen Ablauf erreicht. Tempoeinheiten in diesen Wochen werden zu lockeren Läufen.';
   }
 
   @override
@@ -21696,7 +22146,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String shareCardSplitsHeading(int count, String pace) {
-    return '$count Splits · Ø $pace';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Splits',
+      one: '$count Split',
+    );
+    return '$_temp0 · Ø $pace';
   }
 
   @override

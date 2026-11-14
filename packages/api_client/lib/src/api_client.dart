@@ -6114,7 +6114,7 @@ class ApiClient {
   /// RLS hides an inactive park's courses and a pulled segment. Walked by
   /// keyset because PostgREST cuts an unranged read at `db.max-rows` with a
   /// 200 and no flag, which would silently drop courses from the list, its
-  /// count and its search (issue #1374). Mirrors web `fetchAllParkCourses`.
+  /// count and its search. Mirrors web `fetchAllParkCourses`.
   /// Throws on a failed read.
   Future<List<ParkCourseListing>> fetchAllParkCourses() async {
     final rows = await _walk(
@@ -6369,7 +6369,7 @@ class ApiClient {
     if (uid == null) return const [];
     // A year of efforts passes `db.max-rows` for a runner who lives on the
     // catalogue, and a read cut there undercounts their parks with a 200, so
-    // it is walked (issue #1374).
+    // it is walked.
     final effortRows = await _walk(
       _effortIdOrder,
       () => _client

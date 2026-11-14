@@ -777,7 +777,7 @@ export async function fetchRecapParkCourses(startIso: string, endIso: string): P
 	if (!userId) return [];
 	// A year of efforts passes PostgREST's `db.max-rows` for a runner who
 	// lives on the catalogue, and a read cut there undercounts their parks
-	// with a 200, so it is walked (issue #1374).
+	// with a 200, so it is walked.
 	const walk = await walkKeyset(EFFORT_ID_ORDER, (after, limit) => {
 		let q = supabase
 			.from(TABLES.global_segment_efforts)
@@ -11836,7 +11836,7 @@ const PARK_COLUMNS = '*, park_season, park_month';
 /// counted on the client, so a read that stops short is a list that silently
 /// lost courses: PostgREST answers past `db.max-rows` (1000) with a 200 and no
 /// flag. Each one is walked by keyset cursor, and a walk that ended short fails
-/// rather than returning what it reached (issue #1374).
+/// rather than returning what it reached.
 async function walkWholeCatalogue<T extends object>(
 	keys: readonly KeysetKey[],
 	fetchPage: (after: string | null, limit: number) => PromiseLike<{ data: T[] | null; error: unknown }>,

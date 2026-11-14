@@ -135,7 +135,7 @@ export const GET: RequestHandler = async () => {
 					.limit(MAX_ENTITIES),
 				// Walked rather than limited: a `.limit()` past PostgREST's
 				// `db.max-rows` is cut there with a 200, so the catalogue's
-				// courses past the first 1000 would never be listed (issue #1374).
+				// courses past the first 1000 would never be listed.
 				walkKeyset(SITEMAP_COURSE_ORDER, (after, limit) => {
 					let q = supabase
 						.from(TABLES.park_courses)

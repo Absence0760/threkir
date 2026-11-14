@@ -117,23 +117,17 @@ void showTopBanner(
   _current = tracker;
 }
 
-/// The bottom of the header on screen — the lowest app bar and the lowest
-/// pinned header (a root page's title row, a hub's tab strip under it) — in
-/// the overlay's coordinates, or 0 when nothing on screen has one.
+/// The bottom of the lowest app bar or pinned header painted on screen, in
+/// the overlay's coordinates, or 0 when none is.
 ///
-/// It reads what is on screen, not what encloses the caller. A banner is
-/// said from a tab of a shell, a screen State above its own Scaffold, a
-/// sheet, the root navigator after the screen that started the work has
-/// gone, or a service holding only the navigator's context; and the four
-/// root pages stay alive in the shell, each with its own header, while only
-/// one of them shows. Searching from the caller found a hidden tab's header,
-/// or none, and the pill covered the visible page's title row (issue #1374).
-/// So the whole overlay is searched, and a header counts only when it is
-/// painted where the overlay can show it: a route under an opaque one is in
-/// a `TickerMode` that is off, a kept-alive page the pager has moved away is
-/// one its parent does not paint, and a page laid out beside the viewport is
-/// outside the overlay's bounds. `TickerMode` alone is not enough, because a
-/// pager keeps its kept-alive pages' tickers on.
+/// The whole overlay is searched rather than the caller's ancestors: the
+/// caller may be a hidden root tab, a closed screen or a service, and four
+/// roots stay alive in the shell with only one showing. A header counts only
+/// when the overlay can show it: a route under an opaque one sits in a
+/// disabled `TickerMode`, a page the pager moved away fails its parent's
+/// `paintsChild`, and a page laid out beside the viewport is outside the
+/// overlay's bounds. `TickerMode` alone is not enough, because a pager keeps
+/// its kept-alive pages' tickers on.
 double _headerBottomFor(OverlayState overlay) {
   final overlayBox = overlay.context.findRenderObject();
   if (overlayBox is! RenderBox || !overlayBox.hasSize) return 0;

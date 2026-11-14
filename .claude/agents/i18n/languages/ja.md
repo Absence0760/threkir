@@ -54,7 +54,8 @@ names stay in Latin script.
 - Spacing between Latin/digits and Japanese is mixed (unspaced 498 / 536
   vs spaced 280 / 384 strings). Prefer **no space** ("Stravaを開く",
   "{count}件"), except keep the space the English puts before a unit
-  symbol in a literal sample ("1000 km").
+  symbol in a literal sample ("1000 km"). Between a number and its
+  counter or date unit it is a rule, not a preference: 「#日」「1月1日」 (see the glossary row).
 - Numbers in literal samples keep the decimal point ("5.0 km · 5:00 /km").
 
 ## Plurals
@@ -121,6 +122,11 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | GO (the start signal) | **GO** — the host's button on the web and in the phone app, 「主催者のGO」「予約GO」; prose 「GOを出す」「GO待ち」「GOから」「GOの時点で」 | settled 2026-11-10; never スタート for the host's button or the signal. スタート stays for a runner's own record Start button and the time fields (「スタート時刻」「スタート：{when}」) |
 | park course / park | **公園コース** / **公園** everywhere, the share sticker and the badge names too (「公園コースのタイム」「走った公園」「公園パスポート」「公園の常連」); a proper name keeps its katakana (「セントラルパーク」) | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never パークコース / パーク |
 | web (the platform) | **Web** (「Webで」「Webアプリ」「Webのイベントページ」「Webプッシュ」), and a web browser is just **ブラウザ** | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never ウェブ for the platform. A website or web address (a URL) stays **ウェブサイト** / **ウェブアドレス** |
+| age grade (the score against the best for your age and sex) | **年齢別評価** — 「年齢別評価」（stat and metric label）、「年齢別評価 {percent}」、「年齢別評価の結果」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 年齢グレード |
+| age band (the board filter and the consent statement) | **年齢区分** (already one term) | checked 2026-11-13; 年代別 stays for a race's own age category in results (`races.ageGroup`) |
+| name search (the profile search that 「名前検索に表示する」 controls, and that keeps under-18 accounts out) | **名前検索** everywhere, the DOB notes included | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 公開ユーザー検索 / 人物検索 for it. 「人を検索」 stays for a field that searches people you follow or message |
+| a number and its counter or date unit | **no space**: 「#日」「{n}日前」「あと#日で終了」「最大{n}日」「1月1日」「12月31日 22:00」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the last spaced day counts (web `challenges.*`, `notificationBell.daysAgo`, `trainingLoad.hintTrimp`, `seasonPlanner.recoveryLine`) and the park-courses guide's dates moved. Typography's « prefer no space » is now the rule for counters |
+| "Nobody you follow has logged a public run in the last N days…" (`profile.feedNoActivityText`, `socialFeed.noActivityText`) | 「フォロー中の人は過去#日間に公開ランを記録していません。それより前のランは、各ランナーのプロフィールで見られます。」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the two keys share one English and now one Japanese |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

@@ -57,7 +57,8 @@ test.describe('placeholder-only text inputs now expose accessible names', () => 
 
 	test('RouteExplorer search input has an accessible name', async ({ page }) => {
 		await page.goto('/routes?tab=explore');
-		const search = page.getByRole('textbox', { name: 'Search routes', exact: true });
+		// AppSearchField is an `<input type="search">`, whose role is searchbox.
+		const search = page.getByRole('searchbox', { name: 'Search routes', exact: true });
 		await expect(search).toBeVisible({ timeout: 10_000 });
 		await expect(search).toHaveAttribute('placeholder', /Search routes by name/);
 	});

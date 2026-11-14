@@ -66,3 +66,52 @@ class MapTileReadiness {
     return done.future;
   }
 }
+
+/// Whether a live basemap is drawing at all, for a surface that has to say so
+/// when it is not.
+///
+/// Wire [observe] as `TileLayer.tileBuilder`; flutter_map rebuilds a tile when
+/// its image settles, so every tile passes through here once loaded or failed.
+/// [unavailable] turns true only when tiles have failed and none has loaded:
+/// one 404 among a screenful of drawn tiles is a gap, not a map that couldn't
+/// load, and is left to the layer's eviction to refetch.
+class BasemapHealth extends ChangeNotifier {
+  /// Each tile's latest outcome, true when it drew. Keyed by position, so a
+  /// failed tile the layer refetches is judged by its newest attempt.
+  final Map<TileCoordinates, bool> _outcomes = {};
+  bool _scheduled = false;
+  bool _unavailable = false;
+  bool _disposed = false;
+
+  bool get unavailable => _unavailable;
+
+  Widget observe(BuildContext context, Widget tile, TileImage image) {
+    if (image.loadFinishedAt != null &&
+        _outcomes[image.coordinates] != !image.loadError) {
+      _outcomes[image.coordinates] = !image.loadError;
+      _schedule();
+    }
+    return tile;
+  }
+
+  // The builder runs mid-build, where a listener's setState would throw.
+  void _schedule() {
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (_disposed) return;
+      final next =
+          _outcomes.isNotEmpty && !_outcomes.values.any((drew) => drew);
+      if (next == _unavailable) return;
+      _unavailable = next;
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}

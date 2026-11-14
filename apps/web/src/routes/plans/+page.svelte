@@ -202,15 +202,6 @@
 		return out;
 	});
 
-	let counts = $derived.by(() => {
-		const c = { all: plans.length, active: 0, paused: 0, completed: 0, abandoned: 0 } as Record<
-			StatusFilter,
-			number
-		>;
-		for (const p of plans) c[p.status] = (c[p.status] ?? 0) + 1;
-		return c;
-	});
-
 	/// A paused plan is still a plan the runner has not finished with, so it
 	/// can be abandoned like an active one; only a plan that is already over
 	/// (completed or abandoned) offers Delete. One action per card.
@@ -322,9 +313,6 @@
 						>
 							<span class="material-symbols" aria-hidden="true">{f.icon}</span>
 							<span class="activity-label">{f.label()}</span>
-							{#if counts[f.value] > 0}
-								<span class="count-pill">{counts[f.value]}</span>
-							{/if}
 						</button>
 					{/each}
 				</div>
@@ -426,6 +414,14 @@
 			</div>
 		</EmptyState>
 	{:else}
+		<!-- The count of what the filter shows is this one line, as on /runs
+		     and /routes and the mobile twin, never a count on some status
+		     buttons and none on a zero (issue #1374). -->
+		{#if filteredPlans.length > 0}
+			<p class="list-summary" data-testid="plans-summary">
+				{m('plansPage.planCount', { shown: filteredPlans.length, total: plans.length })}
+			</p>
+		{/if}
 		<div class="grid">
 			{#each filteredPlans as p (p.id)}
 				{@const total = totalWeeks(p)}
@@ -610,20 +606,11 @@
 	.activity-btn.active:hover {
 		background: var(--color-primary-hover);
 	}
-	.count-pill {
-		font-size: var(--font-size-section-label);
-		font-weight: 600;
-		padding: 0 var(--space-xs);
-		border-radius: 9999px;
-		background: var(--color-bg-tertiary);
+
+	.list-summary {
+		margin: calc(-1 * var(--space-md)) 0 var(--space-md);
+		font-size: 0.85rem;
 		color: var(--color-text-secondary);
-		min-width: 1.25rem;
-		text-align: center;
-		font-variant-numeric: tabular-nums;
-	}
-	.activity-btn.active .count-pill {
-		background: rgba(255, 255, 255, 0.22);
-		color: var(--color-surface);
 	}
 
 	.toolbar-actions {

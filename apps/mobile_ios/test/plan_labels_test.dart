@@ -45,8 +45,9 @@ void main() {
     expect(planGoalLabel(l10n, 'distance_ultra', 100000), '100.00 km');
   });
 
-  test('plan length: singular for one week, plural otherwise', () {
+  test('plan length: singular for one week or one day, plural otherwise', () {
     expect(planLengthLabel(l10n, 1, 3), '1 week · 3 days/week');
     expect(planLengthLabel(l10n, 12, 4), '12 weeks · 4 days/week');
+    expect(planLengthLabel(l10n, 4, 1), '4 weeks · 1 day/week');
   });
 }

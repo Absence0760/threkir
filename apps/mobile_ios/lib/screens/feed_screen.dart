@@ -2,6 +2,7 @@ import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import '../engagement_cache.dart';
 import '../fab_clearance.dart';
+import '../feed_highlights.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,9 @@ import '../widgets/top_banner.dart';
 /// no app bar and pushed on its own it gets a small titled one (issue #1374).
 /// The activity kinds are the quick chips; who the activity is from is in the
 /// Filters sheet and shows as a removable chip while it narrows the feed.
+/// Badges earned by people you follow are rows of the feed, one per person
+/// per day, placed by time (`feed_highlights.dart`); they show under the All
+/// chip only, and the author filter narrows them as it narrows the activity.
 class FeedScreen extends StatefulWidget {
   final ApiClient api;
   const FeedScreen({super.key, required this.api});
@@ -72,8 +76,17 @@ class _FeedScreenState extends State<FeedScreen> {
   List<ActivityFeedEntry> _entries = const [];
   Map<String, EngagementSummary> _engagement = const {};
   List<UserProfileRow> _followees = const [];
+  /// The window the activity read applies (its default) and the badge read
+  /// is bounded to, so a highlight never predates the feed it sits in.
+  static const _feedWindowDays = 14;
+  static const _badgePage = 20;
+  static const _maxBadgePagesPerRead = 5;
   List<BadgeAwardEntry> _badgeAwards = const [];
+  bool _badgeAwardsExhausted = false;
   bool _badgeAwardsFailed = false;
+  DateTime _badgeSince = DateTime.now().toUtc();
+  int _badgeGen = 0;
+  int? _badgeBusyGen;
 
   String _authorFilter = 'all';
   String _activityFilter = 'all';
@@ -84,25 +97,68 @@ class _FeedScreenState extends State<FeedScreen> {
     _loadInitial();
   }
 
-  // Recent badge awards from people you follow — an auxiliary feed adornment
-  // (L4). A failure here must never blank the core feed, so it loads on its
-  // own; it shows as its own one-line error with a retry, never as "no
-  // badges" (§ 2501).
-  Future<void> _loadBadgeAwards() async {
+  bool get _showHighlights => highlightsShowFor(_activityFilter);
+
+  /// More rows can still load: older activity, or older highlights once the
+  /// activity has run out.
+  bool get _moreToLoad =>
+      !_exhausted ||
+      (_showHighlights && !_badgeAwardsExhausted && !_badgeAwardsFailed);
+
+  List<FeedRow<ActivityFeedEntry>> _rows() => _showHighlights
+      ? interleaveHighlights<ActivityFeedEntry>(_entries, (e) => e.startedAt,
+          groupHighlights(_badgeAwards), _exhausted)
+      : [for (final e in _entries) FeedEntryRow<ActivityFeedEntry>(e)];
+
+  // Badge awards from people you follow — an auxiliary feed adornment (L4).
+  // A failure here must never blank the core feed, so they read on their own
+  // cursor, only as far back as the activity has loaded, and a failure shows
+  // as its own one-line error with a retry, never as "no badges" (§ 2501).
+  // A restart (refresh, new filter) reads into a fresh list and replaces the
+  // old one only when its first page lands, so a refresh never blanks them.
+  Future<void> _topUpBadgeAwards({bool restart = false}) async {
+    if (restart) _badgeGen++;
+    final gen = _badgeGen;
+    if (_badgeBusyGen == gen) return;
+    if (!restart && _badgeAwardsFailed) return;
+    if (!_showHighlights) return;
+    _badgeBusyGen = gen;
+    var awards = restart ? const <BadgeAwardEntry>[] : _badgeAwards;
+    var exhausted = !restart && _badgeAwardsExhausted;
+    final author = _authorFilter == 'all' ? null : _authorFilter;
     try {
-      final awards = await widget.api.fetchFollowingBadgeAwards(limit: 6);
-      if (!mounted) return;
-      setState(() {
-        _badgeAwards = awards;
-        _badgeAwardsFailed = false;
-      });
+      for (var i = 0; i < _maxBadgePagesPerRead; i++) {
+        final oldest = awards.isEmpty ? null : awards.last.badge;
+        final more = needsMoreHighlights(
+          oldestAwardAt: oldest?.earnedAt,
+          awardsExhausted: exhausted,
+          oldestEntryAt: _entries.isEmpty ? null : _entries.last.startedAt,
+          feedExhausted: _exhausted,
+        );
+        if (!more) break;
+        final page = await widget.api.fetchFollowingBadgeAwards(
+          limit: _badgePage,
+          since: _badgeSince,
+          authorId: author,
+          cursor: oldest == null
+              ? null
+              : (earnedAt: oldest.earnedAt, id: oldest.id),
+        );
+        if (!mounted || gen != _badgeGen) return;
+        awards = [...awards, ...page];
+        exhausted = page.length < _badgePage;
+        setState(() {
+          _badgeAwards = awards;
+          _badgeAwardsExhausted = exhausted;
+          _badgeAwardsFailed = false;
+        });
+      }
     } catch (e) {
       debugPrint('feed_screen: badge awards read failed: $e');
-      if (!mounted) return;
-      setState(() {
-        _badgeAwards = const [];
-        _badgeAwardsFailed = true;
-      });
+      if (!mounted || gen != _badgeGen) return;
+      setState(() => _badgeAwardsFailed = true);
+    } finally {
+      if (_badgeBusyGen == gen) _badgeBusyGen = null;
     }
   }
 
@@ -120,7 +176,6 @@ class _FeedScreenState extends State<FeedScreen> {
       _loading = true;
       _loadError = null;
     });
-    _loadBadgeAwards();
 
     // The activity feed is the one fetch that must succeed — a failure
     // here is a genuine can't-show-a-feed error. The author filter
@@ -134,6 +189,7 @@ class _FeedScreenState extends State<FeedScreen> {
         limit: 20,
         authorId: _authorFilter == 'all' ? null : _authorFilter,
         activityType: _activityFilter,
+        feedWindowDays: _feedWindowDays,
       );
     } catch (e) {
       debugPrint('feed load failed: $e');
@@ -160,6 +216,10 @@ class _FeedScreenState extends State<FeedScreen> {
       _exhausted = entries.length < 20;
       _loading = false;
     });
+    _badgeSince = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: _feedWindowDays));
+    await _topUpBadgeAwards(restart: true);
   }
 
   // Following list — drives the author filter, so it is read whole: a cap
@@ -207,7 +267,14 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || _exhausted || _entries.isEmpty) return;
+    if (_loadingMore) return;
+    if (_exhausted) {
+      setState(() => _loadingMore = true);
+      await _topUpBadgeAwards();
+      if (mounted) setState(() => _loadingMore = false);
+      return;
+    }
+    if (_entries.isEmpty) return;
     setState(() => _loadingMore = true);
     try {
       final last = _entries.last;
@@ -216,6 +283,7 @@ class _FeedScreenState extends State<FeedScreen> {
         cursor: (startedAt: last.startedAt, id: last.id),
         authorId: _authorFilter == 'all' ? null : _authorFilter,
         activityType: _activityFilter,
+        feedWindowDays: _feedWindowDays,
       );
       final moreEng = await _loadEngagement(_runIds(more));
       if (!mounted) return;
@@ -226,6 +294,7 @@ class _FeedScreenState extends State<FeedScreen> {
         _exhausted = more.length < 20;
         _loadingMore = false;
       });
+      await _topUpBadgeAwards();
     } catch (e) {
       debugPrint('feed load more failed: $e');
       if (!mounted) return;
@@ -270,26 +339,24 @@ class _FeedScreenState extends State<FeedScreen> {
     return HubTabBody(
       title: l10n.feedTitle,
       filters: _followees.isEmpty ? null : _filterBar(l10n),
-      banner: _badgeAwardsFailed
+      banner: _badgeAwardsFailed && _showHighlights
           ? Padding(
               padding: const EdgeInsets.fromLTRB(
                   AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
               child: AppErrorState.inline(
                 message: l10n.feedBadgesLoadFailed,
-                onRetry: _loadBadgeAwards,
+                onRetry: () => _topUpBadgeAwards(restart: true),
               ),
             )
-          : _badgeAwards.isEmpty
-              ? null
-              : _buildBadgeStrip(theme),
+          : null,
       onRefresh: _loadInitial,
       body: contentColumn(
         context,
-        AsyncView<List<ActivityFeedEntry>>(
+        AsyncView<List<FeedRow<ActivityFeedEntry>>>(
           loading: _loading,
           error: _loadError,
-          data: _entries,
-          isEmpty: (e) => e.isEmpty,
+          data: _rows(),
+          isEmpty: (rows) => rows.isEmpty,
           loadingState: LoadingState.list(label: l10n.commonLoading, rows: 3),
           errorBuilder: (_, _) =>
               AppErrorState(message: l10n.feedLoadError, onRetry: _loadInitial),
@@ -304,19 +371,20 @@ class _FeedScreenState extends State<FeedScreen> {
                   onSignedIn: _loadInitial,
                 )
               : _buildEmpty(l10n),
-          builder: (_, entries) => _list(theme, l10n, entries),
+          builder: (_, rows) => _list(theme, l10n, rows),
         ),
       ),
     );
   }
 
-  Widget _list(
-      ThemeData theme, AppLocalizations l10n, List<ActivityFeedEntry> entries) {
+  Widget _list(ThemeData theme, AppLocalizations l10n,
+      List<FeedRow<ActivityFeedEntry>> rows) {
+    final moreToLoad = _moreToLoad;
     return NotificationListener<ScrollNotification>(
       onNotification: (n) {
         if (n.metrics.pixels >= n.metrics.maxScrollExtent - 200 &&
             !_loadingMore &&
-            !_exhausted) {
+            moreToLoad) {
           _loadMore();
         }
         return false;
@@ -326,7 +394,7 @@ class _FeedScreenState extends State<FeedScreen> {
         padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
             AppInsets.gutter, listEndClearance(context)),
         // The window caption leads the list, so it scrolls away with it.
-        itemCount: 1 + entries.length + (_exhausted ? 0 : 1),
+        itemCount: 1 + rows.length + (moreToLoad ? 1 : 0),
         separatorBuilder: (_, i) =>
             SizedBox(height: i == 0 ? AppSpace.xs : AppSpace.sm),
         itemBuilder: (_, index) {
@@ -339,7 +407,7 @@ class _FeedScreenState extends State<FeedScreen> {
             );
           }
           final i = index - 1;
-          if (i >= entries.length) {
+          if (i >= rows.length) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpace.smPlus),
@@ -352,7 +420,25 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             );
           }
-          final entry = entries[i];
+          final row = rows[i];
+          if (row is FeedHighlightRow<ActivityFeedEntry>) {
+            final h = row.highlight;
+            return _HighlightCard(
+              key: ValueKey('feed-highlight-${h.key}'),
+              highlight: h,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => ProfileScreen(
+                    api: widget.api,
+                    userId: h.authorId,
+                    initialTab: ProfileTab.badges,
+                  ),
+                ),
+              ),
+            );
+          }
+          final entry = (row as FeedEntryRow<ActivityFeedEntry>).entry;
           void openAuthor() => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -387,57 +473,6 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildBadgeStrip(ThemeData theme) {
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpace.sm),
-      // A scrolling Row rather than a horizontal ListView in a fixed-height
-      // box: the strip is capped at six awards, and a literal lane height
-      // squeezed the chips out of their 48 dp tap target at 1.0x and cropped
-      // their labels outright at 2x OS text scale. The strip runs edge to
-      // edge and the gutter is the scroll's own padding, at both ends: a
-      // gutter outside the scroll view clipped the chips 16 dp short of the
-      // screen edge, so the next chip looked cut off rather than scrollable,
-      // and the last one could never scroll clear of that edge.
-      child: SingleChildScrollView(
-        key: const ValueKey('feed-badge-strip'),
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
-        child: Row(
-          children: [
-            for (final (i, a) in _badgeAwards.indexed) ...[
-              if (i > 0) const SizedBox(width: AppSpace.sm),
-              _badgeChip(l10n, a),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _badgeChip(AppLocalizations l10n, BadgeAwardEntry a) {
-    final name = a.authorName ?? l10n.badgesARunner;
-    final label = badgeLabelFor(l10n, a.badge.badgeKey, a.badge.tier);
-    return ActionChip(
-      avatar: Icon(
-        badgeIconData(
-            tierFor(a.badge.badgeKey, a.badge.tier)?.icon ?? 'military_tech'),
-        size: 18,
-        color: badgeTierColor(a.badge.tier),
-      ),
-      label: Text(
-        l10n.badgesFeedEarned(name, label),
-        overflow: TextOverflow.ellipsis,
-      ),
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => ProfileScreen(api: widget.api, userId: a.authorId),
-        ),
       ),
     );
   }
@@ -550,6 +585,84 @@ class _FeedScreenState extends State<FeedScreen> {
                 SocialTab.people,
                 fallback: () => PeopleScreen(api: widget.api),
               ),
+    );
+  }
+}
+
+/// A highlight row: who earned what, when, and the badge. One tap target
+/// opening the person's badges.
+class _HighlightCard extends StatelessWidget {
+  final FeedHighlight highlight;
+  final VoidCallback onTap;
+
+  const _HighlightCard(
+      {super.key, required this.highlight, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final lead = highlight.awards.first;
+    final name = lead.authorName ?? l10n.badgesARunner;
+    final count = highlight.awards.length;
+    String label(BadgeAwardEntry a) =>
+        badgeLabelFor(l10n, a.badge.badgeKey, a.badge.tier);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return ListCard.flush(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Row(
+              children: [
+                IdentityAvatar(
+                  seed: lead.authorId,
+                  name: lead.authorName,
+                  size: 32,
+                  imageUrl: lead.authorAvatarUrl,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.badgesFeedEarned(count, name, label(lead)),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (count > 1)
+                        Text(
+                          highlight.awards.map(label).join(' · '),
+                          style: muted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Text(
+                        fmtRelative(highlight.at,
+                            localeToTag(Localizations.localeOf(context))),
+                        style: muted,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Icon(
+                  badgeIconData(
+                      tierFor(lead.badge.badgeKey, lead.badge.tier)?.icon ??
+                          'military_tech'),
+                  size: 24,
+                  color: badgeTierColor(lead.badge.tier),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

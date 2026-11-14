@@ -4,7 +4,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show EdgeFadeScroll, EdgeFadeScrollState, EmptyState, ListSkeleton, ProgressBar;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_labels.dart' show starterStartDate;
 import '../lib/screens/plan_library_screen.dart';
@@ -355,18 +356,33 @@ void main() {
       expect(ys, [...ys]..sort());
     });
 
-    testWidgets('the status filter narrows the list and shows counts',
-        (tester) async {
+    testWidgets('the status filter narrows the list, and the summary line, '
+        'not the chips, carries the count', (tester) async {
       final training = _FakeTraining([
         _activePlan(),
         _plan('p', 'Paused one', 'paused', _days(-30), _days(20)),
       ]);
       await _pumpSignedIn(tester, training);
-      expect(find.text('All · 2'), findsOneWidget);
-      await tester.tap(find.text('Paused · 1'));
+      // Every chip is its status alone: a count on some and none on a zero
+      // was the inconsistency the owner reported (issue #1374).
+      for (final label in ['All', 'Active', 'Paused', 'Completed', 'Abandoned']) {
+        expect(find.widgetWithText(ChoiceChip, label), findsOneWidget);
+      }
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('plans-filter-bar')),
+              matching: find.textContaining(' · ')),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('plans-summary')),
+              matching: find.text('2 of 2 plans')),
+          findsOneWidget);
+      await tester.tap(find.text('Paused'));
       await tester.pump();
       expect(find.text('Paused one'), findsOneWidget);
       expect(find.text('Richmond Half'), findsNothing);
+      expect(find.text('1 of 2 plans'), findsOneWidget);
 
       await tester.tap(find.text('Completed'));
       await tester.pump();
@@ -396,14 +412,58 @@ void main() {
   });
 
   group('PlansScreen — actions', () {
-    testWidgets('Browse library is a labelled button that opens the library',
+    testWidgets('over a list, Browse library is an icon at the end of the '
+        'status chips\' line, not a row of its own, and opens the library',
         (tester) async {
       final training = _FakeTraining([_activePlan()]);
       await _pumpSignedIn(tester, training);
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Browse library'));
+      final browse = find.byKey(const ValueKey('plans-browse-library'));
+      expect(browse, findsOneWidget);
+      expect(find.byTooltip('Browse library'), findsOneWidget);
+      expect(tester.getCenter(browse).dy,
+          closeTo(tester.getCenter(find.widgetWithText(ChoiceChip, 'All')).dy, 4),
+          reason: 'it shares the chip line');
+      expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsNothing);
+      await tester.tap(browse);
       await tester.pumpAndSettle();
       expect(find.byType(PlanLibraryScreen), findsOneWidget);
     });
+
+    testWidgets('with no plans, Browse library is labelled under the starters',
+        (tester) async {
+      await _pumpSignedIn(tester, _FakeTraining([]));
+      expect(find.byKey(const ValueKey('plans-browse-library')), findsNothing);
+      final browse = find.byKey(const ValueKey('plans-empty-browse-library'));
+      expect(find.descendant(of: browse, matching: find.text('Browse library')),
+          findsOneWidget);
+      await tester.ensureVisible(browse);
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      expect(find.byType(PlanLibraryScreen), findsOneWidget);
+    });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('at 320 dp and ${scale}x the control row is one line: the '
+          'chips scroll with a fade and Browse library stays on screen',
+          (tester) async {
+        tester.view.physicalSize = const Size(320, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await _pumpSignedIn(tester, _FakeTraining([_activePlan()]),
+            textScale: scale);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final browse = find.byKey(const ValueKey('plans-browse-library'));
+        final r = tester.getRect(browse);
+        expect(r.left, greaterThanOrEqualTo(0));
+        expect(r.right, lessThanOrEqualTo(320));
+        final fade = tester.state<EdgeFadeScrollState>(find.descendant(
+            of: find.byKey(const ValueKey('plans-filter-bar')),
+            matching: find.byType(EdgeFadeScroll)));
+        expect(fade.fadesEnd, isTrue,
+            reason: 'Abandoned is past the edge, and the line says so');
+      });
+    }
 
     testWidgets('deleting a finished plan confirms, deletes and reloads',
         (tester) async {

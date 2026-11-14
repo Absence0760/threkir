@@ -196,9 +196,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routePickerNoRoute => 'Sin ruta';
 
   @override
-  String get routePickerClearSearchTooltip => 'Borrar búsqueda';
-
-  @override
   String get routePickerSearchHint => 'Buscar rutas por nombre…';
 
   @override
@@ -252,8 +249,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importStatusSavingLocally => 'Guardando localmente...';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return 'Se omitieron $count duplicado(s) ya importados desde otra fuente';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se omitieron $count duplicados ya importados',
+      one: 'Se omitió $count duplicado ya importado',
+    );
+    return '$_temp0 desde otra fuente';
   }
 
   @override
@@ -306,8 +309,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importStatusRestoringBackup => 'Restaurando copia de seguridad…';
 
   @override
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
-    return 'Restauradas $runs carreras · $tracks trazados · $routes rutas';
+  String importStatusBackupRestored(int runs, int tracks, int routes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs carreras',
+      one: '$runs carrera',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks trazados',
+      one: '$tracks trazado',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes rutas',
+      one: '$routes ruta',
+    );
+    return 'Restaurado: $_temp0 · $_temp1 · $_temp2';
   }
 
   @override
@@ -2670,6 +2691,75 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runNoGpsStartTimeOnly => 'Registrar solo el tiempo';
 
   @override
+  String get runPreRunLocationOffTitle => 'La ubicación está desactivada';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Activa la ubicación para registrar tu ruta, distancia y ritmo. Sin ella, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Activar ubicación';
+
+  @override
+  String get runPreRunPermissionTitle => 'Se necesita acceso a la ubicación';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Permite el acceso a la ubicación para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunAllowLocation => 'Permitir ubicación';
+
+  @override
+  String get runPreRunPermissionBlockedTitle =>
+      'El acceso a la ubicación está bloqueado';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'El acceso a la ubicación está desactivado para esta app. Permítelo en los ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunSearching => 'Buscando GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'Con el cielo despejado a la vista, el GPS se fija antes.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'GPS débil · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'GPS débil, con una precisión de $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS listo · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS listo, con una precisión de $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'No se pudo cargar el mapa. La grabación funciona igualmente.';
+
+  @override
+  String get runPreRunMapRetry => 'Reintentar';
+
+  @override
+  String get runPreRunActivityOff =>
+      'El acceso a «Actividad física» está desactivado, así que no se registrarán los pasos, la cadencia ni la distancia en interiores.';
+
+  @override
+  String get runPreRunAllow => 'Permitir';
+
+  @override
   String get runNoDistanceTitle => 'No se registró distancia';
 
   @override
@@ -3193,23 +3283,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get addRunSaved => 'Carrera añadida al historial';
-
-  @override
-  String get addRunPickerSearchHint => 'Buscar rutas';
-
-  @override
-  String get addRunPickerClear => 'Borrar';
-
-  @override
-  String get addRunPickerCancel => 'Cancelar';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'Ninguna ruta coincide con «$query»';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'Sin ruta';
 
   @override
   String get runDetailDnfBadge => 'DNF';
@@ -5992,10 +6065,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clubsTabMine => 'Mis clubes';
 
   @override
+  String get clubsViewGroup => 'Sección de clubes';
+
+  @override
   String get clubsJoinWithCode => 'Unirse con código de invitación';
 
   @override
   String get clubsSearchHint => 'Buscar por nombre o ubicación';
+
+  @override
+  String get clubsSearchMineHint => 'Buscar en tus clubes';
+
+  @override
+  String get clubsMineNoMatch =>
+      'Ninguno de tus clubes coincide con tu búsqueda';
 
   @override
   String get clubsTimeoutError =>
@@ -6873,6 +6956,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get plansFilterGroupLabel => 'Filtrar planes por estado';
 
   @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible de $total planes',
+      one: '$visible de $total plan',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get plansFilterAll => 'Todos';
 
   @override
@@ -6929,10 +7023,16 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       weeks,
       locale: localeName,
-      other: '$weeks semanas · $days días/semana',
-      one: '$weeks semana · $days días/semana',
+      other: '$weeks semanas',
+      one: '$weeks semana',
     );
-    return '$_temp0';
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días/semana',
+      one: '$days día/semana',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -7617,7 +7717,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planDetailDaysPerWeek(int count) {
-    return '$count días/sem.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días/sem.',
+      one: '$count día/sem.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8733,7 +8839,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String settingsAccountRestoreIncompleteArchive(int runs) {
-    return 'Ese archivo se declaraba incompleto. Se restauraron $runs carreras y no se sobrescribió nada: restaura desde una copia completa para rellenar los huecos.';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: 'Se restauraron $runs carreras',
+      one: 'Se restauró $runs carrera',
+    );
+    return 'Ese archivo se declaraba incompleto. $_temp0 y no se sobrescribió nada: restaura desde una copia completa para rellenar los huecos.';
   }
 
   @override
@@ -8765,12 +8877,36 @@ class AppLocalizationsEs extends AppLocalizations {
     int routes,
     String warnings,
   ) {
-    return 'Restaurados $runs carreras · $tracks trazados · $routes rutas$warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs carreras',
+      one: '$runs carrera',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks trazados',
+      one: '$tracks trazado',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes rutas',
+      one: '$routes ruta',
+    );
+    return 'Restaurado: $_temp0 · $_temp1 · $_temp2$warnings';
   }
 
   @override
   String settingsAccountRestoreWarningsSuffix(int count) {
-    return ' · $count advertencias';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count advertencias',
+      one: '$count advertencia',
+    );
+    return ' · $_temp0';
   }
 
   @override
@@ -15119,6 +15255,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get challengesTitle => 'Desafíos';
 
   @override
+  String get challengesSearchHint => 'Buscar desafíos';
+
+  @override
+  String get challengesNoMatch => 'Ningún desafío coincide con tu búsqueda';
+
+  @override
   String get challengesMyChallenges => 'Mis desafíos';
 
   @override
@@ -15553,11 +15695,31 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String racesAnyTimeNoMatch(String query) {
+    return 'Ningún recorrido coincide con «$query»';
+  }
+
+  @override
+  String racesAnyTimeSeeAll(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Ver los $n recorridos',
+      one: 'Ver $n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get racesAnyTimeFastestFailed =>
       'No se pudieron cargar los tiempos más rápidos de esta temporada.';
 
   @override
   String get racesSearchPlaceholder => 'Buscar pruebas por nombre…';
+
+  @override
+  String get racesSearchAllPlaceholder =>
+      'Buscar pruebas, parques y recorridos…';
 
   @override
   String racesNearChip(String place) {
@@ -16214,8 +16376,14 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String badgesFeedEarned(String name, String badge) {
-    return '$name consiguió la insignia $badge';
+  String badgesFeedEarned(int count, String name, String badge) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name consiguió $count insignias',
+      one: '$name consiguió la insignia $badge',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -16739,7 +16907,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return 'Se sincronizaron $synced de $total carrera(s) del reloj';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total carreras',
+      one: '$total carrera',
+    );
+    return 'Se sincronizaron $synced de $_temp0 del reloj';
   }
 
   @override
@@ -17209,7 +17383,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'Sus $count métrica(s) se irán con ella.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count métricas se irán',
+      one: '$count métrica se irá',
+    );
+    return '$_temp0 con ella.';
   }
 
   @override
@@ -17220,12 +17400,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return '¿Descartar $count métrica(s)?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count métricas',
+      one: '$count métrica',
+    );
+    return '¿Descartar $_temp0?';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return 'Un diseño $layout dibuja $slots casilla(s), así que $dropped ya no se mostraría.';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots casillas',
+      one: '$slots casilla',
+    );
+    return 'Un diseño $layout dibuja $_temp0, así que $dropped ya no se mostraría.';
   }
 
   @override
@@ -17236,7 +17428,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return '$count pantalla(s) enviada(s) al reloj';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pantallas enviadas',
+      one: '$count pantalla enviada',
+    );
+    return '$_temp0 al reloj';
   }
 
   @override
@@ -20040,12 +20238,36 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planNewStarterSummary(int weeks, int days) {
-    return '$weeks semanas · $days días por semana';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días por semana',
+      one: '$days día por semana',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
-    return '$weeks semanas · $days días por semana · $min–$max min por sesión';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días por semana',
+      one: '$days día por semana',
+    );
+    return '$_temp0 · $_temp1 · $min–$max min por sesión';
   }
 
   @override
@@ -21862,6 +22084,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Todavía no hay recorridos. Los primeros están en camino.';
 
   @override
+  String get parksSearchPlaceholder => 'Buscar parques y recorridos…';
+
+  @override
+  String parksNoMatch(String query) {
+    return 'Ningún parque ni recorrido coincide con «$query»';
+  }
+
+  @override
   String parksCourseCount(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -21871,9 +22101,6 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get parksBackToParks => 'Todos los recorridos';
 
   @override
   String get parksParkNotFoundTitle => 'Parque no encontrado';

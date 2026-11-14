@@ -22,7 +22,6 @@ const _unmigratedSearch = <String, int>{
   'lib/screens/plan_library_screen.dart': 1,
   'lib/screens/privacy_zones_screen.dart': 1,
   'lib/screens/route_builder_screen.dart': 1,
-  'lib/screens/route_picker_screen.dart': 1,
   'lib/screens/routes_heatmap_screen.dart': 1,
   'lib/screens/routine_public_library_screen.dart': 1,
   'lib/widgets/exercise_catalogue_picker.dart': 1,

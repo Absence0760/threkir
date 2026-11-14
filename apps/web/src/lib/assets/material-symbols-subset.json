@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 74956,
-		"sha256": "b14d592f64225a1ef92c97b246b0e66711164479bfb1cb0de7b617dc7e9391dc",
-		"glyphs": 335,
-		"ligatures": 452
+		"bytes": 75080,
+		"sha256": "9700e1ad2b7b53e98d8c3992e0e24acc2ca6a3f950ea5119b0a38f0c9fb4300a",
+		"glyphs": 336,
+		"ligatures": 453
 	},
 	"icons": [
 		"10k",
@@ -169,6 +169,7 @@
 		"height",
 		"help",
 		"help_outline",
+		"highlight",
 		"hiking",
 		"history",
 		"host",

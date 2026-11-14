@@ -6,7 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show ChartCardHeader, PageBarTitle, PageHeader;
+    show AppSpace, ChartCardHeader, PageBarTitle, PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/age_grade.dart';
 import '../lib/goals.dart';
@@ -447,20 +447,31 @@ void main() {
   });
 
   group('TodayScreen', () {
-    testWidgets('Today says its title in the body, under a slim bar that '
-        'holds the overflow', (tester) async {
-      // A root page (ui_kit RootPage, issue #1374 owner finding 11): the
-      // large title is the body's first row, and the bar above it is silent
-      // until that title scrolls under it. The overflow lives in the bar, so
-      // it stays in reach at every scroll position.
+    testWidgets('Today opens on its title with the overflow on the same row, '
+        'and no bar above them', (tester) async {
+      // A root page (ui_kit RootPage, issue #1374 owner findings 11 and the
+      // round-2 gap): the large title and the overflow share the row under
+      // the status bar, with no empty toolbar row above; the compact bar
+      // stays silent until the title scrolls under it, and then holds the
+      // overflow, so it stays in reach at every scroll position.
       final s = await _makeStores();
       await _pump(tester,
           runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      expect(find.byType(AppBar), findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byType(PageHeader), matching: find.text('Today')),
-          findsOneWidget);
+      final heading = find.descendant(
+          of: find.byType(PageHeader), matching: find.text('Today'));
+      expect(heading, findsOneWidget);
+      final more = find.byKey(const Key('dashboardMoreMenu'));
+      expect(more, findsOneWidget);
+      expect(tester.getCenter(more).dy,
+          moreOrLessEquals(tester.getCenter(heading).dy),
+          reason: 'the overflow sits on the title row, centred on it');
+      final title = tester.getRect(heading);
+      expect(title.top,
+          lessThanOrEqualTo(
+              AppSpace.md + (kMinInteractiveDimension - title.height) / 2 + 0.5),
+          reason: 'only the header padding above the title row, no bar row');
+      expect(find.byType(AppBar).hitTestable(), findsNothing,
+          reason: 'no bar at rest');
       expect(
           tester
               .widget<AnimatedOpacity>(find.descendant(
@@ -468,11 +479,6 @@ void main() {
                   matching: find.byType(AnimatedOpacity)))
               .opacity,
           0);
-      expect(
-          find.descendant(
-              of: find.byType(AppBar),
-              matching: find.byKey(const Key('dashboardMoreMenu'))),
-          findsOneWidget);
     });
 
     testWidgets('shows welcome empty state when runs and goals are both empty',

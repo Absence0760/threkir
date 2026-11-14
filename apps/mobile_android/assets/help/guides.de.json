@@ -997,7 +997,7 @@
             "type": "list",
             "items": [
               "Wähle beim Erstellen eines Kurses den Plan unter **Session-Plan**.",
-              "Kurs schon erstellt? Auf der Kursseite drücken Organisatoren **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge**."
+              "Kurs schon erstellt? Auf der Kursseite drücken Veranstalter **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge**."
             ]
           },
           {
@@ -1256,7 +1256,7 @@
           },
           {
             "type": "p",
-            "text": "Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitorganisator, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]]."
+            "text": "Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitveranstalter, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]]."
           }
         ]
       },
@@ -1565,7 +1565,7 @@
           },
           {
             "type": "p",
-            "text": "Plan beim Erstellen vergessen? Auf der Kursseite können Organisatoren über **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge** später einen auswählen."
+            "text": "Plan beim Erstellen vergessen? Auf der Kursseite können Veranstalter über **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge** später einen auswählen."
           }
         ]
       }
@@ -2970,7 +2970,7 @@
           },
           {
             "type": "p",
-            "text": "Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Event bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**."
+            "text": "Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Event bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Veranstalter gesetzt** oder **Keine**."
           },
           {
             "type": "note",
@@ -2994,7 +2994,7 @@
           },
           {
             "type": "p",
-            "text": "Jede Linie wird für sich und sofort gespeichert; du musst das Event nicht speichern. Eine Linie, die du verschoben hast, zeigt **Von einem Organisator gesetzt**. Mit **Auf Route zurücksetzen** legst du sie wieder dorthin, wo die Route sie platziert."
+            "text": "Jede Linie wird für sich und sofort gespeichert; du musst das Event nicht speichern. Eine Linie, die du verschoben hast, zeigt **Von einem Veranstalter gesetzt**. Mit **Auf Route zurücksetzen** legst du sie wieder dorthin, wo die Route sie platziert."
           },
           {
             "type": "note",
@@ -3828,7 +3828,7 @@
             "items": [
               "**Schnellste** ordnet jede Person nach ihrer besten Zeit auf der Strecke. Du erscheinst einmal, mit deinem besten Lauf.",
               "Standardmäßig zeigt sie dieses Jahr. Wähle **Dieser Monat** für den bisherigen Monat oder **Gesamt** für die besten Zeiten aller Zeiten.",
-              "Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die dem Teilen von Gesundheitsdaten zugestimmt haben, daher kann er kürzer sein als die ganze Liste."
+              "Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die ihre Einwilligung zu Gesundheitsdaten gegeben haben, daher kann er kürzer sein als die ganze Liste."
             ]
           }
         ]
@@ -4083,7 +4083,7 @@
             "items": [
               "Distanz, Gesamtzeit, Bewegungszeit und Tempo.",
               "Dein GPS-Track, aus dem Karte und Splits entstehen.",
-              "Höhe, Schritte und Herzfrequenz, wenn du einen Herzfrequenz-Brustgurt gekoppelt hast."
+              "Höhe, Schritte und Herzfrequenz, wenn du einen Herzfrequenzgurt gekoppelt hast."
             ]
           },
           {

@@ -937,9 +937,6 @@ class _MessagesScreenState extends State<MessagesScreen>
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
         body: l10n.messagesEmptyBody,
-        ctaLabel: l10n.messagesNewMessage,
-        ctaIcon: Icons.edit_outlined,
-        onCta: _newMessage,
       );
     }
     final tag = localeToTag(Localizations.localeOf(context));

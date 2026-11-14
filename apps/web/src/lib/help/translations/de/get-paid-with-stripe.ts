@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitorganisator, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]].',
+					text: 'Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitveranstalter, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]].',
 				},
 			],
 		},

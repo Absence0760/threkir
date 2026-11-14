@@ -10,8 +10,10 @@ import 'package:flutter/material.dart';
 /// — a 52 dp left indent — and 72 dp tall). Switching destinations, the strip
 /// jumped 26 dp taller and the first tab slid 52 dp right (issue #666 C6).
 ///
-/// Deriving the flag removes the choice: labels that fit share the width, and
-/// labels that don't scroll and start **flush**, never at `startOffset`. The
+/// Deriving the flag removes the choice: labels that fit share the width,
+/// labels that fit only at their own widths keep those widths and share the
+/// leftover space between them (so the strip still spans the screen), and
+/// labels that don't fit scroll and start **flush**, never at `startOffset`. The
 /// offset exists so a scrollable strip hints that content precedes the first
 /// tab, but no strip in this app is ever scrolled to a middle tab on arrival,
 /// so it only ever cost the leading tab its alignment with the fill case.
@@ -48,6 +50,7 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
     // still clipped "Achievements" on another runner's profile, because its
     // quarter of the width was narrower than it.
     var widest = 0.0;
+    var sum = 0.0;
     for (final label in labels) {
       final painter = TextPainter(
         text: TextSpan(text: label, style: style),
@@ -57,16 +60,33 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
       )..layout();
       final w = painter.width + kTabLabelPadding.horizontal;
       if (w > widest) widest = w;
+      sum += w;
       painter.dispose();
     }
     final needed = widest * labels.length;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final scrollable = needed > constraints.maxWidth;
+        final width = constraints.maxWidth;
+        if (needed <= width) {
+          return TabBar(
+            controller: controller,
+            tabAlignment: TabAlignment.fill,
+            tabs: [for (final label in labels) Tab(text: label)],
+          );
+        }
+        // Labels that fit at their own widths but not in equal shares
+        // ("Races & courses" beside three short ones) still span the strip:
+        // each tab keeps its width and the leftover is shared out as padding,
+        // so the strip is not left-heavy with a gap at its end. The floor
+        // keeps rounding from tipping the row one pixel past the edge.
+        final spare = sum <= width ? (width - sum) / labels.length : 0.0;
+        final pad = kTabLabelPadding.horizontal / 2 +
+            (spare / 2 * 100).floorToDouble() / 100;
         return TabBar(
           controller: controller,
-          isScrollable: scrollable,
-          tabAlignment: scrollable ? TabAlignment.start : TabAlignment.fill,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelPadding: EdgeInsets.symmetric(horizontal: pad),
           tabs: [for (final label in labels) Tab(text: label)],
         );
       },

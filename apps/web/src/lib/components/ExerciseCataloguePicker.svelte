@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Exercise, ExerciseCategory } from '#lib/types.ts';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { createCustomExercise } from '#lib/core/data.ts';
 	import { cataloguePickerView, shadowsSeededGlobal } from './exercise_catalogue_picker';
 	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
@@ -107,16 +108,7 @@
 
 <div class="catalogue-picker" data-testid="exercise-catalogue-picker">
 	<div class="controls">
-		<label class="search">
-			<span class="material-symbols" aria-hidden="true">search</span>
-			<input
-				type="text"
-				bind:value={query}
-				placeholder={t('gym.catalogue.searchPlaceholder')}
-				aria-label={t('gym.catalogue.searchPlaceholder')}
-				data-testid="catalogue-search"
-			/>
-		</label>
+		<AppSearchField bind:value={query} label={t('gym.catalogue.searchPlaceholder')} testid="catalogue-search" />
 		<label class="filter">
 			<span class="section-label">{t('gym.catalogue.categoryLabel')}</span>
 			<select bind:value={category} data-testid="catalogue-category" aria-label={t('gym.catalogue.categoryLabel')}>
@@ -177,34 +169,6 @@
 		display: flex;
 		gap: var(--space-sm);
 		flex-wrap: wrap;
-	}
-	.search {
-		flex: 1 1 12rem;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		padding-inline: var(--space-sm);
-		background: var(--color-surface);
-	}
-	.search .material-symbols {
-		font-size: 1.1rem;
-		color: var(--color-text-tertiary);
-	}
-	.search input {
-		border: none;
-		background: none;
-		flex: 1;
-		min-width: 0;
-		height: 2.4rem;
-	}
-	.search input:focus {
-		outline: none;
-	}
-	.search input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
 	}
 	.filter {
 		display: flex;

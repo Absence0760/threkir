@@ -795,7 +795,7 @@ test('fetchFollowingBadgeAwards chunks the followee `.in()` (no silently-empty b
 	// Anchor past the multi-line params object so the non-greedy `\n}` lands on
 	// the function's real closing brace, not the opts type's brace.
 	const fnMatch = source.match(
-		/const authors = await resolveFollowedAuthorIds\(null\);[\s\S]*?\n}/,
+		/const authors = await resolveFollowedAuthorIds\(opts\?\.authorId \?\? null\);[\s\S]*?\n}/,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchFollowingBadgeAwards — rename?');
 	const body = fnMatch![0];

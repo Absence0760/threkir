@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Registar a partir de uma fotografia faz parte do Pro. Registar alimentos à mão continua gratuito.',
-						'Esta funcionalidade usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui uma ligação para a página da sua conta, onde o pode aceitar.',
+						'Esta funcionalidade usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui um link para a página da sua conta, onde o pode aceitar.',
 						'A fotografia só é usada para estimar o que está no prato. Os dados de localização e da câmara são removidos antes do envio, e o Threkir não guarda a fotografia.',
 					],
 				},

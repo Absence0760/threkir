@@ -144,7 +144,7 @@ test.describe('backup completeness disclosure', () => {
 		await dialog.getByRole('button', { name: /^Restore$/ }).click();
 
 		// The rows still land: a short archive cannot delete anything.
-		await expect(page.getByText(/Restored 1 runs/)).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByText(/Restored 1 run,/)).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('restore-incomplete-archive')).toBeVisible();
 	});
 

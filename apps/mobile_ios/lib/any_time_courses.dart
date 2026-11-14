@@ -7,6 +7,8 @@
 /// (docs/architecture/parity_pairs.md).
 library;
 
+import 'catalogue_browse.dart' show fold;
+import 'park_courses.dart' show regionName;
 import 'run_stats.dart' show haversineMetres;
 
 class AnyTimeCourseKey {
@@ -88,4 +90,28 @@ List<OrderedCourse<T>> orderAnyTimeCourses<T>(
     return _compareStable(a.k, b.k);
   });
   return [for (final r in rows) OrderedCourse(r.course, r.awayM)];
+}
+
+/// The words of a park or park course search, folded the way the segment
+/// catalogue's search folds (case and accents ignored). A blank query has
+/// none, and no words match everything.
+List<String> parkSearchTerms(String query) => [
+      for (final t in fold(query).split(RegExp(r'\s+')))
+        if (t.isNotEmpty) t,
+    ];
+
+/// Whether every one of [terms] is in the course's name, its park's name or
+/// the park's place (the region's name or code), so "pocahontas 5k" and
+/// "virginia beaver" both find a course. With no [courseName] it asks about
+/// the park alone.
+bool parkSearchMatches(
+  List<String> terms, {
+  String courseName = '',
+  required String parkName,
+  required String regionCode,
+}) {
+  if (terms.isEmpty) return true;
+  final text = fold(
+      [courseName, parkName, regionName(regionCode), regionCode].join(' '));
+  return terms.every(text.contains);
 }

@@ -2,12 +2,15 @@
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchAllParkCourses, fetchParks, type Park, type ParkCourseWithPark } from '#lib/core/data.ts';
 	import { groupParksByRegion, regionName } from '#lib/parks/park_courses.ts';
 	import ParkCard from '#lib/components/parks/ParkCard.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import { parkSearchMatches, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
 
 	let parks = $state<Park[]>([]);
 	let loading = $state(true);
@@ -16,7 +19,44 @@
 	// without their course count, distances and thumbnail.
 	let courses = $state<ParkCourseWithPark[]>([]);
 
-	const groups = $derived(groupParksByRegion(parks));
+	// The search once typing pauses. Every park and course is already loaded,
+	// so it is matched on the list. A park is found by its own name and place,
+	// or by any of its courses' names, so a course name leads to its park.
+	// Opens on `?q=`, which Races & courses' "See all" carries.
+	let query = $state(page.url.searchParams.get('q') ?? '');
+	let settledQuery = $state(page.url.searchParams.get('q') ?? '');
+	let queryTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const next = query;
+		clearTimeout(queryTimer);
+		queryTimer = setTimeout(() => (settledQuery = next), 250);
+		return () => clearTimeout(queryTimer);
+	});
+	const terms = $derived(parkSearchTerms(settledQuery));
+
+	function clearSearch() {
+		clearTimeout(queryTimer);
+		query = '';
+		settledQuery = '';
+	}
+
+	const shownParks = $derived(
+		terms.length === 0
+			? parks
+			: parks.filter(
+					(p) =>
+						parkSearchMatches(terms, { parkName: p.name, regionCode: p.region_code }) ||
+						(byPark.get(p.id) ?? []).some((c) =>
+							parkSearchMatches(terms, {
+								courseName: c.segment.name,
+								parkName: p.name,
+								regionCode: p.region_code,
+							}),
+						),
+				),
+	);
+
+	const groups = $derived(groupParksByRegion(shownParks));
 
 	const byPark = $derived.by(() => {
 		const out = new Map<string, ParkCourseWithPark[]>();
@@ -84,6 +124,18 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
+		<div class="parks-search">
+			<AppSearchField bind:value={query} label={m('parks.searchPlaceholder')} testid="parks-search" />
+		</div>
+		{#if groups.length === 0}
+			<EmptyState icon="search_off" title={m('parks.noMatch', { query: settledQuery.trim() })} data-testid="parks-no-match">
+				{#snippet actions()}
+					<button type="button" class="btn btn-outline" onclick={clearSearch} data-testid="parks-clear-search">
+						{m('filterBar.clearSearch')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{/if}
 		{#each groups as group (group.regionCode)}
 			<section class="region" data-testid="parks-region" aria-labelledby="region-{group.regionCode}">
 				<SectionHeader label={regionName(group.regionCode)} id="region-{group.regionCode}" class="parks-region-head" />
@@ -109,6 +161,9 @@
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		text-decoration: none;
+	}
+	.parks-search {
+		max-width: 32rem;
 	}
 	.state-msg {
 		color: var(--color-text-tertiary);

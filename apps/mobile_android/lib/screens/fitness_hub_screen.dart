@@ -45,7 +45,7 @@ import 'runs_screen.dart';
 ///
 /// The hub is a ui_kit `RootPage.tabbed`, as the Social hub is: the hub's
 /// name ([fitnessHubTitle], the label the bottom nav shows) in a large title
-/// over the strip, which collapses into the one app bar as a tab scrolls, and
+/// over the strip, which collapses into a compact bar as a tab scrolls, and
 /// the one FAB: every tab body is a ui_kit `HubTabBody`, which inside
 /// the hub's [HubTabScope] draws no app bar or title of its own, puts its
 /// secondary actions in its control row and hands its primary action to the

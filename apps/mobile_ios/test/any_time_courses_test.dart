@@ -95,4 +95,35 @@ void main() {
     orderAnyTimeCourses(input, id, null);
     expect([for (final c in input) c.slug], ['b', 'a']);
   });
+  test('parkSearchTerms: folded words, blanks dropped', () {
+    expect(parkSearchTerms('  Swift   CRÉEK '), ['swift', 'creek']);
+    expect(parkSearchTerms(''), isEmpty);
+    expect(parkSearchTerms('   '), isEmpty);
+  });
+
+  test('parkSearchMatches: every word in the course, its park or its place',
+      () {
+    bool matches(String q) => parkSearchMatches(
+          parkSearchTerms(q),
+          courseName: 'Beaver Lake Trail',
+          parkName: 'Pocahontas',
+          regionCode: 'US-VA',
+        );
+    expect(matches('pocahontas beaver'), isTrue);
+    expect(matches('Virginia lake'), isTrue);
+    expect(matches('us-va'), isTrue);
+    expect(matches('beaver swift'), isFalse);
+    expect(matches('maryland'), isFalse);
+  });
+
+  test(
+      'parkSearchMatches: no words match everything; a park alone is asked '
+      'by its name and place', () {
+    bool matches(List<String> terms) =>
+        parkSearchMatches(terms, parkName: 'Pocahontas', regionCode: 'US-VA');
+    expect(matches(const []), isTrue);
+    expect(matches(parkSearchTerms('poca')), isTrue);
+    expect(matches(parkSearchTerms('virginia')), isTrue);
+    expect(matches(parkSearchTerms('beaver')), isFalse);
+  });
 }

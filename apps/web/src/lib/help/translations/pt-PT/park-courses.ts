@@ -76,7 +76,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						"Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e uma ligação **Iniciar sessão**.",
+						"Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e um link **Iniciar sessão**.",
 						"O tempo de uma corrida que os outros não podem ver não lhes é mostrado.",
 						"Não vê as pessoas que bloqueou, e elas não o veem a si.",
 					],

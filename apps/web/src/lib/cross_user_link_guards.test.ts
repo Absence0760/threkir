@@ -43,8 +43,13 @@ test('SocialFeed keeps a signed-in reader inside the app for other runners rows'
 	assert.match(src, /class="comment-pill" href="\/runs\/\{entry\.id\}"/, 'the comment pill must open the in-app run page');
 	assert.match(
 		src,
-		/href="\/u\/\{b\.authorId\}\?tab=achievements&badge=\{b\.badge\.id\}"/,
-		'a feed badge chip must open the earner\'s Achievements tab',
+		/`\/u\/\$\{lead\.authorId\}\?tab=achievements&badge=\$\{lead\.badge\.id\}`/,
+		'a feed badge highlight must open the earner\'s Achievements tab on that badge',
+	);
+	assert.match(
+		src,
+		/`\/u\/\$\{lead\.authorId\}\?tab=achievements`/,
+		'a grouped badge highlight must open the earner\'s Achievements tab',
 	);
 	assert.match(src, /href="\/share\/workout\/\{entry\.id\}"/, 'the feed lift card has no in-app non-owner view and stays on the public workout page');
 });

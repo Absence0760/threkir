@@ -87,11 +87,11 @@ test.describe('clip-public-track — pre-side-effect guards', () => {
 	test('POST without Authorization header → guards still fire in-handler', async () => {
 		// verify_jwt = false (decisions §280), so an Authorization-less
 		// POST reaches the handler instead of dying at the platform
-		// 401. The local functions relay injects the stack's anon key
-		// as Authorization, which means the handler's own missing-auth
-		// 401 branch is NOT reachable over the wire here — it is
-		// pinned at source level by
-		// functions/_shared/verify_jwt_config.test.ts instead. What
+		// 401, and the handler serves it as anon: that is what a
+		// signed-out browser sends, since the publishable key is not a
+		// JWT. The local functions relay injects the stack's anon key
+		// as Authorization, so the header-less path is pinned at source
+		// level by functions/_shared/verify_jwt_config.test.ts. What
 		// this test CAN pin: an unauthenticated caller's request still
 		// hits every pre-side-effect body gate before any DB / Storage
 		// cost — the UUID gate rejects it exactly as it does for an

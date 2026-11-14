@@ -61,21 +61,25 @@ Deno.test('every anon-reachable function has an explicit verify_jwt = false', as
   }
 })
 
-Deno.test('clip-public-track keeps its in-handler missing-auth gate', async () => {
-  // Reason: with verify_jwt = false the platform no longer rejects an
-  // Authorization-less request, so this handler branch is the only
-  // thing standing between a bare bot POST and the anon code path.
-  // The web e2e cannot pin it over the wire — the local functions
-  // relay injects the stack's anon key as Authorization — so it is
-  // pinned at source level here (same pattern as
-  // delete-account/wiring.test.ts).
+Deno.test('clip-public-track serves a header-less caller as anon, rate-limited', async () => {
+  // Reason: a signed-out browser sends the publishable key as `apikey` and
+  // no Authorization header, because the key is not a JWT. The handler used
+  // to refuse that with 401, which took the track off every public share
+  // page; the e2e never saw it because the local functions relay injects the
+  // stack's anon key as Authorization. Refusing a missing header bought no
+  // protection: the publishable key ships in every page, so a bot can send
+  // it. The abuse control is the per-IP bucket on the anon path, so that is
+  // what is pinned here.
   const src = await Deno.readTextFile(
     new URL('../clip-public-track/index.ts', import.meta.url),
   )
   assert(
-    src.includes("if (!authHeader) {") &&
-      src.includes("{ error: 'missing authorization' }, { status: 401 }"),
-    'clip-public-track lost its in-handler missing-authorization 401 gate',
+    !src.includes("{ error: 'missing authorization' }, { status: 401 }"),
+    'clip-public-track must not refuse a signed-out caller for sending no Authorization header',
+  )
+  assert(
+    src.includes("'clip-public-track:anon', 60, 3600, { failClosed: true }"),
+    'the anon path must keep its fail-closed per-IP rate limit',
   )
 })
 

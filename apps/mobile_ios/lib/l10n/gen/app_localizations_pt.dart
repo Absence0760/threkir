@@ -4545,7 +4545,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$checkpoints pontos de controlo',
       one: '$checkpoints ponto de controlo',
     );
-    return 'Percurso ($_temp0) e plano de prova ($_temp1) enviados para o relógio';
+    return 'Percurso ($_temp0) e horário da prova ($_temp1) enviados para o relógio';
   }
 
   @override
@@ -4566,7 +4566,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$checkpoints pontos de controlo',
       one: '$checkpoints ponto de controlo',
     );
-    return 'Percurso ($_temp0) enviado. Plano de prova reduzido de $source para $_temp1 para caber no relógio';
+    return 'Percurso ($_temp0) enviado. Horário da prova reduzido de $source para $_temp1 para caber no relógio';
   }
 
   @override
@@ -4583,7 +4583,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$unresolved cortes com hora do dia precisam',
       one: '$unresolved corte com hora do dia precisa',
     );
-    return 'Plano de prova enviado ($_temp0), mas $_temp1 de uma hora de partida — defina uma na folha da equipa para que cheguem ao relógio';
+    return 'Horário da prova enviado ($_temp0), mas $_temp1 de uma hora de partida — defina uma na folha da equipa para que cheguem ao relógio';
   }
 
   @override
@@ -4604,7 +4604,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Percurso ($_temp0) enviado, mas o plano de prova tem $_temp1 e o relógio suporta $max — remova alguns para o enviar';
+    return 'Percurso ($_temp0) enviado, mas o horário da prova tem $_temp1 e o relógio suporta $max — remova alguns para o enviar';
   }
 
   @override
@@ -28678,7 +28678,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$checkpoints pontos de controle',
       one: '$checkpoints ponto de controle',
     );
-    return 'Percurso ($_temp0) e plano de corrida ($_temp1) enviados para o relógio';
+    return 'Percurso ($_temp0) e horários da prova ($_temp1) enviados para o relógio';
   }
 
   @override
@@ -28699,7 +28699,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$checkpoints pontos de controle',
       one: '$checkpoints ponto de controle',
     );
-    return 'Percurso ($_temp0) enviado. Plano de corrida reduzido de $source para $_temp1 para caber no relógio';
+    return 'Percurso ($_temp0) enviado. Horários da prova reduzidos de $source para $_temp1 para caber no relógio';
   }
 
   @override
@@ -28716,7 +28716,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$unresolved cortes por horário precisam',
       one: '$unresolved corte por horário precisa',
     );
-    return 'Plano de corrida enviado ($_temp0), mas $_temp1 de um horário de largada — defina um na planilha da equipe para que cheguem ao relógio';
+    return 'Horários da prova enviados ($_temp0), mas $_temp1 de um horário de largada — defina um na planilha da equipe para que cheguem ao relógio';
   }
 
   @override
@@ -28737,7 +28737,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Percurso ($_temp0) enviado, mas o plano de corrida tem $_temp1 e o relógio suporta $max — remova alguns para enviá-lo';
+    return 'Percurso ($_temp0) enviado, mas os horários da prova têm $_temp1 e o relógio suporta $max — remova alguns para enviá-los';
   }
 
   @override

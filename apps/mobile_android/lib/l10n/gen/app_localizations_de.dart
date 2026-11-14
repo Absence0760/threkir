@@ -4544,7 +4544,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$checkpoints Kontrollpunkte',
       one: '$checkpoints Kontrollpunkt',
     );
-    return 'Strecke ($_temp0) und Rennplan ($_temp1) an die Uhr gesendet';
+    return 'Strecke ($_temp0) und Zeitplan ($_temp1) an die Uhr gesendet';
   }
 
   @override
@@ -4565,7 +4565,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$checkpoints Kontrollpunkte',
       one: '$checkpoints Kontrollpunkt',
     );
-    return 'Strecke ($_temp0) gesendet. Rennplan von $source auf $_temp1 reduziert, damit er auf die Uhr passt';
+    return 'Strecke ($_temp0) gesendet. Zeitplan von $source auf $_temp1 reduziert, damit er auf die Uhr passt';
   }
 
   @override
@@ -4582,7 +4582,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$unresolved Cut-offs mit Tageszeit brauchen',
       one: '$unresolved Cut-off mit Tageszeit braucht',
     );
-    return 'Rennplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen';
+    return 'Zeitplan gesendet ($_temp0), aber $_temp1 eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen';
   }
 
   @override
@@ -4603,7 +4603,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$cutoffs Cut-offs',
       one: '$cutoffs Cut-off',
     );
-    return 'Strecke ($_temp0) gesendet, aber der Rennplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
+    return 'Strecke ($_temp0) gesendet, aber der Zeitplan hat $_temp1 und die Uhr fasst $max — entferne einige, um ihn zu senden';
   }
 
   @override

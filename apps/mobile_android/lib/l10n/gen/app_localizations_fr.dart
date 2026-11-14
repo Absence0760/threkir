@@ -4546,7 +4546,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$checkpoints points de contrôle',
       one: '$checkpoints point de contrôle',
     );
-    return 'Parcours ($_temp0) et plan de course ($_temp1) envoyés à la montre';
+    return 'Parcours ($_temp0) et tableau de marche ($_temp1) envoyés à la montre';
   }
 
   @override
@@ -4567,7 +4567,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$checkpoints points de contrôle',
       one: '$checkpoints point de contrôle',
     );
-    return 'Parcours ($_temp0) envoyé. Plan de course réduit de $source à $_temp1 pour tenir dans la montre';
+    return 'Parcours ($_temp0) envoyé. Tableau de marche réduit de $source à $_temp1 pour tenir dans la montre';
   }
 
   @override
@@ -4585,7 +4585,7 @@ class AppLocalizationsFr extends AppLocalizations {
           '$unresolved barrières exprimées en heure de la journée nécessitent',
       one: '$unresolved barrière exprimée en heure de la journée nécessite',
     );
-    return 'Plan de course envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'assistance pour que la montre les reçoive';
+    return 'Tableau de marche envoyé ($_temp0), mais $_temp1 une heure de départ — définissez-la sur la feuille d\'assistance pour que la montre les reçoive';
   }
 
   @override
@@ -4606,7 +4606,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$cutoffs barrières horaires',
       one: '$cutoffs barrière horaire',
     );
-    return 'Parcours ($_temp0) envoyé, mais le plan de course compte $_temp1 et la montre en accepte $max — supprimez-en pour l\'envoyer';
+    return 'Parcours ($_temp0) envoyé, mais le tableau de marche compte $_temp1 et la montre en accepte $max — supprimez-en pour l\'envoyer';
   }
 
   @override

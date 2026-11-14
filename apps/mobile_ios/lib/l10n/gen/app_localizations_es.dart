@@ -4540,7 +4540,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Recorrido ($_temp0) y plan de carrera ($_temp1) enviados al reloj';
+    return 'Recorrido ($_temp0) y horario de carrera ($_temp1) enviados al reloj';
   }
 
   @override
@@ -4561,7 +4561,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Recorrido ($_temp0) enviado. Plan de carrera reducido de $source a $_temp1 para caber en el reloj';
+    return 'Recorrido ($_temp0) enviado. Horario de carrera reducido de $source a $_temp1 para caber en el reloj';
   }
 
   @override
@@ -4578,7 +4578,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$unresolved cortes por hora necesitan',
       one: '$unresolved corte por hora necesita',
     );
-    return 'Plan de carrera enviado ($_temp0), pero $_temp1 una hora de salida — defínela en la hoja de equipo para que lleguen al reloj';
+    return 'Horario de carrera enviado ($_temp0), pero $_temp1 una hora de salida — defínela en la hoja de equipo para que lleguen al reloj';
   }
 
   @override
@@ -4599,7 +4599,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Recorrido ($_temp0) enviado, pero el plan de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
+    return 'Recorrido ($_temp0) enviado, pero el horario de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
   }
 
   @override

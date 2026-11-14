@@ -1177,7 +1177,7 @@
   "routeDetailAppleWatchRouteSimplified": "Itinéraire envoyé à l'Apple Watch — réduit de {source} à {points, plural, one{{points} point} other{{points} points}} pour tenir",
   "routeDetailAppleWatchRouteTooShort": "Cet itinéraire a trop peu de points pour être suivi sur l'Apple Watch",
   "routeDetailAppleWatchRouteFailed": "Impossible d'envoyer l'itinéraire à l'Apple Watch : {error}",
-  "routeDetailWatchCourseAndScheduleSent": "Parcours ({points, plural, one{{points} point} other{{points} points}}) et plan de course ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}) envoyés à la montre",
+  "routeDetailWatchCourseAndScheduleSent": "Parcours ({points, plural, one{{points} point} other{{points} points}}) et tableau de marche ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}) envoyés à la montre",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -1189,7 +1189,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé. Plan de course réduit de {source} à {checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}} pour tenir dans la montre",
+  "routeDetailWatchScheduleThinned": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé. Tableau de marche réduit de {source} à {checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}} pour tenir dans la montre",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Plan de course envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière exprimée en heure de la journée nécessite} other{{unresolved} barrières exprimées en heure de la journée nécessitent}} une heure de départ — définissez-la sur la feuille d'assistance pour que la montre les reçoive",
+  "routeDetailWatchScheduleClockCutoffs": "Tableau de marche envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière exprimée en heure de la journée nécessite} other{{unresolved} barrières exprimées en heure de la journée nécessitent}} une heure de départ — définissez-la sur la feuille d'assistance pour que la montre les reçoive",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le plan de course compte {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
+  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le tableau de marche compte {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {

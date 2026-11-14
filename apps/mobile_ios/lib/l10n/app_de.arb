@@ -1177,7 +1177,7 @@
   "routeDetailAppleWatchRouteSimplified": "Route an die Apple Watch gesendet — von {source} auf {points, plural, one{{points} Punkt} other{{points} Punkte}} ausgedünnt, damit sie auf die Apple Watch passt",
   "routeDetailAppleWatchRouteTooShort": "Diese Route hat zu wenige Punkte, um ihr auf der Apple Watch zu folgen",
   "routeDetailAppleWatchRouteFailed": "Route konnte nicht an die Apple Watch gesendet werden: {error}",
-  "routeDetailWatchCourseAndScheduleSent": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) und Rennplan ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}) an die Uhr gesendet",
+  "routeDetailWatchCourseAndScheduleSent": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) und Zeitplan ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}) an die Uhr gesendet",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -1189,7 +1189,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet. Rennplan von {source} auf {checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}} reduziert, damit er auf die Uhr passt",
+  "routeDetailWatchScheduleThinned": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet. Zeitplan von {source} auf {checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}} reduziert, damit er auf die Uhr passt",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Rennplan gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}), aber {unresolved, plural, one{{unresolved} Cut-off mit Tageszeit braucht} other{{unresolved} Cut-offs mit Tageszeit brauchen}} eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen",
+  "routeDetailWatchScheduleClockCutoffs": "Zeitplan gesendet ({checkpoints, plural, one{{checkpoints} Kontrollpunkt} other{{checkpoints} Kontrollpunkte}}), aber {unresolved, plural, one{{unresolved} Cut-off mit Tageszeit braucht} other{{unresolved} Cut-offs mit Tageszeit brauchen}} eine Startzeit — lege sie im Crew-Sheet fest, damit sie auf die Uhr kommen",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet, aber der Rennplan hat {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}} und die Uhr fasst {max} — entferne einige, um ihn zu senden",
+  "routeDetailWatchScheduleTooManyCutoffs": "Strecke ({points, plural, one{{points} Punkt} other{{points} Punkte}}) gesendet, aber der Zeitplan hat {cutoffs, plural, one{{cutoffs} Cut-off} other{{cutoffs} Cut-offs}} und die Uhr fasst {max} — entferne einige, um ihn zu senden",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {

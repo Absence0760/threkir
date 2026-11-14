@@ -980,7 +980,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardTrendGroupPerformanceHint =>
-      'Records personnels et temps de course prévus';
+      'Records personnels et temps prévus en compétition';
 
   @override
   String get dashboardTrendGroupEffort => 'Effort';
@@ -10396,7 +10396,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en course et le ton du coach.';
+      'Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en compétition et le ton du coach.';
 
   @override
   String get prefsPagePrivacy => 'Confidentialité et partage';
@@ -10653,7 +10653,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prefsSectionFueling => 'Ravitaillement de course';
+  String get prefsSectionFueling => 'Ravitaillement en compétition';
 
   @override
   String get prefsCarbsPerHour => 'Glucides par heure';
@@ -11259,7 +11259,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fitnessStatVdotTooltip =>
-      'Le score de forme de course de Daniels d\'après votre meilleur effort récent. Détermine vos allures d\'entraînement.';
+      'Le score de forme de course de Daniels d\'après votre meilleur effort récent en compétition. Détermine vos allures d\'entraînement.';
 
   @override
   String get fitnessStatRuns => 'Courses';
@@ -17089,7 +17089,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Un parcours de parc terminé pendant 24 mois différents';
 
   @override
-  String get racePredictorTitle => 'Prédicteur de temps de course';
+  String get racePredictorTitle => 'Prédicteur de temps en compétition';
 
   @override
   String racePredictorAnchoredOn(String distance, String time) {
@@ -17803,7 +17803,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get phaseIntentSettle => 'Calage';
 
   @override
-  String get phaseIntentRace => 'Course';
+  String get phaseIntentRace => 'Compétition';
 
   @override
   String get phaseIntentEven => 'Régulier';
@@ -17991,7 +17991,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get watchMetricWorkoutRemaining => 'Étape de séance';
 
   @override
-  String get watchMetricRacePrediction => 'Prévision de course';
+  String get watchMetricRacePrediction => 'Prévision en compétition';
 
   @override
   String get watchMetricCutoffMargin => 'Marge avant barrière';
@@ -22795,7 +22795,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      'Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C\'est un contre-la-montre, pas une course : le sentier reste ouvert à tous et personne ne l\'encadre.';
+      'Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C\'est un contre-la-montre, pas une compétition : le sentier reste ouvert à tous et personne ne l\'encadre.';
 
   @override
   String get parksNotAffiliated =>

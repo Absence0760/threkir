@@ -253,15 +253,3 @@ test('the recap park lines walk the runner\'s efforts whole', () => {
 	assert.match(fn, /\.select\('id, global_segment_id'\)/, 'the cursor reads id off each effort');
 	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/);
 });
-
-test('the sitemap lists every park course, walked rather than limited', () => {
-	const sitemap = stripComments(
-		readFileSync(resolve(import.meta.dirname, '../../routes/sitemap.xml/+server.ts'), 'utf-8'),
-	);
-	assert.match(sitemap, /walkKeyset\(SITEMAP_COURSE_ORDER, /);
-	assert.doesNotMatch(
-		sitemap,
-		/\.from\(TABLES\.park_courses\)[\s\S]{0,300}?\.limit\(MAX_ENTITIES\)/,
-		'a .limit() past db.max-rows is cut there with a 200',
-	);
-});

@@ -79,6 +79,8 @@ test('every unhashed path is uploaded once, on the short cache', () => {
 		'.well-known/security.txt',
 		'robots.txt',
 		'sitemap.xml',
+		// A child of the sitemap index.
+		'sitemaps/runs-a.xml',
 		'manifest.webmanifest',
 		'sw.js',
 		'favicon.png',

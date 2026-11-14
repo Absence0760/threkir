@@ -8544,7 +8544,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Les éléments marqués « uniquement si vous avez donné votre consentement aux données de santé » sont des données de santé : en acceptant, vous consentez explicitement à ce qu\'ils soient envoyés à Anthropic pour ces fonctionnalités. Anthropic traite les données pour le compte de Threkir selon ses conditions de traitement des données, n\'entraîne pas ses modèles sur celles-ci et les supprime dans un délai de 30 jours (plus longtemps uniquement pour les contenus signalés par ses systèmes de sécurité). Vous pouvez retirer ce consentement à tout moment depuis Compte, dans l\'onglet « Vous » ; cela empêche tout envoi ultérieur, mais n\'annule pas ce qui a déjà été envoyé. Tous les détails, y compris les garanties encadrant le transfert, figurent dans notre politique de confidentialité.';
+      'Les éléments marqués « uniquement si vous avez donné votre consentement aux données de santé » sont des données de santé : en acceptant, vous consentez explicitement à ce qu\'ils soient envoyés à Anthropic pour ces fonctionnalités. Anthropic traite les données pour le compte de Threkir selon ses conditions de traitement des données, n\'entraîne pas ses modèles sur celles-ci et les supprime dans un délai de 30 jours (plus longtemps uniquement pour les contenus signalés par ses systèmes de sécurité). Vous pouvez retirer ce consentement à tout moment sur votre page Compte ; cela empêche tout envoi ultérieur, mais n\'annule pas ce qui a déjà été envoyé. Tous les détails, y compris les garanties encadrant le transfert, figurent dans notre politique de confidentialité.';
 
   @override
   String get coachConsentAction =>
@@ -15659,7 +15659,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get checkpointWeighInConsent =>
-      'Le coureur consent à l\'enregistrement de données de santé';
+      'Le coureur consent à l\'enregistrement de ces données de santé';
 
   @override
   String get checkpointWeighInBodyWeight => 'Poids corporel';

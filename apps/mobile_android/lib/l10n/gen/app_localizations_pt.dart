@@ -8531,7 +8531,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Os itens assinalados com “apenas se tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, concorda explicitamente com o envio desses dados à Anthropic para estas funcionalidades. A Anthropic processa os dados em nome da Threkir ao abrigo dos respetivos termos de processamento de dados, não treina os próprios modelos com eles e elimina-os no prazo de 30 dias (mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Pode retirar este consentimento a qualquer momento em Conta, no separador “Tu”; isso impede o envio de quaisquer outros dados, mas não anula o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
+      'Os itens assinalados com “apenas se tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, concorda explicitamente com o envio desses dados à Anthropic para estas funcionalidades. A Anthropic processa os dados em nome da Threkir ao abrigo dos respetivos termos de processamento de dados, não treina os próprios modelos com eles e elimina-os no prazo de 30 dias (mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Pode retirar este consentimento a qualquer momento na sua página Conta; isso impede o envio de quaisquer outros dados, mas não anula o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
 
   @override
   String get coachConsentAction =>
@@ -15649,7 +15649,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get checkpointWeighInConsent =>
-      'O corredor consente o registo de dados de saúde';
+      'O corredor consente o registo destes dados de saúde';
 
   @override
   String get checkpointWeighInBodyWeight => 'Peso corporal';
@@ -32665,7 +32665,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentProcessing =>
-      'Os itens marcados com “apenas se você tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, você concorda explicitamente com o envio desses dados à Anthropic para esses recursos. A Anthropic processa os dados em nome da Threkir conforme os termos de processamento de dados dela, não treina os próprios modelos com eles e os exclui em até 30 dias (por mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Você pode retirar esse consentimento a qualquer momento em Conta, na aba “Você”; isso impede que qualquer outro dado seja enviado, mas não desfaz o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
+      'Os itens marcados com “apenas se você tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, você concorda explicitamente com o envio desses dados à Anthropic para esses recursos. A Anthropic processa os dados em nome da Threkir conforme os termos de processamento de dados dela, não treina os próprios modelos com eles e os exclui em até 30 dias (por mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Você pode retirar esse consentimento a qualquer momento na sua página Conta; isso impede que qualquer outro dado seja enviado, mas não desfaz o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
 
   @override
   String get coachConsentAction =>
@@ -39773,7 +39773,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get checkpointWeighInConsent =>
-      'O corredor consente o registro de dados de saúde';
+      'O corredor consente o registro destes dados de saúde';
 
   @override
   String get checkpointWeighInBodyWeight => 'Peso corporal';

@@ -13187,7 +13187,7 @@ abstract class AppLocalizations {
   /// Consent gate data-processing paragraph
   ///
   /// In en, this message translates to:
-  /// **'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time under Account in the You tab; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
+  /// **'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time on your Account page; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
   String get coachConsentProcessing;
 
   /// Consent gate action paragraph
@@ -24444,7 +24444,7 @@ abstract class AppLocalizations {
   /// Art 9 consent toggle on the weigh-in sheet
   ///
   /// In en, this message translates to:
-  /// **'Runner consents to recording health data'**
+  /// **'Runner consents to recording this health data'**
   String get checkpointWeighInConsent;
 
   /// Body weight field label on the weigh-in sheet. Deliberately names NO unit: the field's suffix carries the runner's own weight unit, so a label saying kg contradicts an lb suffix.

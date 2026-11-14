@@ -1472,7 +1472,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get safetySmsBadge => 'SMS aktiv';
 
   @override
-  String get safetySmsPending => 'SMS inaktiv – noch nicht zugestimmt';
+  String get safetySmsPending => 'SMS inaktiv – noch nicht eingewilligt';
 
   @override
   String get safetyConfirmSmsLabel => 'Mich auch per SMS benachrichtigen';
@@ -8537,7 +8537,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Die mit „nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Mit deiner Zustimmung willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit unter Konto im Tab „Du“ widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
+      'Die mit „nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Indem du annimmst, willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit auf deiner Kontoseite widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
 
   @override
   String get coachConsentAction =>
@@ -15621,7 +15621,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get checkpointWeighInConsent =>
-      'Läufer willigt in die Erfassung von Gesundheitsdaten ein';
+      'Läufer willigt in die Erfassung dieser Gesundheitsdaten ein';
 
   @override
   String get checkpointWeighInBodyWeight => 'Körpergewicht';

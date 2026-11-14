@@ -261,10 +261,20 @@ void main() {
     // with no recorder behind it. line_calibration_screen.dart is the fourth:
     // the debug-build-only #1304 tool centres the line under test on one
     // full-accuracy fix, the opposite of a browse read (decisions § 2453).
+    // pre_run_status.dart is the recorder's own idle page saying, before
+    // START, whether a GPS run can get a fix and how good it is. Its fixes
+    // force LocationManager, so it never raises the Accuracy dialog either.
     const allowed = {
       'lib/screens/run_screen.dart': {
         'openLocationSettings',
         'isLocationServiceEnabled',
+      },
+      'lib/pre_run_status.dart': {
+        'isLocationServiceEnabled',
+        'openLocationSettings',
+        'getLocationAccuracy',
+        'getPositionStream',
+        'getLastKnownPosition',
       },
       'lib/course_drive_location.dart': {'getPositionStream'},
       'lib/screens/line_calibration_screen.dart': {'getCurrentPosition'},

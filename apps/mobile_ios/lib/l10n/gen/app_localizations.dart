@@ -371,12 +371,6 @@ abstract class AppLocalizations {
   /// **'No route'**
   String get routePickerNoRoute;
 
-  /// Tooltip for the clear-search button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Clear search'**
-  String get routePickerClearSearchTooltip;
-
   /// Placeholder hint for the route-picker search field
   ///
   /// In en, this message translates to:
@@ -458,8 +452,8 @@ abstract class AppLocalizations {
   /// Status when cross-source duplicate runs are skipped during import
   ///
   /// In en, this message translates to:
-  /// **'Skipped {count} duplicate(s) already imported from another source'**
-  String importStatusSkippedDuplicates(Object count);
+  /// **'Skipped {count, plural, one{{count} duplicate} other{{count} duplicates}} already imported from another source'**
+  String importStatusSkippedDuplicates(int count);
 
   /// Per-run progress status while saving imported runs locally
   ///
@@ -536,8 +530,8 @@ abstract class AppLocalizations {
   /// Status after a successful full-backup restore
   ///
   /// In en, this message translates to:
-  /// **'Restored {runs} runs · {tracks} tracks · {routes} routes'**
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes);
+  /// **'Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}'**
+  String importStatusBackupRestored(int runs, int tracks, int routes);
 
   /// Status when restoring from a backup ZIP fails
   ///
@@ -4457,6 +4451,114 @@ abstract class AppLocalizations {
   /// **'Record time only'**
   String get runNoGpsStartTimeOnly;
 
+  /// Idle Run page: title when location services are off on the phone
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off'**
+  String get runPreRunLocationOffTitle;
+
+  /// Idle Run page: what location services being off costs, and that a run can still record time
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Location to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunLocationOffBody;
+
+  /// Idle Run page: button that opens the phone's location settings
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Location'**
+  String get runPreRunTurnOnLocation;
+
+  /// Idle Run page: title when the app has not been allowed location access
+  ///
+  /// In en, this message translates to:
+  /// **'Location access needed'**
+  String get runPreRunPermissionTitle;
+
+  /// Idle Run page: why location access is needed, and that a run can still record time without it
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location access to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunPermissionBody;
+
+  /// Idle Run page: button that shows the system location permission prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location'**
+  String get runPreRunAllowLocation;
+
+  /// Idle Run page: title when location access was denied and the system will not ask again
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is blocked'**
+  String get runPreRunPermissionBlockedTitle;
+
+  /// Idle Run page: location access was denied for good; it can only be allowed from the app's system settings page (the button opens it)
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is turned off for this app. Allow it in Settings to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunPermissionBlockedBody;
+
+  /// Idle Run page: location is allowed and on, and no current GPS fix has arrived yet
+  ///
+  /// In en, this message translates to:
+  /// **'Searching for GPS…'**
+  String get runPreRunSearching;
+
+  /// Idle Run page: hint under Searching for GPS
+  ///
+  /// In en, this message translates to:
+  /// **'A clear view of the sky gets a fix faster.'**
+  String get runPreRunSearchingHint;
+
+  /// Idle Run page map chip: a GPS fix is arriving but is too coarse for the recorder to keep; accuracy is a formatted length such as 35 m
+  ///
+  /// In en, this message translates to:
+  /// **'Weak GPS · ±{accuracy}'**
+  String runPreRunGpsWeak(String accuracy);
+
+  /// Screen-reader label for the weak GPS chip on the idle Run page
+  ///
+  /// In en, this message translates to:
+  /// **'Weak GPS, accurate to within {accuracy}'**
+  String runPreRunGpsWeakA11y(String accuracy);
+
+  /// Idle Run page map chip: GPS fixes are good enough to record; accuracy is a formatted length such as 5 m
+  ///
+  /// In en, this message translates to:
+  /// **'GPS ready · ±{accuracy}'**
+  String runPreRunGpsReady(String accuracy);
+
+  /// Screen-reader label for the GPS ready chip on the idle Run page
+  ///
+  /// In en, this message translates to:
+  /// **'GPS ready, accurate to within {accuracy}'**
+  String runPreRunGpsReadyA11y(String accuracy);
+
+  /// Idle Run page: the map preview's tiles all failed to load; recording does not depend on the map
+  ///
+  /// In en, this message translates to:
+  /// **'The map couldn\'t load. Recording still works without it.'**
+  String get runPreRunMapFailed;
+
+  /// Idle Run page: button that reloads the map preview after it failed
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get runPreRunMapRetry;
+
+  /// Idle Run page (Android): the Physical activity permission is off, so the step counter is unavailable. Quote the permission's name as Android shows it in this language
+  ///
+  /// In en, this message translates to:
+  /// **'Physical activity access is off, so steps, cadence and indoor distance won\'t be recorded.'**
+  String get runPreRunActivityOff;
+
+  /// Idle Run page: button that shows the system prompt for a missing permission
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get runPreRunAllow;
+
   /// Title of the dialog shown at Stop when the run has no GPS fix and no step distance
   ///
   /// In en, this message translates to:
@@ -5272,36 +5374,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run added to history'**
   String get addRunSaved;
-
-  /// Search-field hint in the full-screen route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Search routes'**
-  String get addRunPickerSearchHint;
-
-  /// Tooltip on the clear-search button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Clear'**
-  String get addRunPickerClear;
-
-  /// Tooltip on the close button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get addRunPickerCancel;
-
-  /// Empty-state in the route picker when the search matches nothing
-  ///
-  /// In en, this message translates to:
-  /// **'No routes match \"{query}\"'**
-  String addRunPickerNoMatch(String query);
-
-  /// Leading option in the route picker that attaches no route
-  ///
-  /// In en, this message translates to:
-  /// **'No route'**
-  String get addRunPickerNoRoute;
 
   /// Did-not-finish badge in the run-detail AppBar title — abbreviation, usually left as DNF
   ///
@@ -9614,6 +9686,12 @@ abstract class AppLocalizations {
   /// **'My clubs'**
   String get clubsTabMine;
 
+  /// Screen-reader name of the Browse / My clubs view switch at the top of the Clubs tab. Same text as web socialClubs.tablistLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs section'**
+  String get clubsViewGroup;
+
   /// Button to redeem a club invite code
   ///
   /// In en, this message translates to:
@@ -9625,6 +9703,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search by name or location'**
   String get clubsSearchHint;
+
+  /// Hint in the search field on Clubs → My clubs, which filters the clubs the runner belongs to by name. Same text as web socialClubs.mineSearchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search your clubs'**
+  String get clubsSearchMineHint;
+
+  /// Shown on Clubs → My clubs when the search matches none of the runner's clubs. Same text as web socialClubs.mineNoMatch
+  ///
+  /// In en, this message translates to:
+  /// **'None of your clubs match your search'**
+  String get clubsMineNoMatch;
 
   /// Error shown when loading clubs times out
   ///
@@ -11042,6 +11132,12 @@ abstract class AppLocalizations {
   /// **'Filter plans by status'**
   String get plansFilterGroupLabel;
 
+  /// One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}'**
+  String plansCountMeta(int visible, int total);
+
   /// Status filter chip on the plans list: every plan
   ///
   /// In en, this message translates to:
@@ -11141,7 +11237,7 @@ abstract class AppLocalizations {
   /// Plan length on the plans list, the library card and the library preview: weeks and training days per week
   ///
   /// In en, this message translates to:
-  /// **'{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day/week} other{{days} days/week}}'**
   String plansMetaWeeks(int weeks, int days);
 
   /// New-plan wizard AppBar title
@@ -12149,7 +12245,7 @@ abstract class AppLocalizations {
   /// Days-per-week meta on the hero card
   ///
   /// In en, this message translates to:
-  /// **'{count} days/wk'**
+  /// **'{count, plural, one{{count} day/wk} other{{count} days/wk}}'**
   String planDetailDaysPerWeek(int count);
 
   /// Heading for the focused current-week 7-day strip on plan detail
@@ -13871,7 +13967,7 @@ abstract class AppLocalizations {
   /// Persistent notice under the restore tile shown when the restored archive declared itself incomplete
   ///
   /// In en, this message translates to:
-  /// **'That archive said it was incomplete. {runs} runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.'**
+  /// **'That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten — restore from a complete backup to fill the gaps.'**
   String settingsAccountRestoreIncompleteArchive(int runs);
 
   /// Banner shown when restore can't run because the local store is missing
@@ -13913,7 +14009,7 @@ abstract class AppLocalizations {
   /// Banner summarising a successful restore; warnings is an optional suffix
   ///
   /// In en, this message translates to:
-  /// **'Restored {runs} runs · {tracks} tracks · {routes} routes{warnings}'**
+  /// **'Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}{warnings}'**
   String settingsAccountRestoreDone(
     int runs,
     int tracks,
@@ -13924,7 +14020,7 @@ abstract class AppLocalizations {
   /// Suffix appended to the restore summary when warnings occurred
   ///
   /// In en, this message translates to:
-  /// **' · {count} warnings'**
+  /// **' · {count, plural, one{{count} warning} other{{count} warnings}}'**
   String settingsAccountRestoreWarningsSuffix(int count);
 
   /// Banner shown when restore fails
@@ -24381,6 +24477,18 @@ abstract class AppLocalizations {
   /// **'Challenges'**
   String get challengesTitle;
 
+  /// Hint in the search field at the top of the Challenges tab, which filters both sections by challenge title. Same text as web challenges.searchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search challenges'**
+  String get challengesSearchHint;
+
+  /// Shown on the Challenges tab when the search matches no challenge in either section
+  ///
+  /// In en, this message translates to:
+  /// **'No challenges match your search'**
+  String get challengesNoMatch;
+
   /// Section heading for challenges the user joined
   ///
   /// In en, this message translates to:
@@ -25059,6 +25167,18 @@ abstract class AppLocalizations {
   /// **'{distance} away'**
   String racesAnyTimeAway(String distance);
 
+  /// Run any time empty state when no park course matches the search. Mirrors web races.anyTimeNoMatch
+  ///
+  /// In en, this message translates to:
+  /// **'No courses match “{query}”'**
+  String racesAnyTimeNoMatch(String query);
+
+  /// Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {See all {n} course} other {See all {n} courses}}'**
+  String racesAnyTimeSeeAll(int n);
+
   /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed
   ///
   /// In en, this message translates to:
@@ -25070,6 +25190,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
+
+  /// Placeholder for the Races & courses search in the All view, which finds races by name and park courses by name, park and place. Mirrors web races.searchAllPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search races, parks and courses…'**
+  String get racesSearchAllPlaceholder;
 
   /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
   ///
@@ -26175,11 +26301,11 @@ abstract class AppLocalizations {
   /// **'Earned {date}'**
   String badgesEarnedOn(String date);
 
-  /// Feed badge-strip chip text
+  /// A feed row for the badges one person you follow earned on one day: with one badge it names it, with several it gives the count and the badge names follow on the line below
   ///
   /// In en, this message translates to:
-  /// **'{name} earned the {badge} badge'**
-  String badgesFeedEarned(String name, String badge);
+  /// **'{count, plural, =1{{name} earned the {badge} badge} other{{name} earned {count} badges}}'**
+  String badgesFeedEarned(int count, String name, String badge);
 
   /// One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it
   ///
@@ -27034,7 +27160,7 @@ abstract class AppLocalizations {
   /// No description provided for @simWatchResult.
   ///
   /// In en, this message translates to:
-  /// **'Synced {synced} of {total} run(s) from the watch'**
+  /// **'Synced {synced} of {total, plural, one{{total} run} other{{total} runs}} from the watch'**
   String simWatchResult(int synced, int total);
 
   /// No description provided for @simWatchSyncFailed.
@@ -27796,7 +27922,7 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensRemoveBody.
   ///
   /// In en, this message translates to:
-  /// **'Its {count} metric(s) go with it.'**
+  /// **'Its {count, plural, one{{count} metric goes} other{{count} metrics go}} with it.'**
   String watchScreensRemoveBody(int count);
 
   /// No description provided for @watchScreensRemoveConfirm.
@@ -27814,13 +27940,13 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensShrinkTitle.
   ///
   /// In en, this message translates to:
-  /// **'Drop {count} metric(s)?'**
+  /// **'Drop {count, plural, one{{count} metric} other{{count} metrics}}?'**
   String watchScreensShrinkTitle(int count);
 
   /// Warning naming the metrics a narrower layout would drop
   ///
   /// In en, this message translates to:
-  /// **'A {layout} screen draws {slots} slot(s), so {dropped} would no longer be shown.'**
+  /// **'A {layout} screen draws {slots, plural, one{{slots} slot} other{{slots} slots}}, so {dropped} would no longer be shown.'**
   String watchScreensShrinkBody(String layout, int slots, String dropped);
 
   /// No description provided for @watchScreensShrinkConfirm.
@@ -27838,7 +27964,7 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensPushed.
   ///
   /// In en, this message translates to:
-  /// **'Pushed {count} screen(s) to the watch'**
+  /// **'Pushed {count, plural, one{{count} screen} other{{count} screens}} to the watch'**
   String watchScreensPushed(int count);
 
   /// No description provided for @watchScreensCleared.
@@ -32319,13 +32445,13 @@ abstract class AppLocalizations {
   /// What a distance-based starter plan asks for
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks · {days} days a week'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}}'**
   String planNewStarterSummary(int weeks, int days);
 
   /// What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks · {days} days a week · {min}–{max} min a session'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}} · {min}–{max} min a session'**
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max);
 
   /// When a starter offered on the empty plans list begins. {date} is a localized short date
@@ -35073,17 +35199,23 @@ abstract class AppLocalizations {
   /// **'No park courses yet. The first ones are on their way.'**
   String get parksEmpty;
 
+  /// Placeholder for the park and park course search (All park courses, and Races & courses in the Courses view). Mirrors web parks.searchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search parks and courses…'**
+  String get parksSearchPlaceholder;
+
+  /// All park courses empty state when no park or course matches the search. Mirrors web parks.noMatch
+  ///
+  /// In en, this message translates to:
+  /// **'No parks or courses match “{query}”'**
+  String parksNoMatch(String query);
+
   /// Park courses (#1313): web key parks.courseCount.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, one {{n} course} other {{n} courses}}'**
   String parksCourseCount(int n);
-
-  /// Park courses (#1313): web key parks.backToParks.
-  ///
-  /// In en, this message translates to:
-  /// **'All park courses'**
-  String get parksBackToParks;
 
   /// Park courses (#1313): web key parks.parkNotFoundTitle.
   ///

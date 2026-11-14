@@ -806,7 +806,8 @@ void main() {
 
       expect(find.textContaining('13.11 mi'), findsOneWidget,
           reason: 'the race distance');
-      expect(find.textContaining('5.00 mi away'), findsOneWidget,
+      // How far away reads at its own precision, never two decimals.
+      expect(find.textContaining('5 mi away'), findsOneWidget,
           reason: 'the distance-from-you label');
       expect(find.textContaining(' km'), findsNothing);
     });
@@ -825,7 +826,26 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('21.10 km'), findsOneWidget);
-      expect(find.textContaining('5.00 km away'), findsOneWidget);
+      expect(find.textContaining('5 km away'), findsOneWidget);
+    });
+
+    testWidgets('a race far away reads in whole, grouped kilometres',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'use_miles': false});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(resetActivePreferencesForTest);
+
+      final service = _FakeRaceService(results: [
+        _listing('r-far', 'Faraway 10K',
+            distanceM: 10000, distanceMAway: 3901140),
+      ]);
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+
+      expect(find.textContaining('3,901 km away'), findsOneWidget);
+      expect(find.textContaining('3901.14'), findsNothing);
     });
   });
 

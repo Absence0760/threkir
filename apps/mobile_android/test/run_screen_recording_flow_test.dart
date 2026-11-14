@@ -101,6 +101,21 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   }
 }
 
+/// Records, at each `getPositionStream` call, whether the one shared stream
+/// still had a listener. geolocator hands every caller the stream the first
+/// caller opened, with that caller's settings, until its last listener goes.
+class _StreamHandoffGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  final List<bool> heldAtCall = [];
+  final List<LocationSettings?> settings = [];
+
+  @override
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
+    heldAtCall.add(_positions?.hasListener ?? false);
+    settings.add(locationSettings);
+    return super.getPositionStream(locationSettings: locationSettings);
+  }
+}
+
 /// Spy [LocalRunStore] that captures `save(run)` synchronously instead of
 /// writing to disk. The real store's `save` awaits a `File.writeAsString`,
 /// and real I/O futures don't resolve under flutter_test's fake-async
@@ -675,6 +690,30 @@ void main() {
       expect(countdownThree, isEmpty,
           reason:
               'after countdown completes the large "3" should be gone');
+    });
+
+    testWidgets(
+        'the idle GPS preview lets go of the position stream before the '
+        'recorder opens its own', (tester) async {
+      final spy = _StreamHandoffGeolocatorPlatform();
+      geolocator = spy;
+      GeolocatorPlatform.instance = spy;
+      await pumpRunScreen(tester);
+      await tester.pump();
+      expect(spy.settings, hasLength(1),
+          reason: 'the idle page listens for fixes while it shows');
+      expect((spy.settings.single as AndroidSettings).forceLocationManager,
+          isTrue);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(spy.settings.length, greaterThanOrEqualTo(2),
+          reason: 'the recorder opened its stream at the countdown');
+      expect(spy.heldAtCall.skip(1), everyElement(isFalse),
+          reason: 'had the preview still held the stream, the recorder would '
+              'have been handed it, preview settings and all');
     });
 
     testWidgets('LiveRunMap mounts once recording begins', (tester) async {

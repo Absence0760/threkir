@@ -8,8 +8,10 @@ import { USER_A, USER_B } from '../fixtures/users';
  * Races & courses (issue #1352): `/races` holds two sections, the race
  * calendar ("Upcoming races") and the park courses ("Run any time"), each
  * loading and failing on its own. The run-surface strip is five tabs in the
- * mobile order with no Parks tab, and `/parks` stays reachable directly, from
- * the section's "All park courses" link and from the Segments cross-link.
+ * mobile order with no Parks tab, and `/parks` stays reachable directly and
+ * from the section's "See all N courses" heading link, which shows only when
+ * the list is cut short (issue #1374). One search finds races by name and
+ * park courses by name, park and place, in every view.
  *
  * The park is planted in region US-AK so it sorts first in the stable order
  * whatever other parks the local catalogue holds, and its course start is the
@@ -231,7 +233,7 @@ test.describe('races & courses', () => {
 		const empty = page.getByTestId('races-any-time-empty');
 		await expect(empty).toBeVisible({ timeout: 10_000 });
 		await expect(empty).toContainText('No park courses yet.');
-		await expect(page.getByTestId('races-any-time-all')).toHaveAttribute('href', '/parks');
+		await expect(page.getByTestId('races-any-time-all')).toHaveCount(0);
 	});
 
 	test('failed fastest times keep the courses listed, without them, and say so', async ({ page }) => {
@@ -270,7 +272,10 @@ test.describe('races & courses', () => {
 		await expect(anyTime).toBeVisible();
 		await expect(anyTime.getByTestId('races-near')).toBeVisible();
 		await expect(anyTime.getByTestId('races-use-location')).toBeVisible();
-		await expect(anyTime.getByTestId('races-any-time-all')).toHaveAttribute('href', '/parks');
+		// Every course is listed here, so there is no "See all".
+		await expect(anyTime.getByTestId('races-any-time-all')).toHaveCount(0);
+		// The search stays, and says what it finds in this view.
+		await expect(page.getByTestId('races-search')).toHaveAttribute('placeholder', 'Search parks and courses…');
 
 		await races.click();
 		await expect(page).toHaveURL(/\/races\?show=races$/);
@@ -309,8 +314,12 @@ test.describe('races & courses', () => {
 			const cards = page.getByTestId('races-any-time-course');
 			await expect(cards.first()).toBeVisible({ timeout: 10_000 });
 			await expect(cards).toHaveCount(8);
+			const seeAll = page.getByTestId('races-any-time-all');
+			await expect(seeAll).toHaveText(/^See all \d+ courses/);
+			await expect(seeAll).toHaveAttribute('href', '/parks');
 
 			await page.getByTestId('races-show-courses').click();
+			await expect(seeAll).toHaveCount(0);
 			for (const p of planted) {
 				await expect(cards.filter({ hasText: p.courseName })).toHaveCount(1, { timeout: 10_000 });
 			}
@@ -391,18 +400,86 @@ test.describe('races & courses', () => {
 		}
 	});
 
-	test('/parks is reachable from Run any time and directly, with no strip of its own', async ({
+	test('/parks is reachable from a cut-short Run any time and directly, with no strip of its own', async ({
 		page,
 	}) => {
-		await page.goto('/races');
-		await page.getByTestId('races-any-time-all').click();
-		await page.waitForURL(/\/parks$/);
-		await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
-		await expect(page.locator('nav.surface-tabs')).toHaveCount(0);
-		await expect(page.getByTestId('parks-back-to-races')).toHaveAttribute('href', '/races');
+		let planted: Planted[] = [];
+		try {
+			planted = await plantCourses(9);
+			await page.goto('/races');
+			await page.getByTestId('races-any-time-all').click({ timeout: 10_000 });
+			await page.waitForURL(/\/parks$/);
+			await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
+			await expect(page.locator('nav.surface-tabs')).toHaveCount(0);
+			await expect(page.getByTestId('parks-back-to-races')).toHaveAttribute('href', '/races');
 
-		await page.goto('/parks');
-		await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
+			await page.goto('/parks');
+			await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
+		} finally {
+			for (const p of planted) await teardown(p);
+		}
+	});
+
+	test('the search finds park courses by name, park and place, in every view, and says when none match', async ({
+		page,
+	}) => {
+		let planted: Planted[] = [];
+		try {
+			planted = await plantCourses(2);
+			const [a, b] = planted;
+			await page.goto('/races');
+			const search = page.getByTestId('races-search');
+			await expect(search).toHaveAttribute('placeholder', 'Search races, parks and courses…');
+			const cards = page.getByTestId('races-any-time-course');
+			await expect(cards.first()).toBeVisible({ timeout: 10_000 });
+
+			// By course name: the other planted course drops out.
+			await search.fill(a.courseName.toUpperCase());
+			await expect(cards).toHaveCount(1);
+			await expect(cards.first()).toContainText(a.courseName);
+
+			// By park name plus place, word by word, in any case.
+			await search.fill(`alaska ${b.parkName.split(' ').pop()}`);
+			await expect(cards).toHaveCount(1);
+			await expect(cards.first()).toContainText(b.courseName);
+
+			// The search stays when Courses is chosen, and still filters.
+			await page.getByTestId('races-show-courses').click();
+			await expect(search).toHaveValue(`alaska ${b.parkName.split(' ').pop()}`);
+			await expect(cards).toHaveCount(1);
+			await expect(page.getByTestId('races-any-time-parks').getByTestId('park-card')).toHaveCount(1);
+
+			// Nothing matches: the empty state names the search and clears it.
+			await search.fill('zzz-no-such-course');
+			const none = page.getByTestId('races-any-time-no-match');
+			await expect(none).toContainText('No courses match “zzz-no-such-course”');
+			await none.getByTestId('races-any-time-clear-search').click();
+			await expect(search).toHaveValue('');
+			await expect(cards.filter({ hasText: a.courseName })).toHaveCount(1);
+		} finally {
+			for (const p of planted) await teardown(p);
+		}
+	});
+
+	test('/parks has a search of its own, which a ?q= link opens on', async ({ page }) => {
+		let planted: Planted[] = [];
+		try {
+			planted = await plantCourses(2);
+			const [a, b] = planted;
+			await page.goto(`/parks?q=${encodeURIComponent(a.courseName)}`);
+			const search = page.getByTestId('parks-search');
+			await expect(search).toHaveValue(a.courseName);
+			const cards = page.getByTestId('park-card');
+			await expect(cards.filter({ hasText: a.parkName })).toHaveCount(1, { timeout: 10_000 });
+			await expect(cards.filter({ hasText: b.parkName })).toHaveCount(0);
+
+			await search.fill('zzz-no-such-park');
+			await expect(page.getByTestId('parks-no-match')).toContainText('No parks or courses match “zzz-no-such-park”');
+			await page.getByTestId('parks-clear-search').click();
+			await expect(cards.filter({ hasText: b.parkName })).toHaveCount(1);
+		} finally {
+			for (const p of planted) await teardown(p);
+		}
 	});
 });
 
@@ -422,7 +499,7 @@ test.describe('races & courses, with a location', () => {
 			await page.getByTestId('races-use-location').click();
 			const first = page.getByTestId('races-any-time-course').first();
 			await expect(first).toContainText(planted.courseName, { timeout: 10_000 });
-			await expect(first).toContainText(/0\.0 (km|mi) away/);
+			await expect(first).toContainText(/(^|\D)0 (km|mi) away/);
 		} finally {
 			await teardown(planted);
 		}
@@ -438,7 +515,7 @@ test.describe('races & courses, with a location', () => {
 			await expect(anyTime.getByTestId('races-near-clear')).toContainText('Near me');
 			const first = anyTime.getByTestId('races-any-time-course').first();
 			await expect(first).toContainText(planted.courseName, { timeout: 10_000 });
-			await expect(first).toContainText(/0\.0 (km|mi) away/);
+			await expect(first).toContainText(/(^|\D)0 (km|mi) away/);
 
 			await anyTime.getByTestId('races-near-clear').click();
 			await expect(anyTime.getByTestId('races-near-clear')).toHaveCount(0);

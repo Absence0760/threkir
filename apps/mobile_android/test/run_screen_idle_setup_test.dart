@@ -20,7 +20,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
-import '../lib/screens/route_picker_screen.dart';
+import '../lib/widgets/route_picker_sheet.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -406,7 +406,7 @@ void main() {
     Future<void> openPicker(WidgetTester tester) async {
       await tester.tap(find.text('Change route'));
       await tester.pumpAndSettle();
-      expect(find.byType(RoutePickerScreen), findsOneWidget);
+      expect(find.byType(RoutePickerSheet), findsOneWidget);
     }
 
     testWidgets('survives backing out of the picker', (tester) async {
@@ -459,7 +459,13 @@ void main() {
 
       await tester.tap(find.text('FOLLOWING'));
       await tester.pumpAndSettle();
-      expect(find.byType(RoutePickerScreen), findsOneWidget);
+      expect(find.byType(RoutePickerSheet), findsOneWidget);
+      expect(
+          tester
+              .widget<RadioGroup<String>>(find.byType(RadioGroup<String>))
+              .groupValue,
+          _loop.id,
+          reason: 'the sheet marks the route being followed');
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

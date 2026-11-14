@@ -245,7 +245,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Um ecrã que tem um guia mostra uma ligação **Como funciona** junto ao título. Abre o guia desse ecrã; quando há vários guias sobre ele, abre uma pequena lista para escolher."
+            "text": "Um ecrã que tem um guia mostra um link **Como funciona** junto ao título. Abre o guia desse ecrã; quando há vários guias sobre ele, abre uma pequena lista para escolher."
           },
           {
             "type": "p",
@@ -1287,7 +1287,7 @@
           },
           {
             "type": "p",
-            "text": "Enquanto não estiver pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com uma ligação **Configurar pagamentos** de volta a esta página."
+            "text": "Enquanto não estiver pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com um link **Configurar pagamentos** de volta a esta página."
           }
         ]
       },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Registar a partir de uma fotografia faz parte do Pro. Registar alimentos à mão continua gratuito.",
-              "Esta funcionalidade usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui uma ligação para a página da sua conta, onde o pode aceitar.",
+              "Esta funcionalidade usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui um link para a página da sua conta, onde o pode aceitar.",
               "A fotografia só é usada para estimar o que está no prato. Os dados de localização e da câmara são removidos antes do envio, e o Threkir não guarda a fotografia."
             ]
           },
@@ -3867,7 +3867,7 @@
           {
             "type": "list",
             "items": [
-              "Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e uma ligação **Iniciar sessão**.",
+              "Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e um link **Iniciar sessão**.",
               "O tempo de uma corrida que os outros não podem ver não lhes é mostrado.",
               "Não vê as pessoas que bloqueou, e elas não o veem a si."
             ]

@@ -116,6 +116,7 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | self-timed (race) | **con cronometraje propio** ("carrera con cronometraje propio", "Ventana de cronometraje propio") | settled 2026-11-10; never "autocronometrada" |
 | GO (the start signal) | **GO** — the button on the web and in the phone app ("GO"), "GO del organizador", "GO programado"; prose "dar el GO", "el GO", "después del GO", "esperando el GO" | settled 2026-11-10; never "YA" / "Dar la salida" for the button or "dar la salida" / "la salida" for the signal. *Salida* stays for the start line and the time fields ("línea de salida", "Hora de salida", "Salida a las {when}") |
 | race ended (watch) / host End | "Carrera finalizada" / **Finalizar carrera**, status "Finalizada" | settled 2026-11-10 |
+| map tiles | **teselas** (feminine: "las teselas del mapa", "Teselas de mapa cortesía de", "proveedor de teselas") | settled 2026-11-13 (#1374 round 3 tail), web and mobile; never "mosaicos" |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

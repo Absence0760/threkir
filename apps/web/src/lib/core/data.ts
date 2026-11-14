@@ -17201,13 +17201,17 @@ export interface BadgeAwardFeedEntry {
 /**
  * Public badge awards from people the viewer follows, cursor-paged over
  * (earned_at, id) like the run feed. Public rows only (RLS), newest first.
+ * `since` bounds the read to the feed's window; `authorId` narrows it to one
+ * followee (never widens it past the people the viewer follows).
  */
 export async function fetchFollowingBadgeAwards(opts?: {
 	limit?: number;
 	cursor?: { earned_at: string; id: string } | null;
+	since?: string | null;
+	authorId?: string | null;
 }): Promise<BadgeAwardFeedEntry[]> {
 	const limit = opts?.limit ?? 20;
-	const authors = await resolveFollowedAuthorIds(null);
+	const authors = await resolveFollowedAuthorIds(opts?.authorId ?? null);
 	if (authors.length === 0) return [];
 
 	// The followee set is chunked: PostgREST serialises `.in()` into the
@@ -17226,6 +17230,7 @@ export async function fetchFollowingBadgeAwards(opts?: {
 			.order('earned_at', { ascending: false })
 			.order('id', { ascending: false })
 			.limit(limit);
+		if (opts?.since) q = q.gte('earned_at', opts.since);
 		if (opts?.cursor) {
 			q = q.or(
 				`earned_at.lt.${opts.cursor.earned_at},and(earned_at.eq.${opts.cursor.earned_at},id.lt.${opts.cursor.id})`

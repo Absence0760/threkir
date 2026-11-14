@@ -288,19 +288,6 @@ void main() {
           reason: 'the scroll must run on behind Start, not end above it',
         );
 
-        final startSize = tester.getSize(find.byKey(_startKey)).height;
-        final padding = tester
-            .widget<SingleChildScrollView>(scroll)
-            .padding!
-            .resolve(TextDirection.ltr);
-        expect(
-          padding.bottom,
-          greaterThanOrEqualTo(
-            idleStartAreaHeight(startSize, kDockedFabOverhang),
-          ),
-          reason: 'the scroll must leave room for the area Start floats in',
-        );
-
         final position = tester
             .state<ScrollableState>(
               find.descendant(of: scroll, matching: find.byType(Scrollable)),
@@ -308,13 +295,14 @@ void main() {
             .position;
         position.jumpTo(position.maxScrollExtent);
         await tester.pump();
-        final lastCard = find.text(_route.name);
+        // The scroll now ends on the GPS status, which fills what the page
+        // has left: at the end of the scroll it sits whole above Start.
+        final status = find.byKey(const ValueKey('pre-run-searching'));
         expect(
-          tester.getRect(lastCard).bottom,
+          tester.getRect(status).bottom,
           lessThanOrEqualTo(tester.getRect(find.byKey(_startKey)).top),
-          reason: 'at the end of the scroll the last card sits above Start',
+          reason: 'the scroll must leave room for the area Start floats in',
         );
-        expect(lastCard.hitTestable(), findsOneWidget);
         _expectStartClear(tester, logical);
       },
     );

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { fmtCompactDistance, formatDistance } from '#lib/format/units.svelte.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
@@ -26,7 +26,7 @@
 	let awayLabel = $derived(
 		race.distance_m_away == null
 			? null
-			: m('races.kmAway', { distance: formatDistance(race.distance_m_away) })
+			: m('races.kmAway', { distance: fmtCompactDistance(race.distance_m_away) })
 	);
 
 	// Only offer to build a plan when one can actually be built for this race

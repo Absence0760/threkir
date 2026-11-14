@@ -51,7 +51,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Wähle beim Erstellen eines Kurses den Plan unter **Session-Plan**.',
-						'Kurs schon erstellt? Auf der Kursseite drücken Organisatoren **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge**.',
+						'Kurs schon erstellt? Auf der Kursseite drücken Veranstalter **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge**.',
 					],
 				},
 				{

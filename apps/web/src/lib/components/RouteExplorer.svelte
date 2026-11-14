@@ -2,6 +2,7 @@
 	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -218,10 +219,6 @@
 		loading = false;
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter') search();
-	}
-
 	function switchMode(newMode: 'search' | 'nearby') {
 		mode = newMode;
 		if (mode === 'nearby') searchNearby();
@@ -253,26 +250,24 @@
 	{/if}
 
 	{#if mode === 'search'}
-	<div class="search-bar">
-		<span class="material-symbols search-icon">search</span>
-		<input
-			type="text"
-			placeholder={t('routeExplorer.searchPlaceholder')}
-			aria-label={t('routeExplorer.searchAriaLabel')}
+	<form
+		class="search-bar"
+		role="search"
+		onsubmit={(e) => {
+			e.preventDefault();
+			search();
+		}}
+	>
+		<AppSearchField
 			bind:value={query}
-			onkeydown={handleKeydown}
+			label={t('routeExplorer.searchAriaLabel')}
+			placeholder={t('routeExplorer.searchPlaceholder')}
+			clearLabel={t('routeExplorer.clearSearch')}
+			oninput={(v) => {
+				if (v === '') search();
+			}}
 		/>
-		{#if query}
-			<button
-				type="button"
-				class="clear-btn"
-				aria-label={t('routeExplorer.clearSearch')}
-				onclick={() => { query = ''; search(); }}
-			>
-				<span class="material-symbols" aria-hidden="true">close</span>
-			</button>
-		{/if}
-	</div>
+	</form>
 
 	<div class="filters">
 		<select aria-label={t('routeExplorer.filterDistance')} bind:value={distanceFilter} onchange={() => search()}>
@@ -518,45 +513,7 @@
 
 	.search-bar {
 		display: flex;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-sm) var(--space-md);
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
 		margin-bottom: var(--space-md);
-	}
-
-	.search-bar:focus-within {
-		border-color: var(--color-primary);
-	}
-
-	.search-icon {
-		color: var(--color-text-tertiary);
-		font-size: 1.25rem;
-	}
-
-	.search-bar input {
-		flex: 1;
-		border: none;
-		background: none;
-		font-size: 0.9rem;
-		color: var(--color-text);
-		outline: none;
-		padding: var(--space-xs) 0;
-	}
-
-	.clear-btn {
-		background: none;
-		border: none;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		padding: 0;
-		display: flex;
-	}
-
-	.clear-btn:hover {
-		color: var(--color-text);
 	}
 
 	.filters {

@@ -17,6 +17,7 @@
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show TrainingPlanRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,12 @@ import '../lib/screens/routine_library_screen.dart';
 import '../lib/screens/settings_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/surface_peer_strip.dart';
+
+/// No plans, so the Plans tab shows its empty state.
+class _NoPlansTraining extends TrainingService {
+  @override
+  Future<List<TrainingPlanRow>> fetchMyPlans() async => const [];
+}
 
 class _SignedInApi extends ApiClient {
   @override
@@ -85,19 +92,26 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('plans names the library beside New plan, not as a glyph',
+  testWidgets('plans names the library where a runner with no plan looks',
       (tester) async {
     await _pump(
       tester,
-      PlansScreen(training: TrainingService(), apiClient: _SignedInApi()),
+      PlansScreen(training: _NoPlansTraining(), apiClient: _SignedInApi()),
     );
-    // A labelled secondary action, as on web — not a peer tab, which
-    // repeated the AppBar title as a selected chip (issue #1186). New plan is
-    // the page's one primary action, its FAB (issue #1374).
-    expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsOneWidget);
+    await tester.pump();
+    // Not a peer tab, which repeated the AppBar title as a selected chip
+    // (issue #1186). With no plans it is labelled, under the starters; over a
+    // list it is an icon with its tooltip at the end of the status chips'
+    // line, the owner's call over a labelled button alone on a row (issue
+    // #1374; plans_screen_test pins that half). New plan is the page's one
+    // primary action, its FAB.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('plans-empty-browse-library')),
+            matching: find.text('Browse library')),
+        findsOneWidget);
     expect(find.widgetWithText(FloatingActionButton, 'New plan'), findsOneWidget);
     expect(find.byType(SurfacePeerStrip), findsNothing);
-    expect(find.widgetWithIcon(IconButton, Icons.public), findsNothing);
   });
 
   testWidgets('the routine library names the public library',
@@ -205,12 +219,12 @@ void main() {
           reason: 'mirrors the auto_awesome glyph web pairs with the label');
     });
 
-    test('the toolbar is the title and the overflow, no unlabelled glyphs', () {
+    test('the actions are the overflow alone, no unlabelled glyphs', () {
       // Five unlabelled glyphs once crowded the toolbar. The recap and the
       // coach went first (#666, #921); Feed, the bell and Profile followed
       // when Messages and notifications moved to Social (issue #1374).
       final start = today.indexOf('final actions = <Widget>[');
-      final end = today.indexOf('final actionToolbar', start);
+      final end = today.indexOf('return RootPage(', start);
       expect(start, greaterThan(0));
       expect(end, greaterThan(start));
       final block = today.substring(start, end);
@@ -220,11 +234,14 @@ void main() {
           reason: 'Add run and Import stay in the overflow (decisions § 2281)');
     });
 
-    test('the toolbar names the surface it sits on', () {
-      final at = today.indexOf('final actionToolbar');
-      final block = today.substring(at, at + 600);
-      expect(block.contains('l10n.todayTitle'), isTrue,
-          reason: 'the inline toolbar carries the surface title');
+    test('the title row names the surface it sits on', () {
+      // RootPage draws the title and the actions on one row (decisions
+      // § 2517), so the surface name is the RootPage title.
+      final at = today.indexOf('return RootPage(');
+      expect(at, greaterThan(0));
+      final block = today.substring(at, at + 300);
+      expect(block.contains('title: l10n.todayTitle'), isTrue);
+      expect(block.contains('actions: actions'), isTrue);
     });
   });
 }

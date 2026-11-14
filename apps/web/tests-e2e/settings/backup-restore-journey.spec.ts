@@ -234,7 +234,7 @@ test.describe('backup & restore journey', () => {
 				// owner backup (seed runs + ours), so just assert the line shows
 				// a positive count.
 				await expect(page.locator('.ok-text')).toContainText(
-					/Restored \d+ runs/,
+					/Restored \d+ runs?\b/,
 					{ timeout: 60_000 }
 				);
 				// The restore must not have surfaced an error banner.

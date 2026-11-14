@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppInsets, AppSpace, AsyncView, EmptyState, HubTabBody, ListCard, LoadingState, PrimaryAction, SectionHeader;
+    show AppInsets, AppSearchField, AppSpace, AsyncView, EmptyState, FilterBar, HubTabBody, ListCard, LoadingState, PrimaryAction, SectionHeader;
 
+import '../catalogue_browse.dart' show fold;
 import '../challenge_list.dart';
 import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -32,6 +33,38 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
   /// Stamped when the list lands so every row grades its window against one
   /// instant, instead of each rebuild sampling a slightly different clock.
   DateTime _loadedAt = DateTime.now();
+
+  /// Narrows both sections by title, over the challenges already loaded.
+  final _searchCtl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
+
+  bool _matches(ChallengeView c) {
+    final q = fold(_query.trim());
+    return q.isEmpty || fold(c.title).contains(q);
+  }
+
+  void _clearSearch() => setState(() {
+        _searchCtl.clear();
+        _query = '';
+      });
+
+  /// The list can grow (every public challenge plus the runner's own), so
+  /// the tab has a search like the other Social tabs (issue #1374).
+  FilterBar _filterBar(AppLocalizations l10n) => FilterBar(
+        key: const ValueKey('challenges-filter-bar'),
+        search: AppSearchField(
+          controller: _searchCtl,
+          hint: l10n.challengesSearchHint,
+          clearTooltip: l10n.commonClearSearch,
+          onChanged: (v) => setState(() => _query = v),
+        ),
+      );
 
   @override
   void initState() {
@@ -88,9 +121,11 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
       icon: Icons.add,
       onPressed: _create,
     );
+    final listed = _all?.where((c) => c.joined || c.isPublic).toList();
     return HubTabBody(
       title: l10n.challengesTitle,
       primary: create,
+      filters: (listed?.isNotEmpty ?? false) ? _filterBar(l10n) : null,
       onRefresh: _load,
       body: AsyncView<List<ChallengeView>>(
         loading: _all == null,
@@ -107,27 +142,40 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
           ctaLabel: create.label,
           onCta: _create,
         ),
-        builder: (context, all) => ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.smPlus,
-              AppInsets.gutter, fabScrollClearance(context)),
-          children: [
-            _section(
-              context,
-              l10n.challengesMyChallenges,
-              all.where((c) => c.joined).toList(),
-              l10n.challengesEmpty,
-              showProgress: true,
-            ),
-            const SizedBox(height: AppInsets.sectionGap),
-            _section(
-              context,
-              l10n.challengesBrowse,
-              all.where((c) => !c.joined && c.isPublic).toList(),
-              l10n.challengesBrowseEmpty,
-            ),
-          ],
-        ),
+        builder: (context, all) {
+          final shown = all.where(_matches);
+          if (!shown.any((c) => c.joined || c.isPublic)) {
+            return EmptyState(
+              key: const ValueKey('challenges-no-match'),
+              icon: Icons.search_off,
+              title: l10n.challengesNoMatch,
+              ctaLabel: l10n.commonClearSearch,
+              ctaIcon: Icons.clear,
+              onCta: _clearSearch,
+            );
+          }
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.smPlus,
+                AppInsets.gutter, fabScrollClearance(context)),
+            children: [
+              _section(
+                context,
+                l10n.challengesMyChallenges,
+                shown.where((c) => c.joined).toList(),
+                l10n.challengesEmpty,
+                showProgress: true,
+              ),
+              const SizedBox(height: AppInsets.sectionGap),
+              _section(
+                context,
+                l10n.challengesBrowse,
+                shown.where((c) => !c.joined && c.isPublic).toList(),
+                l10n.challengesBrowseEmpty,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

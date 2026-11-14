@@ -17,7 +17,7 @@
 	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '#lib/social/nearby.ts';
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -36,9 +36,9 @@
 		const bound = nearbyBucketUpperBoundM(bucket);
 		return bound == null
 			? m('socialNearby.beyond', {
-					d: formatDistance(NEARBY_BUCKET_BOUNDS_M[NEARBY_BUCKET_BOUNDS_M.length - 1]),
+					d: fmtCompactDistance(NEARBY_BUCKET_BOUNDS_M[NEARBY_BUCKET_BOUNDS_M.length - 1]),
 				})
-			: m('socialNearby.within', { d: formatDistance(bound) });
+			: m('socialNearby.within', { d: fmtCompactDistance(bound) });
 	}
 
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;

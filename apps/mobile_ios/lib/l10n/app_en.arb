@@ -244,10 +244,6 @@
   "@routePickerNoRoute": {
     "description": "App bar action to dismiss the picker without choosing a route"
   },
-  "routePickerClearSearchTooltip": "Clear search",
-  "@routePickerClearSearchTooltip": {
-    "description": "Tooltip for the clear-search button in the route picker"
-  },
   "routePickerSearchHint": "Search routes by name…",
   "@routePickerSearchHint": {
     "description": "Placeholder hint for the route-picker search field"
@@ -347,12 +343,12 @@
   "@importStatusSavingLocally": {
     "description": "Status while saving imported runs to the local store"
   },
-  "importStatusSkippedDuplicates": "Skipped {count} duplicate(s) already imported from another source",
+  "importStatusSkippedDuplicates": "Skipped {count, plural, one{{count} duplicate} other{{count} duplicates}} already imported from another source",
   "@importStatusSkippedDuplicates": {
     "description": "Status when cross-source duplicate runs are skipped during import",
     "placeholders": {
       "count": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -433,18 +429,18 @@
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"
   },
-  "importStatusBackupRestored": "Restored {runs} runs · {tracks} tracks · {routes} routes",
+  "importStatusBackupRestored": "Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}",
   "@importStatusBackupRestored": {
     "description": "Status after a successful full-backup restore",
     "placeholders": {
       "runs": {
-        "type": "Object"
+        "type": "int"
       },
       "tracks": {
-        "type": "Object"
+        "type": "int"
       },
       "routes": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -3455,6 +3451,102 @@
   "@runNoGpsStartTimeOnly": {
     "description": "Button on the no-GPS start dialog that starts the run as a time-only activity"
   },
+  "runPreRunLocationOffTitle": "Location is off",
+  "@runPreRunLocationOffTitle": {
+    "description": "Idle Run page: title when location services are off on the phone"
+  },
+  "runPreRunLocationOffBody": "Turn on Location to record your route, distance and pace. Without it, a run records time only.",
+  "@runPreRunLocationOffBody": {
+    "description": "Idle Run page: what location services being off costs, and that a run can still record time"
+  },
+  "runPreRunTurnOnLocation": "Turn on Location",
+  "@runPreRunTurnOnLocation": {
+    "description": "Idle Run page: button that opens the phone's location settings"
+  },
+  "runPreRunPermissionTitle": "Location access needed",
+  "@runPreRunPermissionTitle": {
+    "description": "Idle Run page: title when the app has not been allowed location access"
+  },
+  "runPreRunPermissionBody": "Allow location access to record your route, distance and pace. Without it, a run records time only.",
+  "@runPreRunPermissionBody": {
+    "description": "Idle Run page: why location access is needed, and that a run can still record time without it"
+  },
+  "runPreRunAllowLocation": "Allow location",
+  "@runPreRunAllowLocation": {
+    "description": "Idle Run page: button that shows the system location permission prompt"
+  },
+  "runPreRunPermissionBlockedTitle": "Location access is blocked",
+  "@runPreRunPermissionBlockedTitle": {
+    "description": "Idle Run page: title when location access was denied and the system will not ask again"
+  },
+  "runPreRunPermissionBlockedBody": "Location access is turned off for this app. Allow it in Settings to record your route, distance and pace. Without it, a run records time only.",
+  "@runPreRunPermissionBlockedBody": {
+    "description": "Idle Run page: location access was denied for good; it can only be allowed from the app's system settings page (the button opens it)"
+  },
+  "runPreRunSearching": "Searching for GPS…",
+  "@runPreRunSearching": {
+    "description": "Idle Run page: location is allowed and on, and no current GPS fix has arrived yet"
+  },
+  "runPreRunSearchingHint": "A clear view of the sky gets a fix faster.",
+  "@runPreRunSearchingHint": {
+    "description": "Idle Run page: hint under Searching for GPS"
+  },
+  "runPreRunGpsWeak": "Weak GPS · ±{accuracy}",
+  "@runPreRunGpsWeak": {
+    "description": "Idle Run page map chip: a GPS fix is arriving but is too coarse for the recorder to keep; accuracy is a formatted length such as 35 m",
+    "placeholders": {
+      "accuracy": {
+        "type": "String",
+        "example": "5 m"
+      }
+    }
+  },
+  "runPreRunGpsWeakA11y": "Weak GPS, accurate to within {accuracy}",
+  "@runPreRunGpsWeakA11y": {
+    "description": "Screen-reader label for the weak GPS chip on the idle Run page",
+    "placeholders": {
+      "accuracy": {
+        "type": "String",
+        "example": "5 m"
+      }
+    }
+  },
+  "runPreRunGpsReady": "GPS ready · ±{accuracy}",
+  "@runPreRunGpsReady": {
+    "description": "Idle Run page map chip: GPS fixes are good enough to record; accuracy is a formatted length such as 5 m",
+    "placeholders": {
+      "accuracy": {
+        "type": "String",
+        "example": "5 m"
+      }
+    }
+  },
+  "runPreRunGpsReadyA11y": "GPS ready, accurate to within {accuracy}",
+  "@runPreRunGpsReadyA11y": {
+    "description": "Screen-reader label for the GPS ready chip on the idle Run page",
+    "placeholders": {
+      "accuracy": {
+        "type": "String",
+        "example": "5 m"
+      }
+    }
+  },
+  "runPreRunMapFailed": "The map couldn't load. Recording still works without it.",
+  "@runPreRunMapFailed": {
+    "description": "Idle Run page: the map preview's tiles all failed to load; recording does not depend on the map"
+  },
+  "runPreRunMapRetry": "Try again",
+  "@runPreRunMapRetry": {
+    "description": "Idle Run page: button that reloads the map preview after it failed"
+  },
+  "runPreRunActivityOff": "Physical activity access is off, so steps, cadence and indoor distance won't be recorded.",
+  "@runPreRunActivityOff": {
+    "description": "Idle Run page (Android): the Physical activity permission is off, so the step counter is unavailable. Quote the permission's name as Android shows it in this language"
+  },
+  "runPreRunAllow": "Allow",
+  "@runPreRunAllow": {
+    "description": "Idle Run page: button that shows the system prompt for a missing permission"
+  },
   "runNoDistanceTitle": "No distance recorded",
   "@runNoDistanceTitle": {
     "description": "Title of the dialog shown at Stop when the run has no GPS fix and no step distance"
@@ -4145,31 +4237,6 @@
   "addRunSaved": "Run added to history",
   "@addRunSaved": {
     "description": "Banner shown after a manual run is saved"
-  },
-  "addRunPickerSearchHint": "Search routes",
-  "@addRunPickerSearchHint": {
-    "description": "Search-field hint in the full-screen route picker"
-  },
-  "addRunPickerClear": "Clear",
-  "@addRunPickerClear": {
-    "description": "Tooltip on the clear-search button in the route picker"
-  },
-  "addRunPickerCancel": "Cancel",
-  "@addRunPickerCancel": {
-    "description": "Tooltip on the close button in the route picker"
-  },
-  "addRunPickerNoMatch": "No routes match \"{query}\"",
-  "@addRunPickerNoMatch": {
-    "description": "Empty-state in the route picker when the search matches nothing",
-    "placeholders": {
-      "query": {
-        "type": "String"
-      }
-    }
-  },
-  "addRunPickerNoRoute": "No route",
-  "@addRunPickerNoRoute": {
-    "description": "Leading option in the route picker that attaches no route"
   },
   "runDetailDnfBadge": "DNF",
   "@runDetailDnfBadge": {
@@ -8001,6 +8068,10 @@
   "@clubsTabMine": {
     "description": "Clubs segment — the user's own clubs"
   },
+  "clubsViewGroup": "Clubs section",
+  "@clubsViewGroup": {
+    "description": "Screen-reader name of the Browse / My clubs view switch at the top of the Clubs tab. Same text as web socialClubs.tablistLabel"
+  },
   "clubsJoinWithCode": "Join with invite code",
   "@clubsJoinWithCode": {
     "description": "Button to redeem a club invite code"
@@ -8008,6 +8079,14 @@
   "clubsSearchHint": "Search by name or location",
   "@clubsSearchHint": {
     "description": "Placeholder in the club search field"
+  },
+  "clubsSearchMineHint": "Search your clubs",
+  "@clubsSearchMineHint": {
+    "description": "Hint in the search field on Clubs → My clubs, which filters the clubs the runner belongs to by name. Same text as web socialClubs.mineSearchPlaceholder"
+  },
+  "clubsMineNoMatch": "None of your clubs match your search",
+  "@clubsMineNoMatch": {
+    "description": "Shown on Clubs → My clubs when the search matches none of the runner's clubs. Same text as web socialClubs.mineNoMatch"
   },
   "clubsTimeoutError": "Connection timed out. Check your network and try again.",
   "@clubsTimeoutError": {
@@ -9200,6 +9279,18 @@
   "@plansFilterGroupLabel": {
     "description": "Screen-reader label of the status filter chips above the plans list"
   },
+  "plansCountMeta": "{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}",
+  "@plansCountMeta": {
+    "description": "One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta",
+    "placeholders": {
+      "visible": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "plansFilterAll": "All",
   "@plansFilterAll": {
     "description": "Status filter chip on the plans list: every plan"
@@ -9277,7 +9368,7 @@
   "@plansProgressLabel": {
     "description": "Screen-reader label of the calendar progress bar on an active plan card"
   },
-  "plansMetaWeeks": "{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}",
+  "plansMetaWeeks": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day/week} other{{days} days/week}}",
   "@plansMetaWeeks": {
     "description": "Plan length on the plans list, the library card and the library preview: weeks and training days per week",
     "placeholders": {
@@ -10255,7 +10346,7 @@
       }
     }
   },
-  "planDetailDaysPerWeek": "{count} days/wk",
+  "planDetailDaysPerWeek": "{count, plural, one{{count} day/wk} other{{count} days/wk}}",
   "@planDetailDaysPerWeek": {
     "description": "Days-per-week meta on the hero card",
     "placeholders": {
@@ -11721,7 +11812,7 @@
       }
     }
   },
-  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs} runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.",
+  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten — restore from a complete backup to fill the gaps.",
   "@settingsAccountRestoreIncompleteArchive": {
     "description": "Persistent notice under the restore tile shown when the restored archive declared itself incomplete",
     "placeholders": {
@@ -11754,7 +11845,7 @@
   "@settingsAccountRestoring": {
     "description": "Banner shown while a backup is being restored"
   },
-  "settingsAccountRestoreDone": "Restored {runs} runs · {tracks} tracks · {routes} routes{warnings}",
+  "settingsAccountRestoreDone": "Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}{warnings}",
   "@settingsAccountRestoreDone": {
     "description": "Banner summarising a successful restore; warnings is an optional suffix",
     "placeholders": {
@@ -11772,7 +11863,7 @@
       }
     }
   },
-  "settingsAccountRestoreWarningsSuffix": " · {count} warnings",
+  "settingsAccountRestoreWarningsSuffix": " · {count, plural, one{{count} warning} other{{count} warnings}}",
   "@settingsAccountRestoreWarningsSuffix": {
     "description": "Suffix appended to the restore summary when warnings occurred",
     "placeholders": {
@@ -19907,6 +19998,14 @@
   "@challengesTitle": {
     "description": "Challenges feature title / tab label"
   },
+  "challengesSearchHint": "Search challenges",
+  "@challengesSearchHint": {
+    "description": "Hint in the search field at the top of the Challenges tab, which filters both sections by challenge title. Same text as web challenges.searchPlaceholder"
+  },
+  "challengesNoMatch": "No challenges match your search",
+  "@challengesNoMatch": {
+    "description": "Shown on the Challenges tab when the search matches no challenge in either section"
+  },
   "challengesMyChallenges": "My challenges",
   "@challengesMyChallenges": {
     "description": "Section heading for challenges the user joined"
@@ -20500,6 +20599,24 @@
       }
     }
   },
+  "racesAnyTimeNoMatch": "No courses match “{query}”",
+  "@racesAnyTimeNoMatch": {
+    "description": "Run any time empty state when no park course matches the search. Mirrors web races.anyTimeNoMatch",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "racesAnyTimeSeeAll": "{n, plural, one {See all {n} course} other {See all {n} courses}}",
+  "@racesAnyTimeSeeAll": {
+    "description": "Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "racesAnyTimeFastestFailed": "Couldn't load this season's fastest times.",
   "@racesAnyTimeFastestFailed": {
     "description": "Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed"
@@ -20507,6 +20624,10 @@
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {
     "description": "Placeholder for the race name search field"
+  },
+  "racesSearchAllPlaceholder": "Search races, parks and courses…",
+  "@racesSearchAllPlaceholder": {
+    "description": "Placeholder for the Races & courses search in the All view, which finds races by name and park courses by name, park and place. Mirrors web races.searchAllPlaceholder"
   },
   "racesNearChip": "Near {place}",
   "@racesNearChip": {
@@ -21425,10 +21546,13 @@
       }
     }
   },
-  "badgesFeedEarned": "{name} earned the {badge} badge",
+  "badgesFeedEarned": "{count, plural, =1{{name} earned the {badge} badge} other{{name} earned {count} badges}}",
   "@badgesFeedEarned": {
-    "description": "Feed badge-strip chip text",
+    "description": "A feed row for the badges one person you follow earned on one day: with one badge it names it, with several it gives the count and the badge names follow on the line below",
     "placeholders": {
+      "count": {
+        "type": "int"
+      },
       "name": {
         "type": "String"
       },
@@ -22114,7 +22238,7 @@
       }
     }
   },
-  "simWatchResult": "Synced {synced} of {total} run(s) from the watch",
+  "simWatchResult": "Synced {synced} of {total, plural, one{{total} run} other{{total} runs}} from the watch",
   "@simWatchResult": {
     "placeholders": {
       "synced": {
@@ -22722,7 +22846,7 @@
       }
     }
   },
-  "watchScreensRemoveBody": "Its {count} metric(s) go with it.",
+  "watchScreensRemoveBody": "Its {count, plural, one{{count} metric goes} other{{count} metrics go}} with it.",
   "@watchScreensRemoveBody": {
     "placeholders": {
       "count": {
@@ -22732,7 +22856,7 @@
   },
   "watchScreensRemoveConfirm": "Remove",
   "watchScreensCancel": "Cancel",
-  "watchScreensShrinkTitle": "Drop {count} metric(s)?",
+  "watchScreensShrinkTitle": "Drop {count, plural, one{{count} metric} other{{count} metrics}}?",
   "@watchScreensShrinkTitle": {
     "placeholders": {
       "count": {
@@ -22740,7 +22864,7 @@
       }
     }
   },
-  "watchScreensShrinkBody": "A {layout} screen draws {slots} slot(s), so {dropped} would no longer be shown.",
+  "watchScreensShrinkBody": "A {layout} screen draws {slots, plural, one{{slots} slot} other{{slots} slots}}, so {dropped} would no longer be shown.",
   "@watchScreensShrinkBody": {
     "description": "Warning naming the metrics a narrower layout would drop",
     "placeholders": {
@@ -22760,7 +22884,7 @@
   "@watchScreensPushAction": {
     "description": "Button that pushes the composed screen set to the watch over BLE"
   },
-  "watchScreensPushed": "Pushed {count} screen(s) to the watch",
+  "watchScreensPushed": "Pushed {count, plural, one{{count} screen} other{{count} screens}} to the watch",
   "@watchScreensPushed": {
     "placeholders": {
       "count": {
@@ -26314,7 +26438,7 @@
   "@planNewThinHistoryWalkRun": {
     "description": "Button on the thin-history note: switch to a walk-run plan"
   },
-  "planNewStarterSummary": "{weeks} weeks · {days} days a week",
+  "planNewStarterSummary": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}}",
   "@planNewStarterSummary": {
     "description": "What a distance-based starter plan asks for",
     "placeholders": {
@@ -26326,7 +26450,7 @@
       }
     }
   },
-  "planNewStarterSummaryTimed": "{weeks} weeks · {days} days a week · {min}–{max} min a session",
+  "planNewStarterSummaryTimed": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}} · {min}–{max} min a session",
   "@planNewStarterSummaryTimed": {
     "description": "What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes",
     "placeholders": {
@@ -28733,6 +28857,19 @@
   "@parksEmpty": {
     "description": "Park courses (#1313): web key parks.empty."
   },
+  "parksSearchPlaceholder": "Search parks and courses…",
+  "@parksSearchPlaceholder": {
+    "description": "Placeholder for the park and park course search (All park courses, and Races & courses in the Courses view). Mirrors web parks.searchPlaceholder"
+  },
+  "parksNoMatch": "No parks or courses match “{query}”",
+  "@parksNoMatch": {
+    "description": "All park courses empty state when no park or course matches the search. Mirrors web parks.noMatch",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "parksCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
   "@parksCourseCount": {
     "description": "Park courses (#1313): web key parks.courseCount.",
@@ -28741,10 +28878,6 @@
         "type": "int"
       }
     }
-  },
-  "parksBackToParks": "All park courses",
-  "@parksBackToParks": {
-    "description": "Park courses (#1313): web key parks.backToParks."
   },
   "parksParkNotFoundTitle": "Park not found",
   "@parksParkNotFoundTitle": {

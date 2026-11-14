@@ -13,6 +13,7 @@ apps/backend/
 └── supabase/
     ├── config.toml           # local-stack config — ports, auth, email
     ├── seed.sql              # test user + 12 runs + 5 routes + integrations + gym/nutrition
+    ├── seed_demo.sql         # opt-in demo data on top of seed.sql (bin/seed-demo.sh); never in [db.seed] or CI
     ├── migrations/                # full list at `ls supabase/migrations/`.
     │   │                          # Apr 2026 batch laid the schema foundation
     │   │                          # (initial_schema → funding); May 2026 added the
@@ -139,6 +140,7 @@ supabase db reset    # replays everything from scratch, including the new one
 - **RLS policies and grants**: in a migration. These are schema-level state.
 - **Storage buckets and their RLS**: in a migration, via `insert into storage.buckets` + `create policy on storage.objects`. See `20260410_001_runs_to_storage.sql` for the canonical example.
 - **Test data / fixtures**: in `seed.sql`, not a migration. `supabase db reset` runs `seed.sql` after migrations.
+- **Demo data for clicking through the app**: in `seed_demo.sql`, never `seed.sql`. Every e2e and pgtap suite counts against `seed.sql`, so a demo row there breaks them; `seed_demo.sql` is applied only by `bin/seed-demo.sh` (local hosts only), stays out of `config.toml` and CI, and must stay idempotent (deterministic ids, `on conflict do nothing`) and add rows only (decisions § 2521).
 - **Functions / views**: in a migration (`create or replace function ...`). See `20260406_001_database_functions.sql` for `weekly_mileage` and `personal_records`.
 - **Real park courses** (parks, their catalogue segments, `park_courses` rows, official routes): in neither. Every `backend@*` release loads them: the "Sync production state" step (`scripts/sync-production-state.sh` → `scripts/prod_sync/run.mjs`) runs each committed `scripts/parks/catalogue/*/*/manifest.json` through the service-role-only `private.load_park_catalogue`, which upserts in place, reports `unchanged` and writes nothing when a course already matches, and closes a course the manifest drops (decisions § 2425, § 2429, [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses)). Don't hand-insert those rows. New production-state concerns go in as another stage of that runner, not as a second step.
 - **Production switches and one-off operator calls** (a `private.feature_flags` flip, a cron sweep's Vault URL entry, a `function_env` toggle, a retired Edge Function, a backfill call): in neither either. They are entries in `apps/backend/ops/prod_config.json` or files in `apps/backend/ops/tasks/`, applied by the same sync ([ops/README.md](ops/README.md), decisions § 2430). A migration that adds a gate ships it closed and leaves the flip to that file; a new `invoke_<fn>()` that reads `<fn>_url` is armable from it with no other change.

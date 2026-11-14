@@ -7,7 +7,6 @@ import 'package:ui_kit/ui_kit.dart'
         IdentityAvatar,
         ListCard,
         ListRow,
-        PageHeader,
         RootPage;
 
 import '../auth_change_aware.dart';
@@ -153,9 +152,6 @@ class _YouScreenState extends State<YouScreen>
     if (mounted) setState(() {});
   }
 
-  Widget _title(BuildContext context) =>
-      PageHeader(title: AppLocalizations.of(context).navYou);
-
   Widget _identityCard(BuildContext context, ApiClient api, String viewerId) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
@@ -268,7 +264,6 @@ class _YouScreenState extends State<YouScreen>
         settingsSync: widget.settingsSync,
         onSubScreenClosed: _refreshIdentity,
         header: [
-          _title(context),
           if (api != null && viewerId != null)
             _identityCard(context, api, viewerId)
           else if (api != null)

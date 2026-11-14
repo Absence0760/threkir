@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { activeFormatLocale, formatDuration, formatRelativeTime } from '#lib/format/time.ts';
@@ -25,6 +26,13 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
 	import { badgeWords, tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import {
+		groupHighlights,
+		highlightsShowFor,
+		interleaveHighlights,
+		needsMoreHighlights,
+		type FeedRow,
+	} from '#lib/social/feed_highlights.ts';
 	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '#lib/runs/activity_type.ts';
 
 	// `all` and `lift` are not `activity_type` values — they are feed scopes, so
@@ -52,8 +60,24 @@
 	let activityFilter = $state<string>('all');
 	let followingCount = $state(0);
 	let followsAnyone = $derived(followingCount > 0);
+	// Badge awards from people you follow are rows in the feed, one per person
+	// per day, placed by time (feed_highlights.ts). Their stream pages on its
+	// own cursor and is read only as far back as the activity has loaded.
+	const BADGE_PAGE = 20;
+	const MAX_BADGE_PAGES_PER_READ = 5;
 	let badgeAwards = $state<BadgeAwardFeedEntry[]>([]);
+	let badgeAwardsExhausted = $state(false);
 	let badgeAwardsFailed = $state(false);
+	let badgeAwardsBusy = false;
+	const badgeSince = new Date(Date.now() - FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+	let showHighlights = $derived(highlightsShowFor(activityFilter));
+	let rows = $derived<FeedRow<ActivityFeedEntry, BadgeAwardFeedEntry>[]>(
+		showHighlights
+			? interleaveHighlights(entries, (e) => e.started_at, groupHighlights(badgeAwards), exhausted)
+			: entries.map((entry) => ({ kind: 'entry' as const, entry }))
+	);
+	let moreToLoad = $derived(!exhausted || (showHighlights && !badgeAwardsExhausted && !badgeAwardsFailed));
 
 	let mounted = false;
 
@@ -61,21 +85,44 @@
 		for (let i = 0; i < 20 && (auth.loading || !auth.user); i++) {
 			await new Promise((r) => setTimeout(r, 50));
 		}
-		await Promise.all([refreshFollowingCount(), load(), loadBadgeAwards()]);
+		await Promise.all([refreshFollowingCount(), load()]);
 		mounted = true;
 	});
 
-	// A failed read is not "nobody earned a badge" (§ 2501): the strip says so
-	// and offers a retry, and the rest of the feed is unaffected.
-	async function loadBadgeAwards() {
+	// A failed read is not "nobody earned a badge" (§ 2501): the feed says so
+	// with a retry, and the activity rows are unaffected.
+	async function topUpBadgeAwards() {
+		if (badgeAwardsBusy || badgeAwardsFailed || !showHighlights) return;
+		badgeAwardsBusy = true;
 		try {
-			badgeAwards = await fetchFollowingBadgeAwards({ limit: 6 });
-			badgeAwardsFailed = false;
+			for (let i = 0; i < MAX_BADGE_PAGES_PER_READ; i++) {
+				const oldest = badgeAwards.at(-1)?.badge ?? null;
+				const more = needsMoreHighlights({
+					oldestAwardAt: oldest?.earned_at ?? null,
+					awardsExhausted: badgeAwardsExhausted,
+					oldestEntryAt: entries.at(-1)?.started_at ?? null,
+					feedExhausted: exhausted,
+				});
+				if (!more) break;
+				const page = await fetchFollowingBadgeAwards({
+					limit: BADGE_PAGE,
+					since: badgeSince,
+					cursor: oldest ? { earned_at: oldest.earned_at, id: oldest.id } : null,
+				});
+				badgeAwards = [...badgeAwards, ...page];
+				badgeAwardsExhausted = page.length < BADGE_PAGE;
+			}
 		} catch (e) {
 			console.error('[feed] badge awards read failed', e);
-			badgeAwards = [];
 			badgeAwardsFailed = true;
+		} finally {
+			badgeAwardsBusy = false;
 		}
+	}
+
+	function retryBadgeAwards() {
+		badgeAwardsFailed = false;
+		topUpBadgeAwards();
 	}
 
 	function badgeLabel(b: BadgeAwardFeedEntry): string {
@@ -85,6 +132,15 @@
 	function badgeIcon(b: BadgeAwardFeedEntry): string {
 		const t = tierFor(b.badge.badge_key, b.badge.tier as AchievementTier);
 		return t?.icon ?? 'military_tech';
+	}
+	function highlightHref(awards: BadgeAwardFeedEntry[]): string {
+		const lead = awards[0];
+		return awards.length === 1
+			? `/u/${lead.authorId}?tab=achievements&badge=${lead.badge.id}`
+			: `/u/${lead.authorId}?tab=achievements`;
+	}
+	function rowKey(row: FeedRow<ActivityFeedEntry, BadgeAwardFeedEntry>): string {
+		return row.kind === 'entry' ? `e:${row.entry.id}` : `h:${row.highlight.key}`;
 	}
 
 	$effect(() => {
@@ -119,6 +175,7 @@
 			entries = await fetchFollowingActivityFeed({ limit: 20, activityType: activityFilter });
 			exhausted = entries.length < 20;
 			engagement = await fetchEngagementSummaries(runIds(entries));
+			await topUpBadgeAwards();
 		} catch (e) {
 			showToast(m('socialFeed.loadFeedError', { error: errorCopy(e, m, 'socialFeed.loadFeedError') }), 'error');
 		} finally {
@@ -128,7 +185,14 @@
 	}
 
 	async function loadMore() {
-		if (loadingMore || exhausted || entries.length === 0) return;
+		if (loadingMore) return;
+		if (exhausted) {
+			loadingMore = true;
+			await topUpBadgeAwards();
+			loadingMore = false;
+			return;
+		}
+		if (entries.length === 0) return;
 		loadingMore = true;
 		try {
 			const last = entries[entries.length - 1];
@@ -143,6 +207,7 @@
 			const merged = new Map(engagement);
 			for (const [k, v] of moreEng) merged.set(k, v);
 			engagement = merged;
+			await topUpBadgeAwards();
 		} catch (e) {
 			// Without this catch, a network error on the explicit "load
 			// more" scroll trigger left the user scrolling forever
@@ -224,30 +289,13 @@
 		<span class="window-hint">{m('socialFeed.windowHint', { n: FEED_WINDOW_DAYS })}</span>
 	</div>
 
-	<!-- The strip is its own read: badges earned are news whether or not a
-	     followee ran in the window, and a failed read must show even over an
-	     empty feed (§ 2501). -->
-	{#if loaded || !loading}
-		{#if badgeAwardsFailed}
-			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
-				<span>{m('badges.feedLoadFailed')}</span>
-				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
-			</p>
-		{:else if badgeAwards.length > 0}
-			<section class="badge-strip" aria-label={m('badges.section.title')}>
-				{#each badgeAwards as b (b.badge.id)}
-					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
-						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
-						<span class="badge-chip-text">
-							{m('badges.feedEarned', {
-								name: b.authorName ?? m('badges.aRunner'),
-								badge: badgeLabel(b)
-							})}
-						</span>
-					</a>
-				{/each}
-			</section>
-		{/if}
+	<!-- Badge awards are their own read: a failure shows even over an empty
+	     feed, and never as "nobody earned a badge" (§ 2501). -->
+	{#if badgeAwardsFailed && showHighlights}
+		<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
+			<span>{m('badges.feedLoadFailed')}</span>
+			<button type="button" class="btn btn-outline btn-sm" onclick={retryBadgeAwards}>{m('runs.retry')}</button>
+		</p>
 	{/if}
 
 	{#if loading && !loaded}
@@ -263,7 +311,7 @@
 			{/each}
 		</div>
 		<p class="visually-hidden" role="status">{m('socialFeed.loadingFeed')}</p>
-	{:else if entries.length === 0}
+	{:else if rows.length === 0}
 		{#if !followsAnyone}
 			<EmptyState icon="dynamic_feed" title={m('socialFeed.emptyTitle')} text={m('socialFeed.emptyText')} mascot>
 				{#snippet actions()}
@@ -298,7 +346,31 @@
 		{/if}
 	{:else}
 		<div class="feed">
-			{#each entries as entry (entry.id)}
+			{#each rows as row (rowKey(row))}
+				{#if row.kind === 'highlight'}
+					{@const h = row.highlight}
+					{@const lead = h.awards[0]}
+					{@const name = lead.authorName ?? m('badges.aRunner')}
+					<ListCard
+						class="feed-highlight"
+						testid="feed-highlight"
+						dense
+						href={highlightHref(h.awards)}
+						title={m('badges.feedEarned', { n: h.awards.length, name, badge: badgeLabel(lead) })}
+						subtitle={h.awards.length > 1 ? h.awards.map(badgeLabel).join(' · ') : undefined}
+					>
+						{#snippet leading()}
+							<Avatar url={lead.authorAvatarUrl} {name} size="2rem" font="0.85rem" bg="primary" />
+						{/snippet}
+						{#snippet meta()}
+							<span class="when">{formatRelativeTime(h.at, undefined, currentLocale())}</span>
+						{/snippet}
+						{#snippet trailing()}
+							<span class="material-symbols highlight-icon tier-{lead.badge.tier}" aria-hidden="true">{badgeIcon(lead)}</span>
+						{/snippet}
+					</ListCard>
+				{:else}
+				{@const entry = row.entry}
 				<article class="entry">
 					<header class="entry-head">
 						<a href="/u/{entry.author.id}" class="author">
@@ -394,10 +466,11 @@
 						</footer>
 					{/if}
 				</article>
+				{/if}
 			{/each}
 		</div>
 
-		{#if !exhausted}
+		{#if moreToLoad}
 			<div class="load-more">
 				<button class="btn btn-outline" onclick={loadMore} disabled={loadingMore}>
 					{loadingMore ? m('shell.loading') : m('socialFeed.loadMore')}
@@ -611,39 +684,26 @@
 		color: var(--color-text-secondary);
 		font-size: 0.875rem;
 	}
-	.badge-strip {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs);
-		margin-bottom: var(--space-md);
+	/* A highlight is one line or two, so it sits at the top of its grid cell
+	   rather than stretching to a run card beside it. */
+	.feed :global(.feed-highlight) {
+		align-self: start;
+		height: auto;
 	}
-	.badge-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		padding: var(--space-2xs) var(--space-sm);
-		border-radius: var(--radius-pill);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-inline-start: 3px solid var(--tier-color, var(--color-border));
-		font-size: 0.8125rem;
-		color: var(--color-text);
-		text-decoration: none;
-	}
-	.badge-chip .material-symbols {
-		font-size: 1.1rem;
+	.highlight-icon {
+		font-size: 1.5rem;
 		color: var(--tier-color, var(--color-text-secondary));
 	}
-	.badge-chip.tier-bronze {
+	.highlight-icon.tier-bronze {
 		--tier-color: #b08d57;
 	}
-	.badge-chip.tier-silver {
+	.highlight-icon.tier-silver {
 		--tier-color: #9aa3ad;
 	}
-	.badge-chip.tier-gold {
+	.highlight-icon.tier-gold {
 		--tier-color: #d4af37;
 	}
-	.badge-chip.tier-platinum {
+	.highlight-icon.tier-platinum {
 		--tier-color: #7fd3e0;
 	}
 </style>

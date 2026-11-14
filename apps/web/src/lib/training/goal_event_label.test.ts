@@ -55,7 +55,8 @@ test('an unrecognised goal event reads as custom', () => {
 	assert.equal(goalEventLabel(t, fmt, 'distance_ultra', 100000), '<100000 m>');
 });
 
-test('plan length: singular for one week, plural otherwise', () => {
+test('plan length: singular for one week or one day, plural otherwise', () => {
 	assert.equal(planLengthLabel(t, 1, 3), '1 week · 3 days/week');
 	assert.equal(planLengthLabel(t, 12, 4), '12 weeks · 4 days/week');
+	assert.equal(planLengthLabel(t, 4, 1), '4 weeks · 1 day/week');
 });

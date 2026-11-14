@@ -40,7 +40,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Um ecrã que tem um guia mostra uma ligação **Como funciona** junto ao título. Abre o guia desse ecrã; quando há vários guias sobre ele, abre uma pequena lista para escolher.',
+					text: 'Um ecrã que tem um guia mostra um link **Como funciona** junto ao título. Abre o guia desse ecrã; quando há vários guias sobre ele, abre uma pequena lista para escolher.',
 				},
 				{
 					type: 'p',

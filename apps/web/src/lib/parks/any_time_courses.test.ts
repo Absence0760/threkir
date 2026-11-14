@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { orderAnyTimeCourses, type AnyTimeCourseKey } from './any_time_courses';
+import { orderAnyTimeCourses, parkSearchMatches, parkSearchTerms, type AnyTimeCourseKey } from './any_time_courses';
 
 function course(over: Partial<AnyTimeCourseKey> & { slug: string }): AnyTimeCourseKey {
 	return {
@@ -81,4 +81,27 @@ test('orderAnyTimeCourses: does not reorder its input', () => {
 	const input = [course({ slug: 'b', courseName: 'B' }), course({ slug: 'a', courseName: 'A' })];
 	orderAnyTimeCourses(input, id, null);
 	assert.deepEqual(input.map((c) => c.slug), ['b', 'a']);
+});
+
+test('parkSearchTerms: folded words, blanks dropped', () => {
+	assert.deepEqual(parkSearchTerms('  Swift   CRÉEK '), ['swift', 'creek']);
+	assert.deepEqual(parkSearchTerms(''), []);
+	assert.deepEqual(parkSearchTerms('   '), []);
+});
+
+test('parkSearchMatches: every word in the course, its park or its place', () => {
+	const beaver = { courseName: 'Beaver Lake Trail', parkName: 'Pocahontas', regionCode: 'US-VA' };
+	assert.equal(parkSearchMatches(parkSearchTerms('pocahontas beaver'), beaver), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('Virginia lake'), beaver), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('us-va'), beaver), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('beaver swift'), beaver), false);
+	assert.equal(parkSearchMatches(parkSearchTerms('maryland'), beaver), false);
+});
+
+test('parkSearchMatches: no words match everything; a park alone is asked by its name and place', () => {
+	const park = { parkName: 'Pocahontas', regionCode: 'US-VA' };
+	assert.equal(parkSearchMatches([], park), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('poca'), park), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('virginia'), park), true);
+	assert.equal(parkSearchMatches(parkSearchTerms('beaver'), park), false);
 });

@@ -12,6 +12,7 @@ import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/add_run_screen.dart';
+import '../lib/widgets/route_picker_sheet.dart';
 import 'editor_layout.dart';
 import 'pump_until.dart';
 
@@ -384,12 +385,14 @@ void main() {
       await tester.tap(find.text('Search saved routes'));
       await tester.pumpAndSettle();
 
-      // Both rows visible in the picker.
+      // The same route sheet the Run tab opens, not a page of its own.
+      expect(find.byType(RoutePickerSheet), findsOneWidget);
       expect(find.text('Park loop'), findsOneWidget);
       expect(find.text('River out-and-back'), findsOneWidget);
 
       // Filter to a single match.
-      await tester.enterText(find.byType(TextField).first, 'river');
+      await tester.enterText(
+          find.byKey(const ValueKey('route-picker-search')), 'river');
       await tester.pumpAndSettle();
       expect(find.text('River out-and-back'), findsOneWidget);
       expect(find.text('Park loop'), findsNothing);
@@ -418,6 +421,45 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Search saved routes'), findsOneWidget);
       expect(find.byIcon(Icons.search), findsOneWidget);
+    });
+
+    testWidgets('the picker marks the attached route, and "No route" '
+        'detaches it', (tester) async {
+      final s = await _makeStores();
+      s.routes.debugSeed([
+        cm.Route(
+          id: 'r-park',
+          userId: 'test-user',
+          name: 'Park loop',
+          waypoints: const [
+            cm.Waypoint(lat: 47.37, lng: 8.54),
+            cm.Waypoint(lat: 47.371, lng: 8.541),
+          ],
+          distanceMetres: 4200,
+        ),
+      ]);
+      await _pump(tester, s.runs, s.routes, s.prefs);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Search saved routes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('route-picker-route-r-park')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Park loop •'), findsOneWidget);
+
+      await tester.tap(find.textContaining('Park loop •'));
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<RadioGroup<String>>(find.byType(RadioGroup<String>))
+              .groupValue,
+          'r-park',
+          reason: 'the sheet marks the route already attached');
+
+      await tester.tap(find.byKey(const ValueKey('route-picker-no-route')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutePickerSheet), findsNothing);
+      expect(find.text('Search saved routes'), findsOneWidget,
+          reason: '"No route" detaches the route');
     });
   });
 

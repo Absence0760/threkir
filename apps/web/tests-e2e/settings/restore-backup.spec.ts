@@ -138,8 +138,8 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
 			await dialog.getByRole('button', { name: /^Restore$/ }).click();
 
-			// Result line on the page: "Restored 1 runs, 0 tracks, 0 routes."
-			await expect(page.getByText(/Restored 1 runs/)).toBeVisible({ timeout: 15_000 });
+			// Result line on the page: "Restored 1 run, 0 tracks, 0 routes."
+			await expect(page.getByText(/Restored 1 run,/)).toBeVisible({ timeout: 15_000 });
 
 			// Dashboard now reflects the +7.32 km. Allow a small float
 			// tolerance for unit rounding (the card may render "12.4 km"
@@ -245,7 +245,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			// not a failure.
 			await expect(page.locator('.error-text')).toHaveCount(0);
 			// "Restored N runs" line never rendered.
-			await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+			await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 
 			// DB-level proof: the deterministic id has no row.
 			const admin = getAdminClient();
@@ -287,7 +287,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			{ timeout: 10_000 }
 		);
 		// Nothing was imported.
-		await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+		await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 	});
 
 	test('a ZIP with the wrong manifest.format surfaces the "Unexpected format" error', async ({
@@ -334,7 +334,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 		await expect(page.locator('.error-text')).toContainText(
 			/some-other-backup-format/,
 		);
-		await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+		await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 	});
 
 	test('re-importing the same backup is idempotent (no duplicate rows)',
@@ -365,7 +365,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 				const dialog = page.locator('.modal', { hasText: /Restore from backup/i });
 				await expect(dialog).toBeVisible({ timeout: 5_000 });
 				await dialog.getByRole('button', { name: /^Restore$/ }).click();
-				await expect(page.getByText(/Restored 1 runs/)).toBeVisible({ timeout: 15_000 });
+				await expect(page.getByText(/Restored 1 run,/)).toBeVisible({ timeout: 15_000 });
 			}
 
 			await importOnce('first');

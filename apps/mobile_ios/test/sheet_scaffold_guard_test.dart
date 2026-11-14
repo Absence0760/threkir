@@ -15,6 +15,10 @@
 // `SheetDiscardGuard`, so a swipe down, a barrier tap or Back asks before the
 // text is lost (issue #1374 NS-13). A plain `showModalBottomSheet` closes on
 // a swipe through `Navigator.pop`, which no `PopScope` can stop.
+//
+// A tall list sheet (`SheetScaffold.expanding`) is opened with
+// `isScrollControlled: true`: without it the route caps the sheet at 9/16 of
+// the screen, so it can neither open tall nor grow to the full height.
 
 import 'dart:io';
 
@@ -64,7 +68,8 @@ Map<String, String> _classes(List<File> files) {
 Iterable<String> _candidates(String name) =>
     [name, '_${name}State', '${name}State'];
 
-final _scaffold = RegExp(r'\bSheetScaffold(\.floating)?\(');
+final _scaffold = RegExp(r'\bSheetScaffold(\.(?:floating|expanding))?\(');
+final _expanding = RegExp(r'\bSheetScaffold\.expanding\(');
 final _guard = RegExp(r'\bSheetDiscardGuard\(');
 
 /// Whether [code] builds [token] itself, or builds a widget whose class (or
@@ -99,10 +104,11 @@ bool _holdsText(String code, Map<String, String> classes, Set<String> seen) {
 }
 
 class _Call {
-  _Call(this.path, this.line, this.opener, this.builder);
+  _Call(this.path, this.line, this.opener, this.args, this.builder);
   final String path;
   final int line;
   final String opener;
+  final String args;
   final String builder;
   @override
   String toString() => '$path:$line ($opener)';
@@ -139,7 +145,7 @@ List<_Call> _calls(List<File> files) {
       final args = s.substring(open, _close(s, open) + 1);
       final b = args.indexOf('builder:');
       out.add(_Call(path, '\n'.allMatches(s.substring(0, at)).length + 1,
-          m.group(1)!, b < 0 ? '' : args.substring(b)));
+          m.group(1)!, args, b < 0 ? '' : args.substring(b)));
     }
   }
   return out;
@@ -206,6 +212,23 @@ void main() {
             'closed by a swipe without asking');
   });
 
+  test('a tall list sheet is opened scroll-controlled', () {
+    final capped = <String>[];
+    var tall = 0;
+    for (final c in calls) {
+      if (!_builds(c.builder, classes, <String>{}, _expanding)) continue;
+      tall++;
+      if (!RegExp(r'isScrollControlled:\s*true').hasMatch(c.args)) {
+        capped.add('$c');
+      }
+    }
+    expect(tall, greaterThan(0),
+        reason: 'the route picker is one, so the scan should find it');
+    expect(capped, isEmpty,
+        reason: 'SheetScaffold.expanding opens at 70% and grows to the full '
+            'height, which a sheet the route caps at 9/16 cannot do');
+  });
+
   test('the scan recognises a migrated sheet and an unmigrated one', () {
     final classes = {
       '_GoodSheetState': 'class _GoodSheetState { build() => SheetScaffold(body: x); }',
@@ -220,6 +243,10 @@ void main() {
         isTrue);
     expect(
         _builds('builder: (c) => SheetScaffold.floating(body: x)', classes, {}),
+        isTrue);
+    expect(
+        _builds('builder: (c) => SheetScaffold.expanding(slivers: x)',
+            classes, {}),
         isTrue);
     expect(_holdsText('builder: (_) => _FormSheet()', classes, {}), isTrue);
     expect(_holdsText('builder: (_) => _GoodSheet()', classes, {}), isFalse);

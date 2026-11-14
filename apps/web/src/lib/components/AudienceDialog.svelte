@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -284,16 +285,9 @@
 			{:else if candidates.length === 0}
 				<p class="muted">{tr('audience.noPeople')}</p>
 			{:else}
-				<label class="search">
-					<span class="material-symbols" aria-hidden="true">search</span>
-					<input
-						type="text"
-						bind:value={query}
-						placeholder={tr('audience.searchPlaceholder')}
-						aria-label={tr('audience.searchPlaceholder')}
-						data-testid="audience-search"
-					/>
-				</label>
+				<div class="search">
+					<AppSearchField bind:value={query} label={tr('audience.searchPlaceholder')} testid="audience-search" />
+				</div>
 				{#if shown.length === 0}
 					<p class="muted">{tr('audience.noMatches')}</p>
 				{:else}
@@ -442,25 +436,6 @@
 	}
 	.search {
 		display: flex;
-		align-items: center;
-		gap: var(--space-xs);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		padding: 0 var(--space-sm);
 		margin-block-end: var(--space-sm);
-	}
-	.search input {
-		flex: 1 1 auto;
-		border: none;
-		background: none;
-		color: inherit;
-		padding: var(--space-sm) 0;
-	}
-	.search input:focus {
-		outline: none;
-	}
-	.search input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
 	}
 </style>

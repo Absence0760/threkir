@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppInsets,
+        AppSpace,
         AsyncView,
         ChoiceChipOption,
         EmptyState,
         FilterBar,
         HubTabBody,
         ListCard,
+        ListSummary,
         LoadingState,
         PrimaryAction,
         buildChoiceChip;
@@ -20,7 +22,6 @@ import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../l10n/number_format.dart';
 import '../local_run_store.dart';
 import '../plan_labels.dart';
 import '../starter_plans.dart';
@@ -279,22 +280,19 @@ class _PlansScreenState extends State<PlansScreen> {
     return HubTabBody(
       title: l10n.runSurfaceTabPlans,
       // "Browse library" is a second way to get a plan, as on web, so it is a
-      // secondary action rather than a tab or a second primary button, and a
-      // labelled one: as a bare glyph nobody found it (issue #1186).
+      // secondary action rather than a tab or a second primary button. Over a
+      // list it is an icon at the end of the status chips' line (a labelled
+      // button took a whole row of its own, issue #1374); with no plans it is
+      // a labelled button under the starters, where a runner looking for a
+      // plan is.
       actions: [
-        // Flexible, so at 2x text on a narrow phone the label ellipsizes
-        // rather than pushing the row off the screen.
-        Flexible(
-          child: OutlinedButton.icon(
-            onPressed: _openLibrary,
+        if (_plans.isNotEmpty)
+          IconButton(
+            key: const ValueKey('plans-browse-library'),
+            tooltip: l10n.plansBrowseLibrary,
             icon: const Icon(Icons.public),
-            label: Text(
-              l10n.plansBrowseLibrary,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            onPressed: _openLibrary,
           ),
-        ),
       ],
       primary: PrimaryAction(
         label: l10n.plansNewPlan,
@@ -317,10 +315,22 @@ class _PlansScreenState extends State<PlansScreen> {
           body: l10n.plansEmptyBody,
           ctaLabel: l10n.plansNewPlan,
           onCta: _openNewPlan,
-          footer: _Starters(
-            today: DateTime.now(),
-            creatingId: _creatingStarterId,
-            onPick: _createStarter,
+          footer: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Starters(
+                today: DateTime.now(),
+                creatingId: _creatingStarterId,
+                onPick: _createStarter,
+              ),
+              const SizedBox(height: AppSpace.sm),
+              TextButton.icon(
+                key: const ValueKey('plans-empty-browse-library'),
+                onPressed: _openLibrary,
+                icon: const Icon(Icons.public),
+                label: Text(l10n.plansBrowseLibrary),
+              ),
+            ],
           ),
         ),
         builder: (_, plans) => _list(l10n, plans),
@@ -332,37 +342,24 @@ class _PlansScreenState extends State<PlansScreen> {
       ? l10n.plansTimeoutError
       : l10n.plansLoadError;
 
-  /// The status chips on one line, each with its count, as on web.
+  /// The status chips on one line, which scrolls and fades at its end. A chip
+  /// is its status only: the count of what the filter shows is the summary
+  /// line at the head of the list ([ListSummary]), as on Runs and Routes,
+  /// rather than a count on some chips and none on a zero (issue #1374).
   FilterBar _filterBar(AppLocalizations l10n) {
-    final tag = localeToTag(Localizations.localeOf(context));
-    int count(String? s) =>
-        s == null ? _plans.length : _plans.where((p) => p.status == s).length;
-    String label(String text, String? s) {
-      final n = count(s);
-      return n == 0 ? text : '$text · ${formatFixed(n.toDouble(), 0, tag)}';
-    }
-
     final options = [
+      ChoiceChipOption<String?>(value: null, label: l10n.plansFilterAll),
       ChoiceChipOption<String?>(
-          value: null, label: label(l10n.plansFilterAll, null)),
+          value: 'active', label: l10n.plansFilterActive),
       ChoiceChipOption<String?>(
-          value: 'active',
-          label: label(l10n.plansFilterActive, 'active'),
-          icon: Icons.play_circle_outline),
+          value: 'paused', label: l10n.plansFilterPaused),
       ChoiceChipOption<String?>(
-          value: 'paused',
-          label: label(l10n.plansFilterPaused, 'paused'),
-          icon: Icons.pause_circle_outline),
+          value: 'completed', label: l10n.plansFilterCompleted),
       ChoiceChipOption<String?>(
-          value: 'completed',
-          label: label(l10n.plansFilterCompleted, 'completed'),
-          icon: Icons.check_circle_outline),
-      ChoiceChipOption<String?>(
-          value: 'abandoned',
-          label: label(l10n.plansFilterAbandoned, 'abandoned'),
-          icon: Icons.cancel_outlined),
+          value: 'abandoned', label: l10n.plansFilterAbandoned),
     ];
     return FilterBar(
+      key: const ValueKey('plans-filter-bar'),
       chipsLabel: l10n.plansFilterGroupLabel,
       chips: [
         for (final o in options)
@@ -389,10 +386,17 @@ class _PlansScreenState extends State<PlansScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppInsets.pageTop,
           AppInsets.gutter, fabScrollClearance(context)),
-      itemCount: shown.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppInsets.itemGap),
+      itemCount: shown.length + 1,
+      separatorBuilder: (_, i) =>
+          SizedBox(height: i == 0 ? 0 : AppInsets.itemGap),
       itemBuilder: (ctx, i) {
-        final p = shown[i];
+        if (i == 0) {
+          return ListSummary(
+            key: const ValueKey('plans-summary'),
+            text: l10n.plansCountMeta(shown.length, plans.length),
+          );
+        }
+        final p = shown[i - 1];
         final abandonable = p.status == 'active' || p.status == 'paused';
         return PlanListCard(
           margin: EdgeInsets.zero,

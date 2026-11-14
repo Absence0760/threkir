@@ -10,10 +10,13 @@
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
 	import StravaClubsSection from '#lib/components/StravaClubsSection.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import FilterBar from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { clubRoleLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { CREATE_CLUB_GUIDE_ID, clubSetupHref } from '#lib/social/club_setup.ts';
+	import { fold } from '#lib/segments/catalogue_browse.ts';
 	import type { ClubWithMeta } from '#lib/types.ts';
 
 	let subtab = $state<'browse' | 'mine'>('mine');
@@ -26,7 +29,14 @@
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 
-	let visible = $derived(subtab === 'browse' ? browseResults : myClubs);
+	// My clubs' own search: a name filter over the clubs already loaded, so
+	// the tab is never a row holding only Create club (issue #1374).
+	let mineSearch = $state('');
+	let mineShown = $derived.by(() => {
+		const q = fold(mineSearch.trim());
+		return q ? myClubs.filter((c) => fold(c.name).includes(q)) : myClubs;
+	});
+	let visible = $derived(subtab === 'browse' ? browseResults : mineShown);
 	let adminClubs = $derived(
 		myClubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin')
 	);
@@ -93,6 +103,34 @@
 	}
 
 </script>
+
+{#snippet clubsSearch()}
+	<AppSearchField
+		bind:value={search}
+		label={m('socialClubs.searchAriaLabel')}
+		placeholder={m('socialClubs.searchPlaceholder')}
+		clearLabel={m('socialClubs.clearSearchAriaLabel')}
+		testid="clubs-search"
+		oninput={(v) => (v === '' ? loadBrowse() : onSearchInput())}
+	/>
+{/snippet}
+
+{#snippet mineSearchField()}
+	<AppSearchField
+		bind:value={mineSearch}
+		label={m('socialClubs.mineSearchPlaceholder')}
+		placeholder={m('socialClubs.mineSearchPlaceholder')}
+		clearLabel={m('socialClubs.clearSearchAriaLabel')}
+		testid="clubs-mine-search"
+	/>
+{/snippet}
+
+{#snippet createClubAction()}
+	<button class="btn btn-primary btn-sm create-club" type="button" onclick={() => (showClubModal = true)}>
+		<span class="material-symbols" aria-hidden="true">add</span>
+		{m('socialClubs.createClub')}
+	</button>
+{/snippet}
 
 {#snippet missingClubActions(query: string)}
 	<a class="btn btn-primary" href={clubSetupHref(query)}>
@@ -172,37 +210,7 @@
 		</button>
 	</div>
 
-	<div class="filter-row">
-		{#if subtab === 'browse'}
-			<div class="search-wrap">
-				<span class="material-symbols" aria-hidden="true">search</span>
-				<input
-					type="text"
-					class="search-input"
-					placeholder={m('socialClubs.searchPlaceholder')}
-					bind:value={search}
-					oninput={onSearchInput}
-					aria-label={m('socialClubs.searchAriaLabel')}
-				/>
-				{#if search}
-					<button
-						type="button"
-						class="search-clear"
-						aria-label={m('socialClubs.clearSearchAriaLabel')}
-						onclick={() => { search = ''; loadBrowse(); }}
-					>
-						<span class="material-symbols" aria-hidden="true">close</span>
-					</button>
-				{/if}
-			</div>
-		{/if}
-		<div class="toolbar-actions">
-			<button class="btn btn-primary btn-sm" type="button" onclick={() => (showClubModal = true)}>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{m('socialClubs.createClub')}
-			</button>
-		</div>
-	</div>
+	<FilterBar idPrefix="clubs" search={subtab === 'browse' ? clubsSearch : mineSearchField} trailing={createClubAction} />
 
 	{#if loading}
 		<div class="grid" aria-hidden="true">
@@ -256,7 +264,15 @@
 			{/snippet}
 		</EmptyState>
 	{:else if visible.length === 0}
-		{#if subtab === 'mine'}
+		{#if subtab === 'mine' && myClubs.length > 0}
+			<EmptyState icon="search_off" title={m('socialClubs.mineNoMatch')} data-testid="clubs-mine-no-match">
+				{#snippet actions()}
+					<button type="button" class="btn btn-secondary" onclick={() => (mineSearch = '')}>
+						{m('socialClubs.clearSearch')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{:else if subtab === 'mine'}
 			<EmptyState
 				icon="groups"
 				title={m('socialClubs.emptyMineTitle')}
@@ -358,82 +374,12 @@
 		color: var(--color-primary);
 		border-bottom-color: var(--color-primary);
 	}
-	.filter-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-sm) var(--space-md);
-		flex-wrap: wrap;
-	}
-	.search-wrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-		flex: 1 1 18rem;
-		min-width: 12rem;
-	}
-	.search-wrap > .material-symbols:first-child {
-		position: absolute;
-		inset-inline-start: 0.75rem;
-		color: var(--color-text-tertiary);
-		pointer-events: none;
-		font-size: 1.1rem;
-	}
-	.search-input {
-		width: 100%;
-		padding: 0.5rem 2.25rem 0.5rem 2.25rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.9rem;
-	}
-	.search-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-	/* audit/accessibility (May 2026) WCAG 2.4.7 + 2.4.11: pair the
-	   :focus rule above with :focus-visible so keyboard users get a real
-	   outline. The :focus rule still removes the default ring on mouse
-	   focus (no visible outline on click); :focus-visible re-adds a
-	   proper one for keyboard / programmatic focus. */
-	.search-input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-
-	.search-clear {
-		position: absolute;
-		inset-inline-end: 0.5rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.5rem;
-		height: 1.5rem;
-		padding: 0;
-		background: transparent;
-		border: none;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		border-radius: 50%;
-	}
-	.search-clear:hover {
-		background: var(--color-primary-light);
-		color: var(--color-text);
-	}
-	.search-clear .material-symbols { font-size: 1rem; }
-	.toolbar-actions {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		margin-inline-start: auto;
-	}
-	.toolbar-actions .btn {
+	.create-club {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-xs);
 	}
-	.toolbar-actions .material-symbols { font-size: 1.05rem; }
+	.create-club .material-symbols { font-size: 1.05rem; }
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
@@ -543,12 +489,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	@media (max-width: 50rem) {
-		.toolbar-actions { margin-inline-start: 0; width: 100%; justify-content: flex-end; }
-		.search-wrap { flex-basis: 100%; }
-	}
-	@media (max-width: 30rem) {
-		.toolbar-actions .btn { flex: 1 1 0; justify-content: center; }
 	}
 </style>

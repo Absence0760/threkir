@@ -59,6 +59,7 @@ import '../help_guides.dart';
 import '../widgets/billing_issue_banner.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
+import '../widgets/route_picker_sheet.dart';
 import '../widgets/log_speed_dial.dart';
 import '../widgets/runner_menu.dart';
 import '../widgets/top_banner.dart';
@@ -84,7 +85,6 @@ import 'public_route_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
 import 'route_detail_screen.dart';
-import 'route_picker_screen.dart';
 import 'run_detail_screen.dart';
 import 'run_screen.dart';
 import 'settings_about_screen.dart';
@@ -1371,6 +1371,7 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       routes: widget.routeStore.routes,
       unit: widget.preferences.unit,
+      offerNoRoute: false,
     );
     if (picked is! RoutePicked || !mounted) return;
     _followRoute(picked.route);

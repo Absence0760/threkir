@@ -3,8 +3,8 @@ import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /races on FilterBar (issue #1374): the search and the All · Races · Courses
- * chips on the bar, everything else in a Filters sheet that holds each
+ * /races on FilterBar (issue #1374): the search (in every view, decisions
+ * § 2519) and the All · Races · Courses chips on the bar, everything else in a Filters sheet that holds each
  * control's explanation beside it (the owner moved the hints off the page),
  * the active filters as removable chips on the chip line, and a sheet that
  * traps focus while open and hands it back to the Filters button on close.
@@ -44,7 +44,9 @@ test.describe('/races — FilterBar and the Filters sheet', () => {
 			/Looks the place up on the map/,
 		);
 		// The search and Show chips stay on the bar; their explanations open here.
-		await expect(sheet.getByTestId('races-sheet-notes')).toContainText("Matches the race's name only");
+		await expect(sheet.getByTestId('races-sheet-notes')).toContainText(
+			'Finds races by name, and park courses by name, park or state',
+		);
 		await expect(sheet.getByTestId('races-sheet-notes')).toContainText('the park courses alone');
 	});
 
@@ -118,12 +120,16 @@ test.describe('/races — FilterBar and the Filters sheet', () => {
 		expect(fits, 'the chip line scrolls inside itself rather than widening the page').toBe(true);
 	});
 
-	test('the Courses view keeps only the Show chips on the bar', async ({ page }) => {
+	// decisions § 2519: the search stays in every view; Courses drops only the
+	// race filters, which have nothing to narrow there.
+	test('the Courses view keeps the search and the Show chips, without race filters', async ({ page }) => {
 		await page.goto('/races?show=courses');
 		await expect(page.getByTestId('races-show-courses')).toHaveAttribute('aria-pressed', 'true', {
 			timeout: 10_000,
 		});
-		await expect(page.getByTestId('races-search')).toHaveCount(0);
+		const search = page.getByRole('searchbox', { name: 'Search parks and courses…' });
+		await expect(search).toBeVisible();
+		await expect(search).toHaveAccessibleDescription(/park courses by name, park or state/);
 		await expect(page.getByTestId('races-filters-toggle')).toHaveCount(0);
 		await expect(page.getByTestId('races-any-time').getByTestId('races-near')).toBeVisible();
 	});

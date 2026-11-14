@@ -291,9 +291,33 @@ because a course is something you go and do, not a stretch you happen to run.
   nearest first once the runner sets a place or uses their location under
   Filters (the same point the race search uses), otherwise in region, park,
   distance and name order, closed courses last. Each card shows distance,
-  shape, the park and this season's record, and opens the course page. An
-  "All park courses" link goes to `/parks`. Each section loads and fails on
-  its own. A switch under the intro, **All · Races · Courses**, shows both or
+  shape, the park and this season's record, and opens the course page. When
+  the list is cut short (All shows eight), the section heading carries
+  "See all N courses" to `/parks` (mobile: `ParksScreen`) with the search
+  carried over (`/parks?q=`); a list that is already whole, the Courses view
+  or eight or fewer courses, has no such link (issue #1374). A distance away
+  reads through the compact formatter (`fmtCompactDistance` /
+  `compactDistanceForPref`: one decimal under 10, whole and grouped from 10,
+  in the runner's unit, so "3,901 km away", never "3901.14 km"); the race
+  cards and the web event and nearby-runner labels use it too. Each section
+  loads and fails on its own.
+- **Search** (issue #1374): one field on the tab's FilterBar, in every view,
+  with the help and overflow actions on its row (mobile). It finds races by
+  name (the `search_race_listings` RPC, as before) and park courses by
+  course name, park name and place (the region's name or code), every word
+  of the query matching somewhere, case and accents ignored
+  (`parkSearchTerms` / `parkSearchMatches` in the `any_time_courses` parity
+  pair, on the catalogue's `fold`). Courses are matched on the client: the
+  section already loads every course in one read (`fetchAllParkCourses`), so
+  a server query per keystroke would buy nothing at hundreds of courses. It
+  outgrows that read near PostgREST's 1,000-row `max_rows`, at which point
+  the course read has to page or the search move to the server. Typing
+  settles for 250 ms before either list changes; the race search is not run
+  while Courses hides the races, and runs when they show again. The hint
+  names what the view finds ("Search races, parks and courses…" in All,
+  "Search parks and courses…" in Courses, "Search races by name…" in Races).
+  No match says "No courses match “…”" with Clear search. The Courses view's
+  park row follows the search. A switch under the intro, **All · Races · Courses**, shows both or
   either alone (decisions § 2480). Courses hides the race calendar and its
   filters, lists every course rather than eight, and puts the place field and
   Use my location at the top of the courses so they still order them. On web
@@ -302,7 +326,11 @@ because a course is something you go and do, not a stretch you happen to run.
   page reopen it; on mobile it is the tab's own state and the courses are
   ordered by the phone's fix, as before.
 - **`/parks`** stays the full index and the deep-link target for share pages
-  and posts, with a back-link to Races & courses and no strip.
+  and posts, with a back-link to Races & courses and no strip. It has a
+  search of its own (web `?q=` opens it filled; mobile
+  `ParksScreen.initialQuery`): a park shows when its name or place matches,
+  or any of its courses' names does, and no match says "No parks or courses
+  match “…”" with Clear search.
 - **Segments**' Park courses action (web header link and empty state, mobile
   control-row action and empty state; the catalogue is Routes → Explore →
   Segments since issue #1374) opens Races & courses on its Courses view:
@@ -898,7 +926,15 @@ These gate going live, not the code:
 
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after
-  measured ones, closed courses last); pgTAP
+  measured ones, closed courses last, the search's folded words and its
+  every-word match over course, park and place) and its Dart twin;
+  Flutter `apps/mobile_android/test/races_courses_screen_test.dart` groups
+  *the search* (the field and both actions on one FilterBar row in every
+  view, the debounced match by name, park and place, the Courses view and
+  its park row following it, no match with Clear search) and *All park
+  courses* (the index's search and the query "See all" carries), and
+  *RunAnyTimeSection* (See all only when the list is cut short, in the
+  heading, with the count; a far course in whole grouped kilometres); pgTAP
   `apps/backend/supabase/tests/park_course_records_test.sql` (this season's
   fastest visible effort, the park's season, no row for a quiet course, a
   pulled park hidden, the caller's own private effort, anon refused);

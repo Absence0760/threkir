@@ -58,9 +58,11 @@ enum SocialTab {
 ///   - People: name search + suggested-from-clubs discovery.
 ///
 /// The hub is a ui_kit `RootPage.tabbed`, as the Fitness hub is: its name in
-/// a large title over the tab strip, collapsing into the one app bar as a tab
-/// scrolls, and the one FAB. The bar carries Messages (with the unread count)
-/// and the notifications bell at every scroll position; every tab body is a ui_kit
+/// a large title over the tab strip, collapsing into a compact bar as a tab
+/// scrolls, and the one FAB. Messages (with the unread count) and the
+/// notifications bell sit at the end of the title row, and in the compact bar
+/// once the title has gone, so they are in reach at every scroll position;
+/// every tab body is a ui_kit
 /// `HubTabBody`, which inside the hub's [HubTabScope] draws no app bar of its
 /// own, keeps its secondary actions in its control row and hands its primary
 /// action to the hub's FAB (issue #1374). Messages and the bell moved here
@@ -203,13 +205,7 @@ class _SocialScreenState extends State<SocialScreen>
     if (api == null) {
       return RootPage(
         title: l10n.navSocial,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            PageHeader(title: l10n.navSocial),
-            const Expanded(child: SignInRequiredState(api: null)),
-          ],
-        ),
+        body: const SignInRequiredState(api: null),
       );
     }
     return RootPage.tabbed(

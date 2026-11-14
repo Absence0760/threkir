@@ -15,7 +15,14 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSearchField, EmptyState, FilterBar, LoadingState, PageBarTitle;
+    show
+        AppSearchField,
+        AppSpace,
+        EmptyState,
+        FilterBar,
+        LoadingState,
+        PageBarTitle,
+        PageHeader;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
@@ -140,6 +147,38 @@ void main() {
         reason: 'the strip pins under the bar');
   }
 
+  // Owner feedback (issue #1374, round 2): the title sat under an empty bar
+  // row. At rest the large title, Messages and the bell share one row under
+  // the status bar, centred on each other, and the strip follows that row.
+  worstCaseTestWidgets('Social opens on one title row with Messages and the '
+      'bell, the strip right under it', (tester, locale) async {
+    await pumpHub(tester, locale: locale);
+    final title = find.descendant(
+        of: find.byType(PageHeader),
+        matching: find.text(l10nFor(locale).navSocial));
+    expect(title, findsOneWidget);
+    final heading = tester.getRect(title);
+    final header = tester.getRect(find.byType(PageHeader));
+    expect(header.top, lessThanOrEqualTo(AppSpace.md),
+        reason: 'no bar row above the title');
+    for (final action in [
+      find.byKey(const ValueKey('social-messages')),
+      find.byTooltip(l10nFor(locale).notificationBellTooltip),
+    ]) {
+      expect(action.hitTestable(), findsOneWidget);
+      final centre = tester.getCenter(action).dy;
+      expect(centre, greaterThan(heading.top));
+      expect(centre, lessThan(heading.bottom),
+          reason: 'the action sits on the title row');
+    }
+    expect(find.byType(AppBar).hitTestable(), findsNothing,
+        reason: 'no compact bar at rest');
+    expect(tester.getRect(find.byType(TabBar)).top,
+        greaterThanOrEqualTo(heading.bottom),
+        reason: 'the strip follows the title row');
+    expectNoOverflow(tester, 'Social at rest');
+  });
+
   worstCaseTestWidgets('every Social tab with the title collapsed',
       (tester, locale) async {
     await pumpHub(tester, locale: locale);
@@ -186,11 +225,22 @@ void main() {
       ('Feed', 'feed-filter-bar'),
       ('Clubs', 'clubs-filter-bar'),
       ('Events', 'events-filter-bar'),
+      ('Challenges', 'challenges-filter-bar'),
       ('People', 'people-filter-bar'),
     ]) {
       await openTab(tester, label);
       expect(find.byKey(ValueKey(key)), findsOneWidget,
           reason: '$label\'s controls are not its FilterBar');
+      // Every list here can grow, so every one but the feed has a search
+      // (issue #1374: Clubs → My clubs had none).
+      if (label != 'Feed') {
+        expect(
+            find.descendant(
+                of: find.byKey(ValueKey(key)),
+                matching: find.byType(AppSearchField)),
+            findsOneWidget,
+            reason: '$label has no search');
+      }
     }
     await openTab(tester, 'Events');
     expect(

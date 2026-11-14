@@ -46,7 +46,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Enquanto não estiver pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com uma ligação **Configurar pagamentos** de volta a esta página.',
+					text: 'Enquanto não estiver pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com um link **Configurar pagamentos** de volta a esta página.',
 				},
 			],
 		},

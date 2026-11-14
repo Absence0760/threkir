@@ -18,8 +18,10 @@ import 'package:ui_kit/ui_kit.dart'
         HubSelection,
         HubTabBody,
         ListCard,
+        ListSummary,
         PrimaryAction,
         SelectionHint,
+        ViewSwitch,
         buildChoiceChip,
         showFilterSheet;
 
@@ -781,29 +783,25 @@ class RoutesScreenState extends State<RoutesScreen> {
         chips: _exploreChips(l10n),
       );
 
-  /// Mine · Explore, above every view's own controls. A chip that switches
-  /// the view rather than filtering it, as Races & courses' All · Races ·
-  /// Courses does, and on its own line so the view's filters keep theirs.
-  /// [chips] is a view's one quick chip (Mine's Starred), which joins this
-  /// line at its end rather than taking a line of its own.
-  FilterBar _viewBar(AppLocalizations l10n, {List<Widget> chips = const []}) {
-    final selected = _show.value.isExplore;
-    return FilterBar(
-      key: const ValueKey('routes-view-bar'),
-      viewsLabel: l10n.routesViewGroup,
-      padding: const EdgeInsets.fromLTRB(
-          AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
-      chips: chips,
-      views: [
-        for (final o in [
-          ChoiceChipOption(value: false, label: l10n.routesViewMine),
-          ChoiceChipOption(value: true, label: l10n.routesViewExplore),
-        ])
-          buildChoiceChip<bool>(context, o, selected,
-              (explore) => _show.value = explore ? _explore : RoutesShow.mine),
-      ],
-    );
-  }
+  /// Mine · Explore, above every view's own controls: a [ViewSwitch], since
+  /// it switches what the tab shows rather than filtering it, on its own row
+  /// so the view's filters keep theirs. No filter joins it; Mine's Starred is
+  /// in Mine's search row ([_starredToggle]).
+  FilterBar _viewBar(AppLocalizations l10n) => FilterBar(
+        key: const ValueKey('routes-view-bar'),
+        padding: const EdgeInsets.fromLTRB(
+            AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+        views: ViewSwitch<bool>(
+          label: l10n.routesViewGroup,
+          options: [
+            ChoiceChipOption(value: false, label: l10n.routesViewMine),
+            ChoiceChipOption(value: true, label: l10n.routesViewExplore),
+          ],
+          selected: _show.value.isExplore,
+          onChanged: (explore) =>
+              _show.value = explore ? _explore : RoutesShow.mine,
+        ),
+      );
 
   /// Routes · Segments, leading each Explore view's chip line.
   List<Widget> _exploreChips(AppLocalizations l10n) => [
@@ -884,7 +882,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _countRow(theme, l10n,
+                      _countRow(l10n,
                           visible: routes.length, total: mergedRoutes.length),
                       // Long-press is the only way into multi-select, so it
                       // needs saying. Suppressed once selecting (the app bar
@@ -1096,8 +1094,7 @@ class RoutesScreenState extends State<RoutesScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _viewBar(l10n,
-              chips: [if (mergedRoutes.isNotEmpty) _starredToggle(l10n)]),
+          _viewBar(l10n),
           mergedRoutes.isEmpty
               ? FilterBar(trailing: actions)
               : _filterBar(theme, l10n).withTrailing(actions),
@@ -1150,8 +1147,8 @@ class RoutesScreenState extends State<RoutesScreen> {
     if (turningOn) _ensureStarredLoaded();
   }
 
-  /// Starred, the most-toggled filter: Mine's one quick chip, which sits at
-  /// the end of the view row.
+  /// Starred, the most-toggled filter: Mine's one quick chip, which
+  /// `FilterBar` draws as a toggle icon button in the search row.
   FilterToggle _starredToggle(AppLocalizations l10n) => FilterToggle(
         key: const ValueKey('routes-starred-toggle'),
         label: l10n.routesStarred,
@@ -1162,9 +1159,9 @@ class RoutesScreenState extends State<RoutesScreen> {
         onChanged: (_) => _toggleStarredOnly(),
       );
 
-  /// Search, and Filters for surface, distance and sort, whose non-default
-  /// values show as removable chips on the line under it. Starred is on the
-  /// view row ([_starredToggle]). Mirrors the web `/routes` toolbar's set.
+  /// Search, Starred ([_starredToggle]) and Filters for surface, distance and
+  /// sort, whose non-default values show as removable chips on the line
+  /// under it. Mirrors the web `/routes` toolbar's set.
   FilterBar _filterBar(ThemeData theme, AppLocalizations l10n) {
     ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
           label: label,
@@ -1195,6 +1192,7 @@ class RoutesScreenState extends State<RoutesScreen> {
           _persistFilters();
         },
       ),
+      chips: [_starredToggle(l10n)],
       activeFilters: filters,
       filtersLabel: l10n.filterBarFilters,
       filtersSemanticLabel:
@@ -1259,30 +1257,19 @@ class RoutesScreenState extends State<RoutesScreen> {
     );
   }
 
-  /// "Showing n of m" at the head of the list, with Clear filters while any
-  /// filter or search narrows the list.
-  Widget _countRow(ThemeData theme, AppLocalizations l10n,
+  /// "n of m routes" at the head of the list, the same line Runs and Plans
+  /// draw, with Clear filters while any filter or search narrows the list.
+  Widget _countRow(AppLocalizations l10n,
           {required int visible, required int total}) =>
-      Padding(
-        padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                l10n.routesCountMeta(visible, total),
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (_filtersActive())
-              TextButton(
+      ListSummary(
+        key: const ValueKey('routes-summary'),
+        text: l10n.routesCountMeta(visible, total),
+        action: _filtersActive()
+            ? TextButton(
                 onPressed: _clearFilters,
                 child: Text(l10n.routesClearFilters),
-              ),
-          ],
-        ),
+              )
+            : null,
       );
 
   /// The discovery maps heading Explore → Routes: the community routes

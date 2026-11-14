@@ -64,8 +64,8 @@ final _literalOne = RegExp(r'(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])', unicode: t
 // Japanese writes a count against its counter or unit with no space on
 // either side when the neighbour is Japanese: 「{n}件中{m}件」「約15分」
 // 「2点以上」. A Latin neighbour keeps its space (「Pro 8回」, 「5.0 km」).
-// Settled in .claude/agents/i18n/languages/ja.md, which also names the web
-// guard for the same rule.
+// Settled in .claude/agents/i18n/languages/ja.md; web twin
+// apps/web/src/lib/i18n/ja_counter_spacing.test.ts.
 const _jaCounter =
     r'(?:時間|週間|か月|ヶ月|か所|種類|セット|ポイント|マイル|文字|件|回|人|名|分|秒|個|枚|本|歳|位|周|点|つ|日|年|月)';
 const _jaNumber = r'(?:\d+(?:[.,]\d+)?|\{[A-Za-z0-9_]+\}|#)';

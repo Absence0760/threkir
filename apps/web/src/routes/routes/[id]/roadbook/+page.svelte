@@ -224,7 +224,7 @@
 				saved++;
 			}
 			markers = await fetchRouteMarkers(data.id);
-			showToast(m('roadbook.saveTargetsDone', { count: String(saved) }), 'success');
+			showToast(m('roadbook.saveTargetsDone', { count: saved }), 'success');
 		} catch (e) {
 			showToast(m('roadbook.saveTargetsFailed', { error: errorCopy(e, m, 'roadbook.saveTargetsFailed') }), 'error');
 		} finally {
@@ -602,7 +602,7 @@
 									{#if (fuel.legs[i].carryToNextAid?.gels ?? 0) > 0}
 										<span class="carry-hint">
 											{m('roadbook.carryHint', {
-												gels: String(fuel.legs[i].carryToNextAid?.gels ?? 0),
+												gels: fuel.legs[i].carryToNextAid?.gels ?? 0,
 												fluid: String(Math.round(fuel.legs[i].carryToNextAid?.fluidMl ?? 0))
 											})}
 										</span>

@@ -54,8 +54,7 @@ names stay in Latin script.
 - Spacing between Latin/digits and Japanese is mixed (unspaced 498 / 536
   vs spaced 280 / 384 strings). Prefer **no space** ("Stravaを開く",
   "{count}件"), except keep the space the English puts before a unit
-  symbol in a literal sample ("1000 km"). Before a day, week, month or
-  year unit and in a date it is a rule, not a preference: 「#日」「1月1日」 (see the glossary row).
+  symbol in a literal sample ("1000 km"). Before a counter or a unit written in Japanese, and in a date, it is a rule, not a preference: 「#日」「1月1日」「#件」「{n}回」 (see the two glossary rows; `ja_counter_spacing.test.ts` fails a space).
 - Numbers in literal samples keep the decimal point ("5.0 km · 5:00 /km").
 
 ## Plurals
@@ -83,7 +82,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | cadence (steps/min) | ケイデンス | `runStatCadence`; 「頻度」 in `discover.cadenceLabel` means *recurrence* |
 | training plan | トレーニングプラン; short プラン | |
 | race | レース; 勝負 for the race phase intent | |
-| counting cues | 「# 件のキュー」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「#個のキュー」 |
+| counting cues | 「#件のキュー」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「#個のキュー」. Unspaced since round 2026-11-13c (counter row) |
 | mapped run (personal heatmap) | 「地図に#件のラン」「地図に表示できるランはまだありません」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「マップ化されたラン」 |
 | AI disclosure | **AIに関する説明** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「AIの説明」, which collides with 「AIによる説明」 (an AI description) |
 | leaderboard | **ランキング** ("セグメントのランキング", "性別・年齢区分別のセグメントのランキング") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never 「リーダーボード」 |
@@ -125,8 +124,11 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | age grade (the score against the best for your age and sex) | **年齢別評価** — 「年齢別評価」（stat and metric label）、「年齢別評価 {percent}」、「年齢別評価の結果」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 年齢グレード |
 | age band (the board filter and the consent statement) | **年齢区分** (already one term) | checked 2026-11-13; 年代別 stays for a race's own age category in results (`races.ageGroup`) |
 | name search (the profile search that 「名前検索に表示する」 controls, and that keeps under-18 accounts out) | **名前検索** everywhere, the DOB notes included | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never 公開ユーザー検索 / 人物検索 for it. 「人を検索」 stays for a field that searches people you follow or message |
-| a day count, a span of days, weeks, months or years, and a date | **no space** between the number (or `#`, `{n}`) and 日, 週間, か月, 年 or 月: 「#日」「{n}日前」「あと#日で終了」「最大{n}日」「直近90日」「#週間」「直近6か月」「最長1年前」「1月1日」「12月31日 22:00」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the last spaced ones on web (`challenges.*`, `notificationBell.daysAgo`, `trainingLoad.*`, `seasonPlanner.*`, the Strava lookback options, `coaching.roster.hrDriftHint`, `clubVerification.emailHint`) and the park-courses guide's dates moved. Other counters (件, 回, 人, 分, 時間) are still mixed — inconsistency 7; 「# 件のキュー」 stays as settled |
+| a day count, a span of days, weeks, months or years, and a date | **no space** between the number (or `#`, `{n}`) and 日, 週間, か月, 年 or 月: 「#日」「{n}日前」「あと#日で終了」「最大{n}日」「直近90日」「#週間」「直近6か月」「最長1年前」「1月1日」「12月31日 22:00」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the last spaced ones on web (`challenges.*`, `notificationBell.daysAgo`, `trainingLoad.*`, `seasonPlanner.*`, the Strava lookback options, `coaching.roster.hrDriftHint`, `clubVerification.emailHint`) and the park-courses guide's dates moved. Every other counter follows the same rule since 2026-11-13c — see the next row |
 | "Nobody you follow has logged a public run in the last N days…" (`profile.feedNoActivityText`, `socialFeed.noActivityText`) | 「フォロー中の人は過去#日間に公開ランを記録していません。それより前のランは、各ランナーのプロフィールで見られます。」 | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; the two keys share one English and now one Japanese |
+| a count with a counter or a Japanese unit word: 件, 回, 人, 名, 分, 秒, 時間, ポイント, 文字, つ, 点, 個, 枚, 本, 歳, 位, 周, セット, か所, 種類 | **no space on either side of the number** when the neighbour is Japanese: 「#件のラン」「{n}回連続で未実施」「未読{n}件」「約{minutes}分」「1つ以上」「2点以上」「#ポイント」「{min}文字以上」「#人のランナー」「{total}件中{shown}件」 · the space stays where the neighbour is Latin (「Pro 8回」「GPX ファイル」) and before a Latin unit symbol (「5.0 km」) | settled 2026-11-13 (#1374 round 2026-11-13c), web (mobile follows): about 120 web strings dropped a space here; `apps/web/src/lib/i18n/ja_counter_spacing.test.ts` fails a space between a number and any of these counters or the day/week/month/year units. Closes the counter half of inconsistency 7 |
+| race priority A / B / C (A is the goal race the plan peaks for, B a tune-up race raced properly (a short taper and a few easy days after it), C a training race run as part of training (a light easing either side) — docs/features/training.md § Race priority) | **A — 目標レース**, **B — 調整レース**, **C — 練習レース**; hint 「Bレースは本気で走る調整レース、Cレースは練習として走るレースです」 | settled 2026-11-13 (#1374 round 2026-11-13c), both surfaces: the workout editor's 「B — 重要なレース」「C — 調整レース」 contradicted the season planner and what the taper does. Never 重要 for B |
+| race plan vs race schedule (sent to the watch) | **レースプラン** (the sheet asking for a goal time and start) · **レーススケジュール** (the arrival and cut-off times per checkpoint) | checked 2026-11-13 — already distinct |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
@@ -140,7 +142,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 5. **VO₂ max**: 「VO₂max」 (`metric.vo2max.label`) vs 「VO2 Max」
    (`watchMetricVo2Max`).
 6. **split** rendered 「ラップ」 once on web.
-7. **typography**: mixed colon width and Latin–kana spacing.
+7. **typography**: mixed colon width, and Latin–kana spacing outside counts (a count with a counter or a day unit is settled: no space).
 
 ## Don't translate
 

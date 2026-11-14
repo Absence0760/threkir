@@ -1860,8 +1860,9 @@
 					</div>
 				{/if}
 				<a href="/recap/{new Date().getFullYear()}" class="recap-link">
-					<span class="material-symbols">auto_awesome</span>
+					<span class="material-symbols" aria-hidden="true">auto_awesome</span>
 					{m('dash.viewRecap', { year: new Date().getFullYear() })}
+					<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 				</a>
 			</div>
 			<!-- This week lives on the week lead above, and its day strip, climb

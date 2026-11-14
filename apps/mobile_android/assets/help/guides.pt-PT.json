@@ -2385,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sem marca**: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.",
+              "*Sem marca*: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.",
               "**Manual**: o corredor terminou à mão, com **Terminar prova** depois de percorrer pelo menos 90% do percurso, ou usando **Enviar o meu tempo** na web durante a prova.",
               "**Organizador** (na web, **Editado pelo organizador**): o organizador introduziu ou corrigiu este resultado, ou o corredor ficou como DNF quando o organizador encerrou a prova."
             ]

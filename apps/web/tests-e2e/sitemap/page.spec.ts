@@ -16,7 +16,7 @@ import { allSitemapLocs, sitemapChildPaths } from '../fixtures/sitemap';
  *   - Content-Type is application/xml.
  *   - Top-level surfaces (/, /feed, /routes?tab=explore, /segments) appear.
  *   - At least one seeded public run + route appear via their share URLs.
- *   - robots.txt advertises the sitemap so crawlers find it.
+ *   - robots.txt advertises the sitemap by an absolute URL so crawlers find it.
  */
 
 test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
@@ -83,8 +83,17 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 	test('robots.txt advertises the sitemap location', async ({ request }) => {
 		const res = await request.get('/robots.txt');
 		expect(res.status()).toBe(200);
+		expect(res.headers()['content-type'] ?? '').toMatch(/text\/plain/);
 		const body = await res.text();
-		expect(body).toMatch(/Sitemap:\s*\/sitemap\.xml/);
+		expect(body).toMatch(/^Disallow: \/dashboard$/m);
+		// Absolute, per RFC 9309: a relative Sitemap line is ignored by crawlers.
+		// Its origin is PUBLIC_SITE_URL's, not the dev host's, exactly like the
+		// sitemap's own <loc>s.
+		const lines = body.split('\n').filter((l) => l.startsWith('Sitemap:'));
+		expect(lines).toHaveLength(1);
+		const url = new URL(lines.join('').replace(/^Sitemap:\s*/, ''));
+		expect(url.pathname).toBe('/sitemap.xml');
+		expect(url.hostname.startsWith('www.')).toBe(false);
 	});
 
 	test('sitemap does NOT include private / signed-in surfaces', async ({ request }) => {

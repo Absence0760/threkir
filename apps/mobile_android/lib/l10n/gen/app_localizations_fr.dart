@@ -4471,7 +4471,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$points points',
       one: '$points point',
     );
-    return 'Parcours envoyé à la montre ($_temp0), mais ses repères n\'ont pas pu être chargés : aucun horaire n\'a été envoyé avec.';
+    return 'Parcours envoyé à la montre ($_temp0), mais ses repères n\'ont pas pu être chargés : aucun tableau de marche n\'a été envoyé avec.';
   }
 
   @override
@@ -17991,7 +17991,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get watchMetricWorkoutRemaining => 'Étape de séance';
 
   @override
-  String get watchMetricRacePrediction => 'Prévision en compétition';
+  String get watchMetricRacePrediction => 'Temps prévu en compétition';
 
   @override
   String get watchMetricCutoffMargin => 'Marge avant barrière';

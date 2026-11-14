@@ -4465,7 +4465,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$points puntos',
       one: '$points punto',
     );
-    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún plan de carrera.';
+    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario de carrera.';
   }
 
   @override

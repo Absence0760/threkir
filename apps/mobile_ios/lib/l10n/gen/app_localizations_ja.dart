@@ -3462,12 +3462,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runDetailParkCourseRank(String rank, String season) {
-    return '$season年$rank位';
+    return '$season年の$rank位';
   }
 
   @override
   String runDetailParkCourseMonthRank(String rank, String month) {
-    return '$month $rank位';
+    return '$monthの$rank位';
   }
 
   @override
@@ -3477,7 +3477,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String seasonRank,
     String season,
   ) {
-    return '$month $monthRank位、$season年$seasonRank位';
+    return '$monthの$monthRank位、$season年の$seasonRank位';
   }
 
   @override
@@ -4218,7 +4218,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeDetailWatchCourseAndScheduleSent(int points, int checkpoints) {
-    return 'コース（$pointsポイント）とレーススケジュール（$checkpoints チェックポイント）をウォッチに送信しました';
+    return 'コース（$pointsポイント）とレーススケジュール（チェックポイント$checkpointsか所）をウォッチに送信しました';
   }
 
   @override
@@ -4227,7 +4227,7 @@ class AppLocalizationsJa extends AppLocalizations {
     int source,
     int checkpoints,
   ) {
-    return 'コース（$pointsポイント）を送信しました。レーススケジュールはウォッチに収めるため $source から $checkpoints チェックポイントに削減されました';
+    return 'コース（$pointsポイント）を送信しました。ウォッチに収めるため、レーススケジュールのチェックポイントを$sourceか所から$checkpointsか所に減らしました';
   }
 
   @override
@@ -4439,7 +4439,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeDetailRunCount(int count) {
-    return '$count回の実行';
+    return '$count回のラン';
   }
 
   @override
@@ -4840,16 +4840,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exploreRoutesDistanceUltraKm => '21 km 以上';
 
   @override
-  String get exploreRoutesDistanceUnderMi => '3 マイル未満';
+  String get exploreRoutesDistanceUnderMi => '3マイル未満';
 
   @override
-  String get exploreRoutesDistanceMidMi => '3〜6 マイル';
+  String get exploreRoutesDistanceMidMi => '3〜6マイル';
 
   @override
-  String get exploreRoutesDistanceLongMi => '6〜13 マイル';
+  String get exploreRoutesDistanceLongMi => '6〜13マイル';
 
   @override
-  String get exploreRoutesDistanceUltraMi => '13 マイル以上';
+  String get exploreRoutesDistanceUltraMi => '13マイル以上';
 
   @override
   String get heatmapSearchHint => '場所を検索…';
@@ -11172,7 +11172,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubFormErrName => 'クラブに名前を付けてください。';
 
   @override
-  String get clubFormErrSlug => '名前には少なくとも1文字または数字が必要です。';
+  String get clubFormErrSlug => '名前には文字または数字を1つ以上含めてください。';
 
   @override
   String get eventFormErrTitle => 'イベントにタイトルを付けてください。';
@@ -20651,7 +20651,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String shareCardCourseMonthRank(String rank, String month) {
-    return '$month $rank位';
+    return '$monthの$rank位';
   }
 
   @override
@@ -20661,7 +20661,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String seasonRank,
     String season,
   ) {
-    return '$month $monthRank位 · $season年$seasonRank位';
+    return '$monthの$monthRank位 · $season年の$seasonRank位';
   }
 
   @override

@@ -897,7 +897,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessReasonFormNeutral => 'Forma neutra';
 
   @override
-  String get readinessReasonFresh => 'Bom descanso e boa recuperação';
+  String get readinessReasonFresh => 'Pernas descansadas e boa recuperação';
 
   @override
   String get readinessReasonVeryFresh =>
@@ -1488,7 +1488,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get safetyContactOfIntro =>
-      'Estas pessoas indicaram o seu contacto como contacto de emergência e confirmou. Pode mudar a forma como recebe os avisos, ou sair, quando quiser.';
+      'Estas pessoas indicaram o seu nome como contacto de emergência, e confirmou o pedido. Pode mudar a forma como recebe os avisos, ou sair, quando quiser.';
 
   @override
   String safetyContactOfFor(String name) {
@@ -1510,7 +1510,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get safetyContactOfSmsNoChange =>
-      'Esse vínculo não está mais ativo — a pessoa pode tê-lo removido.';
+      'Esse pedido já não está ativo — a pessoa pode tê-lo removido.';
 
   @override
   String safetyContactOfSmsFailed(String error) {
@@ -1522,11 +1522,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get safetyContactOfWithdrawConfirm =>
-      'Deixar de ser o contacto de segurança desta pessoa? Ela não poderá mais enviar-lhe avisos e precisaria enviar um novo pedido.';
+      'Deixar de ser o contacto de segurança desta pessoa? Ela já não poderá enviar-lhe avisos e, para voltar a contar consigo, teria de enviar um novo pedido.';
 
   @override
-  String get safetyContactOfWithdrawnToast =>
-      'Não é mais contacto de segurança.';
+  String get safetyContactOfWithdrawnToast => 'Já não é contacto de segurança.';
 
   @override
   String safetyContactOfWithdrawFailed(String error) {
@@ -1673,21 +1672,20 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runSafetyNudgeShareAction => 'Partilhar';
 
   @override
-  String get activitySedentary =>
-      'Quase sempre em posição sentada (trabalho de escritório)';
+  String get activitySedentary => 'Dia sedentário (trabalho de escritório)';
 
   @override
-  String get activityLight => 'Levemente ativo (pouca movimentação diária)';
+  String get activityLight => 'Dia levemente ativo (pouca movimentação diária)';
 
   @override
-  String get activityModerate => 'Moderadamente ativo (muito tempo em pé)';
+  String get activityModerate => 'Dia moderadamente ativo (muito tempo em pé)';
 
   @override
   String get activityVeryActive => 'Dia muito ativo (trabalho físico)';
 
   @override
   String get activityExtraActive =>
-      'Extremamente ativo (trabalho físico pesado)';
+      'Dia extremamente ativo (trabalho físico pesado)';
 
   @override
   String get goalLose => 'Perder peso';
@@ -5804,12 +5802,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifMention(String name) {
-    return '$name mencionou-o num comentário';
+    return '$name mencionou o seu nome num comentário';
   }
 
   @override
   String profileNotifFollow(String name) {
-    return '$name começou a seguir o seu perfil';
+    return '$name começou a seguir a sua conta';
   }
 
   @override
@@ -7947,7 +7945,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdjustAdaptiveDesc =>
-      'Olha para as suas últimas três semanas terminadas e sugere alterações quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando anda desviado do plano há algum tempo.';
+      'Olha para as suas últimas três semanas terminadas e sugere alterações quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando estiver fora do plano há algum tempo.';
 
   @override
   String get planDetailRaceTaper => 'Polimento em torno das provas B/C';
@@ -8217,7 +8215,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailPublishNoClubs =>
-      'Tem de ser proprietário ou administrador de um clube para publicar um modelo.';
+      'Precisa de ter a função de proprietário ou administrador de um clube para publicar um modelo.';
 
   @override
   String planDetailPublishSuccess(String name) {
@@ -9121,7 +9119,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountSignedInSync =>
-      'Conectado — as corridas serão sincronizadas';
+      'Sessão iniciada — as corridas serão sincronizadas';
 
   @override
   String get settingsAccountSignInToSync =>
@@ -12458,7 +12456,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get billingRenewalBody =>
-      'Atualize o seu cartão ou será rebaixado para o Free.';
+      'Atualize o seu cartão ou a sua conta passa para o Free.';
 
   @override
   String get billingManage => 'Gerir';
@@ -13049,7 +13047,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guidedTempo25Cue5 =>
-      'Faltam dois minutos em tempo. Mantenha-se fluido.';
+      'Faltam dois minutos em tempo. Mantenha a fluidez.';
 
   @override
   String get guidedTempo25Cue6 =>
@@ -19492,7 +19490,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get audienceAddPeople => 'Adicionar pessoas';
 
   @override
-  String get audienceSearchHint => 'Pesquise pessoas que segue ou que o seguem';
+  String get audienceSearchHint =>
+      'Pesquise pessoas que segue ou que seguem a sua conta';
 
   @override
   String get audienceShareAction => 'Partilhar';
@@ -19520,7 +19519,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get audienceNoPeople =>
-      'Pode partilhar com pessoas que segue ou que o seguem, e ainda não tem nenhuma.';
+      'Pode partilhar com pessoas que segue ou que seguem a sua conta, e ainda não tem nenhuma.';
 
   @override
   String get audienceNoMatches => 'Ninguém corresponde a esse nome.';
@@ -19833,7 +19832,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesMutedToast =>
-      'Silenciada. Não vai ser notificado de novas mensagens aqui.';
+      'Silenciada. Não vai receber notificações de novas mensagens aqui.';
 
   @override
   String get messagesArchivedToast =>
@@ -19961,7 +19960,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsPrivateProfileSubtitle =>
-      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. Continuam a poder encontrar o seu perfil pelo nome e pedir para o seguir.';
+      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. As outras pessoas continuam a poder encontrar o seu perfil pelo nome e pedir para seguir a sua conta.';
 
   @override
   String get prefsPrivateProfileFailed =>
@@ -20663,7 +20662,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewStartingPointNewHint =>
-      'Um plano de caminhada-corrida em 2 ou 3 dias por semana que o leva a correr sem pausas para caminhar.';
+      'Um plano de caminhada-corrida em 2 ou 3 dias por semana que progride até correr sem pausas para caminhar.';
 
   @override
   String get planNewStartingPointBuilding => 'Corro um pouco e quero evoluir';
@@ -21954,7 +21953,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get headToHeadEmpty =>
-      'Ainda não há ninguém para comparar aqui. É preciso um amigo que segue e que segue a sua conta, com perfil público, e uma corrida pública aqui de cada um.';
+      'Ainda não há ninguém para comparar aqui. É preciso que siga um amigo com perfil público que também siga a sua conta, e que cada um tenha aqui uma corrida pública.';
 
   @override
   String get headToHeadLoadFailed => 'Não foi possível carregar a comparação.';
@@ -21989,7 +21988,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get headToHeadPrivacy =>
-      'Só é possível comparar com amigos que o seguem de volta e têm perfil público, e apenas em corridas públicas.';
+      'Só é possível comparar com amigos que também seguem a sua conta e têm perfil público, e apenas em corridas públicas.';
 
   @override
   String get streamerOverlayTitle => 'Overlay para transmissão';
@@ -22544,7 +22543,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get courseDriveAbandoned =>
-      'Parado: esteve fora do percurso durante 10 minutos.';
+      'Notas terminadas: esteve fora do percurso durante 10 minutos.';
 
   @override
   String get courseDriveLocationDenied =>
@@ -23671,7 +23670,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsMessageRequestsHint =>
-      'Permite que as pessoas com quem partilha um clube ou um evento lhe enviem mensagens primeiro. Se desativar, só as pessoas que segue, ou que o seguem, podem iniciar uma conversa consigo.';
+      'Permite que as pessoas com quem partilha um clube ou um evento lhe enviem mensagens primeiro. Se desativar, só as pessoas que segue, ou que seguem a sua conta, podem iniciar uma conversa consigo.';
 
   @override
   String get prefsMessageRequestsFailed =>
@@ -23827,7 +23826,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$count membros',
       one: '$count membro',
     );
-    return '$name convidou-o · $_temp0';
+    return '$name enviou-lhe um convite · $_temp0';
   }
 
   @override
@@ -23859,7 +23858,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get groupsInviteDeclineConfirmMessage =>
-      'Não vai entrar no grupo, e o grupo não o poderá convidar de novo durante 14 dias. Ninguém fica a saber o motivo.';
+      'Não vai entrar no grupo, e o grupo não lhe poderá enviar um novo convite durante 14 dias. Ninguém fica a saber o motivo.';
 
   @override
   String get groupsCreateTitle => 'Novo grupo';
@@ -24024,7 +24023,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get groupsRoleInvited => 'Convidado';
+  String get groupsRoleInvited => 'Convite pendente';
 
   @override
   String get groupsYouSuffix => '(eu)';
@@ -24103,7 +24102,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifGroupInvite(String name) {
-    return '$name convidou-o para um grupo';
+    return '$name enviou-lhe um convite para um grupo';
   }
 
   @override
@@ -25039,7 +25038,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessReasonFormNeutral => 'Forma neutra';
 
   @override
-  String get readinessReasonFresh => 'Bom descanso e boa recuperação';
+  String get readinessReasonFresh => 'Pernas descansadas e boa recuperação';
 
   @override
   String get readinessReasonVeryFresh =>
@@ -25650,7 +25649,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyContactOfSmsNoChange =>
-      'Esse vínculo não está mais ativo — a pessoa pode tê-lo removido.';
+      'Esse pedido não está mais ativo — a pessoa pode tê-lo removido.';
 
   @override
   String safetyContactOfSmsFailed(String error) {
@@ -25813,21 +25812,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runSafetyNudgeShareAction => 'Compartilhar';
 
   @override
-  String get activitySedentary =>
-      'Quase sempre em posição sentada (trabalho de escritório)';
+  String get activitySedentary => 'Dia sedentário (trabalho de escritório)';
 
   @override
-  String get activityLight => 'Levemente ativo (pouca movimentação diária)';
+  String get activityLight => 'Dia levemente ativo (pouca movimentação diária)';
 
   @override
-  String get activityModerate => 'Moderadamente ativo (muito tempo em pé)';
+  String get activityModerate => 'Dia moderadamente ativo (muito tempo em pé)';
 
   @override
   String get activityVeryActive => 'Dia muito ativo (trabalho físico)';
 
   @override
   String get activityExtraActive =>
-      'Extremamente ativo (trabalho físico pesado)';
+      'Dia extremamente ativo (trabalho físico pesado)';
 
   @override
   String get goalLose => 'Perder peso';
@@ -32084,7 +32082,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailAdjustAdaptiveDesc =>
-      'Olha para as suas últimas três semanas concluídas e sugere mudanças quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando você está desviado do plano há um tempo.';
+      'Olha para as suas últimas três semanas concluídas e sugere mudanças quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando você estiver fora do plano há algum tempo.';
 
   @override
   String get planDetailRaceTaper => 'Polimento para provas B/C';
@@ -32355,7 +32353,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailPublishNoClubs =>
-      'Você precisa ser dono ou administrador de um clube para publicar um modelo.';
+      'Você precisa ter a função de proprietário ou administrador de um clube para publicar um modelo.';
 
   @override
   String planDetailPublishSuccess(String name) {
@@ -36585,7 +36583,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get billingRenewalBody =>
-      'Atualize seu cartão ou você será rebaixado para o Free.';
+      'Atualize seu cartão ou sua conta passará para o plano Free.';
 
   @override
   String get billingManage => 'Gerenciar';
@@ -37177,7 +37175,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get guidedTempo25Cue5 =>
-      'Faltam dois minutos em tempo. Mantenha-se fluido.';
+      'Faltam dois minutos em tempo. Mantenha a fluidez.';
 
   @override
   String get guidedTempo25Cue6 =>
@@ -41831,7 +41829,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsCuePhaseTransitionsInfo =>
-      'Só fica ativo quando você escolhe uma estratégia de prova. Anuncia cada fase e sua intenção ao começar. Exemplo: “Fase 2 de 3. Estabilize no seu ritmo alvo.”';
+      'Só fica ativo quando você escolhe uma estratégia de prova para a corrida. Anuncia cada fase e sua intenção ao começar. Exemplo: “Fase 2 de 3. Estabilize no seu ritmo alvo.”';
 
   @override
   String get prefsCueGuidedRun => 'Corridas guiadas';
@@ -43955,7 +43953,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesMutedToast =>
-      'Silenciada. Você não será notificado sobre novas mensagens aqui.';
+      'Silenciada. Você não vai receber notificações de novas mensagens aqui.';
 
   @override
   String get messagesArchivedToast =>
@@ -46668,7 +46666,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get courseDriveAbandoned =>
-      'Parado: você ficou fora do percurso por 10 minutos.';
+      'Notas encerradas: você ficou fora do percurso por 10 minutos.';
 
   @override
   String get courseDriveLocationDenied =>
@@ -48144,7 +48142,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get groupsRoleInvited => 'Convidado';
+  String get groupsRoleInvited => 'Convite pendente';
 
   @override
   String get groupsYouSuffix => '(você)';

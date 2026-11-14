@@ -25,8 +25,9 @@ Continuous aspect uses the gerund ("está fazendo"). Instructions use the
 imperative as Brazilians write it ("Digite", "Cole", "Tente de novo");
 buttons the infinitive ("Salvar", "Pausar corrida"). The proclitic `te`
 with `você` is tolerated in colloquial strings (5 web strings such as
-"Outros podem te encontrar por ele"); prefer `você`/`o`/`a`/`lhe` in new
+"Outros podem te encontrar por ele"); prefer `você`/`lhe` in new
 copy. `navYou` is "Você".
+- **The reader has no grammatical gender.** Nothing that agrees with the reader takes a masculine (or feminine) ending: no adjective or participle (« cansado », « pronto », « descansado », « relaxado », « dolorido », « inscrito », « convidado », « conectado »), no « Bem-vindo », no « o primeiro », and no « o » / « -lo » for the reader where « você » fits. Rephrase around a noun or a verb: « Boas-vindas de volta », « Que bom ter você de volta » (pt-BR), « quando estiver em condições », « com as pernas frescas » / « com as pernas descansadas », « Mantenha a descontração » / « Mantenha o corpo solto », « se tiver dores » / « se você estiver com dores », « Bom descanso », « Recuperação muito elevada », « Inscrição feita », « Recebeu um convite », « Ninguém ainda… — garanta o seu lugar », « seguir você », « encontrar você ». A club role is named as a role, « Tem a função de administrador » / « proprietário », never « É o proprietário ». Third parties keep the catalogue's generic forms (« o organizador », « corredores »). Settled 2026-11-13 (#1374 round 2026-11-13c), web (mobile follows; the mobile catalogues moved the plan and readiness strings in § 2534).
 
 - **A string around `{distance}` agrees with both units.** *quilômetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Total registrado: {distance}", "Clube {distance}", never "{distance} registrados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
 
@@ -89,7 +90,7 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | fitness / fatigue / form (training load: CTL / ATL / TSB) | **Condicionamento** / **Fadiga** / **Forma** — "Condicionamento, fadiga e forma", "Condicionamento (CTL)", "Forma (TSB)", "condicionamento − fadiga". *Fitness* in its everyday sense ("reflete seu condicionamento atual", VDOT "pontuação de condicionamento") takes the same word, as the English does; same terms as pt-PT | settled 2026-11-12; never "forma" / "forma física" for fitness ("Quanto maior, melhor o condicionamento"), never "Frescor" for form. The idiom "Manter a forma" (*stay fit*, `setupGoalGeneralFitness`) is not the noun and stays. The *Fitness* destination (`navFitness`) stays "Fitness" |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
-| race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` | collides with *run* — inconsistency 1 |
+| race (a competition you find, enter, browse, import a result from or train for: the race calendar and its pages, listings, claims, race-course tools, a race in a plan or season, race day, a race result) | **Prova** / provas — `nav.races` « Provas », « Calendário de provas », « Buscar provas por nome… », « Página da prova e inscrição », « Reivindicar esta prova », « Próximas provas », « Dia da prova », « provas de rua » | settled 2026-11-13 (#1374 round 2026-11-13c), web (mobile follows): about 60 web strings moved from « corrida » to « prova », so a race never reads as a run. *Corrida* is the run, and stays for the club-hosted live race (« Preparar corrida », « Encerrar corrida », « Corrida ao vivo », the race-start notifications), as fr keeps « course » and es *carrera* for it |
 | @username help | « nome de utilizador/usuário público (@…) », never « @nome de … » | settled 2026-11-13 (#1374 round 3.5), both surfaces |
 | Threkir's gender | **o Threkir** for the app (« no Threkir », « do Threkir »); **a Threkir** only for the company in legal and consent text (« em nome da Threkir ») | settled 2026-11-13 (#1374 round 3.5), both surfaces |
 | cue (guided run) | **dica** / dicas — « Ouvir dica », « # dicas na corrida » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « alerta », « sinal » or « indicação » for a guided-run cue (a session plan's breath / alignment cue stays « Indicação ») |
@@ -146,12 +147,12 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | name search (the profile search that « Exibir-me na busca por nome » controls, and that keeps under-18 accounts out) | **busca por nome** everywhere, the DOB notes included | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never « busca (pública) de pessoas » for it |
 | search (a search field, button or label, and the noun) | **Buscar** / **busca** — « Buscar corridas por nome… », « Buscar nos guias », « Buscar », « Buscar na ajuda », « Limpar busca » | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; never « Pesquisar » / « pesquisa » for an app search (the help centre's five strings and its guide moved) |
 | a place (what the place search finds; the "Near a place…" control) | **lugar** — « Perto de um lugar… », « Buscar um lugar… », « Defina um lugar » | settled 2026-11-13 (#1374 round 2026-11-13b), both surfaces; **local** stays for a venue or location field (« Local », « horário local ») |
+| race priority A / B / C (A is the goal race the plan peaks for, B a tune-up race raced properly (a short taper and a few easy days after it), C a training race run as part of training (a light easing either side) — docs/features/training.md § Race priority) | **A — prova-alvo**, **B — prova preparatória**, **C — prova de treino**; hint « Uma prova B é uma prova preparatória que você corre para valer; a C você corre como treino » | settled 2026-11-13 (#1374 round 2026-11-13c), both surfaces: the workout editor's « B — prova importante » / « C — prova preparatória » contradicted the season planner and what the taper does. Never « importante » for B |
+| race plan (the sheet asking for a goal time and start before the watch gets its times) vs race schedule (the arrival and cut-off time per checkpoint sent to the watch) | **Plano de prova** (the sheet) · **horários da prova** (« Percurso … e horários da prova … enviados », « Horários da prova enviados ») | settled 2026-11-13 (#1374 round 2026-11-13c); mobile only today. The schedule was « plano de corrida », a near-twin of the sheet's name that also read as a *run* plan |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
-1. **run vs race**: web `runSurface.tabRuns` and `runSurface.tabRaces` both
-   render "Corridas" on one tab bar (`RunSurfaceTabs.svelte`); "Prova"
-   would separate them.
+1. ~~**run vs race**~~: resolved 2026-11-13 (round 2026-11-13c) — a listed or planned race is *prova*; see the race row.
 2. **plural `one` with literal 1** in 11 mobile strings.
 3. **elevation gain**: Subida / Ganho de elevação / Elevação.
 4. **PR badge**: RP (mobile) vs PR (web).

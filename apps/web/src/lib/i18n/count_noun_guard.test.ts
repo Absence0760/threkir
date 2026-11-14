@@ -38,71 +38,6 @@ const NEVER_ONE: Record<string, string> = {
 	'features.aiCoach.description free': 'TIER_LIMITS.free.dailyLimit, 2',
 };
 
-// Counts still written into English. Each is owed an ICU plural in all
-// seven locales; the list may only shrink.
-const OWED = new Set<string>([
-	'coachChat.messagesRemaining total',
-	'planDetail.raceInDays d',
-	'planDetail.namedRaceInDays d',
-	'planDetail.shiftDone n',
-	'planDetail.shiftConfirmMessage n',
-	'planNudge.underBody total',
-	'planNudge.restBody total',
-	'planDetail.sectionWeeksHint n',
-	'plansPage.daysToGo d',
-	'profile.lastDays days',
-	'profile.feedNoMatchesText days',
-	'profile.feedNoActivityText days',
-	'runShare.splitsHeading count',
-	'settingsAccount.exportPartialNotice total',
-	'settingsIntegrations.stravaConnected imported',
-	'settingsIntegrations.stravaConnectedPartial imported',
-	'settingsIntegrations.stravaConnectedPartialRateLimited imported',
-	'settingsIntegrations.stravaZipImportDroppedPhotos photos',
-	'clubHome.routineExerciseCount n',
-	'coaching.roster.runsCount count',
-	'coachingAthlete.assignAfterMany count',
-	'importRoute.metaPts n',
-	'planEditor.nDays n',
-	'planEditor.returnBody weeks',
-	'planMeta.daysCount n',
-	'recap.shareDistance n',
-	'roadbook.saveTargetsDone count',
-	'roadbook.carryHint gels',
-	'socialFeed.windowHint n',
-	'socialFeed.noMatchesText n',
-	'socialFeed.noActivityText n',
-	'races.whenHint days',
-	'races.emptyRecent days',
-	'races.addToSeasonHint days',
-	'notificationsList.nameAndOthers count',
-	'notificationsList.andOthers count',
-	'raceDayPanel.daysToGoMany n',
-	'routeBuilder.routedSegments total',
-	'trainingLoad.hintTrimp n',
-	'nutrition.targets.ageYears n',
-	'nutrition.weekProtein total',
-	'nutrition.platePhotoSavePartial total',
-	'nutrition.templateLogged n',
-	'nutrition.templateItems n',
-	'nutrition.recipeMeta n',
-	'nutrition.recipeMeta servings',
-	'safety.overdueMinutesOption minutes',
-	'session.stepReps reps',
-	'gym.draft.body sets',
-	'admin.reports.reportCount count',
-	'admin.reports.reporterCount count',
-	'admin.reports.resolvedReviewed count',
-	'admin.reports.resolvedDismissed count',
-	'checkpoint.publicFinishers n',
-	'challenges.startsIn n',
-	'challenges.unitDays n',
-	'fundraiser.donorCount count',
-	'intensityBalance.counts weeks',
-	'comeback.layoff weeks',
-	'admin.clubVerification.members n',
-]);
-
 // The span and variable of every plural / select block in `s`. Inside one,
 // its own variable agrees with the branch; any other placeholder is still a
 // bare count (`plansPage.metaWeeks` pluralised the weeks, not "{days} days").
@@ -159,7 +94,7 @@ const found = new Set(
 );
 
 test('no English message writes a count before a plural noun outside a plural', () => {
-	const offenders = [...found].filter((h) => !OWED.has(h) && !(h in NEVER_ONE)).sort();
+	const offenders = [...found].filter((h) => !(h in NEVER_ONE)).sort();
 	assert.deepEqual(
 		offenders,
 		[],
@@ -167,11 +102,9 @@ test('no English message writes a count before a plural noun outside a plural', 
 	);
 });
 
-test('every OWED and NEVER_ONE entry is still needed', () => {
-	for (const h of OWED) assert.ok(found.has(h), `${h} is no longer a bare count; drop it from OWED`);
+test('every NEVER_ONE entry is still needed', () => {
 	for (const [h, why] of Object.entries(NEVER_ONE)) {
 		assert.ok(why.trim().length > 0, `${h}: name the constant`);
 		assert.ok(found.has(h), `${h} is no longer a bare count; drop it from NEVER_ONE`);
-		assert.ok(!OWED.has(h), `${h} is listed twice`);
 	}
 });

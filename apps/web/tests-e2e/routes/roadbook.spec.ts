@@ -199,7 +199,7 @@ test.describe('/routes/[id]/roadbook', () => {
 		const carbsCells = page.locator('[data-testid="fuel-carbs"]');
 		await expect(carbsCells.first()).toContainText('g');
 		await expect(page.locator('.carry-hint').first()).toBeVisible();
-		await expect(page.locator('.carry-hint').first()).toContainText('gels');
+		await expect(page.locator('.carry-hint').first()).toHaveText(/^carry \d+ gels? · \d+ ml$/);
 
 		// Capture the Aid 1 leg carbs at the default rate.
 		const aidCarbs = carbsCells.nth(1);

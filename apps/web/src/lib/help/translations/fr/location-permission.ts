@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Elle lit votre position pendant que vous enregistrez une course, et quand une carte se centre sur vous, par exemple quand vous créez un itinéraire ou placez une zone de confidentialité. Elle ne vous suit pas entre les courses.',
 						'Sur Android, une notification s\'affiche pendant l\'enregistrement d\'une course, si vous autorisez les notifications.',
-						'Le tracé d\'une course reste sur votre téléphone jusqu\'à sa synchronisation avec votre compte ou jusqu\'à ce que vous le partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].',
+						'La trace d\'une course reste sur votre téléphone jusqu\'à sa synchronisation avec votre compte ou jusqu\'à ce que vous la partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].',
 						'Pour masquer votre domicile, configurez des [[guide:privacy-zones|zones de confidentialité]]. Votre position en direct n\'est partagée que si vous activez le [[guide:live-tracking-and-safety|suivi en direct]].',
 					],
 				},

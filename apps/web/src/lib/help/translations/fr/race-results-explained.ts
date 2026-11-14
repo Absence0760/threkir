@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-results-explained',
 	title: 'Comprendre les résultats de course',
-	summary: 'Le sens du temps officiel et du temps puce, le calcul des places, les marques Manuel, Organisateur, DNF, DNS et en attente, et comment rechronométrer depuis votre tracé.',
+	summary: 'Le sens du temps officiel et du temps puce, le calcul des places, les marques Manuel, Organisateur, DNF, DNS et en attente, et comment rechronométrer depuis votre trace.',
 	sections: [
 		{
 			heading: 'Temps officiel et temps puce',
@@ -77,11 +77,11 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Rechronométrer depuis votre tracé',
+			heading: 'Rechronométrer depuis votre trace',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé.',
+					text: 'Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis ma trace** avec votre résultat actuel à côté de celui que donne votre trace.',
 				},
 				{
 					type: 'steps',
@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Votre tracé est chronométré par les lignes de départ et d\'arrivée avec lesquelles la course s\'est déroulée, sur la même horloge que celle utilisée par votre téléphone ou votre montre pendant la course.',
+						'Votre trace est chronométrée par les lignes de départ et d\'arrivée avec lesquelles la course s\'est déroulée, sur la même horloge que celle utilisée par votre téléphone ou votre montre pendant la course.',
 						'Vous pouvez rechronométrer jusqu\'à 24 heures après la fin de la course. Ensuite, votre temps, votre parcours et votre distance sont verrouillés, et seul l\'organisateur peut modifier votre temps.',
 						'Cela remplace un DNF, un temps terminé à la main et un résultat en attente d\'examen. Cela ne remplace jamais un temps fixé par l\'organisateur, ni un résultat déjà chronométré par les deux lignes ; dans une course en chrono libre, seule une tentative plus rapide chronométrée par les deux lignes le remplace.',
 						'Si l\'organisateur approuve les résultats à la main, un résultat rechronométré lui est renvoyé pour approbation.',
@@ -107,7 +107,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Aucun résultat ? Si votre appareil n\'avait pas de réseau à l\'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course. Pendant ces mêmes 24 heures, vous pouvez aussi le rechronométrer à partir de votre tracé.',
+						'Aucun résultat ? Si votre appareil n\'avait pas de réseau à l\'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course. Pendant ces mêmes 24 heures, vous pouvez aussi le rechronométrer à partir de votre trace.',
 						'Un DNF qui vous semble erroné, ou un temps décalé ? Demandez à l\'organisateur. Il peut le corriger sur le web, et le résultat portera alors la marque de l\'organisateur.',
 					],
 				},

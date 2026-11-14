@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "fr",
     "title": "Comprendre les résultats de course",
-    "summary": "Le sens du temps officiel et du temps puce, le calcul des places, les marques Manuel, Organisateur, DNF, DNS et en attente, et comment rechronométrer depuis votre tracé.",
+    "summary": "Le sens du temps officiel et du temps puce, le calcul des places, les marques Manuel, Organisateur, DNF, DNS et en attente, et comment rechronométrer depuis votre trace.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2420,11 +2420,11 @@
         ]
       },
       {
-        "heading": "Rechronométrer depuis votre tracé",
+        "heading": "Rechronométrer depuis votre trace",
         "blocks": [
           {
             "type": "p",
-            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
+            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis ma trace** avec votre résultat actuel à côté de celui que donne votre trace."
           },
           {
             "type": "steps",
@@ -2436,7 +2436,7 @@
           {
             "type": "list",
             "items": [
-              "Votre tracé est chronométré par les lignes de départ et d'arrivée avec lesquelles la course s'est déroulée, sur la même horloge que celle utilisée par votre téléphone ou votre montre pendant la course.",
+              "Votre trace est chronométrée par les lignes de départ et d'arrivée avec lesquelles la course s'est déroulée, sur la même horloge que celle utilisée par votre téléphone ou votre montre pendant la course.",
               "Vous pouvez rechronométrer jusqu'à 24 heures après la fin de la course. Ensuite, votre temps, votre parcours et votre distance sont verrouillés, et seul l'organisateur peut modifier votre temps.",
               "Cela remplace un DNF, un temps terminé à la main et un résultat en attente d'examen. Cela ne remplace jamais un temps fixé par l'organisateur, ni un résultat déjà chronométré par les deux lignes ; dans une course en chrono libre, seule une tentative plus rapide chronométrée par les deux lignes le remplace.",
               "Si l'organisateur approuve les résultats à la main, un résultat rechronométré lui est renvoyé pour approbation."
@@ -2450,7 +2450,7 @@
           {
             "type": "list",
             "items": [
-              "Aucun résultat ? Si votre appareil n'avait pas de réseau à l'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course. Pendant ces mêmes 24 heures, vous pouvez aussi le rechronométrer à partir de votre tracé.",
+              "Aucun résultat ? Si votre appareil n'avait pas de réseau à l'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course. Pendant ces mêmes 24 heures, vous pouvez aussi le rechronométrer à partir de votre trace.",
               "Un DNF qui vous semble erroné, ou un temps décalé ? Demandez à l'organisateur. Il peut le corriger sur le web, et le résultat portera alors la marque de l'organisateur."
             ]
           },
@@ -2499,8 +2499,8 @@
               "App Android : prise en charge complète. Elle affiche le bandeau de course, envoie votre position en direct et vous chronomètre par les lignes de départ et d'arrivée.",
               "App iPhone : elle exécute le même code qu'Android, mais n'a pas encore été testée sur iPhone lors d'une vraie course.",
               "Montre Wear OS : prise en charge complète au poignet, y compris le chronométrage par les lignes. L'inscription et le choix du parcours se font toujours sur le web ou le téléphone.",
-              "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d'arrivée : elle n'a donc pas d'arrivée automatique, et elle n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre tracé sur le web.",
-              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une course enregistrée. Un navigateur ne peut pas enregistrer de course."
+              "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d'arrivée : elle n'a donc pas d'arrivée automatique, et elle n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre trace sur le web.",
+              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir de la trace d'une course enregistrée. Un navigateur ne peut pas enregistrer de course."
             ]
           }
         ]
@@ -2761,8 +2761,8 @@
             "type": "list",
             "items": [
               "À l'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l'organisateur l'examine avant qu'il compte.",
-              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de l'épreuve, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
-              "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
+              "Ou rechronométrez ensuite votre tentative à partir de sa trace : ouvrez la course sur le web et choisissez **Rechronométrer depuis ma trace**. La trace est chronométrée par les lignes de l'épreuve, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
+              "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre trace est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
             ]
           },
           {
@@ -3638,7 +3638,7 @@
             "items": [
               "Elle lit votre position pendant que vous enregistrez une course, et quand une carte se centre sur vous, par exemple quand vous créez un itinéraire ou placez une zone de confidentialité. Elle ne vous suit pas entre les courses.",
               "Sur Android, une notification s'affiche pendant l'enregistrement d'une course, si vous autorisez les notifications.",
-              "Le tracé d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous le partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
+              "La trace d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous la partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
               "Pour masquer votre domicile, configurez des [[guide:privacy-zones|zones de confidentialité]]. Votre position en direct n'est partagée que si vous activez le [[guide:live-tracking-and-safety|suivi en direct]]."
             ]
           }
@@ -3910,20 +3910,20 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l'intérieur, cette partie du tracé est coupée avant que quiconque d'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle."
+            "text": "Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l'intérieur, cette partie de la trace est coupée avant que quiconque d'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle."
           },
           {
             "type": "list",
             "items": [
               "Elle s'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur, la page de suivi en direct et les cartes de course qu'un coach avec qui vous travaillez peut ouvrir.",
-              "Elle s'applique aux courses déjà enregistrées comme aux nouvelles, car le tracé est rogné chaque fois que quelqu'un d'autre le consulte.",
-              "Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet."
+              "Elle s'applique aux courses déjà enregistrées comme aux nouvelles, car la trace est rognée chaque fois que quelqu'un d'autre la consulte.",
+              "Vous voyez toujours votre propre trace complète, et les fichiers que vous exportez pour vous-même conservent aussi la trace complète."
             ]
           },
           {
             "type": "illustration",
             "id": "privacy-zones",
-            "alt": "Un tracé part d'une maison située dans un cercle. La partie à l'intérieur du cercle est masquée aux autres, si bien que la ligne qu'ils voient commence au bord du cercle."
+            "alt": "Une trace part d'une maison située dans un cercle. La partie à l'intérieur du cercle est masquée aux autres, si bien que la ligne qu'ils voient commence au bord du cercle."
           }
         ]
       },
@@ -4082,7 +4082,7 @@
             "type": "list",
             "items": [
               "Distance, temps écoulé, temps en mouvement et allure.",
-              "Votre tracé GPS, qui sert à dessiner la carte et les splits.",
+              "Votre trace GPS, qui sert à dessiner la carte et les splits.",
               "Altitude, pas, et fréquence cardiaque si vous avez appairé une ceinture cardio."
             ]
           },

@@ -10,20 +10,20 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l\'intérieur, cette partie du tracé est coupée avant que quiconque d\'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle.',
+					text: 'Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l\'intérieur, cette partie de la trace est coupée avant que quiconque d\'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle.',
 				},
 				{
 					type: 'list',
 					items: [
 						'Elle s\'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur, la page de suivi en direct et les cartes de course qu\'un coach avec qui vous travaillez peut ouvrir.',
-						'Elle s\'applique aux courses déjà enregistrées comme aux nouvelles, car le tracé est rogné chaque fois que quelqu\'un d\'autre le consulte.',
-						'Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet.',
+						'Elle s\'applique aux courses déjà enregistrées comme aux nouvelles, car la trace est rognée chaque fois que quelqu\'un d\'autre la consulte.',
+						'Vous voyez toujours votre propre trace complète, et les fichiers que vous exportez pour vous-même conservent aussi la trace complète.',
 					],
 				},
 				{
 					type: 'illustration',
 					id: 'privacy-zones',
-					alt: 'Un tracé part d\'une maison située dans un cercle. La partie à l\'intérieur du cercle est masquée aux autres, si bien que la ligne qu\'ils voient commence au bord du cercle.',
+					alt: 'Une trace part d\'une maison située dans un cercle. La partie à l\'intérieur du cercle est masquée aux autres, si bien que la ligne qu\'ils voient commence au bord du cercle.',
 				},
 			],
 		},

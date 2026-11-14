@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l\'intérieur, cette partie de la trace est coupée avant que quiconque d\'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle.',
+					text: 'Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l\'intérieur, cette partie de la trace ou du tracé est coupée avant que quiconque d\'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle.',
 				},
 				{
 					type: 'list',

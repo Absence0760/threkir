@@ -3638,7 +3638,7 @@
             "items": [
               "Elle lit votre position pendant que vous enregistrez une course, et quand une carte se centre sur vous, par exemple quand vous créez un itinéraire ou placez une zone de confidentialité. Elle ne vous suit pas entre les courses.",
               "Sur Android, une notification s'affiche pendant l'enregistrement d'une course, si vous autorisez les notifications.",
-              "La trace d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous la partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
+              "La trace d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous la partagiez, et qui peut la voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
               "Pour masquer votre domicile, configurez des [[guide:privacy-zones|zones de confidentialité]]. Votre position en direct n'est partagée que si vous activez le [[guide:live-tracking-and-safety|suivi en direct]]."
             ]
           }
@@ -3828,7 +3828,7 @@
             "items": [
               "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
               "Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps jamais réalisés.",
-              "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont donné leur consentement aux données de santé, il peut donc être plus court que le classement complet."
+              "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont donné leur consentement aux données de santé : le classement filtré peut donc être plus court que le classement complet."
             ]
           }
         ]
@@ -3910,7 +3910,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l'intérieur, cette partie de la trace est coupée avant que quiconque d'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle."
+            "text": "Une zone de confidentialité est un cercle sur la carte. Quand une course ou un itinéraire commence ou se termine à l'intérieur, cette partie de la trace ou du tracé est coupée avant que quiconque d'autre ne la voie : la ligne semble donc commencer et finir au bord du cercle."
           },
           {
             "type": "list",

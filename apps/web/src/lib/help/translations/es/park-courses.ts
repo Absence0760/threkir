@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
 						"Por defecto muestra este año. Selecciona **Este mes** para ver lo que va de mes, o **Histórico** para ver los mejores tiempos de siempre.",
-						"Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han dado su consentimiento de datos de salud, así que puede ser más corto que la clasificación completa.",
+						"Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han dado su consentimiento de datos de salud, así que la lista filtrada puede ser más corta que la clasificación completa.",
 					],
 				},
 			],

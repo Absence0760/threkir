@@ -27,7 +27,7 @@ class PostRunDiscardConfirmTest {
     /// The PostRunScreen body, from its signature to the next top-level
     /// declaration — so nothing below can satisfy an assertion about it.
     private fun postRun(): String {
-        val start = ui.indexOf("private fun PostRunScreen(")
+        val start = ui.indexOf("internal fun PostRunScreen(")
         assertTrue("PostRunScreen is gone or renamed — this guard reads nothing", start >= 0)
         val end = ui.indexOf("\nprivate fun ", start + 1)
         assertTrue("could not find the end of PostRunScreen", end > start)

@@ -154,6 +154,15 @@ printf '%b' "$STUB_CSV"
 /** Lists nothing deployed and no secret set, so a retirement reads `absent`. */
 const SUPABASE_STUB = '#!/usr/bin/env bash\necho "$*" >> "$STUB_STATE/supabase"\necho "[]"\n';
 
+/**
+ * Answers the PostgREST row cap reader with the pinned cap instead of calling
+ * the Management API, and hands every other script to the real node.
+ */
+const NODE_STUB = `#!/usr/bin/env bash
+if [[ "$1" == */postgrest_max_rows.mjs ]]; then echo "\${STUB_MAX_ROWS:-1000}"; exit 0; fi
+exec "${process.execPath}" "$@"
+`;
+
 /** @param {string[]} args @param {Record<string, string>} env */
 function runEntry(args, env) {
 	const root = fs.mkdtempSync(path.join(tmpdir(), 'prod-sync-'));
@@ -165,6 +174,8 @@ function runEntry(args, env) {
 	fs.chmodSync(path.join(bin, 'psql'), 0o755);
 	fs.writeFileSync(path.join(bin, 'supabase'), SUPABASE_STUB);
 	fs.chmodSync(path.join(bin, 'supabase'), 0o755);
+	fs.writeFileSync(path.join(bin, 'node'), NODE_STUB);
+	fs.chmodSync(path.join(bin, 'node'), 0o755);
 	const summary = path.join(root, 'summary.md');
 	const r = spawnSync('bash', [ENTRY, ...args], {
 		encoding: 'utf8',
@@ -212,7 +223,8 @@ test('the entry point connects without the password on the command line and summ
 	assert.ok(r.summary.includes('1 unchanged.'));
 	assert.ok(r.summary.includes('| pocahontas | swift-creek-5k | unchanged |   | u1 |'));
 	assert.equal(r.stdout, r.summary);
-	for (const title of ['Feature flags', 'Edge Function env toggles', 'Retired Edge Functions and secrets', 'Web build flags', 'Cron URL entries', 'One-off ops tasks']) {
+	assert.ok(r.summary.includes('| max_rows | 1000 | 1000 | ok |'), 'the row cap is checked against the pin');
+	for (const title of ['Feature flags', 'Edge Function env toggles', 'Retired Edge Functions and secrets', 'Web build flags', 'Cron URL entries', 'One-off ops tasks', 'PostgREST row cap']) {
 		assert.ok(r.summary.includes(`### ${title}\n`), title);
 	}
 	// The committed retirements only list: nothing is deployed in the stub, so

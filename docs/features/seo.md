@@ -46,7 +46,8 @@ module that carries English prose a reader would see.
 | `/learn/[slug]` | prerendered (`entries()`) | inline `<svelte:head>` + `buildGuideJsonLd` | `Article` (with an embedded `BreadcrumbList`) |
 | `/learn` | prerendered | inline `<svelte:head>` + `buildLearnCollectionJsonLd` | `CollectionPage` (with an embedded `BreadcrumbList` + an `ItemList` of the guides listed) |
 | `/learn/category/[category]` | prerendered (`entries()`) | inline `<svelte:head>` + `buildLearnCollectionJsonLd` | `CollectionPage` (with an embedded `BreadcrumbList` + an `ItemList` of the guides listed) |
-| `/sitemap.xml` | prerendered | — | — |
+| `/sitemap.xml` | prerendered (a `<sitemapindex>`) | — | — |
+| `/sitemaps/[name].xml` | prerendered (`entries()`, the fixed child set) | — | — |
 | `/share/run/[id]`, `/og/run/[id].png` | Lambda-SSR (`share-run`) | `share_run_meta` | `WebPage` + breadcrumb |
 | `/share/route/[id]`, `/og/route/[id].png` | Lambda-SSR (`share-route`) | `share_route_meta` | `WebPage` + breadcrumb |
 | `/share/badge/[id]`, `/og/badge/[id].png` | Lambda-SSR (`share-badge`) | `share_badge_meta` | — |
@@ -510,12 +511,39 @@ the map failed). Three guards, pinned by `consent_guards.test.ts`:
 - **`static/robots.txt`** — allows `/`, disallows the auth-gated app paths
   (`/dashboard`, `/settings`, …), points at `/sitemap.xml`. `/share/*` is
   allowed.
-- **`/sitemap.xml`** (`sitemap.xml/+server.ts` + `#lib/share/sitemap.ts`)
-  — build-time, anon-fetched: the top-level surfaces (`/`, `/feed`,
-  `/routes?tab=explore`, `/segments`), public routes + runs
-  (popularity-weighted), learn pages, public **events + clubs + races**
-  (`entityEntries`), and **park courses** (`courseEntries`).
-  Graceful-degrades to top-level-only if Supabase is unreachable at build.
+- **`/sitemap.xml`** (`sitemap.xml/+server.ts`) is a **sitemap index**
+  over child files at **`/sitemaps/<name>.xml`** (`sitemaps/[name].xml/+server.ts`),
+  built by `#lib/share/sitemap.ts` from the anon reads in
+  `#lib/share/sitemap_source.ts`. `pages` holds the top-level surfaces
+  (`/`, `/feed`, `/routes?tab=explore`, `/segments`) and the learn pages;
+  every other child is `<kind>-<hex>`: the public **routes** (popularity-
+  weighted), **runs**, **events**, **clubs**, **races** or **park courses**
+  whose uuid starts with that hex digit. Contract:
+  - **Every list is walked whole** by keyset cursor on `id` (`walkKeyset`),
+    never read with a `.limit()`: PostgREST cuts a response at `db.max-rows`
+    (1,000) with a 200 and no flag, so a limited read listed the first 1,000
+    of each kind and silently dropped the rest. A walk that ends short (a
+    page error, or a stalled cursor) logs `sitemap: <kind> walk ended short`
+    and keeps the rows it read. During a build that partial set is shared by
+    the index and its children, so a transient read error ships a shorter
+    sitemap with a green build; the warning in the build log is the signal.
+  - **No file can pass the protocol limit.** The split is by id digit, not
+    by count, so the set of child names is fixed and `entries()` enumerates
+    all 97 without reading the database (it runs in a separate process from
+    the render, where a count could disagree). Sixteen shards hold 800,000
+    URLs per kind; `renderSitemapFile` throws (failing the build) on a file
+    over 50,000 URLs or 50 MB rather than cut it — the fix then is a second
+    id digit. A 50,000-URL file of the longest `<loc>` a kind produces is
+    about 13 MB (`sitemap.test.ts` pins it under the byte limit).
+  - The index lists only shards with rows; an empty shard's file is still
+    emitted (a valid empty `<urlset>`). While prerendering, each kind is read
+    once and shared by the index and its children (`sitemap_server.ts`), so
+    they agree; under `vite dev` nothing is cached.
+  - Every `<loc>`, the index's included, is on `siteOrigin(PUBLIC_SITE_URL)`
+    (the apex), and only anon-readable rows are listed: public views, public
+    unhidden clubs, events of unhidden clubs, races through
+    `public_race_listings`, courses of active parks. No profiles.
+  - Graceful-degrades to `pages` only if Supabase is unreachable at build.
 - **`www` → apex redirect** — a viewer-request CloudFront Function
   (`infra/modules/web-stack/functions/www_redirect.js`, gated on
   `redirect_www_to_apex`, prod-only) redirects any `www.*` host to the bare
@@ -606,10 +634,9 @@ web-only, Supabase Free) — see [deployment_lean.md](../ops/deployment_lean.md)
   work at Rock-bottom even with the worker, engines, and coach all off.
 - The **www→apex CloudFront Function** is prod-only (`redirect_www_to_apex`)
   and CloudFront Functions bill per-invocation at negligible cost.
-- The **sitemap** is a build-time static artifact; its entity fetches sit
-  in the same try/catch as the route/run fetches, so a paused Supabase Free
-  instance at build time degrades to a top-level-only sitemap rather than
-  failing the build.
+- The **sitemap** is a build-time static artifact; each kind's read is
+  caught on its own, so a paused Supabase Free instance at build time
+  degrades to the `pages` child only rather than failing the build.
 - Reserved concurrency: `share-entity` uses the shared
   `lambda_reserved_concurrency` cap (prod 20), so the six reserved-
   concurrency Lambdas total 120 in prod — far under the account's
@@ -632,7 +659,8 @@ web-only, Supabase Free) — see [deployment_lean.md](../ops/deployment_lean.md)
    silently and pages nobody, which is how `/share/session` and
    `/share/workout` shipped. `share_upstream_alarm_guard.test.ts` derives the
    surface set from the lookups and fails when either half is missing.
-4. Add it to `sitemap.xml` via a `sitemap.ts` builder (unless it's a
+4. Add it to the sitemap: a `sitemap.ts` entry builder, a kind in
+   `SITEMAP_KINDS`, and a walked read in `sitemap_source.ts` (unless it's a
    people-directory — don't enumerate those).
 5. Unit-test the meta builder; e2e the not-found head (deterministic).
 

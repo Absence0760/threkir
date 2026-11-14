@@ -2060,7 +2060,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.';
+      'Used to keep accounts of under-18s out of name search, and for age-graded results if you give health-data consent.';
 
   @override
   String get setupDobPlaceholder => 'Tap to choose';
@@ -15950,7 +15950,7 @@ class AppLocalizationsEn extends AppLocalizations {
       n,
       locale: localeName,
       other: 'See all $n courses',
-      one: 'See all $n course',
+      one: 'See the course',
     );
     return '$_temp0';
   }

@@ -100,6 +100,7 @@ import {
 	type DmImageStatus,
 } from '../social/dm_image';
 import { courseReportErrorKey, type CourseReportReason } from '../parks/course_report';
+import { orderNpsAlertQueue } from '../parks/nps_alert_queue';
 import {
 	cancelledOccurrenceRefunds,
 	parseOccurrenceRefundSummary,
@@ -16555,12 +16556,23 @@ export interface ParkNpsAlert {
 	gone_at: string | null;
 }
 
-/** The NPS alert flags in one review state, oldest first, gone ones last.
+/// The review queue's walk order: `id`, the one unique column the RPC returns.
+const NPS_ALERT_ID_ORDER: readonly KeysetKey[] = [{ column: 'id', ascending: true, nullsFirst: false }];
+
+/** Every NPS alert flag in one review state, oldest first, gone ones last.
+ *  The dismissed and reviewed history grows daily, so one read would stop at
+ *  `db.max-rows` with a 200; the queue is walked by keyset and re-sorted, and
+ *  a walk that ends short fails rather than showing part of it.
  *  Admin-gated at the DB (42501 for anyone else). Throws on a failed read. */
 export async function fetchParkNpsAlerts(status: ParkNpsAlertStatus = 'pending'): Promise<ParkNpsAlert[]> {
-	const { data, error } = await supabase.rpc('admin_park_nps_alerts', { p_status: status }, { get: true });
-	if (error) throw dbError(error);
-	return (data ?? []).map((r) => ({
+	const walk = await walkKeyset(NPS_ALERT_ID_ORDER, (after, limit) => {
+		let q = supabase.rpc('admin_park_nps_alerts', { p_status: status }, { get: true });
+		if (after) q = q.or(after);
+		for (const k of NPS_ALERT_ID_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		return q.limit(limit);
+	});
+	if (!walk.complete) throw dbError(walk.error ?? new Error('park alerts queue walk ended short'));
+	return orderNpsAlertQueue(walk.rows).map((r) => ({
 		...r,
 		url: r.url ?? null,
 		reviewed_at: r.reviewed_at ?? null,

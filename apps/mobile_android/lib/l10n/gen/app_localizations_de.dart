@@ -2091,7 +2091,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Wird verwendet, um Konten von unter 18-Jährigen aus der Personensuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du die Einwilligung zu Gesundheitsdaten erteilst.';
+      'Wird verwendet, um Konten von unter 18-Jährigen aus der Namenssuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du die Einwilligung zu Gesundheitsdaten erteilst.';
 
   @override
   String get setupDobPlaceholder => 'Zum Auswählen tippen';
@@ -3428,7 +3428,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailStatAvgHr => 'Ø HF';
 
   @override
-  String get runDetailStatAgeGrade => 'Altersklassen-Wertung';
+  String get runDetailStatAgeGrade => 'Altersbewertung';
 
   @override
   String get runDetailStatGradeAdjPace => 'Höhenkorr. Pace';
@@ -10776,7 +10776,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Jeden neuen Lauf automatisch an Strava senden. Erfordert eine verbundene Strava-Integration, sobald diese verfügbar ist.';
 
   @override
-  String get prefsDiscoverable => 'In der Namenssuche anzeigen';
+  String get prefsDiscoverable => 'Mich in der Namenssuche anzeigen';
 
   @override
   String get prefsDiscoverableSubtitle =>
@@ -16095,7 +16095,7 @@ class AppLocalizationsDe extends AppLocalizations {
       n,
       locale: localeName,
       other: 'Alle $n Strecken ansehen',
-      one: 'Alle $n Strecke ansehen',
+      one: 'Strecke ansehen',
     );
     return '$_temp0';
   }
@@ -17356,7 +17356,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushRoadbookAction => 'Rennplan an die Uhr senden';
+  String get simWatchPushRoadbookAction => 'Roadbook an die Uhr senden';
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
@@ -17372,12 +17372,12 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$cutoffs Cut-offs',
       one: '$cutoffs Cut-off',
     );
-    return 'Rennplan an die Uhr gesendet ($_temp0, $_temp1)';
+    return 'Roadbook an die Uhr gesendet ($_temp0, $_temp1)';
   }
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'Senden des Rennplans fehlgeschlagen: $error';
+    return 'Senden des Roadbooks fehlgeschlagen: $error';
   }
 
   @override

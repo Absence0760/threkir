@@ -2622,7 +2622,7 @@
   "@setupDobLabel": {
     "description": "Setup wizard date-of-birth field label"
   },
-  "setupDobNote": "Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.",
+  "setupDobNote": "Used to keep accounts of under-18s out of name search, and for age-graded results if you give health-data consent.",
   "@setupDobNote": {
     "description": "Setup wizard date-of-birth field note"
   },
@@ -20608,7 +20608,7 @@
       }
     }
   },
-  "racesAnyTimeSeeAll": "{n, plural, one {See all {n} course} other {See all {n} courses}}",
+  "racesAnyTimeSeeAll": "{n, plural, =1{See the course} other{See all {n} courses}}",
   "@racesAnyTimeSeeAll": {
     "description": "Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll",
     "placeholders": {

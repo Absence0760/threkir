@@ -343,8 +343,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       tracks,
       locale: localeName,
-      other: '$tracks trazados',
-      one: '$tracks trazado',
+      other: '$tracks trazas',
+      one: '$tracks traza',
     );
     String _temp2 = intl.Intl.pluralLogic(
       routes,
@@ -409,7 +409,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importCsvCardDescription =>
-      'Cada fila del CSV se convierte en una carrera manual (fecha, distancia, duración, fuente). El trazado del mapa no está en el CSV, así que las carreras importadas no tendrán línea de ruta.';
+      'Cada fila del CSV se convierte en una carrera manual (fecha, distancia, duración, fuente). La traza del mapa no está en el CSV, así que las carreras importadas no tendrán ninguna línea en el mapa.';
 
   @override
   String get importCsvButton => 'Importar CSV';
@@ -419,7 +419,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importBackupCardSubtitle =>
-      'Restaura carreras, rutas y trazados GPS desde un archivo de copia de seguridad';
+      'Restaura carreras, rutas y trazas GPS desde un archivo de copia de seguridad';
 
   @override
   String get importBackupCardDescription =>
@@ -469,7 +469,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String importRestoreWarnTrack(String id, String error) {
-    return 'No se restauró el recorrido GPS de la carrera $id: $error';
+    return 'No se restauró la traza GPS de la carrera $id: $error';
   }
 
   @override
@@ -602,7 +602,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthDescriptionIos =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Salud de Apple no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Salud de Apple no expone las trazas GPS registradas por apps de terceros — las carreras importadas así no tendrán traza en el mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
@@ -2084,7 +2084,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Se usa para mantener las cuentas de menores de 18 años fuera de la búsqueda de personas y para resultados ajustados por edad si das tu consentimiento de datos de salud.';
+      'Se usa para mantener las cuentas de menores de 18 años fuera de la búsqueda por nombre y para resultados con grado por edad si das tu consentimiento de datos de salud.';
 
   @override
   String get setupDobPlaceholder => 'Toca para elegir';
@@ -2694,7 +2694,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runGpsBlockedSettings =>
-      'Sin GPS — permiso bloqueado. Actívalo para seguir la ruta.';
+      'Sin GPS — permiso bloqueado. Actívalo para registrar tu traza.';
 
   @override
   String get runGpsPermissionPending =>
@@ -2799,7 +2799,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runPreciseLocationOff =>
-      'La ubicación exacta está desactivada — el mapa y la distancia GPS de esta carrera faltarán o serán muy imprecisos, pero el tiempo se sigue registrando. Activa la ubicación exacta en Ajustes para un recorrido preciso.';
+      'La ubicación exacta está desactivada — el mapa y la distancia GPS de esta carrera faltarán o serán muy imprecisos, pero el tiempo se sigue registrando. Activa la ubicación exacta en Ajustes para una traza precisa.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3152,7 +3152,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get runDetailBlockedDropTrack => 'Subir sin el trazado';
+  String get runDetailBlockedDropTrack => 'Subir sin la traza';
 
   @override
   String get runDetailBlockedExport => 'Exportar una copia';
@@ -3168,26 +3168,26 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$waypoints puntos',
       one: '$waypoints punto',
     );
-    return 'Su trazado GPS ($_temp0) supera lo que admite el almacenamiento en la nube, así que reintentarlo nunca funcionará. Todo lo demás de la carrera — distancia, tiempo, ritmo, desnivel — sí se puede guardar.';
+    return 'Su traza GPS ($_temp0) supera lo que admite el almacenamiento en la nube, así que reintentarlo nunca funcionará. Todo lo demás de la carrera — distancia, tiempo, ritmo, desnivel — sí se puede guardar.';
   }
 
   @override
   String get runDetailDropTrackBody =>
-      'El trazado se elimina de este dispositivo y la carrera se sube sin mapa. Su distancia, tiempo, ritmo y desnivel no cambian. Exporta una copia antes si quieres conservarlo.';
+      'La traza se elimina de este dispositivo y la carrera se sube sin mapa. Su distancia, tiempo, ritmo y desnivel no cambian. Exporta una copia antes si quieres conservarla.';
 
   @override
   String get runDetailDropTrackConfirm => 'Subir sin él';
 
   @override
   String get runDetailDropTrackDone =>
-      'Trazado eliminado. La carrera se sincronizará en el próximo ciclo.';
+      'Traza eliminada. La carrera se sincronizará en el próximo ciclo.';
 
   @override
   String get runDetailDropTrackFailed =>
-      'No se pudo eliminar el trazado. Inténtalo de nuevo.';
+      'No se pudo eliminar la traza. Inténtalo de nuevo.';
 
   @override
-  String get runDetailDropTrackTitle => '¿Subir sin el trazado GPS?';
+  String get runDetailDropTrackTitle => '¿Subir sin la traza GPS?';
 
   @override
   String get historyQueuedToSync => 'En cola para sincronizar';
@@ -3214,9 +3214,9 @@ class AppLocalizationsEs extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count carreras no pudieron subir su trazado GPS — el resto se sincronizó. Las carreras fallidas se reintentarán en el próximo ciclo.',
+          '$count carreras no pudieron subir su traza GPS — el resto se sincronizó. Las carreras fallidas se reintentarán en el próximo ciclo.',
       one:
-          '$count carrera no pudo subir su trazado GPS — el resto se sincronizó. Se reintentará en el próximo ciclo.',
+          '$count carrera no pudo subir su traza GPS — el resto se sincronizó. Se reintentará en el próximo ciclo.',
     );
     return '$_temp0';
   }
@@ -3391,8 +3391,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailLoadingGps => 'Cargando datos GPS...';
 
   @override
-  String get runDetailGpsUnavailable =>
-      'Trazado GPS no disponible sin conexión';
+  String get runDetailGpsUnavailable => 'Traza GPS no disponible sin conexión';
 
   @override
   String get runDetailPauseReplay => 'Pausar reproducción';
@@ -3629,7 +3628,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailStrategyNoTrack =>
-      'Esta carrera no tiene un track GPS con tiempos, así que sus fases no se pueden evaluar.';
+      'Esta carrera no tiene una traza GPS con tiempos, así que sus fases no se pueden evaluar.';
 
   @override
   String get runDetailStrategyNoGoal =>
@@ -3690,14 +3689,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailSaveAsRouteBody =>
-      'Guarda este trazado GPS como una ruta que podrás seguir de nuevo.';
+      'Guarda esta traza GPS como una ruta que podrás seguir de nuevo.';
 
   @override
   String get runDetailRouteNameLabel => 'Nombre de la ruta';
 
   @override
   String get runDetailNoTrackToSave =>
-      'Esta carrera no tiene trazado GPS para guardar como ruta';
+      'Esta carrera no tiene traza GPS para guardar como ruta';
 
   @override
   String runDetailRouteLinked(String route) {
@@ -3724,7 +3723,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'La distancia de esta carrera se volverá a calcular a partir de su ruta GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
+      'La distancia de esta carrera se volverá a calcular a partir de su traza GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
@@ -3744,7 +3743,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
-      'Esta carrera no tiene una ruta GPS a partir de la cual recalcular.';
+      'Esta carrera no tiene una traza GPS a partir de la cual recalcular.';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -3787,11 +3786,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailMakePublicBodyZone =>
-      'Compartir convierte esta carrera en pública para que cualquiera con el enlace pueda verla. Esta carrera empieza o termina dentro de una de tus zonas de privacidad, así que los espectadores verán un trazado recortado con los segmentos dentro de la zona ocultos.';
+      'Compartir convierte esta carrera en pública para que cualquiera con el enlace pueda verla. Esta carrera empieza o termina dentro de una de tus zonas de privacidad, así que los espectadores verán una traza recortada con los segmentos dentro de la zona ocultos.';
 
   @override
   String get runDetailMakePublicBodyHasZones =>
-      'Compartir convierte esta carrera en pública para que cualquiera con el enlace pueda verla. Ninguna de tus zonas de privacidad se cruza con este trazado, así que el trazado completo será visible.';
+      'Compartir convierte esta carrera en pública para que cualquiera con el enlace pueda verla. Ninguna de tus zonas de privacidad se cruza con esta traza, así que la traza completa será visible.';
 
   @override
   String get runDetailMakePublicBodyNoZones =>
@@ -3879,11 +3878,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailMatchFailed =>
-      'Ajuste fallido — mostrando el trazado sin procesar';
+      'Ajuste fallido — mostrando la traza sin procesar';
 
   @override
   String get runDetailMatchOffline =>
-      'Sin conexión — mostrando el trazado sin procesar, se reintentará';
+      'Sin conexión — mostrando la traza sin procesar, se reintentará';
 
   @override
   String get runDetailMatchMatched => 'Ajustada';
@@ -5392,7 +5391,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runHeatmapEmptyBody =>
-      'Graba o importa carreras con rutas de GPS y se iluminarán aquí.';
+      'Graba o importa carreras con trazas GPS y se iluminarán aquí.';
 
   @override
   String get runHeatmapSignedOutTitle =>
@@ -9020,7 +9019,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String settingsAccountBackupTracksPartialNotice(int missing, int total) {
-    return 'Tu última copia de seguridad no pudo descargar $missing de $total archivos de trazado GPS. Todas las carreras están en el archivo; vuelve a exportar para recuperar los trazados. Su manifest.json indica complete: false.';
+    return 'Tu última copia de seguridad no pudo descargar $missing de $total archivos de traza GPS. Todas las carreras están en el archivo; vuelve a exportar para recuperar las trazas. Su manifest.json indica complete: false.';
   }
 
   @override
@@ -9072,8 +9071,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       tracks,
       locale: localeName,
-      other: '$tracks trazados',
-      one: '$tracks trazado',
+      other: '$tracks trazas',
+      one: '$tracks traza',
     );
     String _temp2 = intl.Intl.pluralLogic(
       routes,
@@ -9157,7 +9156,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get privacyZonesSubtitle =>
-      'Recorta el inicio/fin de los trazados públicos cerca de casa';
+      'Recorta el inicio/fin de las trazas públicas cerca de casa';
 
   @override
   String get settingsAccountSendErrorReports => 'Enviar informes de errores';
@@ -9300,7 +9299,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsAccountFullBackupSubtitle =>
-      'Cada carrera con su trazado GPS, además de rutas, perfil y preferencias. Se restaura en web o Android.';
+      'Cada carrera con su traza GPS, además de rutas, perfil y preferencias. Se restaura en web o Android.';
 
   @override
   String get settingsAccountExportCsv => 'Exportar carreras como CSV';
@@ -10257,7 +10256,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get privacyZonesHint =>
-      'Toca el mapa para añadir una zona. Los trazados en superficies públicas se recortan al inicio y al final más allá del radio de la zona.';
+      'Toca el mapa para añadir una zona. Las trazas en superficies públicas se recortan al inicio y al final más allá del radio de la zona.';
 
   @override
   String get privacyZonesSearchHint => 'Buscar lugares…';
@@ -10302,7 +10301,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get privacyZonesRemoveBody =>
-      'Esta zona oculta tus recorridos cercanos en las publicaciones públicas. Eliminarla vuelve a exponer esta área.';
+      'Esta zona oculta tus trazas cercanas en las publicaciones públicas. Eliminarla vuelve a exponer esta área.';
 
   @override
   String get privacyZonesRemoveSemantics => 'Eliminar zona de privacidad';
@@ -10729,14 +10728,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Registra un trazado más detallado. La distancia no cambia.';
+      'Registra una traza más detallada. La distancia no cambia.';
 
   @override
-  String get prefsShowRawTrack => 'Mostrar trayecto GPS sin procesar';
+  String get prefsShowRawTrack => 'Mostrar la traza GPS sin procesar';
 
   @override
   String get prefsShowRawTrackSubtitle =>
-      'Dibuja la línea grabada sin ajustar en el mapa de la carrera, aunque exista un trayecto ya corregido';
+      'Dibuja la línea grabada sin ajustar en el mapa de la carrera, aunque exista una traza ya corregida';
 
   @override
   String get prefsShowCalories => 'Mostrar estimaciones de calorías';
@@ -16101,7 +16100,7 @@ class AppLocalizationsEs extends AppLocalizations {
       n,
       locale: localeName,
       other: 'Ver los $n recorridos',
-      one: 'Ver $n recorrido',
+      one: 'Ver el recorrido',
     );
     return '$_temp0';
   }
@@ -17360,7 +17359,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushRoadbookAction => 'Enviar plan de carrera al reloj';
+  String get simWatchPushRoadbookAction => 'Enviar el roadbook al reloj';
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
@@ -17376,12 +17375,12 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Plan de carrera enviado al reloj ($_temp0, $_temp1)';
+    return 'Roadbook enviado al reloj ($_temp0, $_temp1)';
   }
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'Fallo al enviar el plan de carrera: $error';
+    return 'Fallo al enviar el roadbook: $error';
   }
 
   @override
@@ -22044,11 +22043,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo cambiar el retraso. Inténtalo de nuevo.';
 
   @override
-  String get streamerOverlayShowMap => 'Mostrar el trazado del recorrido';
+  String get streamerOverlayShowMap => 'Mostrar la traza GPS';
 
   @override
   String get streamerOverlayShowMapHelp =>
-      'Dibuja el recorrido hasta ahora sin tus zonas de privacidad. No se cargan teselas de mapa.';
+      'Dibuja la traza hasta ahora sin tus zonas de privacidad. No se cargan teselas de mapa.';
 
   @override
   String get streamerOverlayShowHeartRate => 'Mostrar la frecuencia cardíaca';

@@ -14,7 +14,7 @@ Give a new or aspiring runner a public, no-auth **Learn** surface — evergreen 
 - **Public, no-auth, SEO-complete pages** — the share routes:
   - `apps/web/src/routes/share/route/[id]/+page.svelte` — the canonical template for a public page's `<svelte:head>`: `<title>`, `<meta name="description">`, `<link rel="canonical">`, full Open Graph (`og:title/description/type/url/site_name/image` + `og:image:width/height`), Twitter card, and JSON-LD injected via `{@html `<script type="application/ld+json">${jsonLd}</script>`}`. It also shows the **anon sign-up CTA** pattern (`{#if !auth.loggedIn}` → `/login?signup=1`).
   - `apps/web/src/lib/share/share_meta.ts` — pure builders for title / description / canonical / JSON-LD (`buildRouteJsonLd` builds a `WebPage` + `BreadcrumbList`, serialising user content through `serialiseJsonLd`). This is the pure-helper + unit-test pattern to mirror for Learn meta.
-- **Sitemap** — `apps/web/src/routes/sitemap.xml/+server.ts` (prerendered at build) + pure helpers in `apps/web/src/lib/share/sitemap.ts` (`composeEntries`, `buildSitemap`, `SitemapEntry`). `composeEntries` is where top-level + per-entity URLs are assembled. Learn URLs get added here.
+- **Sitemap** — `apps/web/src/routes/sitemap.xml/+server.ts` (a prerendered sitemap index) over `apps/web/src/routes/sitemaps/[name].xml/+server.ts` (its child files) + pure helpers in `apps/web/src/lib/share/sitemap.ts`. The Learn URLs (`learnEntries`) ship in the `pages` child with the top-level surfaces (`topLevelEntries`); see [seo.md § Crawl & redirect contract](seo.md#crawl--redirect-contract).
 - **Existing public marketing page with a data module** — `apps/web/src/routes/compare/+page.svelte` reads a typed data module `#lib/settings/compare_features.ts` and renders i18n'd copy via `m('compare.*')`. This is the closest existing analog to "structured marketing content rendered from a code module" and the model for how guide *metadata* (titles, descriptions, slugs) is held.
 - **Anon-allowed routing** — `apps/web/src/routes/+layout.svelte`. Two lists govern public access:
   - `shellLessExact` (line ~135) — routes rendered with **no app sidebar** (`/`, `/login`, `/onboarding`, …) plus prefix matches (`/share/`, `/live/`, …).
@@ -224,7 +224,7 @@ Per conventions § Test hygiene (review → unit → e2e; tests ship in the **sa
 3. Write the body in markdown (headings, lists, links). To embed the CTA card mid-article, import/use `LearnCta` (otherwise it's auto-appended by the article template).
 4. If introducing a new category, add it to `apps/web/src/lib/learn/categories.ts` and add its `labelKey` to `en.ts` + all five other locale files.
 5. Run `npx tsx --test src/lib/learn/guides.test.ts` — the guard validates frontmatter, slug uniqueness, category + CTA validity.
-6. Run `npm run build --workspace=apps/web` and confirm `build/learn/<slug>/index.html` exists (prerendered) and `build/sitemap.xml` lists it.
+6. Run `npm run build --workspace=apps/web` and confirm `build/learn/<slug>/index.html` exists (prerendered) and `build/sitemaps/pages.xml` lists it.
 7. Commit path-scoped (the `.md` + any new category/i18n keys, plus a guide-index test update if the guide is asserted by name).
 
 No DB migration, no deploy step beyond the normal web build/release.

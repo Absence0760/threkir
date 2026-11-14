@@ -1,15 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	allSitemapChildren,
 	buildRunCountByRouteId,
 	buildSitemap,
+	buildSitemapIndex,
 	changefreqForRunCount,
-	composeEntries,
+	clubEntries,
 	courseEntries,
-	entityEntries,
+	eventEntries,
 	learnEntries,
 	normaliseBase,
 	priorityForRunCount,
+	parseSitemapChild,
+	raceEntries,
+	renderSitemapFile,
+	routeEntries,
+	runEntries,
+	SITEMAP_KINDS,
+	SITEMAP_MAX_BYTES,
+	SITEMAP_MAX_URLS,
+	SITEMAP_SHARDS,
+	sitemapChildCanonical,
+	sitemapChildName,
+	sitemapShardOf,
+	topLevelEntries,
 } from './sitemap';
 import { escapeHtml } from '../util/html_escape';
 import { buildClubShareCanonical } from './share_club_meta';
@@ -91,10 +106,10 @@ test('buildSitemap — priority renders with one decimal place even when whole',
 	assert.ok(xml.includes('<priority>1.0</priority>'));
 });
 
-// ---------------- composeEntries ----------------
+// ---------------- top-level, route and run entries ----------------
 
-test('composeEntries — always emits the four top-level surfaces first', () => {
-	const entries = composeEntries('https://threkir.com', [], []);
+test('topLevelEntries — the four top-level surfaces, landing first', () => {
+	const entries = topLevelEntries('https://threkir.com');
 	assert.equal(entries.length, 4);
 	assert.equal(entries[0].loc, 'https://threkir.com/');
 	assert.equal(entries[1].loc, 'https://threkir.com/feed');
@@ -106,29 +121,32 @@ test('composeEntries — always emits the four top-level surfaces first', () => 
 // The catalogue index is crawlable content; a per-segment page is a
 // leaderboard of named runners, which is the same people-directory
 // objection that keeps profiles out of the manifest.
-test('composeEntries — lists the segment catalogue index and no individual segment', () => {
-	const entries = composeEntries('https://threkir.com', [{ id: 'route-1' }], [{ id: 'run-1' }]);
+test('topLevelEntries — lists the segment catalogue index and no individual segment', () => {
+	const entries = [
+		...topLevelEntries('https://threkir.com'),
+		...routeEntries('https://threkir.com', [{ id: 'route-1' }]),
+		...runEntries('https://threkir.com', [{ id: 'run-1' }]),
+	];
 	const segmentLocs = entries.filter((e) => e.loc.includes('/segments'));
 	assert.equal(segmentLocs.length, 1);
 	assert.equal(segmentLocs[0].loc, 'https://threkir.com/segments');
 });
 
-test('composeEntries — strips trailing slash on the base before concatenating', () => {
-	const entries = composeEntries('https://threkir.com/', [{ id: 'r1' }], []);
+test('routeEntries — strips trailing slash on the base before concatenating', () => {
+	const entries = routeEntries('https://threkir.com/', [{ id: 'r1' }]);
 	const routeEntry = entries.find((e) => e.loc.includes('/share/route/'));
 	assert.equal(routeEntry?.loc, 'https://threkir.com/share/route/r1');
 });
 
-test('composeEntries — routes and runs become /share/* entries with lastmod when available', () => {
-	const entries = composeEntries(
-		'https://threkir.com',
-		[{ id: 'route-1', updated_at: '2026-05-10T00:00:00Z' }],
-		[
+test('routeEntries + runEntries — /share/* entries with lastmod when available', () => {
+	const entries = [
+		...routeEntries('https://threkir.com', [{ id: 'route-1', updated_at: '2026-05-10T00:00:00Z' }]),
+		...runEntries('https://threkir.com', [
 			{ id: 'run-1', updated_at: '2026-05-11T00:00:00Z' },
 			{ id: 'run-2', updated_at: null, started_at: '2026-05-09T00:00:00Z' },
-		],
-	);
-	assert.equal(entries.length, 7); // 4 top-level + 1 route + 2 runs
+		]),
+	];
+	assert.equal(entries.length, 3);
 	const route1 = entries.find((e) => e.loc === 'https://threkir.com/share/route/route-1');
 	assert.equal(route1?.lastmod, '2026-05-10T00:00:00Z');
 	const run1 = entries.find((e) => e.loc === 'https://threkir.com/share/run/run-1');
@@ -138,14 +156,17 @@ test('composeEntries — routes and runs become /share/* entries with lastmod wh
 	assert.equal(run2?.lastmod, '2026-05-09T00:00:00Z');
 });
 
-test('composeEntries — entries with neither updated_at nor started_at omit lastmod', () => {
-	const entries = composeEntries('https://threkir.com', [], [{ id: 'r' }]);
+test('runEntries — entries with neither updated_at nor started_at omit lastmod', () => {
+	const entries = runEntries('https://threkir.com', [{ id: 'r' }]);
 	const run = entries.find((e) => e.loc.includes('/share/run/r'));
 	assert.equal(run?.lastmod, undefined);
 });
 
-test('composeEntries — every share entry carries a priority and a changefreq', () => {
-	const entries = composeEntries('https://threkir.com', [{ id: 'a' }], [{ id: 'b' }]);
+test('routeEntries + runEntries — every share entry carries a priority and a changefreq', () => {
+	const entries = [
+		...routeEntries('https://threkir.com', [{ id: 'a' }]),
+		...runEntries('https://threkir.com', [{ id: 'b' }]),
+	];
 	const route = entries.find((e) => e.loc.endsWith('/share/route/a'))!;
 	const run = entries.find((e) => e.loc.endsWith('/share/run/b'))!;
 	// Route with no popularity → cold base values.
@@ -208,19 +229,14 @@ test('buildRunCountByRouteId — empty input returns empty map', () => {
 	assert.equal(m.size, 0);
 });
 
-// ---------------- composeEntries popularity ----------------
+// ---------------- routeEntries popularity ----------------
 
-test('composeEntries — popular route bumps priority + changefreq', () => {
+test('routeEntries — popular route bumps priority + changefreq', () => {
 	const popularity = new Map<string, number>([
 		['hot', 25], // → daily / 0.9
 		['warm', 7], // → weekly / 0.8
 	]);
-	const entries = composeEntries(
-		'https://x',
-		[{ id: 'hot' }, { id: 'warm' }, { id: 'cold' }],
-		[],
-		popularity,
-	);
+	const entries = routeEntries('https://x', [{ id: 'hot' }, { id: 'warm' }, { id: 'cold' }], popularity);
 	const hot = entries.find((e) => e.loc.endsWith('/share/route/hot'))!;
 	const warm = entries.find((e) => e.loc.endsWith('/share/route/warm'))!;
 	const cold = entries.find((e) => e.loc.endsWith('/share/route/cold'))!;
@@ -232,8 +248,8 @@ test('composeEntries — popular route bumps priority + changefreq', () => {
 	assert.equal(cold.changefreq, 'monthly');
 });
 
-test('composeEntries — popularity map omitted → all routes use base values', () => {
-	const entries = composeEntries('https://x', [{ id: 'a' }, { id: 'b' }], []);
+test('routeEntries — popularity map omitted → all routes use base values', () => {
+	const entries = routeEntries('https://x', [{ id: 'a' }, { id: 'b' }]);
 	const a = entries.find((e) => e.loc.endsWith('/share/route/a'))!;
 	assert.equal(a.priority, 0.7);
 	assert.equal(a.changefreq, 'monthly');
@@ -241,14 +257,12 @@ test('composeEntries — popularity map omitted → all routes use base values',
 
 // ---------------- end-to-end ----------------
 
-test('composeEntries → buildSitemap produces a well-formed XML body the spec accepts', () => {
-	const xml = buildSitemap(
-		composeEntries(
-			'https://threkir.com',
-			[{ id: 'route-uuid-1', updated_at: '2026-05-10T00:00:00Z' }],
-			[{ id: 'run-uuid-1', started_at: '2026-05-09T00:00:00Z' }],
-		),
-	);
+test('entries → buildSitemap produces a well-formed XML body the spec accepts', () => {
+	const xml = buildSitemap([
+		...topLevelEntries('https://threkir.com'),
+		...routeEntries('https://threkir.com', [{ id: 'route-uuid-1', updated_at: '2026-05-10T00:00:00Z' }]),
+		...runEntries('https://threkir.com', [{ id: 'run-uuid-1', started_at: '2026-05-09T00:00:00Z' }]),
+	]);
 	assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
 	assert.ok(xml.includes('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'));
 	assert.match(xml, /<\/urlset>\s*$/);
@@ -302,10 +316,19 @@ test('learnEntries → buildSitemap emits the guide lastmod', () => {
 	assert.ok(xml.includes('<lastmod>2026-06-15</lastmod>'));
 });
 
-// ---------------- entityEntries ----------------
+// ---------------- event / club / race entries ----------------
 
-test('entityEntries — emits share/event, share/club (by slug), share/race', () => {
-	const entries = entityEntries(
+function allEntityEntries(
+	base: string,
+	events: Array<{ id: string; updated_at?: string | null }>,
+	clubs: Array<{ slug: string; updated_at?: string | null }>,
+	races: Array<{ id: string; updated_at?: string | null }>,
+) {
+	return [...eventEntries(base, events), ...clubEntries(base, clubs), ...raceEntries(base, races)];
+}
+
+test('eventEntries / clubEntries / raceEntries — share/event, share/club (by slug), share/race', () => {
+	const entries = allEntityEntries(
 		'https://threkir.com',
 		[{ id: 'e-1', updated_at: '2026-05-01T00:00:00Z' }],
 		[{ slug: 'hampstead-runners', updated_at: '2026-04-01T00:00:00Z' }],
@@ -320,8 +343,8 @@ test('entityEntries — emits share/event, share/club (by slug), share/race', ()
 	assert.equal(entries[0].lastmod, '2026-05-01T00:00:00Z');
 });
 
-test('entityEntries — never emits a profile URL (no people enumeration)', () => {
-	const entries = entityEntries(
+test('entity entries — never emit a profile URL (no people enumeration)', () => {
+	const entries = allEntityEntries(
 		'https://threkir.com',
 		[{ id: 'e-1' }],
 		[{ slug: 'c' }],
@@ -330,8 +353,8 @@ test('entityEntries — never emits a profile URL (no people enumeration)', () =
 	assert.ok(entries.every((e) => !e.loc.includes('/share/profile/')));
 });
 
-test('entityEntries — empty inputs yield no entries', () => {
-	assert.deepEqual(entityEntries('https://threkir.com', [], [], []), []);
+test('entity entries — empty inputs yield no entries', () => {
+	assert.deepEqual(allEntityEntries('https://threkir.com', [], [], []), []);
 });
 
 // ---------------- the sitemap advertises exactly the canonical ----------------
@@ -343,12 +366,12 @@ test('entityEntries — empty inputs yield no entries', () => {
 
 test('every share <loc> equals the entity builder canonical for the same base', () => {
 	const base = 'https://threkir.com';
-	const entries = composeEntries(base, [{ id: 'rt-1' }], [{ id: 'r-1' }]);
+	const entries = [...routeEntries(base, [{ id: 'rt-1' }]), ...runEntries(base, [{ id: 'r-1' }])];
 	const locs = entries.map((e) => e.loc);
 	assert.ok(locs.includes(buildRouteShareCanonical(base, 'rt-1')));
 	assert.ok(locs.includes(buildRunShareCanonical(base, 'r-1')));
 
-	const ent = entityEntries(base, [{ id: 'e-1' }], [{ slug: 'club-a' }], [{ id: 'ra-1' }]).map(
+	const ent = allEntityEntries(base, [{ id: 'e-1' }], [{ slug: 'club-a' }], [{ id: 'ra-1' }]).map(
 		(e) => e.loc,
 	);
 	assert.deepEqual(ent, [
@@ -359,7 +382,7 @@ test('every share <loc> equals the entity builder canonical for the same base', 
 });
 
 test('a trailing slash on the base is normalised the same way the builders do', () => {
-	const entries = entityEntries('https://threkir.com/', [], [{ slug: 'club-a' }], []);
+	const entries = allEntityEntries('https://threkir.com/', [], [{ slug: 'club-a' }], []);
 	assert.equal(entries[0].loc, buildClubShareCanonical('https://threkir.com', 'club-a'));
 });
 
@@ -391,4 +414,77 @@ test('courseEntries — one /share/course entry per course, keyed by region, par
 		},
 	]);
 	assert.deepEqual(courseEntries('https://threkir.com', []), []);
+});
+
+// ---------------- the index and its child files ----------------
+
+test('sitemapShardOf — the first hex digit of the uuid, case-folded', () => {
+	assert.equal(sitemapShardOf('0b2c7d3e-0000-4000-8000-000000000000'), '0');
+	assert.equal(sitemapShardOf('F00DCAFE-0000-4000-8000-000000000000'), 'f');
+});
+
+test('sitemapShardOf — an id that is not a uuid throws rather than fall into no shard', () => {
+	assert.throws(() => sitemapShardOf('club-slug'), /not a uuid/);
+	assert.throws(() => sitemapShardOf(''), /not a uuid/);
+});
+
+test('allSitemapChildren — pages first, then sixteen shards per kind, every name parsing back', () => {
+	const children = allSitemapChildren();
+	assert.equal(children.length, 1 + SITEMAP_KINDS.length * 16);
+	assert.deepEqual(children[0], { kind: 'pages' });
+	const names = children.map(sitemapChildName);
+	assert.equal(new Set(names).size, names.length);
+	for (const child of children) assert.deepEqual(parseSitemapChild(sitemapChildName(child)), child);
+	assert.ok(names.includes('runs-a') && names.includes('courses-0'));
+});
+
+test('parseSitemapChild — rejects anything outside the fixed set', () => {
+	for (const name of ['profiles-a', 'runs-g', 'runs-ab', 'runs', 'runs-A', '', '../pages']) {
+		assert.equal(parseSitemapChild(name), null, name);
+	}
+});
+
+test('every row lands in exactly one shard, so the shards together are the whole list', () => {
+	const ids = Array.from({ length: 2_500 }, (_, i) => `${i.toString(16).padStart(8, '0').split('').reverse().join('')}-0000-4000-8000-000000000000`);
+	const byShard = new Map<string, string[]>();
+	for (const id of ids) {
+		const shard = sitemapShardOf(id);
+		byShard.set(shard, [...(byShard.get(shard) ?? []), id]);
+	}
+	assert.deepEqual([...byShard.keys()].sort(), [...SITEMAP_SHARDS]);
+	assert.equal([...byShard.values()].flat().length, ids.length);
+});
+
+test('buildSitemapIndex — a <sitemapindex> of child URLs on the normalised base', () => {
+	const xml = buildSitemapIndex('https://threkir.com/', [{ kind: 'pages' }, { kind: 'races', shard: 'c' }]);
+	assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+	assert.ok(xml.includes('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'));
+	assert.deepEqual(
+		[...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]),
+		['https://threkir.com/sitemaps/pages.xml', 'https://threkir.com/sitemaps/races-c.xml'],
+	);
+	assert.equal(sitemapChildCanonical('https://threkir.com', { kind: 'runs', shard: '0' }), 'https://threkir.com/sitemaps/runs-0.xml');
+	assert.match(xml, /<\/sitemapindex>\s*$/);
+});
+
+test('renderSitemapFile — 50,000 of the longest entries a kind produces fit the byte limit', () => {
+	const loc = buildRunShareCanonical('https://threkir.com', 'ffffffff-ffff-4fff-bfff-ffffffffffff').replace('/run/', '/course/us-va/' + 'p'.repeat(60) + '/' + 'c'.repeat(60) + '/');
+	const entries = Array.from({ length: SITEMAP_MAX_URLS }, () => ({
+		loc,
+		lastmod: '2027-01-02T00:00:00.000000+00:00',
+		changefreq: 'monthly' as const,
+		priority: 0.7,
+	}));
+	const body = renderSitemapFile(entries);
+	assert.ok(new TextEncoder().encode(body).length < SITEMAP_MAX_BYTES);
+});
+
+test('renderSitemapFile — refuses a file past 50,000 URLs rather than cut it', () => {
+	const entries = Array.from({ length: SITEMAP_MAX_URLS + 1 }, (_, i) => ({ loc: `https://threkir.com/share/run/${i}` }));
+	assert.throws(() => renderSitemapFile(entries), /exceeds the 50000 limit/);
+});
+
+test('renderSitemapFile — refuses a file past 50 MB', () => {
+	const entries = Array.from({ length: 1_000 }, (_, i) => ({ loc: `https://threkir.com/${i}/${'x'.repeat(60_000)}` }));
+	assert.throws(() => renderSitemapFile(entries), /bytes in one file exceeds/);
 });

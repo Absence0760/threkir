@@ -3232,7 +3232,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailStatAvgHr => '平均心拍';
 
   @override
-  String get runDetailStatAgeGrade => '年齢グレード';
+  String get runDetailStatAgeGrade => '年齢別評価';
 
   @override
   String get runDetailStatGradeAdjPace => '勾配調整ペース';
@@ -4232,7 +4232,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'レーススケジュールを送信しました（$checkpoints チェックポイント）。ただし $unresolved 件の時刻指定の関門にはレースのスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
+    return 'レーススケジュールを送信しました（$checkpointsチェックポイント）。ただし$unresolved件の時刻指定の関門にはレースのスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
   }
 
   @override
@@ -4241,7 +4241,7 @@ class AppLocalizationsJa extends AppLocalizations {
     int cutoffs,
     int max,
   ) {
-    return 'コース（$points ポイント）を送信しましたが、レーススケジュールの関門は $cutoffs 件でウォッチの上限は $max 件です — いくつか削除して送信してください';
+    return 'コース（$pointsポイント）を送信しましたが、レーススケジュールの関門は$cutoffs件でウォッチの上限は$max件です — いくつか削除して送信してください';
   }
 
   @override
@@ -8553,7 +8553,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountExportExpiredNotice =>
-      '前回のアカウントエクスポートは期限切れです。エクスポートは 7 日後に削除されます — もう一度リクエストしてください。';
+      '前回のアカウントエクスポートは期限切れです。エクスポートは7日後に削除されます — もう一度リクエストしてください。';
 
   @override
   String get settingsAccountExportStatusUnavailable =>
@@ -8844,13 +8844,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsStravaLookbackTitle => 'さかのぼる期間';
 
   @override
-  String get integrationsStravaLookback90 => '直近 90 日';
+  String get integrationsStravaLookback90 => '直近90日';
 
   @override
-  String get integrationsStravaLookback180 => '直近 6 か月';
+  String get integrationsStravaLookback180 => '直近6か月';
 
   @override
-  String get integrationsStravaLookback365 => '直近 1 年';
+  String get integrationsStravaLookback365 => '直近1年';
 
   @override
   String get integrationsSyncPartialNoteResumable =>
@@ -10186,7 +10186,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '最高 $count 日',
+      other: '最高$count日',
     );
     return '$_temp0';
   }
@@ -11427,7 +11427,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String upcomingEventInDays(int count) {
-    return '$count 日後';
+    return '$count日後';
   }
 
   @override
@@ -11593,7 +11593,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String billingDaysAgo(int count) {
-    return '$count 日前';
+    return '$count日前';
   }
 
   @override
@@ -13911,7 +13911,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachingRosterHrDriftHint =>
-      '直近 2 週間の予定どおりのイージーランで、同じペースでの心拍数がその前の 6 週間より高くなっています。健康データに同意したアスリートにのみ表示されます。';
+      '直近2週間の予定どおりのイージーランで、同じペースでの心拍数がその前の6週間より高くなっています。健康データに同意したアスリートにのみ表示されます。';
 
   @override
   String get metricEasyHrDriftLabel => 'イージーランの心拍ドリフト';
@@ -14605,7 +14605,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'あと $n 日で終了',
+      other: 'あと$n日で終了',
       one: '本日終了',
     );
     return '$_temp0';
@@ -14813,7 +14813,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String challengesUnitDays(int n) {
-    return '$n 日';
+    return '$n日';
   }
 
   @override
@@ -14964,6 +14964,7 @@ class AppLocalizationsJa extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n件の公園コースをすべて見る',
+      one: '公園コースを見る',
     );
     return '$_temp0';
   }
@@ -15435,7 +15436,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsStravaInfo =>
-      'Strava はランの記録と共有に広く使われているアプリです。連携すると Strava のアクティビティが取り込まれます。まず直近 90 日分、その後は新しいアクティビティが出るたびに取り込まれます。Strava にサインインしてアクセスを許可します。連携はいつでも解除できます。';
+      'Strava はランの記録と共有に広く使われているアプリです。連携すると Strava のアクティビティが取り込まれます。まず直近90日分、その後は新しいアクティビティが出るたびに取り込まれます。Strava にサインインしてアクセスを許可します。連携はいつでも解除できます。';
 
   @override
   String get integrationsRunsignupInfo =>
@@ -16119,9 +16120,9 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       total,
       locale: localeName,
-      other: '$total 件',
+      other: '$total件',
     );
-    return 'ウォッチから $_temp0中 $synced 件のランを同期しました';
+    return 'ウォッチから$_temp0中$synced件のランを同期しました';
   }
 
   @override
@@ -16154,16 +16155,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushRoadbookAction => 'レーススケジュールをウォッチに送信';
+  String get simWatchPushRoadbookAction => 'ロードブックをウォッチに送信';
 
   @override
   String simWatchRoadbookPushed(int checkpoints, int cutoffs) {
-    return 'レーススケジュールをウォッチに送信しました（$checkpoints チェックポイント、$cutoffs 関門）';
+    return 'ロードブックをウォッチに送信しました（$checkpointsチェックポイント、関門$cutoffs件）';
   }
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'レーススケジュールの送信に失敗しました: $error';
+    return 'ロードブックの送信に失敗しました: $error';
   }
 
   @override
@@ -16572,9 +16573,9 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count 個',
+      other: '$count個',
     );
-    return 'この画面の $_temp0の項目も削除されます。';
+    return 'この画面の$_temp0の項目も削除されます。';
   }
 
   @override
@@ -16598,9 +16599,9 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       slots,
       locale: localeName,
-      other: '$slots 個',
+      other: '$slots個',
     );
-    return '$layout レイアウトのスロットは $_temp0なので、$dropped は表示されなくなります。';
+    return '$layout レイアウトのスロットは$_temp0なので、$dropped は表示されなくなります。';
   }
 
   @override
@@ -17246,7 +17247,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String challengesGoalStreakCeiling(int n) {
-    return 'この期間に収まるアクティブな日数は最大 $n 日です。';
+    return 'この期間に収まるアクティブな日数は最大$n日です。';
   }
 
   @override
@@ -17314,7 +17315,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get metricAgeGradeDefinition =>
-      '年齢と性別ごとの最高記録に対するあなたのタイムの評価。60%前後で地域のトップクラス、81%以上で全国クラスです。';
+      '年齢と性別ごとの最高記録に対するあなたのタイムの評価。60%前後で地域の実力者、80%で全国クラスです。';
 
   @override
   String get metricVertLabel => '獲得標高';
@@ -18794,12 +18795,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String seasonPlanRefusedFirstTooSoon(String races) {
-    return '$races まで 4 週間未満で、プランを作るには早すぎます。B か C にするか、もっと後の A レースを計画してください。';
+    return '$races まで4週間未満で、プランを作るには早すぎます。B か C にするか、もっと後の A レースを計画してください。';
   }
 
   @override
   String seasonPlanRefusedTooClose(String races) {
-    return '$races は近すぎて、間に回復期間と 4 週間以上のプランを入れられません。どちらかを B レースにしてください。';
+    return '$races は近すぎて、間に回復期間と4週間以上のプランを入れられません。どちらかを B レースにしてください。';
   }
 
   @override
@@ -18817,7 +18818,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       weeks,
       locale: localeName,
-      other: '$weeks 週間',
+      other: '$weeks週間',
     );
     return '$start – $end · $_temp0';
   }
@@ -18853,9 +18854,9 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: '$days 日',
+      other: '$days日',
     );
-    return '$race 後の回復：プランなしで $_temp0（$from – $to）';
+    return '$race 後の回復：プランなしで$_temp0（$from – $to）';
   }
 
   @override

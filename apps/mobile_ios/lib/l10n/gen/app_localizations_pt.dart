@@ -29493,13 +29493,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get heatmapHeatDensity => 'Densidade de calor';
 
   @override
-  String get heatmapUpcomingRaces => 'Próximas corridas';
+  String get heatmapUpcomingRaces => 'Próximas provas';
 
   @override
-  String get heatmapViewRace => 'Ver corrida';
+  String get heatmapViewRace => 'Ver prova';
 
   @override
-  String get heatmapRaceFallbackName => 'Corrida';
+  String get heatmapRaceFallbackName => 'Prova';
 
   @override
   String get heatmapResetFilters => 'Redefinir filtros';
@@ -31415,7 +31415,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planNewRaceAnchored(int weeks) {
-    return 'Ajustado à sua corrida: um plano de $weeks semanas cuja última semana é a da prova. Altere o que quiser antes de criar.';
+    return 'Ajustado à sua prova: um plano de $weeks semanas cuja última semana é a da prova. Altere o que quiser antes de criar.';
   }
 
   @override
@@ -31425,15 +31425,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewRacePast =>
-      'Essa corrida já aconteceu, então as datas abaixo são as padrão.';
+      'Essa prova já aconteceu, então as datas abaixo são as padrão.';
 
   @override
   String get planNewRaceTooSoon =>
-      'Essa corrida está próxima demais para montar um plano completo, então as datas abaixo são as padrão.';
+      'Essa prova está próxima demais para montar um plano completo, então as datas abaixo são as padrão.';
 
   @override
   String get planNewRaceUnreadable =>
-      'Não conseguimos ler a data dessa corrida, então as datas abaixo são as padrão.';
+      'Não conseguimos ler a data dessa prova, então as datas abaixo são as padrão.';
 
   @override
   String get planNewAiTitle => 'Descreva o plano que você quer';
@@ -32747,10 +32747,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachSeasonHint =>
-      'Outra corrida depois deste plano? Toque em “Adicionar à minha temporada” na corrida e “Minha temporada” aparece aqui.';
+      'Outra prova depois deste plano? Toque em “Adicionar à minha temporada” na prova e “Minha temporada” aparece aqui.';
 
   @override
-  String get coachSeasonHintAction => 'Encontrar uma corrida';
+  String get coachSeasonHintAction => 'Encontrar uma prova';
 
   @override
   String get coachPlanPickerTooltip => 'Contexto do plano';
@@ -34761,7 +34761,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get prefsSectionFueling => 'Reabastecimento de corrida';
+  String get prefsSectionFueling => 'Reabastecimento na prova';
 
   @override
   String get prefsCarbsPerHour => 'Carboidratos por hora';
@@ -37384,7 +37384,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, calendário de corridas, cinta cardíaca, esteira, relógio';
+      'Strava, calendário de provas, cinta cardíaca, esteira, relógio';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -40199,7 +40199,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get fundraiserDonateOnWeb => 'Doar na web';
 
   @override
-  String get racesTitle => 'Calendário de corridas';
+  String get racesTitle => 'Calendário de provas';
 
   @override
   String get racesSectionUpcoming => 'Próximas provas';
@@ -40267,11 +40267,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível carregar os tempos mais rápidos desta temporada.';
 
   @override
-  String get racesSearchPlaceholder => 'Buscar corridas por nome…';
+  String get racesSearchPlaceholder => 'Buscar provas por nome…';
 
   @override
-  String get racesSearchAllPlaceholder =>
-      'Buscar corridas, parques e percursos…';
+  String get racesSearchAllPlaceholder => 'Buscar provas, parques e percursos…';
 
   @override
   String racesNearChip(String place) {
@@ -40308,13 +40307,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página da corrida e inscrição';
+  String get racesRegister => 'Página da prova e inscrição';
 
   @override
-  String get racesTrainForThis => 'Treinar para esta corrida';
+  String get racesTrainForThis => 'Treinar para esta prova';
 
   @override
-  String get racesBuildPlan => 'Criar um plano para esta corrida';
+  String get racesBuildPlan => 'Criar um plano para esta prova';
 
   @override
   String get racesTailorWithAi => 'Ajustar com IA';
@@ -40394,7 +40393,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: 'dos últimos $days dias',
       one: 'do último $days dia',
     );
-    return 'Resultados recentes mostra as corridas $_temp0, as mais recentes primeiro, para você encontrar uma corrida que fez e importar seu resultado.';
+    return 'Resultados recentes mostra as provas $_temp0, as mais recentes primeiro, para você encontrar uma prova que fez e importar seu resultado.';
   }
 
   @override
@@ -40405,15 +40404,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: 'dos últimos $days dias',
       one: 'do último $days dia',
     );
-    return 'Nenhuma corrida $_temp0 corresponde a estes filtros.';
+    return 'Nenhuma prova $_temp0 corresponde a estes filtros.';
   }
 
   @override
   String get racesDetailLoadFailed =>
-      'Não foi possível carregar esta corrida. Verifique sua conexão e tente novamente.';
+      'Não foi possível carregar esta prova. Verifique sua conexão e tente novamente.';
 
   @override
-  String get racesDetailNotFound => 'Esta corrida não está mais no calendário.';
+  String get racesDetailNotFound => 'Esta prova não está mais no calendário.';
 
   @override
   String racesSourceProvider(String provider) {
@@ -40435,7 +40434,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String raceCourseSourceTraced(String club) {
-    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+    return 'Percurso desenhado por $club a partir do mapa publicado da prova';
   }
 
   @override
@@ -40449,31 +40448,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get raceCourseToolsHeading => 'Percurso da corrida';
+  String get raceCourseToolsHeading => 'Percurso da prova';
 
   @override
-  String get raceCourseClaim => 'Reivindicar esta corrida';
+  String get raceCourseClaim => 'Reivindicar esta prova';
 
   @override
-  String get raceCourseClaimTitle =>
-      'Reivindicar esta corrida para o seu clube';
+  String get raceCourseClaimTitle => 'Reivindicar esta prova para o seu clube';
 
   @override
   String get raceCourseClaimBody =>
-      'Reivindicar marca a corrida como verificada e permite que seu clube vincule o percurso. Reivindique só uma corrida que seu clube organiza ou cujos percursos desenha.';
+      'Reivindicar marca a prova como verificada e permite que seu clube vincule o percurso. Reivindique só uma prova que seu clube organiza ou cujos percursos desenha.';
 
   @override
   String get raceCourseClaimClub => 'Clube';
 
   @override
-  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+  String get raceCourseClaimConfirm => 'Reivindicar prova';
 
   @override
-  String get raceCourseClaimed => 'Corrida reivindicada.';
+  String get raceCourseClaimed => 'Prova reivindicada.';
 
   @override
   String get raceCourseClaimFailed =>
-      'Não foi possível reivindicar esta corrida.';
+      'Não foi possível reivindicar esta prova.';
 
   @override
   String get raceCourseLinkCourse => 'Vincular percurso';
@@ -40500,7 +40498,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get raceCourseSourceOptionTraced =>
-      'Traçado a partir do mapa publicado da corrida';
+      'Traçado a partir do mapa publicado da prova';
 
   @override
   String get raceCourseLinkConfirm => 'Vincular percurso';
@@ -40521,11 +40519,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get raceCourseSuggest => 'Sugerir um percurso';
 
   @override
-  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta prova';
 
   @override
   String get raceCourseSuggestBody =>
-      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém reivindicou a corrida ainda.';
+      'Escolha uma das suas rotas públicas. O organizador da prova vai analisá-la, ou um clube verificado se ninguém reivindicou a prova ainda.';
 
   @override
   String get raceCourseSuggestRoute => 'Sua rota';
@@ -40561,7 +40559,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get raceCourseReviewClaimFirst =>
-      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+      'Reivindique esta prova para aprovar ou recusar uma sugestão.';
 
   @override
   String get raceCourseReviewApprove => 'Aprovar';
@@ -40592,7 +40590,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String racesDetailImportAfterRace(String date) {
-    return 'Você pode importar seu resultado oficial a partir do dia da corrida, $date.';
+    return 'Você pode importar seu resultado oficial a partir do dia da prova, $date.';
   }
 
   @override
@@ -40612,7 +40610,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesDetailNoRuns =>
-      'Ainda não há corridas vinculadas a esta prova. Depois do dia da corrida, importe seu resultado aqui ou abra a corrida que você gravou e vincule-a a esta prova.';
+      'Ainda não há corridas vinculadas a esta prova. Depois do dia da prova, importe seu resultado aqui ou abra a corrida que você gravou e vincule-a a esta prova.';
 
   @override
   String get racesViewResults => 'Ver resultados';
@@ -40621,18 +40619,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesImportResult => 'Importar meu resultado';
 
   @override
-  String get racesSubmitRace => 'Adicionar uma corrida';
+  String get racesSubmitRace => 'Adicionar uma prova';
 
   @override
   String get racesUnverified => 'Não verificada';
 
   @override
   String get racesEmpty =>
-      'Ainda não há corridas que correspondam a esses filtros.';
+      'Ainda não há provas que correspondam a esses filtros.';
 
   @override
   String get racesSearchFailed =>
-      'Não foi possível carregar as corridas. Verifique sua conexão e tente novamente.';
+      'Não foi possível carregar as provas. Verifique sua conexão e tente novamente.';
 
   @override
   String racesMatchPrompt(String name) {
@@ -40643,7 +40641,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesMatchConfirm => 'Importar resultado';
 
   @override
-  String get racesMatchDismiss => 'Não é esta corrida';
+  String get racesMatchDismiss => 'Não é esta prova';
 
   @override
   String get racesImported => 'Resultado oficial importado.';
@@ -40706,7 +40704,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesPasteResultHint =>
-      'Insira os detalhes da sua chegada a partir da página de resultados da corrida.';
+      'Insira os detalhes da sua chegada a partir da página de resultados da prova.';
 
   @override
   String get racesSave => 'Salvar';
@@ -40715,10 +40713,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesCancel => 'Cancelar';
 
   @override
-  String get racesEditorTitle => 'Adicionar uma corrida';
+  String get racesEditorTitle => 'Adicionar uma prova';
 
   @override
-  String get racesFieldName => 'Nome da corrida';
+  String get racesFieldName => 'Nome da prova';
 
   @override
   String get racesFieldDate => 'Data';
@@ -40737,24 +40735,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesSubmitFailed =>
-      'Não foi possível salvar a corrida. Tente novamente.';
+      'Não foi possível salvar a prova. Tente novamente.';
 
   @override
   String get racesImportFailed =>
       'Não foi possível importar o resultado. Tente novamente.';
 
   @override
-  String get navRaces => 'Corridas';
+  String get navRaces => 'Provas';
 
   @override
   String get integrationsRunsignup => 'RunSignUp';
 
   @override
   String get integrationsRunsignupConnect =>
-      'Importe resultados de corridas do RunSignUp.';
+      'Importe resultados de provas do RunSignUp.';
 
   @override
-  String get integrationsRunsignupOpen => 'Abrir o calendário de corridas';
+  String get integrationsRunsignupOpen => 'Abrir o calendário de provas';
 
   @override
   String integrationsInfoAbout(String name) {
@@ -40767,11 +40765,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsRunsignupInfo =>
-      'O RunSignUp cuida de inscrições e resultados de milhares de corridas de rua. Se você correu uma, encontre-a no calendário de corridas e informe o número de peito que usou — seu tempo oficial e suas parciais são anexados àquela corrida.';
+      'O RunSignUp cuida de inscrições e resultados de milhares de provas de rua. Se você correu uma, encontre-a no calendário de provas e informe o número de peito que usou — seu tempo oficial e suas parciais são anexados àquela corrida.';
 
   @override
   String get integrationsChronotrackInfo =>
-      'A ChronoTrack cronometra muitas corridas de rua com chips e tapetes. Se a sua foi cronometrada pela ChronoTrack, encontre-a no calendário e informe seu número de peito para trazer seu resultado oficial.';
+      'A ChronoTrack cronometra muitas provas de rua com chips e tapetes. Se a sua foi cronometrada pela ChronoTrack, encontre-a no calendário e informe seu número de peito para trazer seu resultado oficial.';
 
   @override
   String get integrationsRunsignupUnavailable =>
@@ -40782,10 +40780,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsChronotrackConnect =>
-      'Importe resultados de corridas de eventos cronometrados pelo ChronoTrack.';
+      'Importe resultados de provas de eventos cronometrados pelo ChronoTrack.';
 
   @override
-  String get integrationsChronotrackOpen => 'Abrir o calendário de corridas';
+  String get integrationsChronotrackOpen => 'Abrir o calendário de provas';
 
   @override
   String get integrationsChronotrackUnavailable =>
@@ -41823,15 +41821,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Só fica ativo em um percurso cujos marcadores têm tempos alvo. Ao passar por cada um, diz se você está à frente ou atrás, e por quanto. Exemplo: “Posto 2: 45 segundos à frente do plano.”';
 
   @override
-  String get prefsCuePhaseTransitions => 'Fases da corrida';
+  String get prefsCuePhaseTransitions => 'Fases da prova';
 
   @override
   String get prefsCuePhaseTransitionsSubtitle =>
-      'Um aviso quando cada fase da sua estratégia de corrida começa';
+      'Um aviso quando cada fase da sua estratégia de prova começa';
 
   @override
   String get prefsCuePhaseTransitionsInfo =>
-      'Só fica ativo quando você escolhe uma estratégia de corrida. Anuncia cada fase e sua intenção ao começar. Exemplo: “Fase 2 de 3. Estabilize no seu ritmo alvo.”';
+      'Só fica ativo quando você escolhe uma estratégia de prova. Anuncia cada fase e sua intenção ao começar. Exemplo: “Fase 2 de 3. Estabilize no seu ritmo alvo.”';
 
   @override
   String get prefsCueGuidedRun => 'Corridas guiadas';
@@ -41859,13 +41857,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get runRaceStrategy => 'Estratégia de corrida';
+  String get runRaceStrategy => 'Estratégia de prova';
 
   @override
   String get runStrategyNone => 'Sem estratégia';
 
   @override
-  String get runClearRaceStrategyTooltip => 'Remover estratégia de corrida';
+  String get runClearRaceStrategyTooltip => 'Remover estratégia de prova';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -46884,7 +46882,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksSafetyNotice =>
-      'Fique na trilha sinalizada. A cronometragem exige todos os pontos de controle, então um atalho nunca conta. É um contrarrelógio, não uma corrida: a trilha continua aberta a todos e ninguém a fiscaliza.';
+      'Fique na trilha sinalizada. A cronometragem exige todos os pontos de controle, então um atalho nunca conta. É um contrarrelógio, não uma prova: a trilha continua aberta a todos e ninguém a fiscaliza.';
 
   @override
   String get parksNotAffiliated =>
@@ -47259,14 +47257,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get provenanceVerifiedSourceTooltip =>
-      'Fonte verificada: listada por um parceiro de dados de corridas';
+      'Fonte verificada: listada por um parceiro de dados de provas';
 
   @override
   String get provenanceTraced => 'Traçado';
 
   @override
   String get provenanceTracedTooltip =>
-      'Traçado: desenhado por um clube verificado a partir do mapa publicado da corrida';
+      'Traçado: desenhado por um clube verificado a partir do mapa publicado da prova';
 
   @override
   String get provenanceCommunity => 'Comunidade';
@@ -47309,7 +47307,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get courseAlertsPostHint =>
-      'Quem treina para esta corrida e quem salvou o percurso recebe um aviso uma vez.';
+      'Quem treina para esta prova e quem salvou o percurso recebe um aviso uma vez.';
 
   @override
   String get courseAlertsPost => 'Publicar alerta';

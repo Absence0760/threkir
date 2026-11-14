@@ -745,7 +745,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative “Mostrar-me em Corredores por perto” e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina a sua área. Só os corredores que fizeram o mesmo podem encontrar o seu perfil.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir definições de privacidade';
@@ -897,7 +897,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessReasonFormNeutral => 'Forma neutra';
 
   @override
-  String get readinessReasonFresh => 'Descansado e bem recuperado';
+  String get readinessReasonFresh => 'Bom descanso e boa recuperação';
 
   @override
   String get readinessReasonVeryFresh =>
@@ -945,7 +945,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get readinessReasonHrBelow =>
-      'FC em repouso abaixo do valor de referência — bem recuperado';
+      'FC em repouso abaixo do valor de referência — boa recuperação';
 
   @override
   String get todayTitle => 'Hoje';
@@ -1488,7 +1488,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get safetyContactOfIntro =>
-      'Estas pessoas indicaram-no como contacto de emergência e confirmou. Dá para mudar como é avisado, ou sair, quando quiser.';
+      'Estas pessoas indicaram o seu contacto como contacto de emergência e confirmou. Pode mudar a forma como recebe os avisos, ou sair, quando quiser.';
 
   @override
   String safetyContactOfFor(String name) {
@@ -1522,7 +1522,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get safetyContactOfWithdrawConfirm =>
-      'Deixar de ser o contacto de segurança desta pessoa? Ela não poderá mais avisá-lo e precisaria enviar um novo pedido.';
+      'Deixar de ser o contacto de segurança desta pessoa? Ela não poderá mais enviar-lhe avisos e precisaria enviar um novo pedido.';
 
   @override
   String get safetyContactOfWithdrawnToast =>
@@ -1674,7 +1674,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get activitySedentary =>
-      'Maior parte sentado (trabalho de escritório)';
+      'Quase sempre em posição sentada (trabalho de escritório)';
 
   @override
   String get activityLight => 'Levemente ativo (pouca movimentação diária)';
@@ -2179,7 +2179,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get privacyFollowersSubtitle =>
-      'Quem o segue vê as novas corridas no feed.';
+      'Quem segue a sua conta vê as novas corridas no feed.';
 
   @override
   String get privacyPublicTitle => 'Pública';
@@ -5696,7 +5696,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get profileBlockConfirmBody =>
-      'Esta pessoa não poderá segui-lo, dar kudos às suas corridas nem comentá-las. Qualquer seguimento existente entre ambos, em qualquer direção, será removido. Pode desbloquear nesta página a qualquer momento.';
+      'Esta pessoa não poderá seguir a sua conta, dar kudos às suas corridas nem comentá-las. Qualquer seguimento existente entre ambos, em qualquer direção, será removido. Pode desbloquear nesta página a qualquer momento.';
 
   @override
   String get profileBlockConfirmAction => 'Bloquear';
@@ -6659,7 +6659,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventNoPhotosYet => 'Ainda não há fotografias.';
 
   @override
-  String get eventNoPhotosAddHint => 'Seja o primeiro a adicionar uma.';
+  String get eventNoPhotosAddHint => 'Seja a primeira pessoa a adicionar uma.';
 
   @override
   String get eventWhichRunPhoto => 'De qual corrida é esta fotografia?';
@@ -6730,7 +6730,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventPhotoUploadFailed => 'Não foi possível enviar a fotografia.';
 
   @override
-  String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
+  String get eventNoRsvps =>
+      'Nenhuma confirmação ainda — seja a primeira pessoa.';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -8870,7 +8871,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountPasswordStepUpHint =>
-      'Para a sua segurança, introduza a sua palavra-passe atual para alterá-la. Registou-se com Google ou Apple? Envie um link de redefinição para si mesmo para definir uma.';
+      'Para a sua segurança, introduza a sua palavra-passe atual para alterá-la. Registou-se com Google ou Apple? Envie um link de redefinição para o seu e-mail para definir uma.';
 
   @override
   String get settingsAccountCurrentPasswordRequired =>
@@ -8878,7 +8879,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountCurrentPasswordIncorrect =>
-      'Essa palavra-passe atual está incorreta. Se nunca definiu uma palavra-passe, envie um link de redefinição para si mesmo.';
+      'Essa palavra-passe atual está incorreta. Se nunca definiu uma palavra-passe, envie um link de redefinição para o seu e-mail.';
 
   @override
   String get settingsAccountSendResetLink => 'Enviar link de redefinição';
@@ -11761,7 +11762,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get segmentsPanelLeaderboardEmpty =>
-      'Ainda não há esforços — seja o primeiro a correr este segmento.';
+      'Ainda não há esforços — seja a primeira pessoa a correr este segmento.';
 
   @override
   String get segmentOldMatchNote =>
@@ -16065,7 +16066,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get fundraiserFeedTitle => 'Apoiantes recentes';
 
   @override
-  String get fundraiserFeedEmpty => 'Seja o primeiro a doar.';
+  String get fundraiserFeedEmpty => 'Seja a primeira pessoa a doar.';
 
   @override
   String get fundraiserAnonymous => 'Anónimo';
@@ -19446,7 +19447,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get audienceLevelFollowersHint =>
-      'Quem o segue pode abrir através de um link. Não aparece nos feeds, nas notificações nem na pesquisa.';
+      'Quem segue a sua conta pode abrir através de um link. Não aparece nos feeds, nas notificações nem na pesquisa.';
 
   @override
   String get audienceLevelSpecific => 'Pessoas específicas';
@@ -19609,7 +19610,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesNewMessageNobody =>
-      'Ainda não há ninguém a quem enviar mensagem. Pode enviar mensagem a quem segue ou a quem o segue.';
+      'Ainda não há ninguém a quem enviar mensagem. Pode enviar mensagem a quem segue ou a quem segue a sua conta.';
 
   @override
   String get messagesNewMessageLoadFailed =>
@@ -19657,7 +19658,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'Pode enviar mensagens a quem segue ou a quem o segue, ou a alguém com quem partilha um clube ou um evento, a menos que um dos dois tenha bloqueado o outro.';
+      'Pode enviar mensagens a quem segue ou a quem segue a sua conta, ou a alguém com quem partilha um clube ou um evento, a menos que um dos dois tenha bloqueado o outro.';
 
   @override
   String get messagesLoadEarlier => 'Carregar mensagens anteriores';
@@ -19743,7 +19744,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesBlockConfirmBody =>
-      'Nenhum dos dois poderá enviar mensagens ao outro, e esta pessoa não poderá segui-lo, dar kudos às suas corridas nem comentá-las. Qualquer seguimento entre ambos, em qualquer direção, é removido, e desbloquear não o repõe.';
+      'Nenhum dos dois poderá enviar mensagens ao outro, e esta pessoa não poderá seguir a sua conta, dar kudos às suas corridas nem comentá-las. Qualquer seguimento entre ambos, em qualquer direção, é removido, e desbloquear não o repõe.';
 
   @override
   String messagesBlockedNotice(String name) {
@@ -19856,7 +19857,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailSendDmIntro =>
-      'Escolha alguém que segue, ou que o segue. O link da rota chega à conversa com essa pessoa.';
+      'Escolha alguém que segue, ou que segue a sua conta. O link da rota chega à conversa com essa pessoa.';
 
   @override
   String get routeDetailSendDmLinkNote =>
@@ -19875,7 +19876,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailSendDmEmpty =>
-      'Ainda não segue ninguém e ninguém o segue.';
+      'Ainda não segue ninguém e ninguém segue a sua conta.';
 
   @override
   String get routeDetailSendDmNoMatches =>
@@ -19952,7 +19953,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifFollowRequest(String name) {
-    return '$name quer segui-lo';
+    return '$name quer seguir a sua conta';
   }
 
   @override
@@ -19960,7 +19961,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsPrivateProfileSubtitle =>
-      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. Continuam a poder encontrá-lo pelo nome e pedir para o seguir.';
+      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. Continuam a poder encontrar o seu perfil pelo nome e pedir para o seguir.';
 
   @override
   String get prefsPrivateProfileFailed =>
@@ -20078,7 +20079,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get stravaClubsErrAdminRequired =>
-      'Segundo o Strava, não é administrador deste clube, por isso não pode ser associado.';
+      'Segundo o Strava, não tem a função de administrador neste clube, por isso não pode ser associado.';
 
   @override
   String get stravaClubsErrAlreadyLinked =>
@@ -21953,7 +21954,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get headToHeadEmpty =>
-      'Ainda não há ninguém para comparar aqui. É preciso um amigo que segue e que o segue a si, com perfil público, e uma corrida pública aqui de cada um.';
+      'Ainda não há ninguém para comparar aqui. É preciso um amigo que segue e que segue a sua conta, com perfil público, e uma corrida pública aqui de cada um.';
 
   @override
   String get headToHeadLoadFailed => 'Não foi possível carregar a comparação.';
@@ -23768,7 +23769,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesPhotoSendNotAllowed =>
-      'Pode enviar fotografias a quem segue ou a quem o segue, ou numa conversa que a outra pessoa tenha aceitado, a menos que um dos dois tenha bloqueado o outro.';
+      'Pode enviar fotografias a quem segue ou a quem segue a sua conta, ou numa conversa que a outra pessoa tenha aceitado, a menos que um dos dois tenha bloqueado o outro.';
 
   @override
   String get messagesLinkOpenFailed => 'Não foi possível abrir esse link.';
@@ -23890,7 +23891,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get groupsPeopleEmpty =>
-      'Ainda não há ninguém para convidar. Pode convidar quem segue ou quem o segue.';
+      'Ainda não há ninguém para convidar. Pode convidar quem segue ou quem segue a sua conta.';
 
   @override
   String get groupsPeopleSearch => 'Pesquisar pessoas';
@@ -25038,7 +25039,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessReasonFormNeutral => 'Forma neutra';
 
   @override
-  String get readinessReasonFresh => 'Descansado e bem recuperado';
+  String get readinessReasonFresh => 'Bom descanso e boa recuperação';
 
   @override
   String get readinessReasonVeryFresh =>
@@ -25084,7 +25085,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessReasonHrBelow =>
-      'FC em repouso abaixo do valor de referência — bem recuperado';
+      'FC em repouso abaixo do valor de referência — boa recuperação';
 
   @override
   String get todayTitle => 'Hoje';
@@ -25627,7 +25628,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyContactOfIntro =>
-      'Estas pessoas indicaram você como contato de emergência e você confirmou. Dá para mudar como você é avisado, ou sair, quando quiser.';
+      'Estas pessoas indicaram você como contato de emergência e você confirmou. Dá para mudar como você recebe os avisos, ou sair, quando quiser.';
 
   @override
   String safetyContactOfFor(String name) {
@@ -25813,7 +25814,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get activitySedentary =>
-      'Maior parte sentado (trabalho de escritório)';
+      'Quase sempre em posição sentada (trabalho de escritório)';
 
   @override
   String get activityLight => 'Levemente ativo (pouca movimentação diária)';
@@ -25889,7 +25890,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get authErrorNotSignedIn =>
-      'Você precisa estar conectado para fazer isso. Entre e tente novamente.';
+      'Você precisa de uma sessão ativa para fazer isso. Entre e tente novamente.';
 
   @override
   String get authErrorEmailExists =>
@@ -30796,7 +30797,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventNoPhotosYet => 'Ainda não há fotos.';
 
   @override
-  String get eventNoPhotosAddHint => 'Seja o primeiro a adicionar uma.';
+  String get eventNoPhotosAddHint => 'Seja a primeira pessoa a adicionar uma.';
 
   @override
   String get eventWhichRunPhoto => 'De qual corrida é esta foto?';
@@ -30866,7 +30867,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventPhotoUploadFailed => 'Não foi possível enviar a foto.';
 
   @override
-  String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
+  String get eventNoRsvps =>
+      'Nenhuma confirmação ainda — seja a primeira pessoa.';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -33003,7 +33005,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountPasswordStepUpHint =>
-      'Para sua segurança, digite sua senha atual para alterá-la. Cadastrou-se com Google ou Apple? Envie um link de redefinição para você mesmo para definir uma.';
+      'Para sua segurança, digite sua senha atual para alterá-la. Cadastrou-se com Google ou Apple? Envie um link de redefinição para o seu e-mail para definir uma.';
 
   @override
   String get settingsAccountCurrentPasswordRequired =>
@@ -33011,7 +33013,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountCurrentPasswordIncorrect =>
-      'Essa senha atual está incorreta. Se você nunca definiu uma senha, envie um link de redefinição para você mesmo.';
+      'Essa senha atual está incorreta. Se você nunca definiu uma senha, envie um link de redefinição para o seu e-mail.';
 
   @override
   String get settingsAccountSendResetLink => 'Enviar link de redefinição';
@@ -33187,7 +33189,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountRestoreBodyOffline =>
-      'Você não está conectado. As corridas serão restauradas neste dispositivo e sincronizadas com sua conta na próxima vez que você entrar.';
+      'Sua sessão não está ativa. As corridas serão restauradas neste dispositivo e sincronizadas com sua conta na próxima vez que você entrar.';
 
   @override
   String get settingsAccountRestoreBodyOnline =>
@@ -33840,7 +33842,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proRestoreNeedsSignIn =>
-      'Para restaurar, você precisa estar conectado com o RevenueCat configurado. Gerencie sua assinatura na página de upgrade da web.';
+      'Para restaurar, você precisa de uma sessão ativa, com o RevenueCat configurado. Gerencie sua assinatura na página de upgrade da web.';
 
   @override
   String get proRestored => 'Sua assinatura Pro foi restaurada.';
@@ -35887,7 +35889,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentsPanelLeaderboardEmpty =>
-      'Ainda não há tentativas — seja o primeiro a correr este segmento.';
+      'Ainda não há tentativas — seja a primeira pessoa a correr este segmento.';
 
   @override
   String get segmentOldMatchNote =>
@@ -37347,7 +37349,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsDevicesSignedOutSubtitle =>
-      'Entre para ver onde você está conectado';
+      'Entre para ver onde sua conta está conectada';
 
   @override
   String get verifiedClubTooltip => 'Clube verificado oficial';
@@ -37388,7 +37390,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsTabDevicesSubtitle =>
-      'Onde você está conectado e as substituições por dispositivo — pareie cinta ou esteira em Integrações';
+      'Onde sua conta está conectada e as substituições por dispositivo — pareie cinta ou esteira em Integrações';
 
   @override
   String get settingsTabGearSubtitle =>
@@ -40190,7 +40192,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get fundraiserFeedTitle => 'Apoiadores recentes';
 
   @override
-  String get fundraiserFeedEmpty => 'Seja o primeiro a doar.';
+  String get fundraiserFeedEmpty => 'Seja a primeira pessoa a doar.';
 
   @override
   String get fundraiserAnonymous => 'Anônimo';
@@ -44198,7 +44200,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get stravaClubsErrAdminRequired =>
-      'Segundo o Strava, você não é administrador deste clube, então ele não pode ser vinculado.';
+      'Segundo o Strava, você não tem a função de administrador neste clube, então ele não pode ser vinculado.';
 
   @override
   String get stravaClubsErrAlreadyLinked =>

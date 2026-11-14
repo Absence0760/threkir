@@ -221,7 +221,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return '$labelの権限をリクエスト中...';
+    return '$labelの権限をリクエスト中…';
   }
 
   @override
@@ -230,7 +230,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'ワークアウトを読み込み中...';
+  String get importHealthReadingWorkouts => 'ワークアウトを読み込み中…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -238,7 +238,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'ローカルに保存中...';
+  String get importStatusSavingLocally => 'ローカルに保存中…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -256,7 +256,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud => 'クラウドに同期中...';
+  String get importStatusSyncingToCloud => 'クラウドに同期中…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -264,7 +264,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'CSVを読み込み中...';
+  String get importStatusReadingCsv => 'CSVを読み込み中…';
 
   @override
   String importCsvFailed(Object error) {
@@ -322,7 +322,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'エクスポートを読み込み中...';
+  String get importStatusReadingExport => 'エクスポートを読み込み中…';
 
   @override
   String importStravaFailed(Object error) {
@@ -393,7 +393,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... ほか$count件';
+    return '… ほか$count件';
   }
 
   @override
@@ -573,14 +573,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get importHealthRoutesAllowButton => '地図のインポートを許可';
 
   @override
-  String get importHealthRoutesRequesting => 'ヘルスコネクトに地図へのアクセスを要求中...';
+  String get importHealthRoutesRequesting => 'ヘルスコネクトに地図へのアクセスを要求中…';
 
   @override
   String get importHealthRoutesDenied =>
       '地図へのアクセスは許可されませんでした。インポートは概要のみのままです。ヘルスコネクトでいつでも変更できます。';
 
   @override
-  String get importHealthRoutesAdding => 'インポートしたアクティビティに地図を追加中...';
+  String get importHealthRoutesAdding => 'インポートしたアクティビティに地図を追加中…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -3198,7 +3198,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailDelete => '削除';
 
   @override
-  String get runDetailLoadingGps => 'GPS データを読み込み中...';
+  String get runDetailLoadingGps => 'GPS データを読み込み中…';
 
   @override
   String get runDetailGpsUnavailable => 'オフラインでは GPS トラックを利用できません';
@@ -4745,7 +4745,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exploreRoutesModeNearMe => '近くで探す';
 
   @override
-  String get exploreRoutesSearchHint => '名前でルートを検索...';
+  String get exploreRoutesSearchHint => '名前でルートを検索…';
 
   @override
   String get exploreRoutesFeatured => 'おすすめ';
@@ -11763,7 +11763,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'GPS を待っています...';
+  String get liveRunMapWaitingGps => 'GPS を待っています…';
 
   @override
   String get liveRunMapApproximateLocation => '正確な位置情報がオフです — 地図に現在地を表示できません';

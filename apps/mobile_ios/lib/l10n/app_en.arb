@@ -305,7 +305,7 @@
       }
     }
   },
-  "importHealthRequestingPermission": "Requesting {label} permission...",
+  "importHealthRequestingPermission": "Requesting {label} permission…",
   "@importHealthRequestingPermission": {
     "description": "Status while requesting the platform health-store permission",
     "placeholders": {
@@ -323,7 +323,7 @@
       }
     }
   },
-  "importHealthReadingWorkouts": "Reading workouts...",
+  "importHealthReadingWorkouts": "Reading workouts…",
   "@importHealthReadingWorkouts": {
     "description": "Status while reading workouts from the health store"
   },
@@ -339,7 +339,7 @@
       }
     }
   },
-  "importStatusSavingLocally": "Saving locally...",
+  "importStatusSavingLocally": "Saving locally…",
   "@importStatusSavingLocally": {
     "description": "Status while saving imported runs to the local store"
   },
@@ -364,7 +364,7 @@
       }
     }
   },
-  "importStatusSyncingToCloud": "Syncing to cloud...",
+  "importStatusSyncingToCloud": "Syncing to cloud…",
   "@importStatusSyncingToCloud": {
     "description": "Status while pushing imported runs to the cloud"
   },
@@ -380,7 +380,7 @@
       }
     }
   },
-  "importStatusReadingCsv": "Reading CSV...",
+  "importStatusReadingCsv": "Reading CSV…",
   "@importStatusReadingCsv": {
     "description": "Status while reading the selected CSV file"
   },
@@ -453,7 +453,7 @@
       }
     }
   },
-  "importStatusReadingExport": "Reading export...",
+  "importStatusReadingExport": "Reading export…",
   "@importStatusReadingExport": {
     "description": "Status while reading the Strava export ZIP"
   },
@@ -547,7 +547,7 @@
   "@importErrorsHeader": {
     "description": "Header above the list of per-file import errors"
   },
-  "importErrorsMore": "... and {count} more",
+  "importErrorsMore": "… and {count} more",
   "@importErrorsMore": {
     "description": "Truncation line when more than ten import errors exist",
     "placeholders": {
@@ -794,9 +794,9 @@
     }
   },
   "importHealthRoutesAllowButton": "Allow map import",
-  "importHealthRoutesRequesting": "Asking Health Connect for map access...",
+  "importHealthRoutesRequesting": "Asking Health Connect for map access…",
   "importHealthRoutesDenied": "Map access not granted. Imports stay summary-only — you can change this in Health Connect at any time.",
-  "importHealthRoutesAdding": "Adding maps to imported activities...",
+  "importHealthRoutesAdding": "Adding maps to imported activities…",
   "importHealthRoutesAdded": "{count, plural, =0{No maps could be added.} one{Added a map to 1 activity.} other{Added maps to {count} activities.}}",
   "@importHealthRoutesAdded": {
     "description": "Status after backfilling maps onto already-imported activities",
@@ -3011,7 +3011,7 @@
   "@runSynced": {
     "description": "Status on the finish summary when the run uploaded successfully"
   },
-  "runSyncing": "Syncing...",
+  "runSyncing": "Syncing…",
   "@runSyncing": {
     "description": "Status on the finish summary while the run is uploading"
   },
@@ -4322,7 +4322,7 @@
   "@runDetailDelete": {
     "description": "Confirm action in the delete-run dialog"
   },
-  "runDetailLoadingGps": "Loading GPS data...",
+  "runDetailLoadingGps": "Loading GPS data…",
   "@runDetailLoadingGps": {
     "description": "Overlay shown on the run-detail map while the GPS track downloads"
   },
@@ -6594,7 +6594,7 @@
   "@exploreRoutesModeNearMe": {
     "description": "Mode-toggle label for the near-me mode"
   },
-  "exploreRoutesSearchHint": "Search routes by name...",
+  "exploreRoutesSearchHint": "Search routes by name…",
   "@exploreRoutesSearchHint": {
     "description": "Placeholder in the explore search field"
   },
@@ -16494,7 +16494,7 @@
       }
     }
   },
-  "liveRunMapWaitingGps": "Waiting for GPS...",
+  "liveRunMapWaitingGps": "Waiting for GPS…",
   "@liveRunMapWaitingGps": {
     "description": "Overlay shown while waiting for the first GPS fix"
   },

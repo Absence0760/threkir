@@ -373,6 +373,21 @@ void main() {
         }
       });
 
+      // Three ASCII full stops can wrap between the dots, and the catalogues
+      // already wrote the one-character ellipsis in over a hundred strings;
+      // a dozen per locale used the other spelling.
+      test('an ellipsis is the single character, never three full stops', () {
+        final offenders = [
+          for (final key in keys)
+            if ((arb[key] as String).contains('...')) key,
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason: 'app_$tag.arb: write "…" (U+2026), not "..."',
+        );
+      });
+
       test('placeholder sets are faithful to the English value', () {
         for (final key in enKeys) {
           if (!keys.contains(key)) continue;

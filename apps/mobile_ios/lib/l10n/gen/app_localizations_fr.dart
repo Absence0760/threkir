@@ -3399,7 +3399,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailDelete => 'Supprimer';
 
   @override
-  String get runDetailLoadingGps => 'Chargement des données GPS...';
+  String get runDetailLoadingGps => 'Chargement des données GPS…';
 
   @override
   String get runDetailGpsUnavailable => 'Aucune trace GPS hors ligne';
@@ -5160,7 +5160,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'À proximité';
 
   @override
-  String get exploreRoutesSearchHint => 'Rechercher des itinéraires par nom...';
+  String get exploreRoutesSearchHint => 'Rechercher des itinéraires par nom…';
 
   @override
   String get exploreRoutesFeatured => 'En vedette';
@@ -12639,7 +12639,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'En attente du GPS...';
+  String get liveRunMapWaitingGps => 'En attente du GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>

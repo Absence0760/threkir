@@ -224,7 +224,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   List<cm.Waypoint> _displayWaypoints = const [];
 
   // With no line to draw, LiveRunMap falls back to its live-recording
-  // "Waiting for GPS..." state, which is meaningless on a route page. These
+  // "Waiting for GPS…" state, which is meaningless on a route page. These
   // let the map slot say what actually happened instead.
   bool _lineLoading = true;
   bool _lineFailed = false;
@@ -338,7 +338,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // constructor defaults to `userId = ''`). Treat empty-ownerId as
     // "owned by the current viewer" so the user can preview the route
     // they just saved without waiting for sync to land. Without this,
-    // opening a freshly-built route shows "Waiting for GPS..." instead
+    // opening a freshly-built route shows "Waiting for GPS…" instead
     // of the polyline — the user's report.
     if (viewerId != null && (viewerId == ownerId || ownerId.isEmpty)) {
       setState(() {

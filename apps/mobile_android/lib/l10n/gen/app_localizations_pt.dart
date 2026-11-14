@@ -256,7 +256,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'A solicitar permissão de $label...';
+    return 'A solicitar permissão de $label…';
   }
 
   @override
@@ -265,7 +265,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'A ler treinos...';
+  String get importHealthReadingWorkouts => 'A ler treinos…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -273,7 +273,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'A guardar localmente...';
+  String get importStatusSavingLocally => 'A guardar localmente…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -292,7 +292,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud => 'A sincronizar com a nuvem...';
+  String get importStatusSyncingToCloud => 'A sincronizar com a nuvem…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -300,7 +300,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'A ler CSV...';
+  String get importStatusReadingCsv => 'A ler CSV…';
 
   @override
   String importCsvFailed(Object error) {
@@ -367,7 +367,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'A ler exportação...';
+  String get importStatusReadingExport => 'A ler exportação…';
 
   @override
   String importStravaFailed(Object error) {
@@ -442,7 +442,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... e mais $count';
+    return '… e mais $count';
   }
 
   @override
@@ -634,7 +634,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'A solicitar acesso aos mapas à Conexão Saúde...';
+      'A solicitar acesso aos mapas à Conexão Saúde…';
 
   @override
   String get importHealthRoutesDenied =>
@@ -642,7 +642,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthRoutesAdding =>
-      'A adicionar mapas às atividades importadas...';
+      'A adicionar mapas às atividades importadas…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -3396,7 +3396,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailDelete => 'Eliminar';
 
   @override
-  String get runDetailLoadingGps => 'A carregar dados de GPS...';
+  String get runDetailLoadingGps => 'A carregar dados de GPS…';
 
   @override
   String get runDetailGpsUnavailable => 'Trajeto de GPS indisponível offline';
@@ -12617,7 +12617,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'A aguardar GPS...';
+  String get liveRunMapWaitingGps => 'A aguardar GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>
@@ -24394,7 +24394,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'Solicitando permissão de $label...';
+    return 'Solicitando permissão de $label…';
   }
 
   @override
@@ -24403,7 +24403,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'Lendo treinos...';
+  String get importHealthReadingWorkouts => 'Lendo treinos…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -24411,7 +24411,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get importStatusSavingLocally => 'Salvando localmente...';
+  String get importStatusSavingLocally => 'Salvando localmente…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -24430,7 +24430,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get importStatusSyncingToCloud => 'Sincronizando com a nuvem...';
+  String get importStatusSyncingToCloud => 'Sincronizando com a nuvem…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -24438,7 +24438,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get importStatusReadingCsv => 'Lendo CSV...';
+  String get importStatusReadingCsv => 'Lendo CSV…';
 
   @override
   String importCsvFailed(Object error) {
@@ -24505,7 +24505,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get importStatusReadingExport => 'Lendo exportação...';
+  String get importStatusReadingExport => 'Lendo exportação…';
 
   @override
   String importStravaFailed(Object error) {
@@ -24579,7 +24579,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String importErrorsMore(Object count) {
-    return '... e mais $count';
+    return '… e mais $count';
   }
 
   @override
@@ -24771,7 +24771,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acesso aos mapas à Conexão Saúde...';
+      'Solicitando acesso aos mapas à Conexão Saúde…';
 
   @override
   String get importHealthRoutesDenied =>
@@ -24779,7 +24779,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthRoutesAdding =>
-      'Adicionando mapas às atividades importadas...';
+      'Adicionando mapas às atividades importadas…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -27532,7 +27532,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runDetailDelete => 'Excluir';
 
   @override
-  String get runDetailLoadingGps => 'Carregando dados de GPS...';
+  String get runDetailLoadingGps => 'Carregando dados de GPS…';
 
   @override
   String get runDetailGpsUnavailable => 'Trajeto de GPS indisponível offline';
@@ -36740,7 +36740,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'Aguardando GPS...';
+  String get liveRunMapWaitingGps => 'Aguardando GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>

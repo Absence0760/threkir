@@ -253,7 +253,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return '$label-Berechtigung wird angefordert...';
+    return '$label-Berechtigung wird angefordert…';
   }
 
   @override
@@ -262,7 +262,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'Workouts werden gelesen...';
+  String get importHealthReadingWorkouts => 'Workouts werden gelesen…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -270,7 +270,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'Wird lokal gespeichert...';
+  String get importStatusSavingLocally => 'Wird lokal gespeichert…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -289,8 +289,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud =>
-      'Wird in die Cloud synchronisiert...';
+  String get importStatusSyncingToCloud => 'Wird in die Cloud synchronisiert…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -298,7 +297,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'CSV wird gelesen...';
+  String get importStatusReadingCsv => 'CSV wird gelesen…';
 
   @override
   String importCsvFailed(Object error) {
@@ -362,7 +361,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'Export wird gelesen...';
+  String get importStatusReadingExport => 'Export wird gelesen…';
 
   @override
   String importStravaFailed(Object error) {
@@ -436,7 +435,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... und $count weitere';
+    return '… und $count weitere';
   }
 
   @override
@@ -627,7 +626,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Kartenzugriff wird bei Health Connect angefragt...';
+      'Kartenzugriff wird bei Health Connect angefragt…';
 
   @override
   String get importHealthRoutesDenied =>
@@ -635,7 +634,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthRoutesAdding =>
-      'Karten werden zu importierten Aktivitäten hinzugefügt...';
+      'Karten werden zu importierten Aktivitäten hinzugefügt…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -3393,7 +3392,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailDelete => 'Löschen';
 
   @override
-  String get runDetailLoadingGps => 'GPS-Daten werden geladen...';
+  String get runDetailLoadingGps => 'GPS-Daten werden geladen…';
 
   @override
   String get runDetailGpsUnavailable =>
@@ -5163,7 +5162,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'In meiner Nähe';
 
   @override
-  String get exploreRoutesSearchHint => 'Routen nach Namen suchen...';
+  String get exploreRoutesSearchHint => 'Routen nach Namen suchen…';
 
   @override
   String get exploreRoutesFeatured => 'Empfohlen';
@@ -12609,7 +12608,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'Warte auf GPS...';
+  String get liveRunMapWaitingGps => 'Warte auf GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>

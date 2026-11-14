@@ -60,15 +60,26 @@ function source(n: number, cap = Infinity) {
 }
 
 Deno.test('walkKeyset — the copy asks for the same pages and returns the same walk', async () => {
-	for (const [n, pageSize, cap] of [[0, 3, Infinity], [7, 3, Infinity], [6, 3, Infinity], [9, 4, 2]] as const) {
+	const cases: Array<[number, number, number, number | null | undefined]> = [
+		[0, 3, Infinity, undefined],
+		[7, 3, Infinity, undefined],
+		[6, 3, Infinity, undefined],
+		[2, 4, Infinity, undefined],
+		[2, 4, Infinity, null],
+		[9, 4, 2, null],
+		[9, 4, 2, 2],
+	];
+	for (const [n, pageSize, cap, maxRows] of cases) {
 		const a = source(n, cap);
 		const b = source(n, cap);
-		const da = await deno.walkKeyset(ORDERS[0], a.fetchPage, { pageSize });
-		const wb = await web.walkKeyset(ORDERS[0], b.fetchPage, { pageSize });
-		assertEquals(da, wb, `n=${n} pageSize=${pageSize} cap=${cap}`);
+		const opts = maxRows === undefined ? { pageSize } : { pageSize, maxRows };
+		const da = await deno.walkKeyset(ORDERS[0], a.fetchPage, opts);
+		const wb = await web.walkKeyset(ORDERS[0], b.fetchPage, opts);
+		assertEquals(da, wb, `n=${n} pageSize=${pageSize} cap=${cap} maxRows=${maxRows}`);
 		assertEquals(a.calls, b.calls);
 	}
 	assertEquals(deno.KEYSET_WALK_PAGE_SIZE, web.KEYSET_WALK_PAGE_SIZE);
+	assertEquals(deno.POSTGREST_MAX_ROWS, web.POSTGREST_MAX_ROWS);
 });
 
 Deno.test('walkKeyset — the copy ends a stalled or failing walk the same way', async () => {
@@ -80,6 +91,8 @@ Deno.test('walkKeyset — the copy ends a stalled or failing walk the same way',
 	await Promise.all([
 		assertRejects(() => deno.walkKeyset(ORDERS[0], failing, { pageSize: 0 })),
 		assertRejects(() => web.walkKeyset(ORDERS[0], failing, { pageSize: 0 })),
+		assertRejects(() => deno.walkKeyset(ORDERS[0], failing, { maxRows: 0 })),
+		assertRejects(() => web.walkKeyset(ORDERS[0], failing, { maxRows: 0 })),
 	]);
 });
 

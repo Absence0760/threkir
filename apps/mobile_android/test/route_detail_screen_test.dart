@@ -683,13 +683,13 @@ void main() {
             "Couldn't load the route line. Check your connection and try again.");
         await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
             describe: 'the load-failed placeholder');
-        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Waiting for GPS…'), findsNothing);
 
         await tester.tap(find.widgetWithText(TextButton, 'Try again'));
         await pumpUntil(tester, () => failed.evaluate().isEmpty,
             describe: 'the retried clip to replace the placeholder');
         expect(api.clipCalls, 2);
-        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Waiting for GPS…'), findsNothing);
         expect(find.text('Try again'), findsNothing);
         // The map that mounted queues zero-length tile-fetch timers.
         await tester.pump(Duration.zero);
@@ -702,7 +702,7 @@ void main() {
         await _pump(tester, _route(waypoints: line, userId: 'owner'),
             apiClient: api);
         expect(find.byType(CircularProgressIndicator), findsWidgets);
-        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Waiting for GPS…'), findsNothing);
         pending.complete(const []);
         await pumpUntil(
             tester,
@@ -778,10 +778,10 @@ void main() {
 
     testWidgets(
       'locally-built route (empty userId) skips the clip-RPC and '
-      'renders the row waypoints — no "Waiting for GPS..." stuck state',
+      'renders the row waypoints — no "Waiting for GPS…" stuck state',
       (tester) async {
         // Bug the user surfaced: after building a route, opening its
-        // detail page showed "Waiting for GPS..." instead of the
+        // detail page showed "Waiting for GPS…" instead of the
         // polyline. Root cause: locally-built routes carry an empty
         // `userId` (the Route constructor defaults to '') until the
         // SyncService cycle pushes them to the cloud. The
@@ -805,10 +805,10 @@ void main() {
           isPublic: false,
         );
         await _pump(tester, localRoute);
-        // The "Waiting for GPS..." placeholder should NOT appear —
+        // The "Waiting for GPS…" placeholder should NOT appear —
         // the row waypoints carry the polyline.
         expect(
-          find.text('Waiting for GPS...'),
+          find.text('Waiting for GPS…'),
           findsNothing,
           reason:
               'Locally-built routes (empty userId) must render their row '

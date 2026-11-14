@@ -576,7 +576,7 @@
             "items": [
               "**Créer sur Threkir** ouvre le formulaire d'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.",
               "**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.",
-              "**Délier** supprime le lien. Aucun des deux clubs n'est modifié."
+              "**Dissocier** supprime le lien. Aucun des deux clubs n'est modifié."
             ]
           },
           {
@@ -2385,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Aucun badge** : le téléphone ou la montre du coureur a chronométré l'arrivée, au moment où il a franchi la ligne d'arrivée, ou au cercle de 30 m autour de l'arrivée sur un parcours sans ligne d'arrivée. C'est le cas normal : ni le web ni l'app mobile ne le signalent.",
+              "*Aucun badge* : le téléphone ou la montre du coureur a chronométré l'arrivée, au moment où il a franchi la ligne d'arrivée, ou au cercle de 30 m autour de l'arrivée sur un parcours sans ligne d'arrivée. C'est le cas normal : ni le web ni l'app mobile ne le signalent.",
               "**Manuel** : le coureur a terminé à la main, soit avec **Terminer la course** après avoir couvert au moins 90 % du parcours, soit avec **Soumettre mon temps** sur le web pendant la course.",
               "**Organisateur** (sur le web, **Modifié par l'organisateur**) : l'organisateur a saisi ou corrigé ce résultat, ou le coureur a été marqué DNF quand l'organisateur a terminé la course."
             ]

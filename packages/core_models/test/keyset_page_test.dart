@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
@@ -430,28 +432,70 @@ void main() {
     expect(_ids(offsetRows).where((id) => id == sorted[1]['id']).length, 2);
   });
 
-  test('walkKeyset: a server capping below the page size is not read as '
-      'exhausted', () async {
+  test(
+      'walkKeyset: a server capping below the ask at the declared cap is read '
+      'on, not taken as exhausted', () async {
     final server = _WalkServer(walkKeys, () => _data, cap: 2);
-    final rows = await walkKeyset(walkKeys, server.fetchPage, pageSize: 5);
+    final rows = await walkKeyset(walkKeys, server.fetchPage,
+        pageSize: 5, maxRows: 2);
     expect(_ids(rows), _ids(_sortRows(walkKeys, _data)));
+    expect(server.calls.length, 4, reason: 'pages of 2, 2, 2 and the short 1');
   });
 
-  test('walkKeyset: a short first page costs one confirming read; a full last '
-      'page one empty read', () async {
+  test(
+      'walkKeyset: with no known cap a short first page costs one confirming '
+      'read, and later pages learn the cap', () async {
     final short = _WalkServer(walkKeys, () => _data);
     expect(
-        (await walkKeyset(walkKeys, short.fetchPage, pageSize: 10)).length, 7);
+        (await walkKeyset(walkKeys, short.fetchPage,
+                pageSize: 10, maxRows: null))
+            .length,
+        7);
     expect(short.calls.length, 2);
     expect(short.calls[0].after, isNull, reason: 'the first page is unfiltered');
 
+    final capping = _WalkServer(walkKeys, () => _data, cap: 2);
+    final capped = await walkKeyset(walkKeys, capping.fetchPage,
+        pageSize: 5, maxRows: null);
+    expect(_ids(capped), _ids(_sortRows(walkKeys, _data)));
+    expect(capping.calls.length, 4,
+        reason: 'the page of 1 is shorter than the 2 the server already sent');
+  });
+
+  test('walkKeyset: a short page under the declared cap is the end, in one '
+      'request', () async {
+    final asked = _WalkServer(walkKeys, () => _data);
+    final rows = await walkKeyset(walkKeys, asked.fetchPage, pageSize: 10);
+    expect(_ids(rows), _ids(_sortRows(walkKeys, _data)));
+    expect(asked.calls.length, 1);
+
+    final defaults = _WalkServer(walkKeys, () => _data);
+    expect((await walkKeyset(walkKeys, defaults.fetchPage)).length, 7);
+    expect(defaults.calls.length, 1);
+    expect(defaults.calls[0].after, isNull);
+    expect(defaults.calls[0].limit, kPostgrestMaxRows);
+  });
+
+  test('walkKeyset: an exact multiple of the page or the cap costs one empty '
+      'read', () async {
     final exact = _WalkServer(walkKeys, () => _data.sublist(0, 6));
     expect(
         (await walkKeyset(walkKeys, exact.fetchPage, pageSize: 3)).length, 6);
     expect(exact.calls.length, 3);
 
+    final atCap = _WalkServer(walkKeys, () => _data.sublist(0, 6), cap: 2);
+    expect(
+        (await walkKeyset(walkKeys, atCap.fetchPage, pageSize: 5, maxRows: 2))
+            .length,
+        6);
+    expect(atCap.calls.length, 4);
+  });
+
+  test('walkKeyset: an empty result is one request', () async {
     final empty = _WalkServer(walkKeys, () => <Row>[]);
     expect(await walkKeyset(walkKeys, empty.fetchPage), isEmpty);
+    expect(empty.calls.length, 1);
+    expect(empty.calls[0].after, isNull);
     expect(empty.calls[0].limit, 1000);
   });
 
@@ -503,6 +547,32 @@ void main() {
       walkKeyset(walkKeys, server.fetchPage, pageSize: 0),
       throwsArgumentError,
     );
+  });
+
+  test('walkKeyset: a non-positive max rows is refused', () async {
+    final server = _WalkServer(walkKeys, () => _data);
+    await expectLater(
+      walkKeyset(walkKeys, server.fetchPage, maxRows: 0),
+      throwsArgumentError,
+    );
+    await expectLater(
+      walkKeyset(walkKeys, server.fetchPage, maxRows: -1),
+      throwsArgumentError,
+    );
+  });
+
+  test('walkKeyset: the declared cap is the db.max-rows config.toml pins',
+      () {
+    final config =
+        File('../../apps/backend/supabase/config.toml').readAsStringSync();
+    final api = RegExp(r'^\[api\]\n([\s\S]*?)(?=^\[)', multiLine: true)
+        .firstMatch(config)!
+        .group(1)!;
+    final pinned = RegExp(r'^max_rows\s*=\s*(\d+)\s*$', multiLine: true)
+        .firstMatch(api);
+    expect(pinned, isNotNull, reason: '[api] must pin max_rows');
+    expect(int.parse(pinned!.group(1)!), kPostgrestMaxRows);
+    expect(kKeysetWalkPageSize, kPostgrestMaxRows);
   });
 
   // ── literalSubstringPattern ──────────────────────────────────────────────

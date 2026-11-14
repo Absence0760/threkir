@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'using-help',
 	title: 'Como encontrar ajuda no app',
-	summary: 'Onde ficam os guias de ajuda, como pesquisar neles e como ir de uma tela direto para o guia que a explica.',
+	summary: 'Onde ficam os guias de ajuda, como buscar neles e como ir de uma tela direto para o guia que a explica.',
 	sections: [
 		{
 			heading: 'Como abrir a ajuda',
@@ -22,11 +22,11 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Como pesquisar nos guias',
+			heading: 'Como buscar nos guias',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Digite uma ou duas palavras em **Pesquisar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Pesquisar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto.',
+					text: 'Digite uma ou duas palavras em **Buscar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Buscar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto.',
 				},
 				{
 					type: 'note',

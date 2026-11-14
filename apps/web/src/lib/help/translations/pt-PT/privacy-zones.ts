@@ -53,7 +53,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Abra o separador **Tu**, depois **Privacidade e partilha**, e toque em **Zonas de privacidade**.',
-						'Toque no mapa para colocar uma zona. Use **Procurar lugares…** ou **Localizar-me** para mover o mapa primeiro.',
+						'Toque no mapa para colocar uma zona. Use **Pesquisar lugares…** ou **Localizar-me** para mover o mapa primeiro.',
 						'Ajuste o controlo deslizante **Raio**.',
 						'Toque em **Guardar**. Nada muda até guardar.',
 					],

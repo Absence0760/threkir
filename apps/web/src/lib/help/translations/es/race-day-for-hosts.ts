@@ -40,7 +40,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS.',
+					text: 'Los corredores que dijeron **Me apunto** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS.',
 				},
 				{
 					type: 'note',

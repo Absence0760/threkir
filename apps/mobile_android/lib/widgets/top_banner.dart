@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show PinnedHeaderScope;
 
-import '../return_to_shell.dart' show topRoute;
-
 /// Top-anchored notification pill — the canonical replacement for
 /// `ScaffoldMessenger.of(context).showSnackBar(...)` across the mobile
 /// app. Material's floating SnackBar docks at the bottom and on the
@@ -15,11 +13,10 @@ import '../return_to_shell.dart' show topRoute;
 ///
 /// Renders via [Overlay] so callers don't need to plumb a banner into
 /// every screen's [Scaffold] body. The pill auto-positions just below
-/// the lowest AppBar of every Scaffold enclosing the calling context; on
-/// AppBar-less screens it sits under the view's status bar, whatever
-/// SafeArea the caller lives in. A context with no enclosing Scaffold — a
-/// screen State's own, or the root navigator's — measures the AppBars of
-/// its route, or of the screen on top.
+/// the header on screen — the lowest AppBar or pinned header (a root page's
+/// title row, a hub's tab strip) that is showing — whichever context it is
+/// said from; with no header on screen it sits under the view's status bar,
+/// whatever SafeArea the caller lives in.
 ///
 /// Single-banner semantics, mirroring SnackBar: a new call coalesces
 /// the existing entry — there is never more than one banner on screen.
@@ -79,11 +76,9 @@ void showTopBanner(
   final statusBar = view != null
       ? MediaQueryData.fromView(view).padding.top
       : MediaQuery.paddingOf(context).top;
-  final appBarBottom = _appBarBottomFor(context, overlay);
-  final headerBottom = _pinnedHeaderBottomFor(context, overlay);
-  final topInset = [appBarBottom, headerBottom, statusBar]
-          .reduce((a, b) => a > b ? a : b) +
-      12;
+  final headerBottom = _headerBottomFor(overlay);
+  final topInset =
+      (headerBottom > statusBar ? headerBottom : statusBar) + 12;
 
   _current?.dismiss();
   _current = null;
@@ -122,72 +117,63 @@ void showTopBanner(
   _current = tracker;
 }
 
-/// The lowest app-bar edge on screen, in the overlay's coordinates.
+/// The bottom of the header on screen — the lowest app bar and the lowest
+/// pinned header (a root page's title row, a hub's tab strip under it) — in
+/// the overlay's coordinates, or 0 when nothing on screen has one.
 ///
-/// Every enclosing Scaffold counts, not only the nearest: a Scaffold nested
-/// in another one's body (a tab inside a shell) has no app bar of its own,
-/// and the nearest alone put the pill over the outer one. A context with no
-/// enclosing Scaffold — a screen State's own `context`, which sits above the
-/// Scaffold it builds, or the root navigator's — measures the route instead.
-double _appBarBottomFor(BuildContext context, OverlayState overlay) {
+/// It reads what is on screen, not what encloses the caller. A banner is
+/// said from a tab of a shell, a screen State above its own Scaffold, a
+/// sheet, the root navigator after the screen that started the work has
+/// gone, or a service holding only the navigator's context; and the four
+/// root pages stay alive in the shell, each with its own header, while only
+/// one of them shows. Searching from the caller found a hidden tab's header,
+/// or none, and the pill covered the visible page's title row (issue #1374).
+/// So the whole overlay is searched, and a header counts only when it is
+/// painted where the overlay can show it: a route under an opaque one is in
+/// a `TickerMode` that is off, a kept-alive page the pager has moved away is
+/// one its parent does not paint, and a page laid out beside the viewport is
+/// outside the overlay's bounds. `TickerMode` alone is not enough, because a
+/// pager keeps its kept-alive pages' tickers on.
+double _headerBottomFor(OverlayState overlay) {
   final overlayBox = overlay.context.findRenderObject();
+  if (overlayBox is! RenderBox || !overlayBox.hasSize) return 0;
+  final bounds = Offset.zero & overlayBox.size;
   var bottom = 0.0;
-  void measure(ScaffoldState scaffold) {
-    final height = scaffold.appBarMaxHeight;
-    if (height == null) return;
-    var top = 0.0;
-    final box = scaffold.context.findRenderObject();
-    if (box is RenderBox && box.attached && box.hasSize) {
-      top = box
-          .localToGlobal(Offset.zero,
-              ancestor: overlayBox is RenderBox ? overlayBox : null)
-          .dy;
+
+  Rect? shown(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    RenderObject child = box;
+    for (var parent = child.parent; ; parent = child.parent) {
+      if (parent == null || !parent.paintsChild(child)) return null;
+      if (identical(parent, overlayBox)) break;
+      child = parent;
     }
-    if (top + height > bottom) bottom = top + height;
+    final rect = MatrixUtils.transformRect(
+        box.getTransformTo(overlayBox), Offset.zero & box.size);
+    return rect.overlaps(bounds) ? rect : null;
   }
 
-  context.visitAncestorElements((element) {
-    if (element is StatefulElement && element.state is ScaffoldState) {
-      measure(element.state as ScaffoldState);
-    }
-    return true;
-  });
-  if (bottom > 0 || Scaffold.maybeOf(context) != null) return bottom;
-
-  var route = ModalRoute.of(context);
-  if (route == null) {
-    // Above every route — a banner said after its screen was popped. Without
-    // this it drew over the title of whatever screen was left showing.
-    final navigator = Navigator.maybeOf(context, rootNavigator: true);
-    final candidate = navigator == null ? null : topRoute(navigator);
-    if (candidate is ModalRoute) route = candidate;
-  }
-  final subtree = route?.subtreeContext;
-  if (subtree == null) return 0;
   void visit(Element element) {
+    final widget = element.widget;
+    if (widget is TickerMode && !widget.enabled) return;
+    if (widget is Offstage && widget.offstage) return;
     if (element is StatefulElement && element.state is ScaffoldState) {
-      measure(element.state as ScaffoldState);
+      final height = (element.state as ScaffoldState).appBarMaxHeight;
+      final rect = height == null ? null : shown(element);
+      if (rect != null && rect.top + height! > bottom) {
+        bottom = rect.top + height;
+      }
+    } else if (widget is PinnedHeaderScope) {
+      final header = widget.headerKey.currentContext;
+      final rect = header == null ? null : shown(header);
+      if (rect != null && rect.bottom > bottom) bottom = rect.bottom;
     }
     element.visitChildElements(visit);
   }
 
-  subtree.visitChildElements(visit);
+  overlay.context.visitChildElements(visit);
   return bottom;
-}
-
-/// The bottom of the calling page's pinned header (a hub's tab strip, under
-/// its large title), in the overlay's coordinates, or 0 on a page without
-/// one. The strip is not an app bar, so a banner placed under the bar alone
-/// covered it at 2x text (issue #1374).
-double _pinnedHeaderBottomFor(BuildContext context, OverlayState overlay) {
-  final box = PinnedHeaderScope.headerKeyOf(context)?.currentContext
-      ?.findRenderObject();
-  if (box is! RenderBox || !box.attached || !box.hasSize) return 0;
-  final overlayBox = overlay.context.findRenderObject();
-  return box
-      .localToGlobal(Offset(0, box.size.height),
-          ancestor: overlayBox is RenderBox ? overlayBox : null)
-      .dy;
 }
 
 /// Dismiss the currently visible banner, if any. Safe to call from

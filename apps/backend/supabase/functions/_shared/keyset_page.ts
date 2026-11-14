@@ -99,14 +99,24 @@ export interface KeysetWalk<T> {
 	error: unknown;
 }
 
-/// The size a walk ASKS for: PostgREST's `db.max-rows`. Deliberately not
-/// assumed to be the size it gets — see `walkKeyset`.
-export const KEYSET_WALK_PAGE_SIZE = 1000;
+/// PostgREST's `db.max-rows`: the most rows any one response carries, whatever
+/// the request asked for. `[api] max_rows` in apps/backend/supabase/config.toml
+/// pins it for the local and CI stacks (a test fails when the two differ), and
+/// every backend release fails its "Sync production state" step when the
+/// production project's value is lower. A walk reads it as a proven lower
+/// bound on the cap — see `walkKeyset`.
+export const POSTGREST_MAX_ROWS = 1000;
+
+/// The size a walk ASKS for: the cap, since asking for more buys nothing.
+export const KEYSET_WALK_PAGE_SIZE = POSTGREST_MAX_ROWS;
 
 export interface WalkKeysetOptions {
 	pageSize?: number;
 	/// Walk only the rows strictly after this cursor.
 	start?: KeysetCursor | null;
+	/// A lower bound on the server's per-response cap; `POSTGREST_MAX_ROWS`
+	/// when omitted, and null for a server whose cap is unknown.
+	maxRows?: number | null;
 }
 
 function sameCursor(a: KeysetCursor, b: KeysetCursor): boolean {
@@ -125,12 +135,16 @@ function sameCursor(a: KeysetCursor, b: KeysetCursor): boolean {
 /// walk names positions instead, so the same delete skips a row and the same
 /// insert repeats one.
 ///
-/// **A short page is not proof of exhaustion.** A server whose `db.max-rows`
-/// is below `pageSize` answers every page short with a 200, so the walk stops
-/// only on an empty page, or on one both short of the ask AND shorter than the
-/// page before it — the shape a genuinely exhausted result set has and a
-/// consistently-capping one does not. A short first page therefore costs one
-/// confirming read.
+/// **A short page is proof of exhaustion only below the cap.** A server whose
+/// `db.max-rows` is below `pageSize` answers every page short with a 200, so a
+/// page short of the ask may still have rows behind it. The server returns
+/// `min(ask, cap)` rows while it has them, so a page is the last one when it is
+/// short of BOTH the ask and a known lower bound on the cap: `maxRows` (the
+/// deployment's declared cap) or the longest page this walk has received, since
+/// the cap can be no lower than a page it sent. Otherwise the walk reads on and
+/// stops on an empty page. With the declared cap, a short first page of an ask
+/// at or under it is the whole result in one request; with `maxRows: null`, or
+/// a page that lands exactly on the cap, it costs one confirming read.
 ///
 /// Never throws for a page error: a walk that dies half-way still holds rows
 /// worth keeping, and `complete` is how the caller tells that apart from a
@@ -151,9 +165,13 @@ export async function walkKeyset<T extends object>(
 	if (!Number.isInteger(pageSize) || pageSize <= 0) {
 		throw new Error(`keyset: page size must be a positive integer: ${pageSize}`);
 	}
+	const maxRows = opts.maxRows === undefined ? POSTGREST_MAX_ROWS : opts.maxRows;
+	if (maxRows !== null && (!Number.isInteger(maxRows) || maxRows <= 0)) {
+		throw new Error(`keyset: max rows must be a positive integer or null: ${maxRows}`);
+	}
 	const rows: T[] = [];
 	let cursor: KeysetCursor | null = opts.start ?? null;
-	let previous: number | null = null;
+	let capFloor = maxRows ?? 0;
 	for (;;) {
 		let after: string | null = null;
 		if (cursor !== null) {
@@ -169,10 +187,10 @@ export async function walkKeyset<T extends object>(
 			return { rows, complete: false, error: new Error('keyset: the walk stopped advancing') };
 		}
 		rows.push(...page);
-		if (page.length < pageSize && previous !== null && page.length < previous) {
+		if (page.length < pageSize && page.length < capFloor) {
 			return { rows, complete: true, error: null };
 		}
-		previous = page.length;
+		capFloor = Math.max(capFloor, page.length);
 		cursor = next;
 	}
 }

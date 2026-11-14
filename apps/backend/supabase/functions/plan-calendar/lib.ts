@@ -210,7 +210,7 @@ export const KIND_LABELS: Record<string, Record<FeedWorkoutKind, string>> = {
     tempo: 'Tempo',
     interval: 'Fractionné',
     marathon_pace: 'Allure marathon',
-    race: 'Course',
+    race: 'Épreuve',
     walk_run: 'Marche-course',
   },
   es: {

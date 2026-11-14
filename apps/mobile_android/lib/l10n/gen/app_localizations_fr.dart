@@ -410,7 +410,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importCsvCardDescription =>
-      'Chaque ligne du CSV devient une course manuelle (date, distance, durée, source). La trace de la carte n\'est pas dans le CSV, les courses importées n\'auront donc pas de tracé d\'itinéraire.';
+      'Chaque ligne du CSV devient une course manuelle (date, distance, durée, source). La trace GPS n\'est pas dans le CSV : les courses importées n\'auront donc pas de trace sur la carte.';
 
   @override
   String get importCsvButton => 'Importer un CSV';
@@ -603,7 +603,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthDescriptionIos =>
-      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. Apple Santé n\'expose pas les itinéraires GPS enregistrés par les apps tierces — les courses importées ainsi n\'auront pas de tracé sur la carte.';
+      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. Apple Santé n\'expose pas les traces GPS enregistrées par les apps tierces — les courses importées ainsi n\'auront pas de trace sur la carte.';
 
   @override
   String get importHealthDescriptionAndroid =>
@@ -2809,7 +2809,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPreciseLocationOff =>
-      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d\'enregistrer. Activez la position exacte dans les Réglages pour un tracé précis.';
+      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d\'enregistrer. Activez la position exacte dans les Réglages pour une trace précise.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3733,7 +3733,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'La distance de cette course sera recalculée à partir de son tracé GPS avec le filtre GPS amélioré, qui supprime la distance en trop due aux imprécisions du GPS. La distance enregistrée à l\'origine est conservée et affichée à côté de la nouvelle.';
+      'La distance de cette course sera recalculée à partir de sa trace GPS avec le filtre GPS amélioré, qui supprime la distance en trop due aux imprécisions du GPS. La distance enregistrée à l\'origine est conservée et affichée à côté de la nouvelle.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalculer';
@@ -3753,7 +3753,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
-      'Cette course n\'a pas de tracé GPS à partir duquel recalculer.';
+      'Cette course n\'a pas de trace GPS à partir de laquelle recalculer la distance.';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -9049,7 +9049,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsAccountBackupTracksPartialNotice(int missing, int total) {
-    return 'Votre dernière sauvegarde n\'a pas pu télécharger $missing des $total fichiers de tracé GPS. Toutes les courses sont dans l\'archive ; relancez l\'export pour récupérer les tracés. Son manifest.json indique complete: false.';
+    return 'Votre dernière sauvegarde n\'a pas pu télécharger $missing des $total fichiers de trace GPS. Toutes les courses sont dans l\'archive ; relancez l\'export pour récupérer les traces. Son manifest.json indique complete: false.';
   }
 
   @override
@@ -9190,7 +9190,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyZonesSubtitle =>
-      'Masque le début/la fin des tracés publics près de chez vous';
+      'Masque le début/la fin des traces publiques près de chez vous';
 
   @override
   String get settingsAccountSendErrorReports =>
@@ -9334,7 +9334,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsAccountFullBackupSubtitle =>
-      'Chaque course avec son tracé GPS, plus les itinéraires, le profil et les préférences. Restaurable sur le web ou Android.';
+      'Chaque course avec sa trace GPS, plus les itinéraires, le profil et les préférences. Restaurable sur le web ou Android.';
 
   @override
   String get settingsAccountExportCsv => 'Exporter les courses en CSV';
@@ -10291,7 +10291,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyZonesHint =>
-      'Touchez la carte pour ajouter une zone. Les tracés sur les surfaces publiques voient leur début et leur fin masqués au-delà du rayon de la zone.';
+      'Touchez la carte pour ajouter une zone. Les traces sur les surfaces publiques voient leur début et leur fin masqués au-delà du rayon de la zone.';
 
   @override
   String get privacyZonesSearchHint => 'Rechercher des lieux…';
@@ -10765,14 +10765,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Enregistre un tracé plus détaillé. La distance ne change pas.';
+      'Enregistre une trace plus détaillée. La distance ne change pas.';
 
   @override
-  String get prefsShowRawTrack => 'Afficher le tracé GPS brut';
+  String get prefsShowRawTrack => 'Afficher la trace GPS brute';
 
   @override
   String get prefsShowRawTrackSubtitle =>
-      'Affiche la ligne enregistrée non ajustée sur la carte de course, même lorsqu\'un tracé corrigé existe';
+      'Affiche la ligne enregistrée non ajustée sur la carte de course, même lorsqu\'une trace corrigée existe';
 
   @override
   String get prefsShowCalories => 'Afficher les estimations de calories';
@@ -12341,7 +12341,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareCardFileError => 'Impossible d\'exporter le fichier';
 
   @override
-  String get shareCardStyleCard => 'Carte avec tracé';
+  String get shareCardStyleCard => 'Carte avec trace';
 
   @override
   String get shareCardStylePhoto => 'Photo';
@@ -12379,7 +12379,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareCardLayoutStack => 'Empilé';
 
   @override
-  String get shareCardLayoutRoute => 'Tracé';
+  String get shareCardLayoutRoute => 'Trace';
 
   @override
   String get shareCardLayoutStrip => 'Bandeau';
@@ -22097,7 +22097,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de modifier le délai. Réessayez.';
 
   @override
-  String get streamerOverlayShowMap => 'Afficher le tracé du parcours';
+  String get streamerOverlayShowMap => 'Afficher la trace de la course';
 
   @override
   String get streamerOverlayShowMapHelp =>

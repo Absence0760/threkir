@@ -108,6 +108,7 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | finish | Arrivée (finish line); Terminé (status); Terminer (action) | |
 | DNF | DNF | web also "ABD" (`liveEvent.statusDnf`) and "Abandon" (`checkpoint.statusDnf`) — inconsistency 6 |
 | route | Itinéraire / Itinéraires | dominant; "Parcours" also used (41 / 48 strings), mostly for a race course |
+| track / trace (a recorded run's GPS line, its file, a raw or matched track) vs route line (a planned route's or course's drawn line) | **trace** (fem.) for what a run recorded — « trace GPS », « Afficher la trace GPS brute », « fichiers de trace GPS », « traces publiques » (privacy zones), « Carte avec trace » (run share card) · **tracé** (masc.) for the line of a planned route or course — « tracé de l'itinéraire », « Tracé du parcours © contributeurs d'OpenStreetMap », « un tracé qui quitte le sentier » | settled 2026-11-13 (#1374), both surfaces; 15 mobile strings moved from « tracé » to « trace » the same day. The participle *tracé* (« Parcours tracé par {club} », provenance « Tracé ») is the verb *tracer* and stays |
 | segment | Segment / Segments | |
 | club | Club / Clubs | |
 | event | Événement / Événements | |

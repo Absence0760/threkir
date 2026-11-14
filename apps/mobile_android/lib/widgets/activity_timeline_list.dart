@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart' show ActivityRow;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionAccents;
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, SectionAccents;
 
 import '../activity_timeline.dart';
 import '../l10n/date_format.dart';
@@ -126,28 +127,22 @@ class _ActivityRowTile extends StatelessWidget {
     final tappable =
         row.kind == ActivityRow.kindRun || row.kind == ActivityRow.kindLift;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: fill.withValues(alpha: 0.16),
-          child: Icon(icon, color: ink, size: 20),
-        ),
-        title: Text(primary,
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall),
-        subtitle: secondary.isEmpty
-            ? null
-            : Text(secondary, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: tappable
-            ? Icon(Icons.chevron_right, color: theme.colorScheme.outline)
-            : null,
-        onTap: switch (row.kind) {
-          'run' => () => onTapRun(row),
-          'lift' => () => onTapLift(row),
-          _ => null,
-        },
+    return ListCard.row(
+      dense: true,
+      leading: CircleAvatar(
+        backgroundColor: fill.withValues(alpha: 0.16),
+        child: Icon(icon, color: ink, size: 20),
       ),
+      title: primary,
+      titleMaxLines: 1,
+      subtitle: secondary.isEmpty ? null : secondary,
+      subtitleMaxLines: 1,
+      chevron: tappable,
+      onTap: switch (row.kind) {
+        'run' => () => onTapRun(row),
+        'lift' => () => onTapLift(row),
+        _ => null,
+      },
     );
   }
 

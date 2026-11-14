@@ -16,7 +16,7 @@ What they don't catch:
 - Whether Health Connect / HealthKit imports actually surface real workouts.
 - Visual regressions (we have no golden tests today — separate issue).
 
-Closing those gaps is the job of integration tests + e2e tests on a real device or emulator. **The harness exists, and CI runs its Android half** in the `mobile-android-e2e` job ([decisions § 1838](../architecture/decisions.md)); the iOS simulator half has no job. Both apps carry an `integration_test/` target ([decisions § 1820](../architecture/decisions.md)), byte-identical across the twins: `launch_onboarding_test.dart` cold-launches through the real `main()` and pages onboarding to the location disclosure, and `home_navigation_test.dart` reaches Home and switches destinations on the bottom nav. Run them locally with `flutter test integration_test -d <device-id>` from either app. They stop short of every OS dialog by design.
+Closing those gaps is the job of integration tests + e2e tests on a real device or emulator. **The harness exists, and CI runs its Android half** in the `mobile-android-e2e` job ([decisions § 1838](../architecture/decisions.md)); the iOS simulator half has no job. Both apps carry an `integration_test/` target ([decisions § 1820](../architecture/decisions.md)), byte-identical across the twins: `launch_onboarding_test.dart` cold-launches through the real `main()` and pages onboarding to the location disclosure, and `home_navigation_test.dart` reaches Home and switches destinations on the bottom nav. Run them locally with `flutter test integration_test -d <device-id>` from either app. They stop short of every OS dialog by design. A third suite, `integration_test/store/store_screenshots_capture.dart`, is not a test. It captures the store-listing screens and runs only through `flutter drive` from `.github/workflows/store-screenshots.yml`, against a seeded local Supabase stack (the first suite here that signs in, as § 1838 anticipated). Its name leaves off `_test.dart` so that `flutter test integration_test` and the backend-free `mobile-android-e2e` job never load it ([assets/store/README.md](../../assets/store/README.md)).
 
 ## What "e2e" can mean
 
@@ -50,7 +50,7 @@ Sample test scope (the first two bullets are what runs today):
 - App cold-launches to onboarding.
 - Permission rationale dialog renders.
 - Sign-in flow completes with the seed user against a `--dart-define=SUPABASE_URL=http://10.0.2.2:24321` stack started by the CI workflow.
-- Tap "Start run" → expect run-screen widget tree.
+- Tap the centre button captioned "Run" (it never says Start off the Run page) → expect the idle Run page, where the same button now reads "Start"; tap it → expect the 3-2-1 countdown, with the button reading "Cancel" (decisions § 2492). Today's workout Start → expect the countdown with the workout loaded, no second Start (issue #1374).
 
 Per-PR cost: ~15–20 min on an Ubuntu runner (free quota), one full APK build + one emulator boot + the test run. The biggest single time-sink is the emulator boot — `reactivecircus/android-emulator-runner` caches AVD snapshots between runs to amortise that.
 

@@ -8,7 +8,7 @@
 
 ## Park courses metric (2026-11-08, decisions § 2405)
 
-`park_courses` counts distinct park courses (not closed, in an active park) completed on in-window, non-DNF runs of the challenge's activity type; a team board counts distinct courses across the team. `challenges.park_region_code` (ISO 3166-2, refused on any other metric) narrows it to one region's parks, which is how the official yearly passport is set up; the create forms offer the metric without a region, and both detail pages say which region a regional challenge counts. Goals are a bare course count (`challengeGoalUnit` → `courses`). The clients cannot estimate it offline (`metricFromActivity` returns 0): efforts live in `global_segment_efforts`, so a new effort re-checks the runner's open park challenges and the daily sweep is the backstop. Migration `20271123002404`; pgTAP `park_course_badges_test.sql`; see [park_courses.md § Collections](park_courses.md#collections).
+`park_courses` counts distinct park courses (not closed, in an active park) completed on in-window, non-DNF runs of the challenge's activity type; a team board counts distinct courses across the team. `challenges.park_region_code` (ISO 3166-2, refused on any other metric) narrows it to one region's parks, which is how the official passports are set up (the monthly "Run 3 Virginia park courses" board, `scripts/official/catalogue/challenges/virginia-park-courses-a-month.json`, issue #1343; the yearly one waits for enough courses). A passport's window is the UTC month like every challenge, while each course's own monthly board runs on the park's local time, so an effort in the last hours of a month west of UTC can count for a course's board and for the next month's passport; the description says so; the create forms offer the metric without a region, and both detail pages say which region a regional challenge counts. Goals are a bare course count (`challengeGoalUnit` → `courses`). The clients cannot estimate it offline (`metricFromActivity` returns 0): efforts live in `global_segment_efforts`, so a new effort re-checks the runner's open park challenges and the daily sweep is the backstop. Migration `20271123002404`; pgTAP `park_course_badges_test.sql`; see [park_courses.md § Collections](park_courses.md#collections).
 
 ## On-pace projection (2026-07-01)
 
@@ -71,11 +71,11 @@ Web:
 - `apps/web/src/lib/core/data.ts` — all Supabase queries. Existing social helpers to mirror in style: `browseClubs` / `fetchMyClubs` / `fetchClubBySlug` / `enrichClubs` (client-side enrichment join, `1665`), `createClub` (`1704`), `joinClub` (`1833`). `fetchEventResults` / `submitEventResult`. Engagement counts via the `run_engagement_counts` RPC (`4660`) — the no-N+1 precedent.
 - `apps/web/src/lib/runs/race_leaderboard.ts#compareLeaderboard` — deterministic leaderboard tie-break (value desc → tiebreak → id). Reuse the **shape**; challenge ranking is a sibling pure helper.
 - `apps/web/src/lib/runs/streaks.ts#computeRunStreaks` (parity pair with `apps/mobile_android/lib/streaks.dart`) — pure streak math, reuse directly for the streak challenge metric.
-- `/social` hub: `apps/web/src/routes/social/+page.svelte` — ARIA tab strip (Feed / People / Clubs / Discover) with `?tab=` URL state, panels `SocialFeed` / `SocialPeople` / `SocialClubs` / `SocialDiscover` in `apps/web/src/lib/components/`.
+- `/social` hub: `apps/web/src/routes/social/+page.svelte` — ARIA tab strip (`Feed · Clubs · Events · Challenges · People`, the mobile order, decisions § 2493) with `?tab=` URL state (a saved `?tab=discover` is rewritten to `?tab=events`); panels `SocialFeed` / `SocialClubs` / `SocialDiscover` (the Events tab) / `ChallengesPanel` / `SocialPeople` in `apps/web/src/lib/components/`.
 - Create-flow modal pattern + `.modal` / `.editor-form` / `.btn-*` / `.card-elevated` global classes (`app.css`).
 
 Mobile:
-- `apps/mobile_android/lib/screens/social_screen.dart` — the Social tab host with sub-tabs (Feed / People / Clubs / Discover), each child `embedded: true`. `apps/mobile_android/lib/screens/clubs_screen.dart`, `club_detail_screen.dart`.
+- `apps/mobile_android/lib/screens/social_screen.dart` — the Social tab host with sub-tabs (Feed / Clubs / Events / Challenges / People), each a ui_kit `HubTabBody` whose primary action the hub shows as its FAB (issue #1374). `apps/mobile_android/lib/screens/clubs_screen.dart`, `club_detail_screen.dart`.
 - `apps/mobile_android/lib/social_service.dart` — `SocialService` ChangeNotifier singleton, the mobile mirror of web `data.ts` social calls (`fetchMyClubs`, `createClub`, realtime `subscribeToEvent`).
 - `apps/mobile_android/lib/local_activities.dart#buildLocalActivities` — offline cross-modal timeline from `LocalRunStore` + `LocalGymStore` + `LocalFoodStore`. Useful for an **offline-optimistic** local progress estimate.
 - `packages/api_client` typed methods; `packages/core_models` generated row DTOs (`lib/src/generated/db_rows.dart`).
@@ -244,14 +244,14 @@ export type ChallengeWithMeta = Challenge & { participant_count: number; my_valu
 Mirror after web lands. The mobile nav is at its 5-slot ceiling (`Home / Fitness / Log / Social / You`) — **do not add a 6th tab.** Mount challenges as a **sub-tab inside the Social hub** (`social_screen.dart`), matching how web puts it in `/social`, plus a self-hiding card on the Home dashboard.
 
 Files (under `apps/mobile_android/lib/`, then mirror byte-identical to `apps/mobile_ios/lib/` in the **same commit**):
-- `screens/challenges_screen.dart` — Social hub's new Challenges sub-tab (`embedded: true` mode, body-only). Browse + My challenges. The joined rows carry the caller's own value, bar, rank and earned badge, folded in from `my_active_challenges` by `mergeMyProgress` and gated by `myProgressView`: a challenge outside that RPC's live-plus-7-day window renders "Progress unavailable" rather than a 0 % bar (ADR §694).
+- `screens/challenges_screen.dart` — Social hub's Challenges tab (a `HubTabBody`; Create challenge is its `PrimaryAction`). Browse + My challenges, under a `FilterBar` search that narrows both by title over the loaded list (web searches Browse on the server), with a no-match state that clears. The joined rows carry the caller's own value, bar, rank and earned badge, folded in from `my_active_challenges` by `mergeMyProgress` and gated by `myProgressView`: a challenge outside that RPC's live-plus-7-day window renders "Progress unavailable" rather than a 0 % bar (ADR §694).
 - `screens/challenge_detail_screen.dart` — hero + progress bar + leaderboard + Join/Leave; admin/creator edit + delete behind `AlertDialog` (destructive-confirm idiom). The caller's value comes off the board the page already holds — `fetchChallengeById` carries none — and the club-vs-club team column resolves through `teamLabel`, never printing a raw club uuid.
 - `widgets/challenge_progress_bar.dart` — the shared bar (value/goal label, complete chip, `ProgressBar`, on-pace hint) plus `challengeValueLabel`, rendered by both screens exactly as web shares `ChallengeProgressBar.svelte`.
 - `widgets/challenge_form_sheet.dart` — create/edit bottom sheet (mirror `club_form_sheet.dart` / `event_form_sheet.dart`).
 - `widgets/challenge_progress_card.dart` — the self-hiding Home dashboard card; renders nothing when `myActiveChallenges` is empty (data-presence self-hide, matching the gym/nutrition cards).
 - `social_service.dart` — add `fetchChallenges`, `fetchChallengeById`, `createChallenge`, `joinChallenge`, `leaveChallenge`, `fetchChallengeLeaderboard`, `myActiveChallenges`, `recomputeChallengeCompletion` (route through `packages/api_client`, not direct `.from`).
-- `social_screen.dart` — register the Challenges sub-tab + its FAB (Create challenge, admin/eligible only) in the hoisted-FAB slot.
-- `dashboard_screen.dart` — mount `challenge_progress_card.dart` (best-effort hydrate on mount like the gym/nutrition cards).
+- `social_screen.dart` — register the Challenges tab; its Create challenge `PrimaryAction` becomes the hub's FAB.
+- `today_screen.dart` — mount `challenge_progress_card.dart` (best-effort hydrate on mount like the gym/nutrition cards).
 
 Add the leaderboard/challenge DTOs to `packages/core_models` only if the RPC return shape isn't 1:1 with a generated row (the leaderboard rows aren't a table, so a hand model `ChallengeLeaderboardEntry` in core_models is expected).
 
@@ -302,8 +302,8 @@ Representative web keys (`src/lib/i18n/locales/en.ts` template + de/fr/es/ja/pt-
 - `challenges.create`, `challenges.join`, `challenges.leave`, `challenges.joined`
 - `challenges.metricDistance`, `challenges.metricDuration`, `challenges.metricVert`, `challenges.metricActivityCount`, `challenges.metricStreak`
 - `challenges.scopeIndividual`, `challenges.scopeClubVsClub`, `challenges.scopeGroupGoal`
-- `challenges.goalProgress` (`"{value} of {goal}"`), `challenges.progressComplete`, `challenges.endsIn` (`"ends in {n} days"`), `challenges.leaderboardRank` (`"#{rank}"`)
-- `challenges.standingTitle` / `challenges.standingTitleTeam`, `challenges.standingRank` (`"#{rank} of {total}"`), `challenges.standingTiedOne` / `challenges.standingTiedMany`, `challenges.standingBehind` / `challenges.standingAhead` (`"{gap} behind|ahead of {name}"`), `challenges.standingLeading`
+- `challenges.goalProgress` (`"{value} of {goal}"`), `challenges.progressComplete`, `challenges.endsIn` (`{n, plural, =1 {Ends today} other {Ends in # days}}`), `challenges.leaderboardRank` (`"#{rank}"`)
+- `challenges.standingTitle` / `challenges.standingTitleTeam`, `challenges.standingRank` (`"#{rank} of {total}"`), `challenges.standingTied` (one ICU plural), `challenges.standingBehind` / `challenges.standingAhead` (`"{gap} behind|ahead of {name}"`), `challenges.standingLeading`
 - `challenges.completeNotification` (`"You completed {title}!"`), `challenges.badgeEarned`
 - `challenges.deleteConfirm`, `challenges.leaveConfirm`
 
@@ -333,7 +333,7 @@ Mobile ARB equivalents camelCased (`challengesTitle`, `challengesJoin`, `challen
 6. `git commit -- apps/backend/supabase/seed.sql` — seed challenges.
 7. `git commit -- apps/mobile_android/lib/challenge_progress.dart apps/mobile_ios/lib/challenge_progress.dart apps/mobile_android/test/challenge_progress_test.dart apps/mobile_ios/test/challenge_progress_test.dart` — Dart parity helper + tests, both twins.
 8. `git commit -- apps/mobile_android/lib/social_service.dart apps/mobile_ios/lib/social_service.dart apps/mobile_android/test/social_service_test.dart apps/mobile_ios/test/social_service_test.dart` — service methods + tests, both twins.
-9. `git commit -- apps/mobile_android/lib/screens/challenges_screen.dart apps/mobile_android/lib/screens/challenge_detail_screen.dart apps/mobile_android/lib/widgets/challenge_form_sheet.dart apps/mobile_android/lib/widgets/challenge_progress_card.dart apps/mobile_android/lib/screens/social_screen.dart apps/mobile_android/lib/screens/dashboard_screen.dart apps/mobile_android/lib/l10n/*.arb apps/mobile_android/lib/l10n/gen/** <same paths under apps/mobile_ios/...> apps/mobile_android/test/challenge*_test.dart apps/mobile_ios/test/challenge*_test.dart` — mobile UI + nav + i18n + tests, both twins in one commit.
+9. `git commit -- apps/mobile_android/lib/screens/challenges_screen.dart apps/mobile_android/lib/screens/challenge_detail_screen.dart apps/mobile_android/lib/widgets/challenge_form_sheet.dart apps/mobile_android/lib/widgets/challenge_progress_card.dart apps/mobile_android/lib/screens/social_screen.dart apps/mobile_android/lib/screens/today_screen.dart apps/mobile_android/lib/l10n/*.arb apps/mobile_android/lib/l10n/gen/** <same paths under apps/mobile_ios/...> apps/mobile_android/test/challenge*_test.dart apps/mobile_ios/test/challenge*_test.dart` — mobile UI + nav + i18n + tests, both twins in one commit.
 10. `git commit -- docs/** CLAUDE.md` — roadmap checkbox, parity cells, feature doc, api_database, conventions/decisions, doc index.
 
 (Per house rule: commit only when the user asks; never `git push`; no AI attribution. The path-scoped form is mandatory in this shared checkout.)

@@ -26,13 +26,11 @@ ein", "Füge … ein", "prüfe deine Verbindung"). TTS cues are short
 `du`-imperatives or nominal ("Halte ein gleichmäßiges Tempo.",
 "Links abbiegen", "Tempo erhöhen").
 
-**Register slips already shipping (findings, don't copy them):**
-mobile `discardChangesBody` and `privacyZonesDiscardBody` ("Sie haben
-nicht gespeicherte …", while web's twin `common.unsavedBody` says "Du
-hast"); mobile TTS `ttsSlightLeft` / `ttsSlightRight` ("Halten Sie sich
-links/rechts") and `ttsUturn` ("Wenden Sie") among `du`/neutral TTS cues;
-web `checkpoint.boardNoCheckpoints` ("Fügen Sie zuerst …") and
-`settingsAccount.exportReasonSignedOut` ("Ihre Sitzung ist abgelaufen").
+**Register slips:** none left. The last ones (mobile `discardChangesBody`,
+`privacyZonesDiscardBody`, the TTS cues `ttsSlightLeft` / `ttsSlightRight` /
+`ttsUturn`, web `checkpoint.boardNoCheckpoints` and
+`settingsAccount.exportReasonSignedOut`) moved to `du` on 2026-11-13 (#1374
+round 3.6).
 Capitalised `Sie` that means *she/it/they* ("Sie hat kaum Höhenunterschied"
 for a Route) is correct and not a slip.
 
@@ -79,22 +77,32 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | easy run | Locker | `workoutKind.easy` |
 | elevation gain | Höhenmeter | `routeDetail.statElevationGain`, `runStatElevation`; mobile also "Anstieg", web `dash.elevationGain` "Höhengewinn" — inconsistency 3 |
 | heart rate / HR | Herzfrequenz / HF | `HF` only in tight stat labels |
+| average HR (stat label) | **Ø HF** (`runDetailStatAvgHr`, `runDetail.avgHr`, the share card `shareCardStatHeartRate` / `runShare.statHeartRate`) | settled 2026-11-13; never "Ø Puls" |
 | heart rate zone | Herzfrequenzzone(n) | |
+| max HR / resting HR | **Maximalpuls** / **Ruhepuls** in every string — field labels ("Maximalpuls (bpm)"), buttons ("Maximalpuls festlegen"), prose and errors ("Gib einen Maximalpuls zwischen …"); coordinated "Ruhe- und Maximalpuls". Both masculine (*einen gemessenen Maximalpuls*, *trag ihn ein*) | settled 2026-11-12; never "maximale Herzfrequenz" / "Max. HF" / "Max. Puls" / "Ruheherzfrequenz" / "Ruhe-HF". *Herzfrequenz* stays for heart rate in general |
 | cadence (steps/min) | Schrittfrequenz | `runStatCadence`. "Rhythmus" in `discover.cadenceLabel` means *recurrence* — a different sense |
 | training plan | Trainingsplan / Trainingspläne; short Plan / Pläne | |
 | race | Rennen (nav, tabs, calendar `Rennkalender`); Wettkampf (workout kind, run source) | |
+| mapped run (personal heatmap) | **Lauf auf der Karte** — „Noch keine Läufe auf der Karte“ | settled 2026-11-13 (#1374 round 3.5), both surfaces; never „erfasst“, which is *logged* |
+| club (every surface, including plan templates and race claims) | **Club** / Clubs; compounds hyphenated as the catalogue already writes them (Club-Vorlage, Club-Admins) or closed where already closed (Clubmitglieder, Clubkopie, Clubbeitrag) | settled 2026-11-13 (#1374 round 3.5), both surfaces; never Verein — this closes inconsistency 5 |
 | finish | Ziel (finish line); Beendet (status); Beenden (action) | "Ziel" also means *goal* — disambiguate by context |
 | DNF | DNF | kept as-is on both surfaces |
-| route | Route / Routen | dominant; web also "Strecke" (`eventEditor.route`, `routeHeatmap.*`) — inconsistency 4 |
+| route (a saved route: one you build, generate, save, attach to an event, back up or find in route discovery) | **Route** / Routen; compounds Routenpräferenz, Routenseite, Routenliste, Routensuche, Routenansicht; "die Linie der Route" for its line | settled 2026-11-13 (#1374 round 3.7), web and mobile; this closes inconsistency 4. **Strecke** stays for a *course* (English "course": a race, event or park course, Parkstrecke, Rennstrecke, Streckenhinweis, Streckenmarker) and for the path a run or course follows ("entlang der Strecke", "Streckenverlauf", "% der Strecke") |
 | segment | Segment / Segmente | |
-| club | Club / Clubs | 45 / 97 strings; "Verein" in plan-template copy — inconsistency 5 |
-| event | Event / Events | |
+| event (a club event: run, class, social; the entity, its page and its editor) | **das Event** / die Events; genitive *des Events* / *dieses Events* ("Neues Event", "Dieses Event wurde abgesagt", "Ein Event, zu dem du gehst", "nach dem Event", pronoun *es*). Compounds hyphenated as the catalogue already writes them: **Event-Seite**, **Event-Typ**, Event-Foto, Event-Termin, Event-Editor, Club-Event, Kurs-Event; closed only where already closed (Eventorganisator) | settled 2026-11-13 (#1374 round 3.6), web, mobile and help: 61 strings moved off "Veranstaltung" / "Veranstaltungstyp" / "Veranstaltungsseite"; never "Veranstaltung", never "Eventseite". "Veranstalter" (the organiser, "GO durch Veranstalter") is a person and stays |
 | gym | Gym | `nav.gym`, `gymTitle` |
 | nutrition | Ernährung | |
 | log (verb) | Erfassen | `navLog` |
 | streak | Serie | "Beste Serie" |
 | goal | Ziel / Ziele | |
-| coach | Coach; AI Coach = **KI-Coach** | `nav.coach` |
+| coach | Coach; AI Coach = **KI-Coach**. Inflected per Duden: genitive **des Coachs** ("die Antwort des Coachs", "Antwort des KI-Coachs"), plural **die Coachs** ("Meine Coachs") | `nav.coach`; settled 2026-11-13 (#1374 round 3.8), never "des Coaches" / "Coaches" |
+| race fuelling | **Wettkampfverpflegung** (headings and summaries, both surfaces) | settled 2026-11-13 (#1374 round 3.8); not "Verpflegung im Wettkampf" |
+| Runners nearby area / opted in | **Gegend** ("Deine Gegend", "Gegend festlegen"); opted-in runners are **teilnehmende Läufer** / "die sich für die Entdeckung entschieden haben" | settled 2026-11-13, both surfaces; never "Gebiet", and never "angemeldet" (reads as signed in) |
+| AI disclosure | **KI-Hinweise** (plural: "die aktualisierten KI-Hinweise", "KI-Hinweise ansehen", "akzeptiere sie") | settled 2026-11-13; never the singular "KI-Hinweis" or "KI-Information" (the plan assistant's consent error moved off it in round 3.6). Consent wording: CISO/counsel review |
+| health-data consent | **Einwilligung zu Gesundheitsdaten** everywhere, prose, titles and buttons ("mit deiner Einwilligung zu Gesundheitsdaten", "Einwilligung zu Gesundheitsdaten widerrufen?", "Einwilligung zu Gesundheitsdaten prüfen"; "die Einwilligung der laufenden Person zu Gesundheitsdaten") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "Einwilligung für / zur Verarbeitung von / zur Nutzung von Gesundheitsdaten" or "Gesundheitsdaten-Einwilligung". The consent statement and every withdrawal list name the same items in the same order as the English (gender, height, weight history, cycle or pregnancy details, heart rate recorded with activities, heart-rate targets in plans, heart-rate medication setting, food log); `health_consent_scope.test.ts` pins the English. The heart-rate medication item names the setting, never a statement that a drug affects the reader: « deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen » |
+| Review (health-data) consent (button that opens the consent screen) | **Einwilligung (zu Gesundheitsdaten) prüfen** | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "Einwilligen" / "Einwilligung erteilen": the tap does not consent |
+| leaderboard | **Bestenliste** / Bestenlisten ("Segment-Bestenliste") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "Rangliste" for a leaderboard (English "ranking" in `challenges.goalHint` keeps it) |
+| GDPR citation | **Art. 9 Abs. 2 lit. a DSGVO**, "Art. 7 Abs. 3 DSGVO", "Art. 20 DSGVO" (article first, statute last) | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "DSGVO Art. 9" |
 | auto-pause | — | no catalogue string yet; build from "Pause" / "pausieren" ("Lauf pausiert") → "Auto-Pause", and flag it as a new term |
 | kudos | Kudos ("Kudos geben", "Kudos zurücknehmen") | |
 | workout | Training (dominant) / Workout | |
@@ -107,6 +115,9 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | self-timed (race) | **selbstgestoppt** ("selbstgestopptes Rennen", "Selbstgestoppter Zeitraum") | settled 2026-11-10; never "selbst gezeitet" / "selbst gestoppt" |
 | gun time / chip time | **Bruttozeit** / **Nettozeit** (closed compounds); coordinated "Brutto- und Nettozeit"; short split "Brutto {gun} · Netto {chip}" | settled 2026-11-10; never "Brutto-Zeit" / "Netto-Zeit" |
 | set up (a race created automatically before its start) | **angelegt** ("Das Rennen wird einen Tag vor dem Start angelegt") | keeps it apart from *arm* |
+| undo | **Rückgängig** (button), "Rückgängig machen" (verb), setting "Zeitfenster für Rückgängig" | settled 2026-11-12; never "Widerrufen" / "Widerruf", which is the legal *revoke* (consent withdrawal, coach-invite revoke) |
+| heart-rate strap / chest strap | **Herzfrequenzgurt** (short "Gurt" once the full term has been said) | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never "Brustgurt" / "Herzfrequenz-Brustgurt" |
+| organiser (the person or body running an event or race) | **Veranstalter** ("Vom Veranstalter bearbeitet", "Von einem Veranstalter gesetzt", "Rennveranstalter", "Mitveranstalter") | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never "Organisator" / "Organisator*innen". The club role keeps its name **Eventorganisator** (a role label, like Admin) |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
@@ -114,10 +125,10 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
    *tempo run* workout kind; and mobile mixes "Pace" for pace in
    `workoutReviewColPace`, `shareCardStatPace`, `ttsPaceKm`, `ttsPaceMi`.
    New pace strings: "Tempo"; flag any string where both senses meet.
-2. **Sie slips** — listed under Register.
+2. **Sie slips** — resolved 2026-11-13 (see Register).
 3. **elevation gain**: Höhenmeter / Anstieg / Aufstieg / Höhengewinn.
-4. **route**: Route vs Strecke on web.
-5. **club**: Club vs Verein (`planNewTemplate*`, `planDetailPublish*`).
+4. **route**: Route vs Strecke — resolved 2026-11-13: Route for a saved route, Strecke for a course (see the glossary row).
+5. **club**: Club vs Verein — resolved 2026-11-13: always Club (see the glossary row).
 6. **cool-down**: Auslaufen / Abwärmen / Abkühlen.
 7. **social destination**: Sozial (mobile) vs Community (web).
 

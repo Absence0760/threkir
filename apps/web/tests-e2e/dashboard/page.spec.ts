@@ -6,7 +6,7 @@ import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /dashboard — User A's home screen after sign-in.
+ * /dashboard (Today) and /dashboard/progress (Progress) — User A's home screens.
  *
  * Tests cover the page mount + the interactive stat cards. The
  * notification-bell flow is in cross-user/notifications.spec.ts
@@ -19,7 +19,7 @@ test.describe('/dashboard', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('renders with seeded mileage + recent runs', async ({ page }) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		// "Distance" + "Recent Runs" are h2's on the dashboard. Asserting
 		// them proves the page rendered past the loading skeleton AND
@@ -41,7 +41,7 @@ test.describe('/dashboard', () => {
 		// (e.g. a refactor that breaks the class:active wiring).
 		// We assert the active class flips, not the chart contents
 		// (which depend on seed dates that can drift).
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		const weekBtn = page.getByRole('button', { name: 'Week', exact: true });
 		const monthBtn = page.getByRole('button', { name: 'Month', exact: true });
@@ -74,7 +74,7 @@ test.describe('/dashboard', () => {
 		// distance + clicking Save persists to user_settings + makes
 		// a card appear; clicking the card re-opens the editor;
 		// Delete inside the editor removes it.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		// Needed: .count() below is a snapshot — no auto-retry, so the
 		// initial count would race against the dashboard's data fetch.
 		await page.waitForLoadState('networkidle');
@@ -83,7 +83,7 @@ test.describe('/dashboard', () => {
 		// dashboard surfaces as a synthetic week-period goal-card.
 		// IMPORTANT: creating a *real* week-period distance goal would
 		// REPLACE the synthetic one (see `displayGoals` derived in
-		// dashboard/+page.svelte), so we create a Month-period goal —
+		// dashboard/DashboardView.svelte), so we create a Month-period goal —
 		// the synthetic stays + the real one is added → count goes
 		// from 1 → 2.
 		const initialCount = await page.locator('.goal-card').count();
@@ -137,7 +137,7 @@ test.describe('/dashboard', () => {
 		// (§ 2283), and the lead's Week summary took over the tap-through.
 		// It sets `periodModal = { type: 'week', date: now }`, which mounts
 		// the shared <PeriodSummary> inside a Modal titled "Period summary".
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		const thisWeekCard = page.getByTestId('dash-week-lead-open');
 		await expect(thisWeekCard).toBeVisible();
@@ -163,7 +163,7 @@ test.describe('/dashboard', () => {
 	}) => {
 		// The Longest Run / "All time" card is now a button that opens the
 		// shared <PeriodSummary> in all-time mode (periodModal type 'all').
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		const allTimeCard = page.getByRole('button', { name: /Longest Run/ }).first();
 		await expect(allTimeCard).toBeVisible({ timeout: 10_000 });
@@ -183,7 +183,7 @@ test.describe('/dashboard', () => {
 	test('the stat grid keeps the all-time cards and none of the this-week ones', async ({
 		page
 	}) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		const labels = page.locator('.stat-grid .stat-label');
 		await expect(labels.filter({ hasText: 'Total Runs' }).first()).toBeVisible({
 			timeout: 10_000
@@ -200,7 +200,7 @@ test.describe('/dashboard', () => {
 		// duplicated the Mileage chart's presence signal. It's now a
 		// Training intensity card showing HR-zone time breakdown
 		// (Z1–Z5). Pin the new title + the absence of the old.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await expect(
 			page.getByRole('heading', { level: 2, name: /Training intensity/ })
 		).toBeVisible({ timeout: 10_000 });
@@ -212,7 +212,7 @@ test.describe('/dashboard', () => {
 	test('Mileage chart Year toggle is reachable and stays selected', async ({
 		page
 	}) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.getByRole('button', { name: 'Year', exact: true }).click();
 		await expect(page.getByRole('button', { name: 'Year', exact: true }))
 			.toHaveClass(/active/);
@@ -227,7 +227,7 @@ test.describe('/dashboard', () => {
 		// so 50 km wins by a wide margin) and reload — both stats must
 		// reflect it. A regression that broke fetchRuns wiring or the
 		// derived stat would show up here.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		// Needed: snapshots .innerText() below — no auto-retry, so a
 		// pre-fetch render of "--" would leak in.
 		await page.waitForLoadState('networkidle');
@@ -278,7 +278,7 @@ test.describe('/dashboard', () => {
 		// data removed → stat decrements. Catches a regression where
 		// fetchRuns aggressively caches and a deletion isn't reflected
 		// until the next session.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		// Needed: snapshots .innerText() below — no auto-retry, so a
 		// pre-fetch render of "--" would leak in.
 		await page.waitForLoadState('networkidle');
@@ -367,7 +367,7 @@ test.describe('/dashboard', () => {
 		// since the this-week cards left with § 2283), recap-link rides on
 		// the right side of the same row as the .filter-chips group.
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await expect(page.locator('.stat-grid .stat-card').first()).toBeVisible({
 			timeout: 10_000
 		});
@@ -444,7 +444,7 @@ test.describe('/dashboard', () => {
 				distance_m: 5000
 			});
 
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			// Column header appears once at least one visible PR is gradeable.
 			await expect(
@@ -503,25 +503,29 @@ test.describe('/dashboard — zero-data new runner', () => {
 		});
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			// Today and Progress mount the same component, and each gives a
+			// runless account the first-run block instead of its own cards.
+			for (const path of ['/dashboard', '/dashboard/progress']) {
+				await page.goto(path);
 
-			// The first-run card is what a Day-One runner gets instead.
-			await expect(page.getByTestId('dash-first-run')).toBeVisible({ timeout: 10_000 });
+				// The first-run card is what a Day-One runner gets instead.
+				await expect(page.getByTestId('dash-first-run')).toBeVisible({ timeout: 10_000 });
 
-			// The Training-intensity card's z1-z5 HR-zone empty state never
-			// reaches a Day-One runner.
-			await expect(
-				page.getByRole('heading', { level: 2, name: /Training intensity/ })
-			).toHaveCount(0);
+				// The Training-intensity card's z1-z5 HR-zone empty state never
+				// reaches a Day-One runner.
+				await expect(
+					page.getByRole('heading', { level: 2, name: /Training intensity/ })
+				).toHaveCount(0);
 
-			// Nor does any of the training-load vocabulary the page leads with
-			// for an established runner. These are the exact labels #902 found
-			// unexplained; none of them should be a new account's first screen.
-			const body = page.locator('body');
-			await expect(body).not.toContainText('VO\u2082 max');
-			await expect(body).not.toContainText('CTL');
-			await expect(body).not.toContainText('ATL');
-			await expect(body).not.toContainText('TSB');
+				// Nor does any of the training-load vocabulary the page leads with
+				// for an established runner. These are the exact labels #902 found
+				// unexplained; none of them should be a new account's first screen.
+				const body = page.locator('body');
+				await expect(body).not.toContainText('VO\u2082 max');
+				await expect(body).not.toContainText('CTL');
+				await expect(body).not.toContainText('ATL');
+				await expect(body).not.toContainText('TSB');
+			}
 		} finally {
 			await ctx.close();
 		}

@@ -3,6 +3,8 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
@@ -15,7 +17,7 @@
 	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '#lib/social/nearby.ts';
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -34,9 +36,9 @@
 		const bound = nearbyBucketUpperBoundM(bucket);
 		return bound == null
 			? m('socialNearby.beyond', {
-					d: formatDistance(NEARBY_BUCKET_BOUNDS_M[NEARBY_BUCKET_BOUNDS_M.length - 1]),
+					d: fmtCompactDistance(NEARBY_BUCKET_BOUNDS_M[NEARBY_BUCKET_BOUNDS_M.length - 1]),
 				})
-			: m('socialNearby.within', { d: formatDistance(bound) });
+			: m('socialNearby.within', { d: fmtCompactDistance(bound) });
 	}
 
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -140,29 +142,18 @@
 
 <div class="people">
 	<div class="search-wrap">
-		<span class="material-symbols" aria-hidden="true">search</span>
-		<input
-			type="search"
-			class="search-input"
-			placeholder={m('socialPeople.searchPlaceholder')}
+		<AppSearchField
 			bind:value={query}
-			oninput={onSearchInput}
-			aria-label={m('socialPeople.searchAriaLabel')}
+			label={m('socialPeople.searchAriaLabel')}
+			placeholder={m('socialPeople.searchPlaceholder')}
+			clearLabel={m('socialPeople.clearSearch')}
+			testid="people-search"
+			oninput={(v) => (v === '' ? clearSearch() : onSearchInput())}
 		/>
-		{#if hasQuery}
-			<button
-				type="button"
-				class="search-clear"
-				aria-label={m('socialPeople.clearSearch')}
-				onclick={clearSearch}
-			>
-				<span class="material-symbols" aria-hidden="true">close</span>
-			</button>
-		{/if}
 	</div>
 
 	{#if hasQuery}
-		<h2 class="section-title">{m('socialPeople.searchResults')}</h2>
+		<SectionHeader label={m('socialPeople.searchResults')} flush />
 		{#if searching}
 			<p class="muted" role="status">{m('socialPeople.searching')}</p>
 		{:else if results.length === 0}
@@ -174,7 +165,7 @@
 			/>
 		{/if}
 	{:else}
-		<h2 class="section-title">{m('socialPeople.suggestedForYou')}</h2>
+		<SectionHeader label={m('socialPeople.suggestedForYou')} flush />
 		{#if loadingSuggestions}
 			<div class="grid" aria-hidden="true">
 				{#each Array(4) as _, i (i)}
@@ -224,10 +215,10 @@
 							<span class="person-handle">@{person.handle}</span>
 						{/if}
 						<span class="person-meta">
-							{m(person.public_runs_count === 1 ? 'socialPeople.publicRunsOne' : 'socialPeople.publicRunsMany', { n: person.public_runs_count })}
+							{m('socialPeople.publicRuns', { n: person.public_runs_count })}
 							{#if person.shared_clubs > 0}
 								<span class="dot">·</span>
-								{m(person.shared_clubs === 1 ? 'socialPeople.sharedClubsOne' : 'socialPeople.sharedClubsMany', { n: person.shared_clubs })}
+								{m('socialPeople.sharedClubs', { n: person.shared_clubs })}
 							{/if}
 						</span>
 					</div>
@@ -257,7 +248,7 @@
 
 	{#if NEARBY_RUNNERS_ENABLED && !hasQuery}
 		<section class="nearby" aria-labelledby="nearby-heading">
-			<h2 class="section-title" id="nearby-heading">{m('socialNearby.heading')}</h2>
+			<SectionHeader label={m('socialNearby.heading')} id="nearby-heading" flush />
 			<p class="muted nearby-subtitle">{m('socialNearby.subtitle')}</p>
 			{#if loadingNearby}
 				<p class="muted" role="status">{m('socialNearby.loading')}</p>
@@ -271,7 +262,7 @@
 					{#snippet actions()}
 						<a class="btn btn-outline" href="/settings/privacy">
 							<span class="material-symbols" aria-hidden="true">settings</span>
-							{m('shell.settings')}
+							{m('settingsLayout.tabPrivacy')}
 						</a>
 					{/snippet}
 				</EmptyState>
@@ -335,71 +326,8 @@
 		gap: var(--space-md);
 	}
 	.search-wrap {
-		position: relative;
 		display: flex;
-		align-items: center;
 		max-width: 32rem;
-	}
-	.search-wrap > .material-symbols:first-child {
-		position: absolute;
-		inset-inline-start: 0.75rem;
-		color: var(--color-text-tertiary);
-		pointer-events: none;
-		font-size: 1.1rem;
-	}
-	.search-input {
-		width: 100%;
-		padding: 0.55rem 2.25rem 0.55rem 2.25rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.95rem;
-	}
-	.search-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-	/* audit/accessibility (May 2026) WCAG 2.4.7 + 2.4.11: pair the
-	   :focus rule above with :focus-visible so keyboard users get a real
-	   outline. The :focus rule still removes the default ring on mouse
-	   focus (no visible outline on click); :focus-visible re-adds a
-	   proper one for keyboard / programmatic focus. */
-	.search-input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-
-	.search-clear {
-		position: absolute;
-		inset-inline-end: 0.5rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.5rem;
-		height: 1.5rem;
-		padding: 0;
-		background: transparent;
-		border: none;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		border-radius: 50%;
-	}
-	.search-clear:hover {
-		background: var(--color-primary-light);
-		color: var(--color-text);
-	}
-	.search-clear .material-symbols {
-		font-size: 1rem;
-	}
-	.section-title {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		margin: var(--space-sm) 0 0;
 	}
 	.muted {
 		color: var(--color-text-tertiary);

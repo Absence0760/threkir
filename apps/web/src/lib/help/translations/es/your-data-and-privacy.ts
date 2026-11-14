@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.',
+						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.',
 						'Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad.',
 					],
 				},
@@ -53,12 +53,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'En la web, abre **Cuenta** en Configuración. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**.',
+					text: 'En la web, abre **Cuenta** en Ajustes. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**.',
 				},
 				{
 					type: 'list',
 					items: [
-						'**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el entrenador, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.',
+						'**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el Entrenador IA, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.',
 						'**Descargar copia completa** (en el móvil, **Copia de seguridad completa**): todas las carreras con su traza GPS, además de tus rutas, tu perfil y tus preferencias, en un archivo que puedes restaurar más tarde con **Restaurar desde copia**.',
 						'**Exportación en la nube (zip GPX)**: un archivo GPX por carrera, con frecuencia cardíaca, listo para importar en otras apps. Las cuentas gratuitas pueden exportar dos veces por hora; las cuentas Pro, ocho.',
 						'**Exportar todas las carreras (CSV)** (en el móvil, **Exportar carreras como CSV**): una fila por carrera para una hoja de cálculo, sin trazas GPS.',
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Descarga primero todo lo que quieras conservar. La eliminación no se puede deshacer.',
-						'En la web, abre **Cuenta** en Configuración y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.',
+						'En la web, abre **Cuenta** en Ajustes y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.',
 						'Escribe ELIMINAR para confirmar y luego selecciona **Eliminar mi cuenta** en la web o **Eliminar** en la app.',
 					],
 				},
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
-		's1.b0.i0': '7b3a2d8b5b822576',
+		's1.b0.i0': 'bf8692c8ac6194c3',
 		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',

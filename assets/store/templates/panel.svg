@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <!-- One store panel: headline and subline over the brand ramp, then the
+       captured screen in a phone outline that runs off the bottom edge.
+       render_panels.py fills every placeholder; the geometry is computed
+       there per target size so one template serves Play and the App Store. -->
+  <defs>
+    <linearGradient id="ramp" x1="0" y1="0" x2="${width}" y2="${height}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C24E24"/>
+      <stop offset="0.5" stop-color="#A8426A"/>
+      <stop offset="1" stop-color="#5B4B8A"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+    <clipPath id="screen">
+      <rect x="${screen_x}" y="${screen_y}" width="${screen_w}" height="${screen_h}" rx="${screen_r}"/>
+    </clipPath>
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#ramp)"/>
+  <rect width="${width}" height="${height}" fill="url(#shade)"/>
+  <g font-family="Manrope, sans-serif" fill="#ffffff" text-anchor="middle">
+    <text font-size="${headline_size}" font-weight="800" letter-spacing="${headline_tracking}">${headline}</text>
+    <text font-size="${subline_size}" font-weight="500" fill-opacity="0.9">${subline}</text>
+  </g>
+  <rect x="${phone_x}" y="${phone_y}" width="${phone_w}" height="${phone_h}" rx="${phone_r}"
+        fill="#0E0E12" stroke="#ffffff" stroke-opacity="0.18" stroke-width="${phone_stroke}"/>
+  <image x="${screen_x}" y="${screen_y}" width="${screen_w}" height="${screen_h}"
+         preserveAspectRatio="xMidYMin slice" clip-path="url(#screen)"
+         xlink:href="${capture}"/>
+</svg>

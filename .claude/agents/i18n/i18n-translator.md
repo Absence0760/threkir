@@ -113,7 +113,11 @@ then regenerates (`flutter gen-l10n` in `apps/mobile_android`, the
 
    Consequence: **never write a literal `1` inside a `one` branch for fr,
    pt-BR or pt-PT** — write `{count}` (mobile) or `#` (web), so a count of
-   0 doesn't render as "1 …". Keep an English `=0{…}` exact branch where
+   0 doesn't render as "1 …". When the plural is the whole message and its
+   `one` branch is the sentence for exactly one ("Invitation sent"), name
+   the count in it ("{count} invitation envoyée") or add an `=0{…}` branch,
+   or 0 reads as one; a plural inside a longer sentence ("is in" / "are
+   in") is agreement and needs neither. Keep an English `=0{…}` exact branch where
    the English has one; it wins over `one`. `many` (French and Portuguese
    millions) falls back to `other` on both runtimes — don't add it.
    Some web keys come as pairs `…One` / `…Other` chosen in code by

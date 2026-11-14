@@ -45,6 +45,12 @@ values
   ('0000000b-0000-0000-0000-00000000000b', 'authenticated', 'authenticated',
    'b@activities.local', '', now(), now());
 
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
+insert into user_profiles (id, health_data_consent_at)
+values
+  ('0000000a-0000-0000-0000-00000000000a', now())
+on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
+
 insert into public.runs (id, user_id, started_at, duration_s, distance_m, source, is_public)
 values
   ('a1111111-1111-1111-1111-111111111111', '0000000a-0000-0000-0000-00000000000a',

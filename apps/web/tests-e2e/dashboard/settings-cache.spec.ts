@@ -6,7 +6,7 @@ import { setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /dashboard — offline-first universal-prefs cache (decisions §79).
+ * /dashboard/progress — offline-first universal-prefs cache (decisions §79).
  *
  * Pins three properties of `apps/web/src/lib/settings/settings.ts` +
  * `apps/web/src/lib/settings/settings_cache.ts`:
@@ -31,7 +31,7 @@ const PREFS_CACHE_KEY = `settings_cache_universal_${USER_A.id}`;
 
 const FIXED_ZONES = { z1: 130, z2: 145, z3: 160, z4: 175, z5: 195 };
 
-test.describe('/dashboard — universal prefs cache', () => {
+test.describe('/dashboard/progress — universal prefs cache', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async () => {
@@ -46,7 +46,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 	test('loadSettings populates the user-scoped localStorage cache after a dashboard mount', async ({
 		page,
 	}) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		// Wait until the dashboard's onMount loadSettings call has run.
 		// The fitness card is gated on a successful settings load, so
 		// once the heading is visible the cache write has happened.
@@ -78,7 +78,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		page,
 	}) => {
 		// First visit: prime the cache.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await expect(
 			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible();
@@ -102,7 +102,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 			route.abort('failed'),
 		);
 
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		// A generous timeout: with both prefs endpoints aborting, the
 		// dashboard's cold-cache reconcile path plus the runs/fitness fetches
 		// render slower under a loaded CI shard (observed ~13s vs the default
@@ -130,7 +130,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		baseURL,
 	}) => {
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(
 				page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 			).toBeVisible();

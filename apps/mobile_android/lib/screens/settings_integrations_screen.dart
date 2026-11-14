@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage, SheetScaffold;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../fitness_surface_requests.dart';
@@ -515,14 +516,13 @@ class _SettingsIntegrationsScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.integrationsTitle),
-        actions: const [HelpButton(routes: ['/settings/integrations'])],
-      ),
+    return PushedPage(
+      title: l10n.integrationsTitle,
+      pinned: const [HelpButton(routes: ['/settings/integrations'])],
       body: SafeArea(
         child: ListView(
           children: [
+            PageHeader(title: l10n.integrationsTitle),
             if (signedIn) ...[
               // Only what this deployment can honour. A tile whose gate has not
               // answered, or has answered no, is not drawn — except while a
@@ -827,92 +827,90 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.integrationsHrScanTitle,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                if (_scanning)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.integrationsHrScanHint,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            if (_unavailable != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  bleReadinessMessage(l10n, _unavailable!) ??
-                      l10n.bleUnavailableUnknown,
+                  l10n.integrationsHrScanTitle,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              // A named reason the runner cannot act on is only half the
-              // fix, so each one carries the control that matches it: the
-              // Settings app for a denied grant, another scan for a reason
-              // that could clear on its own, and nothing at all for a phone
-              // with no BLE radio.
-              if (bleReadinessNeedsAppSettings(_unavailable!))
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton.tonal(
-                    onPressed: _openAppSettings,
-                    child: Text(l10n.bleOpenSettings),
-                  ),
-                )
-              else if (bleReadinessIsRetryable(_unavailable!))
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton.tonal(
-                    onPressed: _startScan,
-                    child: Text(l10n.bleScanRetry),
-                  ),
+              if (_scanning)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-            ] else if (_results.isEmpty && !_scanning)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(l10n.integrationsHrScanEmpty),
-              ),
-            ..._results.map((r) {
-              return ListTile(
-                leading: const Icon(Icons.bluetooth),
-                title: Text(r.name),
-                subtitle: Text(l10n.integrationsHrRssi(r.rssi)),
-                onTap: () => Navigator.of(context).pop(r),
-              );
-            }),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.integrationsCancel),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.integrationsHrScanHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 12),
+          if (_unavailable != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                bleReadinessMessage(l10n, _unavailable!) ??
+                    l10n.bleUnavailableUnknown,
               ),
             ),
-          ],
-        ),
+            // A named reason the runner cannot act on is only half the
+            // fix, so each one carries the control that matches it: the
+            // Settings app for a denied grant, another scan for a reason
+            // that could clear on its own, and nothing at all for a phone
+            // with no BLE radio.
+            if (bleReadinessNeedsAppSettings(_unavailable!))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonal(
+                  onPressed: _openAppSettings,
+                  child: Text(l10n.bleOpenSettings),
+                ),
+              )
+            else if (bleReadinessIsRetryable(_unavailable!))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonal(
+                  onPressed: _startScan,
+                  child: Text(l10n.bleScanRetry),
+                ),
+              ),
+          ] else if (_results.isEmpty && !_scanning)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(l10n.integrationsHrScanEmpty),
+            ),
+          ..._results.map((r) {
+            return ListTile(
+              leading: const Icon(Icons.bluetooth),
+              title: Text(r.name),
+              subtitle: Text(l10n.integrationsHrRssi(r.rssi)),
+              onTap: () => Navigator.of(context).pop(r),
+            );
+          }),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.integrationsCancel),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1080,63 +1078,61 @@ class _TreadmillScanSheetState extends State<_TreadmillScanSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.integrationsTreadmillScanTitle,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.integrationsTreadmillScanTitle,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                if (_scanning)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.integrationsTreadmillScanHint,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            if (_results.isEmpty && !_scanning)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(l10n.integrationsTreadmillScanEmpty),
               ),
-            ..._results.map((r) {
-              return ListTile(
-                leading: const Icon(Icons.bluetooth),
-                title: Text(r.name),
-                subtitle: Text(l10n.integrationsHrRssi(r.rssi)),
-                onTap: () => Navigator.of(context).pop(r),
-              );
-            }),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.integrationsCancel),
-              ),
+              if (_scanning)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.integrationsTreadmillScanHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 12),
+          if (_results.isEmpty && !_scanning)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(l10n.integrationsTreadmillScanEmpty),
             ),
-          ],
-        ),
+          ..._results.map((r) {
+            return ListTile(
+              leading: const Icon(Icons.bluetooth),
+              title: Text(r.name),
+              subtitle: Text(l10n.integrationsHrRssi(r.rssi)),
+              onTap: () => Navigator.of(context).pop(r),
+            );
+          }),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.integrationsCancel),
+            ),
+          ),
+        ],
       ),
     );
   }

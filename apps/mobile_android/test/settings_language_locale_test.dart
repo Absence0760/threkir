@@ -46,7 +46,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ));
     await tester.pumpAndSettle();
 
@@ -77,7 +77,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ));
     await tester.pumpAndSettle();
 
@@ -112,7 +112,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ));
     await tester.pumpAndSettle();
 

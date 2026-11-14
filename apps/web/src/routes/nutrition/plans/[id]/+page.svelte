@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { smartBack } from '#lib/util/smart_back.ts';
@@ -140,18 +141,19 @@
 	{:else if !plan}
 		<p class="not-found" data-testid="plan-not-found">{m('nutrition.plan.notFound')}</p>
 	{:else}
-		<header class="detail-header">
-			<div>
-				<h1 data-testid="plan-detail-title">{plan.title}</h1>
-				<p class="head-sub">{m(`nutrition.plan.phase_${plan.goal_phase}`)}</p>
-				{#if followingThis && current}
-					<p class="following" data-testid="plan-detail-following">
-						<span class="material-symbols" aria-hidden="true">check</span>
-						{m('nutrition.plan.followingSince', { date: formatDate(current.start_date) })}
-					</p>
-				{/if}
-			</div>
-			<div class="head-actions">
+		<PageHeader
+			flush
+			title={plan.title}
+			titleTestid="plan-detail-title"
+			subtitle={m(`nutrition.plan.phase_${plan.goal_phase}`)}
+		>
+			{#if followingThis && current}
+				<p class="following" data-testid="plan-detail-following">
+					<span class="material-symbols" aria-hidden="true">check</span>
+					{m('nutrition.plan.followingSince', { date: formatDate(current.start_date) })}
+				</p>
+			{/if}
+			{#snippet actions()}
 				{#if followingThis}
 					<button class="btn btn-outline" type="button" disabled={busy} onclick={() => void stop()} data-testid="plan-stop">
 						{m('nutrition.plan.stopFollowing')}
@@ -167,8 +169,8 @@
 						{m('nutrition.plan.edit')}
 					</button>
 				{/if}
-			</div>
-		</header>
+			{/snippet}
+		</PageHeader>
 
 		<section class="card-elevated targets-card" data-testid="plan-targets">
 			<table class="targets-table">
@@ -260,33 +262,13 @@
 		color: var(--color-text-tertiary);
 		font-size: 0.9rem;
 	}
-	.detail-header {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--space-md);
-	}
-	.detail-header h1 {
-		margin: 0;
-		overflow-wrap: anywhere;
-	}
-	.head-sub {
-		margin: var(--space-2xs) 0 0;
-		color: var(--color-text-secondary);
-	}
 	.following {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-xs);
-		margin: var(--space-xs) 0 0;
+		margin: 0;
 		font-weight: 600;
 		color: color-mix(in srgb, var(--color-success) 50%, var(--color-text));
-	}
-	.head-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
 	}
 	.targets-table {
 		width: 100%;

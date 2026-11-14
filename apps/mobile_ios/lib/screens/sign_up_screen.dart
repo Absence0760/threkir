@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:api_client/api_client.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage;
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -330,15 +331,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (_confirmationSentTo != null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.signUpTitle)),
+      return PushedPage(
+        title: l10n.signUpTitle,
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
+                PageHeader(title: l10n.signUpTitle, padding: EdgeInsets.zero),
+                const SizedBox(height: 32),
                 Icon(Icons.mark_email_unread_outlined,
                     size: 64, color: theme.colorScheme.primary),
                 const SizedBox(height: 16),
@@ -380,15 +382,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
     }
     final appleFirst = Platform.isIOS;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.signUpTitle)),
+    return PushedPage(
+      title: l10n.signUpTitle,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
+              PageHeader(title: l10n.signUpTitle, padding: EdgeInsets.zero),
+              const SizedBox(height: 16),
               Icon(Icons.directions_run,
                   size: 64, color: theme.colorScheme.primary),
               const SizedBox(height: 16),

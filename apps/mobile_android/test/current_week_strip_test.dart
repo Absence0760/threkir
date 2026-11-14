@@ -1,11 +1,13 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/training.dart';
 import '../lib/widgets/current_week_strip.dart';
 import '../lib/workout_kind_color.dart';
+import 'worst_case_layout.dart';
 
 PlanWorkoutRow _wo(String id, DateTime date, String kind, double? dist,
         {bool done = false, DateTime? skippedAt}) =>
@@ -221,7 +223,7 @@ void main() {
 
   Future<void> _expectSevenDistinctDays(WidgetTester tester) async {
     for (var i = 0; i < 7; i++) {
-      expect(find.text('${i + 1}.0 km'), findsOneWidget,
+      expect(find.text('${i + 1} km'), findsOneWidget,
           reason: 'day ${i + 1} of the plan week should render exactly once');
     }
   }
@@ -284,5 +286,50 @@ void main() {
     );
     expect(find.text('First week'), findsOneWidget);
     expect(find.text('This week'), findsNothing);
+  });
+
+  // A 411 dp phone cut "15.0 km" to "15.0 k…" (store capture). The cell
+  // states a distance compactly, as web's week grid does, and keeps all of it.
+  testWidgets('a day cell keeps its whole distance on a 411 dp phone',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pump(
+      tester,
+      start: start,
+      weekIndex: 0,
+      workouts: [
+        _wo('a', DateTime(2024, 4, 2), 'long', 15000),
+        _wo('b', DateTime(2024, 4, 3), 'easy', 6400),
+        _wo('c', DateTime(2024, 4, 4), 'tempo', 12500),
+      ],
+    );
+    for (final label in ['15 km', '6.4 km', '13 km']) {
+      final para = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(para.didExceedMaxLines, isFalse, reason: '$label was cut');
+    }
+  });
+
+  worstCaseTestWidgets('The week strip with long and decimal distances',
+      (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CurrentWeekStrip(
+            startDate: start,
+            weekIndex: 0,
+            weekWorkouts: [
+              _wo('a', DateTime(2024, 4, 2), 'long', 32000),
+              _wo('b', DateTime(2024, 4, 3), 'easy', 6400),
+              _wo('c', DateTime(2024, 4, 4), 'tempo', 12500),
+            ],
+            today: start,
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
   });
 }

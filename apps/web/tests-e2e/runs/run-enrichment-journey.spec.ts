@@ -86,7 +86,7 @@ test.describe('single-run enrichment journey', () => {
 		let photoStoragePath = '';
 
 		try {
-			[owner] = await createSagaUsers(1, { displayNames: ['Enrichment Owner'] });
+			[owner] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Enrichment Owner'] });
 
 			// ── Fixture: a climbing track with per-point ele + ts + bpm ──
 			// 12 points along a south-east Melbourne suburban line, clear of
@@ -425,10 +425,12 @@ test.describe('single-run enrichment journey', () => {
 
 					// Elevation Profile re-derives from the CLIPPED track's `ele`
 					// samples (RunShareView gates it on elevations.some(e>0)).
+					// SectionHeader wraps the label in a span, so match the
+					// heading's accessible name, not its raw text content.
 					await expect(
-						anonPage.locator('section.card h2', {
-							hasText: /^Elevation Profile$/,
-						}),
+						anonPage
+							.locator('section.card')
+							.getByRole('heading', { level: 2, name: 'Elevation Profile', exact: true }),
 					).toBeVisible({ timeout: 10_000 });
 
 					// Gear chip + photo render on the public face too…

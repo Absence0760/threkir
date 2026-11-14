@@ -64,10 +64,14 @@ const _headerSurfaces = <String>[
 /// per file, so a new external heading fails rather than passing quietly.
 const _bannedInCards = 'textTheme.titleMedium';
 
-/// `_SectionHeader` survives for the ONE thing it is: a heading over a *group*
-/// of cards plus that group's action — the goals section. Two occurrences, the
-/// declaration and that single use. A card is not a group and names itself.
-const _dashboardSectionHeaders = 2;
+/// A heading over a *group* of cards plus that group's action — the goals
+/// section — is ui_kit's `SectionHeader`, the shared one (issue #1374); the
+/// private `_SectionHeader` copy is gone from Today and from the Progress page
+/// the goals moved to. A card is not a group and names itself.
+const _goalSurfaces = <String>[
+  'lib/screens/today_screen.dart',
+  'lib/screens/progress_screen.dart',
+];
 
 /// surface -> token -> exact expected occurrences. Every entry is a documented
 /// non-mark, non-text use.
@@ -119,13 +123,16 @@ void main() {
     }
   });
 
-  test('the dashboard keeps one section header, over the goals group', () {
-    final source = File('lib/screens/dashboard_screen.dart').readAsStringSync();
-    expect('_SectionHeader('.allMatches(source).length,
-        _dashboardSectionHeaders,
-        reason: 'a _SectionHeader heads a GROUP of cards and its action; a '
-            'single card names itself with ChartCardHeader, which is what '
-            'the streak and personal-bests cards now do');
+  test('the goals group is headed by the shared SectionHeader, no private '
+      'copy', () {
+    for (final path in _goalSurfaces) {
+      final source = File(path).readAsStringSync();
+      expect('_SectionHeader('.allMatches(source).length, 0,
+          reason: '$path: a group heading is ui_kit\'s SectionHeader; a '
+              'single card names itself with ChartCardHeader');
+      expect(source.contains('SectionHeader('), isTrue,
+          reason: '$path heads its goals group with SectionHeader');
+    }
   });
 
   test('every chart surface takes its marks from ChartPalette', () {

@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
 /**
  * End-to-end dashboard journey: setup → mutate → verify across the
  * stat cards, the goal grid, the Recent Runs list, and the goal
- * editor — all the dashboard widgets that derive off the same
+ * editor — all the /dashboard/progress widgets that derive off the same
  * `runs` + `goals` state.
  *
  * Phases (one test, broken into test.step blocks):
@@ -18,7 +18,7 @@ import { USER_A } from '../fixtures/users';
  *      Recent Runs first row).
  *   3. Add a 10 km manual run via /runs UI (covers RunEditor +
  *      createManualRun + redirect to /runs/[new-id]).
- *   4. Re-open dashboard → verify Total Runs +1, the new run is
+ *   4. Re-open Today → its progress summary card → Progress; verify Total Runs +1, the new run is
  *      first in Recent Runs, the goal-card shows 40% (10/25).
  *   5. Edit the goal target via the goal-card editor → 5 km/week.
  *      Verify the goal-card now shows 100% (10 km against 5 km cap).
@@ -91,7 +91,7 @@ test.describe('dashboard end-to-end journey', () => {
 		let initialTotalRuns = 0;
 		let initialFirstDistance = '';
 		await test.step('snapshot dashboard initial state', async () => {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			initialTotalRuns = await readTotalRuns(page);
 			expect(initialTotalRuns).toBeGreaterThan(0);
@@ -135,7 +135,11 @@ test.describe('dashboard end-to-end journey', () => {
 
 		// ── Phase 3: dashboard reflects the new run ────────────────
 		await test.step('dashboard shows +1 Total Runs, new entry in Recent, goal at 40%', async () => {
+			// Back through Today: its progress summary card opens Progress,
+			// where the stat cards, goals and Recent Runs live.
 			await page.goto('/dashboard');
+			await page.getByTestId('today-progress-summary').click();
+			await expect(page).toHaveURL(/\/dashboard\/progress$/);
 			expect(await readTotalRuns(page)).toBe(initialTotalRuns + 1);
 
 			// Goal pct: 10 km / 25 km = 40%. The goal-overall span
@@ -188,7 +192,7 @@ test.describe('dashboard end-to-end journey', () => {
 		});
 
 		await test.step('dashboard widgets revert to initial', async () => {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			expect(await readTotalRuns(page)).toBe(initialTotalRuns);
 
 			// Goal-card target is now 5 km (we edited it); pct drops

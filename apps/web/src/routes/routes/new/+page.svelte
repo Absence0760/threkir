@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { tick } from 'svelte';
 	import { smartBack } from '#lib/util/smart_back.ts';
@@ -446,7 +448,8 @@
 	// untouched and we show a one-line hint.
 	let nlRequest = $state('');
 	let nlBusy = $state(false);
-	let nlError = $state<string | null>(null);
+	// `upsell` draws the refusal with the link to Pro.
+	let nlError = $state<{ text: string; upsell: boolean; consent?: boolean } | null>(null);
 	// Set after a successful extraction so the user sees what was applied
 	// (incl. the shape, which the form can't render directly) and which
 	// fields were assumed from a default.
@@ -492,18 +495,22 @@
 			};
 		} catch (err) {
 			if (err instanceof RouteRequestError) {
-				nlError =
-					err.kind === 'upgrade'
-						? m('routeNew.aiRequestProOnly')
-						: err.kind === 'consent'
-							? m('routeNew.aiRequestConsentRequired')
-							: err.kind === 'not_understood'
-								? m('routeNew.aiRequestNotUnderstood')
-								: err.kind === 'not_authenticated'
-									? m('routeNew.aiRequestSignedOut')
-									: m('routeNew.aiRequestUnavailable');
+				nlError = {
+					upsell: err.kind === 'upgrade',
+					consent: err.kind === 'consent',
+					text:
+						err.kind === 'upgrade'
+							? m('routeNew.aiRequestProOnly')
+							: err.kind === 'consent'
+								? m('routeNew.aiRequestConsentRequired')
+								: err.kind === 'not_understood'
+									? m('routeNew.aiRequestNotUnderstood')
+									: err.kind === 'not_authenticated'
+										? m('routeNew.aiRequestSignedOut')
+										: m('routeNew.aiRequestUnavailable'),
+				};
 			} else {
-				nlError = m('routeNew.aiRequestUnavailable');
+				nlError = { upsell: false, text: m('routeNew.aiRequestUnavailable') };
 			}
 		} finally {
 			nlBusy = false;
@@ -846,7 +853,7 @@
 				<div class="lap-info">
 					<div class="lap-badge">
 						<span class="material-symbols">loop</span>
-						{laps.count === 1 ? m('routeNew.lapCountOne', { count: laps.count }) : m('routeNew.lapCountOther', { count: laps.count })}
+						{m('routeNew.lapCount', { count: laps.count })}
 					</div>
 					<span class="lap-detail">{m('routeNew.perLap', { distance: `${lapDisp.value.toFixed(2)} ${lapDisp.unit}` })}</span>
 				</div>
@@ -965,7 +972,10 @@
 							</button>
 						</form>
 						{#if nlError}
-							<p class="ai-request-error" role="alert">{nlError}</p>
+							<p class="ai-request-error" role="alert">
+								{#if nlError.upsell}<ProUpsellLink message={nlError.text} />{:else}{nlError.text}{/if}
+								{#if nlError.consent}<a href={AI_CONSENT_HREF}>{m('planEditor.aiErrorConsentLink')}</a>{/if}
+							</p>
 						{/if}
 						{#if nlApplied}
 							<div class="ai-request-applied" role="status">
@@ -1181,9 +1191,8 @@
 						</button>
 					{/if}
 					{#if showGenerateProUpsell}
-						<p class="pro-upsell" role="note">
-							{m('routeNew.generateProUpsell')}
-							<a href="/settings/upgrade">{m('routeNew.generateProUpsellCta')}</a>
+						<p class="generate-upsell" role="note">
+							<ProUpsellLink message={m('routeNew.generateProUpsell')} testid="route-generate-pro-upsell" />
 						</p>
 					{/if}
 					<p class="pref-not-applied" aria-live="polite" data-testid="route-pref-not-applied">
@@ -1963,14 +1972,10 @@
 		color: var(--color-text-secondary);
 	}
 
-	.pro-upsell {
+	.generate-upsell {
 		margin: var(--space-xs) 0 0;
 		font-size: 0.72rem;
 		color: var(--color-text-secondary);
-	}
-	.pro-upsell a {
-		color: var(--color-primary);
-		font-weight: 600;
 	}
 
 	.target-btn {

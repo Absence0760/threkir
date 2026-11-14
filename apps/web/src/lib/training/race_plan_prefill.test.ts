@@ -10,6 +10,17 @@ import {
 	type RacePlanOwnPlan,
 	type RacePlanRace,
 } from './race_plan_prefill';
+import { interpolate } from '../i18n/interpolate';
+import { messages as de } from '../i18n/locales/de';
+import { en } from '../i18n/locales/en';
+import type { MessageKey } from '../i18n/messages';
+
+type DescribeInput = Omit<Parameters<typeof racePlanDescribe>[0], 't' | 'locale'>;
+const describe = (input: DescribeInput, maxChars?: number) =>
+	racePlanDescribe(
+		{ ...input, t: (key: MessageKey, params) => interpolate(en[key], params, 'en'), locale: 'en' },
+		maxChars,
+	);
 
 const TODAY = '2026-08-14'; // a Friday
 const RICHMOND: RacePlanRace = { name: 'Richmond Marathon', raceDateIso: '2026-11-14', distanceM: 42_195 };
@@ -27,22 +38,22 @@ const FULL = {
 
 test('describe: every field, in priority order', () => {
 	assert.equal(
-		racePlanDescribe(FULL),
+		describe(FULL),
 		'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km. Goal time: 3:45:00. ' +
-			'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, road surface.',
+			'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, surface: road.',
 	);
 });
 
 test('describe: no fitness and no course fall back to the race and goal', () => {
 	assert.equal(
-		racePlanDescribe({ race: RICHMOND, goalTimeS: 13_500, recentEffort: null, course: null }),
+		describe({ race: RICHMOND, goalTimeS: 13_500, recentEffort: null, course: null }),
 		'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km. Goal time: 3:45:00.',
 	);
 });
 
 test('describe: unusable values are left out rather than written as zero', () => {
 	assert.equal(
-		racePlanDescribe({
+		describe({
 			race: { name: 'Mystery Trail', raceDateIso: '2026-11-14', distanceM: null },
 			goalTimeS: 0,
 			recentEffort: { distanceM: 5000, durationS: 0, ageDays: 3 },
@@ -51,13 +62,13 @@ test('describe: unusable values are left out rather than written as zero', () =>
 		'Race: Mystery Trail on 2026-11-14.',
 	);
 	assert.equal(
-		racePlanDescribe({ race: { name: 'Mystery Trail', raceDateIso: '2026-11-14', distanceM: null }, goalTimeS: NaN }),
+		describe({ race: { name: 'Mystery Trail', raceDateIso: '2026-11-14', distanceM: null }, goalTimeS: NaN }),
 		'Race: Mystery Trail on 2026-11-14.',
 	);
 });
 
 test('describe: the 600-char cap holds for an absurd listing', () => {
-	const out = racePlanDescribe({
+	const out = describe({
 		race: { name: 'x'.repeat(1000), raceDateIso: '2026-11-14', distanceM: 42_195 },
 		goalTimeS: 13_500,
 		recentEffort: { distanceM: 10_000, durationS: 2910, ageDays: 12 },
@@ -66,23 +77,23 @@ test('describe: the 600-char cap holds for an absurd listing', () => {
 	assert.equal(RACE_PLAN_DESCRIBE_MAX, 600);
 	assert.ok(out.length <= 600, String(out.length));
 	assert.ok(out.startsWith(`Race: ${'x'.repeat(120)} on 2026-11-14. Distance: 42.2 km.`), out);
-	assert.ok(out.endsWith(`${'y'.repeat(40)} surface.`), out);
+	assert.ok(out.endsWith(`surface: ${'y'.repeat(40)}.`), out);
 });
 
 test('describe: a tighter cap drops lower-priority sentences whole', () => {
-	assert.equal(racePlanDescribe(FULL, 60), 'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km.');
-	assert.equal(racePlanDescribe(FULL, 40), 'Race: Richmond Marathon on 2026-11-14.');
+	assert.equal(describe(FULL, 60), 'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km.');
+	assert.equal(describe(FULL, 40), 'Race: Richmond Marathon on 2026-11-14.');
 });
 
 test('describe: distances, clocks and ages format the same on both platforms', () => {
 	const race = { name: 'Two  Oceans\nHalf', raceDateIso: '2027-04-04', distanceM: 21_097.5 };
 	assert.equal(
-		racePlanDescribe({ race, goalTimeS: 5999, recentEffort: { distanceM: 5000, durationS: 1499.6, ageDays: 0.6 } }),
+		describe({ race, goalTimeS: 5999, recentEffort: { distanceM: 5000, durationS: 1499.6, ageDays: 0.6 } }),
 		'Race: Two Oceans Half on 2027-04-04. Distance: 21.1 km. Goal time: 1:39:59. ' +
 			'Recent effort: 5 km in 25:00, 1 day ago.',
 	);
 	assert.ok(
-		racePlanDescribe({ race, recentEffort: { distanceM: 5000, durationS: 1500, ageDays: 0.2 } }).endsWith(
+		describe({ race, recentEffort: { distanceM: 5000, durationS: 1500, ageDays: 0.2 } }).endsWith(
 			'5 km in 25:00, today.',
 		),
 	);
@@ -90,25 +101,40 @@ test('describe: distances, clocks and ages format the same on both platforms', (
 
 test('describe: a miles runner reads miles and feet', () => {
 	assert.equal(
-		racePlanDescribe({ ...FULL, unit: 'mi' }),
+		describe({ ...FULL, unit: 'mi' }),
 		'Race: Richmond Marathon on 2026-11-14. Distance: 26.2 mi. Goal time: 3:45:00. ' +
-			'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, road surface.',
+			'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, surface: road.',
 	);
 });
 
 test('describe: mile distances round the same on both platforms', () => {
 	const at = (distanceM: number) =>
-		racePlanDescribe({ race: { name: 'R', raceDateIso: '2027-04-04', distanceM }, unit: 'mi' });
+		describe({ race: { name: 'R', raceDateIso: '2027-04-04', distanceM }, unit: 'mi' });
 	assert.equal(at(5000), 'Race: R on 2027-04-04. Distance: 3.1 mi.');
 	assert.equal(at(21_097.5), 'Race: R on 2027-04-04. Distance: 13.1 mi.');
 	assert.equal(at(50_000), 'Race: R on 2027-04-04. Distance: 31.1 mi.');
 	assert.equal(at(160_934.4), 'Race: R on 2027-04-04. Distance: 100 mi.');
 	assert.ok(
-		racePlanDescribe({
+		describe({
 			race: { name: 'R', raceDateIso: '2027-04-04', distanceM: null },
 			recentEffort: { distanceM: 1609.344, durationS: 400, ageDays: 1 },
 			unit: 'mi',
 		}).endsWith('Recent effort: 1 mi in 6:40, 1 day ago.'),
+	);
+});
+
+test("describe: reads the reader's catalogue, decimal mark and plural", () => {
+	const out = racePlanDescribe({
+		race: { name: 'Two Oceans Half', raceDateIso: '2027-04-04', distanceM: 21_097.5 },
+		recentEffort: { distanceM: 5000, durationS: 1499.6, ageDays: 0.6 },
+		course: { ascentM: 120, surface: 'Asphalt' },
+		t: (key: MessageKey, params) => interpolate(de[key], params, 'de'),
+		locale: 'de',
+	});
+	assert.equal(
+		out,
+		'Rennen: Two Oceans Half am 2027-04-04. Distanz: 21,1 km. ' +
+			'Letzte Leistung: 5 km in 25:00, vor 1 Tag. Strecke: 120 m Aufstieg, Untergrund: Asphalt.',
 	);
 });
 

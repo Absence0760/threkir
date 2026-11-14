@@ -2,7 +2,7 @@
 	import { formatDistance, formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
 	import {
 		racePlanChain,
@@ -242,9 +242,14 @@
 			goalTimeS: racePlanGoalTimeS(ownPlans, planRace.raceDateIso),
 			recentEffort,
 			course: race?.course
-				? { ascentM: race.course.ascentM, surface: race.course.surface }
+				? {
+						ascentM: race.course.ascentM,
+						surface: race.course.surface ? routeSurfaceLabel(race.course.surface) : null,
+					}
 				: null,
 			unit: getUnit(),
+			t: m,
+			locale: currentLocale(),
 		});
 		return racePlanHref({
 			race: planRace,

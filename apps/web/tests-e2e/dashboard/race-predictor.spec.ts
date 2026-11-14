@@ -67,7 +67,7 @@ test.describe('dashboard race-time predictor', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			const card = page.getByTestId('race-predictor');
 			await expect(card).toBeVisible({ timeout: 15_000 });
@@ -95,7 +95,7 @@ test.describe('dashboard race-time predictor', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			// Wait for the dashboard body to settle, then assert the card is absent.
 			await page.waitForLoadState('networkidle');
 			await expect(page.getByTestId('race-predictor')).toHaveCount(0);

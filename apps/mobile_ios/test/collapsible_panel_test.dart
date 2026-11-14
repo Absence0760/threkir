@@ -115,4 +115,59 @@ void main() {
       expect(semantics.hasFlag(SemanticsFlag.isButton), isTrue);
     });
   });
+
+  // #1374 A11Y-15: the full-width handle was 28 dp tall, clearing WCAG's
+  // 24 dp but not Android's 48 dp. Its target reaches above the panel; the
+  // panel itself is drawn no taller.
+  group('CollapsiblePanel handle target', () {
+    Future<void> pumpBottom(WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: CollapsiblePanel(
+              expandedChild: SizedBox(height: 120, child: Text('expanded')),
+              collapsedChild: SizedBox(height: 40, child: Text('collapsed')),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is at least 48 dp tall and meets the Android guideline',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpBottom(tester);
+      final target =
+          tester.getSize(find.byKey(const ValueKey('collapsible-panel-handle')));
+      expect(target.height, greaterThanOrEqualTo(48));
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      handle.dispose();
+    });
+
+    testWidgets('the panel is drawn no taller: the extra target is above it',
+        (tester) async {
+      await pumpBottom(tester);
+      final panel = tester.getRect(find.byType(ClipRRect));
+      final target = tester
+          .getRect(find.byKey(const ValueKey('collapsible-panel-handle')));
+      expect(panel.top - target.top, CollapsiblePanel.handleOverhang);
+      expect(target.bottom, panel.top + CollapsiblePanel.handleHeight,
+          reason: 'the target covers the drawn 28 dp strip and no content');
+      // Content + 28 dp strip + the 12 dp bottom gap, as before.
+      expect(panel.height, 120 + CollapsiblePanel.handleHeight + 12);
+    });
+
+    testWidgets('a tap in the strip above the panel toggles it',
+        (tester) async {
+      await pumpBottom(tester);
+      final panel = tester.getRect(find.byType(ClipRRect));
+      await tester.tapAt(Offset(panel.left + 10, panel.top - 10));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Expand stats panel'), findsOneWidget);
+    });
+  });
 }

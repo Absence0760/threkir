@@ -7,7 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
-import '../preferences.dart' show formatDistanceForPref;
+import '../preferences.dart'
+    show compactDistanceForPref, formatDistanceForPref;
 import '../race_plan_preset.dart';
 import '../race_provider_labels.dart';
 import '../provenance.dart';
@@ -57,12 +58,21 @@ class RacesScreen extends StatefulWidget {
   /// opens; production callsites let the screen build its own.
   final TrainingService? training;
 
+  /// Which view is showing, shared with the shell so a link elsewhere (the
+  /// Segments tab's Park courses action) can open the Courses view of the
+  /// tab already in the hub (decisions § 2480). Null in standalone mounts,
+  /// where the screen owns one starting at [initialShow].
+  final ValueNotifier<RacesShow>? show;
+  final RacesShow initialShow;
+
   const RacesScreen({
     super.key,
     required this.service,
     this.mapTilerKey,
     this.api,
     this.training,
+    this.show,
+    this.initialShow = RacesShow.all,
   });
 
   @override
@@ -70,6 +80,10 @@ class RacesScreen extends StatefulWidget {
 }
 
 const _distanceBands = ['', '5k', '10k', 'half', 'marathon', 'ultra'];
+
+/// What Races & courses shows: both sections, the race calendar alone, or the
+/// park courses alone. Mirrors web `/races?show=`.
+enum RacesShow { all, races, courses }
 
 /// How far back Recent results looks, in days. Mirrors web's
 /// `RECENT_WINDOW_DAYS` on `/races`.
@@ -82,9 +96,18 @@ class _RacesScreenState extends State<RacesScreen> {
   int _gen = 0;
 
   String _query = '';
+
+  /// [_query] once typing pauses, which is what filters the park courses.
+  String _settledQuery = '';
+
+  /// The race search has not run since its inputs changed, because the
+  /// Courses view hides the races; it runs when they show again.
+  bool _racesStale = false;
   String _distance = '';
   bool _recent = false;
   String _nearPlace = '';
+  late final ValueNotifier<RacesShow> _show =
+      widget.show ?? ValueNotifier(widget.initialShow);
 
   bool _loading = true;
   bool _error = false;
@@ -95,23 +118,58 @@ class _RacesScreenState extends State<RacesScreen> {
   @override
   void initState() {
     super.initState();
+    _show.addListener(_onShow);
     _run();
+  }
+
+  void _onShow() {
+    if (!mounted) return;
+    setState(() {});
+    if (_racesStale && _show.value != RacesShow.courses) _run();
   }
 
   @override
   void dispose() {
+    _show.removeListener(_onShow);
+    if (widget.show == null) _show.dispose();
     _debounce?.cancel();
     _searchCtl.dispose();
     _placeCtl.dispose();
     super.dispose();
   }
 
+  /// One debounce for both lists: the race search is a server call per
+  /// settled query, and the courses refilter on the same beat rather than on
+  /// every keystroke.
   void _schedule() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), _run);
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      if (_settledQuery != _query) setState(() => _settledQuery = _query);
+      if (_show.value == RacesShow.courses) {
+        _racesStale = true;
+      } else {
+        _run();
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchCtl.clear();
+    setState(() {
+      _query = '';
+      _settledQuery = '';
+    });
+    if (_show.value == RacesShow.courses) {
+      _racesStale = true;
+    } else {
+      _run();
+    }
   }
 
   Future<void> _run() async {
+    _racesStale = false;
     final gen = ++_gen;
     setState(() {
       _loading = true;
@@ -213,81 +271,52 @@ class _RacesScreenState extends State<RacesScreen> {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final api = widget.api;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l.runSurfaceTabRacesCourses),
-        actions: const [HelpButton(routes: ['/races'])],
-      ),
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openSubmit,
-        icon: const Icon(Icons.add),
-        label: Text(l.racesSubmitRace),
-      ),
+    final racesShown = _show.value != RacesShow.courses;
+    return HubTabBody(
+      title: l.runSurfaceTabRacesCourses,
+      // No primary action: "Add a race" contributes a listing, which few
+      // people do and nobody comes here to do, so it waits in the overflow
+      // rather than holding the FAB (issue #1374 report 2).
+      actions: [
+        const HelpButton(routes: ['/races']),
+        PopupMenuButton<void>(
+          key: const Key('races-overflow'),
+          itemBuilder: (_) => [
+            PopupMenuItem<void>(
+              onTap: _openSubmit,
+              child: ListTile(
+                leading: const Icon(Icons.add),
+                title: Text(l.racesSubmitRace),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
+      filters: _filterBar(l, api: api, racesShown: racesShown),
+      onRefresh: racesShown ? _run : null,
       // One scroll for both sections: Upcoming races first, as on web, then
       // Run any time below the results.
       body: CustomScrollView(
         key: const Key('races-scroll'),
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Semantics(
-                header: true,
-                child: Text(l.racesSectionUpcoming,
-                    style: theme.textTheme.titleMedium),
+          if (racesShown) ..._raceSlivers(l, theme),
+          if (api != null && _show.value != RacesShow.races)
+            // Keyed so switching views keeps its courses, records and fix
+            // rather than reading them again.
+            SliverToBoxAdapter(
+              key: const Key('races-any-time-sliver'),
+              child: RunAnyTimeSection(
+                api: api,
+                limit: _show.value == RacesShow.courses
+                    ? null
+                    : kRunAnyTimeLimit,
+                showParks: _show.value == RacesShow.courses,
+                query: _settledQuery,
+                onClearQuery: _clearSearch,
               ),
             ),
-          ),
-          // One row: the list is what the section is for, so only the search
-          // stays out here and every other filter waits behind Filters.
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchCtl,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: l.racesSearchPlaceholder,
-                        isDense: true,
-                      ),
-                      onChanged: (v) {
-                        _query = v;
-                        _schedule();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    key: const Key('races-filters-button'),
-                    onPressed: _openFilters,
-                    icon: ExcludeSemantics(
-                      child: Badge(
-                        isLabelVisible: _activeCount > 0,
-                        label: Text('$_activeCount'),
-                        child: const Icon(Icons.tune),
-                      ),
-                    ),
-                    label: Semantics(
-                      label: _activeCount > 0
-                          ? l.racesFiltersCount(_activeCount)
-                          : l.racesFilters,
-                      excludeSemantics: true,
-                      child: Text(l.racesFilters),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_activeCount > 0)
-            SliverToBoxAdapter(child: _buildActiveFilters(l)),
-          _buildResults(l),
-          if (api != null)
-            SliverToBoxAdapter(child: RunAnyTimeSection(api: api)),
           SliverToBoxAdapter(
             child: SizedBox(height: fabScrollClearance(context)),
           ),
@@ -295,6 +324,79 @@ class _RacesScreenState extends State<RacesScreen> {
       ),
     );
   }
+
+  /// The search, which finds races by name and park courses by name, park and
+  /// place, so it stays in every view (issue #1374: with it gone from Courses
+  /// the help and overflow sat alone on a row); Filters, which only the race
+  /// calendar has, so Courses hides it; the All · Races · Courses view on the
+  /// one chip line; and the filters that are on as removable chips after it.
+  FilterBar _filterBar(AppLocalizations l,
+      {required ApiClient? api, required bool racesShown}) {
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l.filterBarRemoveFilter(label),
+        );
+    return FilterBar(
+      key: const Key('races-filter-bar'),
+      search: AppSearchField(
+        key: const Key('races-search'),
+        controller: _searchCtl,
+        // Says what it finds in the view showing.
+        hint: api == null || _show.value == RacesShow.races
+            ? l.racesSearchPlaceholder
+            : _show.value == RacesShow.courses
+                ? l.parksSearchPlaceholder
+                : l.racesSearchAllPlaceholder,
+        clearTooltip: l.commonClearSearch,
+        onChanged: (v) {
+          _query = v;
+          _schedule();
+        },
+      ),
+      chipsLabel: api == null ? null : l.racesShowGroup,
+      chips: [
+        if (api != null)
+          for (final o in [
+            ChoiceChipOption(value: RacesShow.all, label: l.racesShowAll),
+            ChoiceChipOption(value: RacesShow.races, label: l.racesShowRaces),
+            ChoiceChipOption(
+                value: RacesShow.courses, label: l.racesShowCourses),
+          ])
+            buildChoiceChip<RacesShow>(
+                context, o, _show.value, (v) => _show.value = v),
+      ],
+      activeFilters: racesShown
+          ? [
+              if (_recent) active(l.racesWhenRecent, () => _setRecent(false)),
+              if (_distance.isNotEmpty)
+                active(_bandLabel(l, _distance), () => _setDistance('')),
+              if (_nearPlace.trim().isNotEmpty)
+                active(l.racesNearChip(_nearPlace.trim()), _clearNear),
+            ]
+          : const [],
+      filtersLabel: racesShown ? l.filterBarFilters : null,
+      filtersSemanticLabel:
+          _activeCount > 0 ? l.filterBarFiltersCount(_activeCount) : null,
+      activeFilterCount: _activeCount,
+      onOpenFilters: racesShown ? _openFilters : null,
+    );
+  }
+
+  List<Widget> _raceSlivers(AppLocalizations l, ThemeData theme) => [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppInsets.gutter,
+                AppInsets.pageTop, AppInsets.gutter, AppSpace.xs),
+            child: Semantics(
+              header: true,
+              child: Text(l.racesSectionUpcoming,
+                  style: theme.textTheme.titleMedium),
+            ),
+          ),
+        ),
+        _buildResults(l),
+      ];
 
   int get _activeCount =>
       (_distance.isEmpty ? 0 : 1) +
@@ -317,45 +419,13 @@ class _RacesScreenState extends State<RacesScreen> {
     _run();
   }
 
-  /// The filter state with the sheet closed: one removable chip per filter,
-  /// in a single row that scrolls rather than wraps so it never costs the
-  /// list more than one line.
-  Widget _buildActiveFilters(AppLocalizations l) {
-    Widget chip(String label, VoidCallback onRemove) => Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: InputChip(
-            label: Text(label),
-            selected: true,
-            showCheckmark: false,
-            onPressed: _openFilters,
-            onDeleted: onRemove,
-            deleteButtonTooltipMessage: l.racesRemoveFilter(label),
-          ),
-        );
-    return SingleChildScrollView(
-      key: const Key('races-active-filters'),
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          if (_recent) chip(l.racesWhenRecent, () => _setRecent(false)),
-          if (_distance.isNotEmpty)
-            chip(_bandLabel(l, _distance), () => _setDistance('')),
-          if (_nearPlace.trim().isNotEmpty)
-            chip(l.racesNearChip(_nearPlace.trim()), _clearNear),
-        ],
-      ),
-    );
-  }
-
   Future<void> _openFilters() {
     final l = AppLocalizations.of(context);
-    return showModalBottomSheet<void>(
+    return showFilterSheet(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheet) {
+      title: l.filterBarFilters,
+      doneLabel: l.filterBarDone,
+      builder: (sheetContext, setSheet) {
           // Each change applies at once, so the list behind the sheet and the
           // chips above it are already right when it closes.
           void apply(VoidCallback change) {
@@ -364,18 +434,10 @@ class _RacesScreenState extends State<RacesScreen> {
           }
 
           final theme = Theme.of(sheetContext);
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
+          return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l.racesFilters, style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 16),
                   TextField(
                     controller: _placeCtl,
                     decoration: InputDecoration(
@@ -391,6 +453,7 @@ class _RacesScreenState extends State<RacesScreen> {
                   const SizedBox(height: 16),
                   Text(l.racesWhenGroup, style: theme.textTheme.titleSmall),
                   const SizedBox(height: 8),
+                  // semantics-children: a group name, read once before the controls inside it
                   Semantics(
                     container: true,
                     label: l.racesWhenGroup,
@@ -435,20 +498,9 @@ class _RacesScreenState extends State<RacesScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: Text(l.racesFiltersDone),
-                    ),
-                  ),
                 ],
-              ),
-            ),
-          );
-        },
-      ),
+              );
+      },
     );
   }
 
@@ -464,14 +516,18 @@ class _RacesScreenState extends State<RacesScreen> {
     }
     if (_error) {
       return SliverToBoxAdapter(
-        child: ErrorState(message: l.racesSearchFailed, onRetry: _run),
+        child: AppErrorState(message: l.racesSearchFailed, onRetry: _run),
       );
     }
     if (_results.isEmpty) {
+      final searched = _query.trim().isNotEmpty;
       return SliverToBoxAdapter(
         child: EmptyState(
           icon: Icons.flag_outlined,
           title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+          ctaLabel: searched ? l.commonClearSearch : null,
+          ctaIcon: Icons.close,
+          onCta: searched ? _clearSearch : null,
         ),
       );
     }
@@ -527,94 +583,51 @@ class _RaceCard extends StatelessWidget {
         formatDistanceForPref(race.distanceM!.toDouble()),
       if (race.locationLabel != null) race.locationLabel!,
       if (race.distanceMAway != null)
-        l.racesDistanceAway(formatDistanceForPref(race.distanceMAway!)),
+        l.racesDistanceAway(compactDistanceForPref(race.distanceMAway!)),
     ];
     // The whole card opens the race; the action buttons below stay their own
     // targets because each claims its own tap. A screen reader hears the
-    // name and facts as one button, and each action separately — the
-    // InkWell's own tap node is excluded so the card is not announced twice.
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        excludeFromSemantics: true,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              MergeSemantics(
-                child: Semantics(
-                  button: true,
-                  onTap: onOpen,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        race.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(decoration: TextDecoration.underline),
-                      ),
-                      if (provenanceShowsBadge(provenance)) ...[
-                        const SizedBox(height: 4),
-                        ProvenanceBadge(provenance: provenance),
-                      ],
-                      const SizedBox(height: 4),
-                      Text(
-                        meta.join(' · '),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (!race.isVerified)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            l.racesUnverified,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ),
-                    ],
+    // name and facts as one button, and each action separately.
+    return ListCard.row(
+      margin: ListCard.listMargin,
+      dense: true,
+      onTap: onOpen,
+      title: race.name,
+      badge: provenanceShowsBadge(provenance)
+          ? ProvenanceBadge(provenance: provenance)
+          : null,
+      subtitle: meta.join(' · '),
+      subtitleMaxLines: 3,
+      meta: race.isVerified
+          ? null
+          : Text(
+              l.racesUnverified,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (canTrainFor)
-                    OutlinedButton(
-                      onPressed: onTrainFor,
-                      child: Text(l.racesTrainForThis),
-                    ),
-                  if (race.entryUrl != null)
-                    OutlinedButton(
-                      onPressed: () => _launch(context, race.entryUrl!),
-                      child: Text(l.racesRegister),
-                    ),
-                  if (race.resultsUrl != null)
-                    OutlinedButton(
-                      onPressed: () => _launch(context, race.resultsUrl!),
-                      child: Text(l.racesViewResults),
-                    ),
-                  if (canImport)
-                    FilledButton(
-                      onPressed: onImport,
-                      child: Text(l.racesImportResult),
-                    ),
-                ],
-              ),
-            ],
+            ),
+      actions: [
+        if (canTrainFor)
+          OutlinedButton(
+            onPressed: onTrainFor,
+            child: Text(l.racesTrainForThis),
           ),
-        ),
-      ),
+        if (race.entryUrl != null)
+          OutlinedButton(
+            onPressed: () => _launch(context, race.entryUrl!),
+            child: Text(l.racesRegister),
+          ),
+        if (race.resultsUrl != null)
+          OutlinedButton(
+            onPressed: () => _launch(context, race.resultsUrl!),
+            child: Text(l.racesViewResults),
+          ),
+        if (canImport)
+          FilledButton(
+            onPressed: onImport,
+            child: Text(l.racesImportResult),
+          ),
+      ],
     );
   }
 
@@ -732,39 +745,41 @@ class _RaceListingFormState extends State<_RaceListingForm> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(labelText: l.racesFieldName),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _date,
-              readOnly: true,
-              onTap: _pickDate,
-              decoration: InputDecoration(
-                labelText: l.racesFieldDate,
-                suffixIcon: const Icon(Icons.calendar_today),
+            FieldColumn(children: [
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(labelText: l.racesFieldName),
+                onChanged: (_) => setState(() {}),
               ),
-            ),
-            TextField(
-              controller: _distance,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l.racesFieldDistance),
-            ),
-            TextField(
-              controller: _location,
-              decoration: InputDecoration(labelText: l.racesFieldLocation),
-            ),
-            TextField(
-              controller: _entryUrl,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(labelText: l.racesFieldEntryUrl, hintText: 'https://'),
-            ),
-            TextField(
-              controller: _resultsUrl,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(labelText: l.racesFieldResultsUrl, hintText: 'https://'),
-            ),
+              TextField(
+                controller: _date,
+                readOnly: true,
+                onTap: _pickDate,
+                decoration: InputDecoration(
+                  labelText: l.racesFieldDate,
+                  suffixIcon: const Icon(Icons.calendar_today),
+                ),
+              ),
+              TextField(
+                controller: _distance,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l.racesFieldDistance),
+              ),
+              TextField(
+                controller: _location,
+                decoration: InputDecoration(labelText: l.racesFieldLocation),
+              ),
+              TextField(
+                controller: _entryUrl,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(labelText: l.racesFieldEntryUrl, hintText: 'https://'),
+              ),
+              TextField(
+                controller: _resultsUrl,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(labelText: l.racesFieldResultsUrl, hintText: 'https://'),
+              ),
+            ]),
           ],
         ),
       ),
@@ -967,26 +982,28 @@ class _RaceImportFormState extends State<_RaceImportForm> {
             ],
             const SizedBox(height: 8),
             Text(l.racesPasteResultHint, style: Theme.of(context).textTheme.bodySmall),
-            TextField(
-              controller: _bib,
-              decoration: InputDecoration(labelText: l.racesBib),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _chip,
-              decoration: InputDecoration(labelText: l.racesChipTime, hintText: '1:47:23'),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _gun,
-              decoration: InputDecoration(labelText: l.racesGunTime, hintText: '1:48:01'),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _place,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l.racesOverallPlace),
-            ),
+            FieldColumn(children: [
+              TextField(
+                controller: _bib,
+                decoration: InputDecoration(labelText: l.racesBib),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _chip,
+                decoration: InputDecoration(labelText: l.racesChipTime, hintText: '1:47:23'),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _gun,
+                decoration: InputDecoration(labelText: l.racesGunTime, hintText: '1:48:01'),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _place,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l.racesOverallPlace),
+              ),
+            ]),
           ],
         ),
       ),

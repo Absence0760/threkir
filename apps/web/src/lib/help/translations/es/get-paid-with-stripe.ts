@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abre [[route:/settings/payouts|Configuración, Pagos]] en la web.',
+						'Abre [[route:/settings/payouts|Pagos]] en la web.',
 						'Pulsa **Configurar pagos**. Irás a Stripe para introducir tus datos y la cuenta bancaria en la que quieres cobrar.',
 						'Completa los pasos de Stripe. Cuando vuelvas, la página mostrará tu estado.',
 						'Si dice **Configuración incompleta: termínala para empezar a cobrar** o **Tu cuenta de pagos requiere atención antes de poder cobrar**, pulsa **Terminar de configurar los pagos** para volver a Stripe y seguir donde lo dejaste.',
@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 		's0.b0': '94bdd45ffa45992b',
 		's0.b1': 'a2c35333af5a1b69',
 		's1.heading': '3f872765a64cbf87',
-		's1.b0.i0': 'e50bbd6128265cce',
+		's1.b0.i0': '9321b7eb6cd09720',
 		's1.b0.i1': '0f46885c40eac7c9',
 		's1.b0.i2': '5c865b5f5c133459',
 		's1.b0.i3': '8dda9f151d4fc524',

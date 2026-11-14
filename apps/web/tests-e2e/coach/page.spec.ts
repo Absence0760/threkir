@@ -4,6 +4,8 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 const SEED_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
+// en `coachChat.errorStreamFailed`: what a failed or cut-off stream shows.
+const STREAM_FAILED = "The Coach's reply was cut off. Try sending your message again.";
 
 /**
  * /coach — Anthropic-backed chat surface. The LLM round-trip itself
@@ -195,7 +197,7 @@ test.describe('/coach', () => {
 					used: 2,
 					limit: 2,
 					tier: 'free',
-					message: 'Daily limit reached (2 messages). Come back tomorrow!'
+					message: 'You have used all 2 coach messages for today.'
 				})
 			});
 		});
@@ -434,11 +436,13 @@ test.describe('/coach', () => {
 		await page.getByPlaceholder(/Ask about today/).fill('e2e mid-stream err');
 		await page.locator('form.composer button[type="submit"]').click();
 
-		// Both: partial bubble + error banner.
+		// Both: partial bubble + error banner. The banner is catalogue copy;
+		// the event's own text never reaches the reader (decisions § 2509).
 		await expect(
 			page.locator('.bubble', { hasText: PARTIAL })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.getByText(ERR_MSG)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText(STREAM_FAILED)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText(ERR_MSG)).toHaveCount(0);
 	});
 
 	test('SSE: empty stream (meta + done, no tokens) does not stall the bubble', async ({
@@ -510,17 +514,16 @@ test.describe('/coach', () => {
 		page
 	}) => {
 		// When the streaming endpoint rejects with 401 (e.g. the
-		// session expired upstream), CoachChat falls through to the
-		// generic-error branch (line 475) and surfaces j.error or
-		// `Coach error (401)`. Pin that the banner is visible — a
+		// session expired upstream), CoachChat shows the catalogue's
+		// session-expired copy, never the server's English body. A
 		// regression that swallowed the error would leave the
 		// optimistic assistant bubble in a "Thinking…" spinner.
-		const errorMessage = 'Session expired. Please refresh.';
+		const errorMessage = 'Your session expired. Please sign in again.';
 		await page.route('**/api/coach', async (route) => {
 			await route.fulfill({
 				status: 401,
 				contentType: 'application/json',
-				body: JSON.stringify({ error: errorMessage })
+				body: JSON.stringify({ error: 'not authenticated' })
 			});
 		});
 
@@ -559,12 +562,10 @@ test.describe('/coach', () => {
 		await composer.fill('e2e 500 path');
 		await page.locator('form.composer button[type="submit"]').click();
 
-		// CoachChat reads j.error first for non-401/429 responses
-		// (line 475 in CoachChat.svelte), so the banner surfaces the
-		// upstream `error` field as the user-facing message.
-		await expect(
-			page.getByText(/Coach is temporarily unavailable|temporarily unavailable/i)
-		).toBeVisible({ timeout: 10_000 });
+		// A 5xx shows the catalogue's unavailable copy; the server's
+		// English `error` field is never the reader's message.
+		await expect(page.getByText('Coach is unavailable right now. Try again in a moment.')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText('Coach is temporarily unavailable. Try again shortly.')).toHaveCount(0);
 	});
 
 	test('chat history sidebar mounts (the conversation-history scaffold is reachable)', async ({
@@ -681,7 +682,9 @@ test.describe('/coach', () => {
 		await expect(composer).toHaveValue('line one\nline two');
 
 		await page.keyboard.press('Enter');
-		await expect(page.getByText(/stub/)).toBeVisible({ timeout: 5_000 });
+		// The send went out: the mocked 500 comes back as the catalogue's
+		// unavailable copy, never the server's own `error` text.
+		await expect(page.getByText('Coach is unavailable right now. Try again in a moment.')).toBeVisible({ timeout: 5_000 });
 	});
 
 	test('picking a real plan via mouse-click switches the chat-host (planId key remount)', async ({
@@ -812,10 +815,10 @@ test.describe('/coach', () => {
 		await composer.fill('What pace today?');
 		await page.locator('form.composer button[type="submit"]').click();
 
-		// The stream-failure message surfaces...
-		await expect(
-			page.getByText('The coach is unavailable right now.')
-		).toBeVisible({ timeout: 10_000 });
+		// The stream-failure message surfaces as catalogue copy, never the
+		// event's own text (decisions § 2509)...
+		await expect(page.getByText(STREAM_FAILED)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText('The coach is unavailable right now.')).toHaveCount(0);
 		// ...and because usedToday rolled back from 2 to 1, limitReached
 		// (>= daily_limit 2) is false: the composer is still there. Before the
 		// fix it stuck at 2 and the composer was replaced by the limit

@@ -11,6 +11,7 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../dm_pending_hides.dart';
 import '../dm_search.dart';
+import '../fab_clearance.dart';
 import '../group_errors.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -20,9 +21,11 @@ import '../monotonic_clock.dart';
 import '../pro_sellable.dart';
 import '../settings_sync.dart';
 import '../training_service.dart';
+import '../unread_messages.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/new_message_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -321,6 +324,29 @@ class _MessagesScreenState extends State<MessagesScreen>
     }
   }
 
+  /// Picks a person and opens the conversation with them: the one they
+  /// already have when there is one, so a second thread is never started
+  /// beside it, otherwise a new one (issue #1374).
+  Future<void> _newMessage() async {
+    final r = await showNewMessageSheet(context, api: widget.api);
+    if (r == null || !mounted) return;
+    for (final t in _threads) {
+      if (!t.isGroup && t.partnerId == r.id) return _open(t);
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => MessageThreadScreen(
+          api: widget.api,
+          partnerId: r.id,
+          partnerName: r.displayName,
+          partnerAvatarUrl: r.avatarUrl,
+          pollInterval: widget.threadPollInterval,
+        ),
+      ),
+    );
+    if (mounted) _refresh();
+  }
+
   Future<void> _createGroup() async {
     final id = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => GroupCreateScreen(api: widget.api)),
@@ -551,6 +577,9 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   @override
   void dispose() {
+    // Whatever was read here, the badges that point at the inbox read again
+    // as it closes, however it was reached (Social, a notification, a link).
+    unawaited(UnreadMessages.instance.refresh());
     _searchTimer?.cancel();
     _search.dispose();
     _poll?.cancel();
@@ -722,20 +751,34 @@ class _MessagesScreenState extends State<MessagesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.messagesTitle),
-        actions: [
-          if (_groupsEnabled && widget.api.userId != null)
-            IconButton(
-              key: const ValueKey('inbox-new-group'),
-              tooltip: l10n.groupsNewGroup,
-              icon: const Icon(Icons.group_add_outlined),
-              onPressed: _createGroup,
-            ),
+    return PushedPage(
+      title: l10n.messagesTitle,
+      actions: [
+        if (_groupsEnabled && widget.api.userId != null)
+          AppBarAction(
+            key: const ValueKey('inbox-new-group'),
+            label: l10n.groupsNewGroup,
+            icon: const Icon(Icons.group_add_outlined),
+            onPressed: _createGroup,
+          ),
+      ],
+      // The heading scrolls away with the inbox, as a pushed hub tab's does
+      // (HubTabBody); the search field stays pinned above the list.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: PageHeader(title: l10n.messagesTitle)),
         ],
+        body: _body(l10n),
       ),
-      body: _body(l10n),
+      floatingActionButtonLocation: pageFabLocation(context),
+      floatingActionButton: widget.api.userId == null
+          ? null
+          : PrimaryAction(
+              label: l10n.messagesNewMessage,
+              icon: Icons.edit_outlined,
+              onPressed: _newMessage,
+              fabKey: const ValueKey('inbox-new-message'),
+            ).toFab(),
     );
   }
 
@@ -749,9 +792,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: Semantics(
-            label: l10n.messagesSearchLabel,
-            child: TextField(
+          child: TextField(
               key: const ValueKey('inbox-search'),
               controller: _search,
               onChanged: _onSearchChanged,
@@ -773,7 +814,6 @@ class _MessagesScreenState extends State<MessagesScreen>
                 isDense: true,
               ),
             ),
-          ),
         ),
         Expanded(
           child: _searchQuery != null ? _searchBody(l10n) : _listBody(l10n),
@@ -890,7 +930,7 @@ class _MessagesScreenState extends State<MessagesScreen>
           );
     final hasCoachRow = entries.any((e) => e is CoachInboxEntry<DmThread>);
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
-      return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
     if (entries.isEmpty && split.archived.isEmpty && requestCount == 0) {
       return EmptyState(
@@ -955,6 +995,8 @@ class _MessagesScreenState extends State<MessagesScreen>
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
+        // The last row clears the New message button floating over it.
+        padding: EdgeInsets.only(bottom: fabScrollClearance(context)),
         itemCount: (header == null ? 0 : 1) +
             inviteRows.length +
             entries.length +

@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../finisher_certificate.dart';
 import '../l10n/date_format.dart';
@@ -11,7 +12,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
-import 'capture_png.dart';
+import 'share_canvas.dart';
 import 'top_banner.dart';
 
 /// Opens a modal sheet showing the finisher certificate for an eligible
@@ -80,7 +81,8 @@ class _CertificateSheetState extends State<_CertificateSheet> {
     setState(() => _capturing = true);
     try {
       await WidgetsBinding.instance.endOfFrame;
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey,
+          canvasSize: kFinisherCertificateCanvas, widthPx: 1400);
 
       final safe = widget.eventTitle
           .replaceAll(RegExp('[^A-Za-z0-9]+'), '-')
@@ -108,64 +110,52 @@ class _CertificateSheetState extends State<_CertificateSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.clubEventDownloadCertificate,
-                  style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio: 1400 / 990,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: FinisherCertificateCard(
-                      eventTitle: widget.eventTitle,
-                      finisherName: widget.finisherName,
-                      durationS: widget.durationS,
-                      distanceM: widget.distanceM,
-                      rank: widget.rank,
-                      date: widget.date,
-                      clubName: widget.clubName,
-                    ),
-                  ),
-                ),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.clubEventDownloadCertificate,
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            // A fixed canvas with text scaling off, so the shared PNG is the
+            // same at any OS text size (issue #1374 TO-3).
+            child: ShareCanvas(
+              canvasSize: kFinisherCertificateCanvas,
+              captureKey: _cardKey,
+              child: FinisherCertificateCard(
+                eventTitle: widget.eventTitle,
+                finisherName: widget.finisherName,
+                durationS: widget.durationS,
+                distanceM: widget.distanceM,
+                rank: widget.rank,
+                date: widget.date,
+                clubName: widget.clubName,
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _capturing ? null : _shareImage,
-                  icon: _capturing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.ios_share),
-                  label: Text(l10n.clubEventCertificateShare),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _capturing ? null : _shareImage,
+              icon: _capturing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.ios_share),
+              label: Text(l10n.clubEventCertificateShare),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -176,6 +166,10 @@ class _CertificateSheetState extends State<_CertificateSheet> {
 /// distance + placing beneath. Wrap in a [RepaintBoundary] and grab via
 /// [RenderRepaintBoundary.toImage] to share as a PNG. Designed for a
 /// 1400:990 aspect ratio (web's CERT_WIDTH:CERT_HEIGHT).
+/// The finisher certificate's canvas: the 1400 x 990 print aspect, laid out
+/// at the card's own size and exported 1400 px wide (#1374 TO-3).
+const Size kFinisherCertificateCanvas = FinisherCertificateCard.canvas;
+
 class FinisherCertificateCard extends StatelessWidget {
   final String eventTitle;
   final String finisherName;
@@ -201,8 +195,24 @@ class FinisherCertificateCard extends StatelessWidget {
   static const Color _muted = Color(0xFF6B7280);
   static const Color _ground = Color(0xFFFFFDF7);
 
+  /// The canvas the certificate is laid out on, at web's 1400:990. It is a
+  /// picture of a certificate, shared as a PNG, so it is drawn at this size
+  /// with the system font size left out and scaled to the space it is given:
+  /// at a large font size its fixed-size type overflowed the preview by
+  /// some 1500 px (issue #1374).
+  static const Size canvas = Size(700, 495);
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => FittedBox(
+        child: SizedBox.fromSize(
+          size: canvas,
+          child: MediaQuery.withNoTextScaling(
+            child: Builder(builder: _canvas),
+          ),
+        ),
+      );
+
+  Widget _canvas(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final useMiles = activeDistanceUnit == DistanceUnit.mi;
     final stats = <String>[

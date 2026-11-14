@@ -111,7 +111,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'ランナーは**レース開始間近**で両方の通知をオフにできます。Webでは[[route:/settings/notifications|通知]]、スマートフォンアプリでは**あなた**タブの**環境設定**にあります。',
+					text: 'ランナーは**レース開始間近**で両方の通知をオフにできます。Webでは[[route:/settings/notifications|通知]]、スマートフォンアプリでは**あなた**タブの**通知**にあります。',
 				},
 			],
 		},
@@ -159,7 +159,7 @@ export const translation: GuideTranslation = {
 		's5.b2': '80fde57d63447dcd',
 		's6.heading': 'b0f6668439cdc509',
 		's6.b0': '7f18ce5f91bea911',
-		's6.b1': '125e56f45585f84e',
+		's6.b1': '75dcfe5f36ba4e0a',
 		's7.heading': '81f746d1e62c98a8',
 		's7.b0': '00727d27f2897451',
 	},

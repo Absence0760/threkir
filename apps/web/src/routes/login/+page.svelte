@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sessionStore } from '#lib/core/browser_storage.ts';
 	import { browser } from '$app/env';
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -117,8 +118,8 @@
 		if (isSignUp) {
 			const stamp = new Date().toISOString();
 			try {
-				sessionStorage.setItem('age_confirmed_at', stamp);
-				sessionStorage.setItem('terms_accepted_at', stamp);
+				sessionStore()?.setItem('age_confirmed_at', stamp);
+				sessionStore()?.setItem('terms_accepted_at', stamp);
 			} catch (_) {
 				/* Safari private-mode disables sessionStorage — the
 				   /auth/callback fallback redirects to /auth/confirm-age

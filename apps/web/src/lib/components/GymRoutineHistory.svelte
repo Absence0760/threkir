@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { fetchGymRoutineHistory } from '#lib/core/data.ts';
 	import {
 		routineHistoryFromAggregate,
@@ -67,15 +68,15 @@
 		<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 	</section>
 {:else if history && history.sessionCount > 0}
+	{@const sessionCount = history.sessionCount}
 	<section class="card-elevated history" aria-labelledby="routine-history-head" data-testid="routine-history">
-		<div class="history-head">
-			<h2 id="routine-history-head">{t('gym.routine.history.title')}</h2>
-			<span class="history-count" data-testid="routine-history-count">
-				{history.sessionCount === 1
-					? t('gym.records.sessionsOne')
-					: t('gym.records.sessionsMany', { count: history.sessionCount })}
-			</span>
-		</div>
+		<SectionHeader title flush label={t('gym.routine.history.title')} id="routine-history-head">
+			{#snippet trailing()}
+				<span class="history-count" data-testid="routine-history-count">
+					{t('gym.records.sessions', { count: sessionCount })}
+				</span>
+			{/snippet}
+		</SectionHeader>
 
 		<p class="history-stats">
 			<span data-testid="routine-history-last">
@@ -92,7 +93,7 @@
 			{/if}
 		</p>
 
-		<h3 class="section-label">{t('gym.routine.history.recent')}</h3>
+		<SectionHeader label={t('gym.routine.history.recent')} level={3} flush />
 		<ul class="session-list">
 			{#each recent as s (s.id)}
 				<li>
@@ -114,18 +115,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.history-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
-		flex-wrap: wrap;
-	}
-	.history-head h2 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
 	}
 	.history-count {
 		color: var(--color-text-tertiary);

@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import {
 	buildYearInRunningRecap,
 	buildMonthInRunningRecap,
-	recapHeadline,
+	computeRecapBadges,
 	__TEST_ONLY__,
 } from './recap';
 import type { Run } from '../types';
@@ -178,18 +178,48 @@ test('buildYearInRunningRecap: streaks read the full set, not just the year', ()
 	assert.ok(r.bestStreakDays >= 3, `expected >=3 days, got ${r.bestStreakDays}`);
 });
 
-test('recapHeadline: km vs mi switches the unit string', () => {
-	const recap = buildYearInRunningRecap(
-		[mkRun({ startedAt: '2026-01-01T10:00:00', distance_m: 1_609_344, duration_s: 540_000 })],
-		2026,
-	);
-	assert.equal(recapHeadline(recap, 'km'), '2026: 1609 km across 1 runs.');
-	assert.equal(recapHeadline(recap, 'mi'), '2026: 1000 mi across 1 runs.');
+test('computeRecapBadges: a badge carries the number its detail names, and no words', () => {
+	const badges = computeRecapBadges({
+		totalDistanceM: 120_000,
+		runCount: 10,
+		bestStreakDays: 9,
+		totalElevationM: 0,
+		longestRunM: 10_000,
+		activeMonths: 7,
+		distinctActivities: 3,
+		earliestStartLocal: '05:42',
+		latestStartLocal: '12:00',
+		photoCount: 1,
+		personalRecordCount: 2,
+	});
+	assert.deepEqual(badges, [
+		{ id: 'dist-100', icon: 'route' },
+		{ id: 'streak-7', icon: 'local_fire_department', value: 9 },
+		{ id: 'months-6', icon: 'calendar_month', value: 7 },
+		{ id: 'pr-1', icon: 'trophy', value: 2 },
+		{ id: 'photo-1', icon: 'photo_camera', value: 1 },
+		{ id: 'variety', icon: 'category', value: 3 },
+		{ id: 'early', icon: 'wb_twilight', value: '05:42' },
+	]);
 });
 
-test('recapHeadline: empty recap shows the "no runs" string', () => {
-	const recap = buildYearInRunningRecap([], 2026);
-	assert.equal(recapHeadline(recap, 'km'), 'No runs in 2026 yet.');
+test('computeRecapBadges: an empty year earns nothing', () => {
+	assert.deepEqual(
+		computeRecapBadges({
+			totalDistanceM: 0,
+			runCount: 0,
+			bestStreakDays: 0,
+			totalElevationM: 0,
+			longestRunM: 0,
+			activeMonths: 0,
+			distinctActivities: 0,
+			earliestStartLocal: null,
+			latestStartLocal: null,
+			photoCount: 0,
+			personalRecordCount: 0,
+		}),
+		[],
+	);
 });
 
 test('buildYearInRunningRecap: earliest + latest start times in HH:MM', () => {

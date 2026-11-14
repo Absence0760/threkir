@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show ListSummary;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
@@ -135,6 +136,45 @@ void main() {
     // sub-tab opts out (pinned in fitness_hub_screen_test.dart).
     await pumpRunList(tester);
     expect(find.byIcon(Icons.cloud_download), findsOneWidget);
+  });
+
+  testWidgets('the count is one ListSummary line at the head of the list, '
+      'the style Routes and Plans share (issue #1374)', (tester) async {
+    final runStore = LocalRunStore();
+    await runStore.init(overrideDirectory: tmp('runs_summary_'));
+    final now = DateTime.now().toUtc();
+    await tester.runAsync(() async => runStore.saveManyFromRemote([
+          for (final d in [1, 2])
+            Run(
+              id: 'r$d',
+              startedAt: now.subtract(Duration(days: d)),
+              duration: const Duration(seconds: 1500),
+              distanceMetres: 5000,
+              source: RunSource.app,
+            ),
+        ]));
+    SharedPreferences.setMockInitialValues({
+      'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+    });
+    final prefs = Preferences();
+    await prefs.init();
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: RunsScreen(
+        apiClient: _SlowDeleteApi(),
+        runStore: runStore,
+        routeStore: LocalRouteStore(),
+        preferences: prefs,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final summary = find.byKey(const ValueKey('runs-summary'));
+    expect(tester.widget(summary), isA<ListSummary>());
+    expect(
+        find.descendant(of: summary, matching: find.textContaining('2 runs')),
+        findsOneWidget);
+    expect(find.byType(ListSummary), findsOneWidget);
   });
 
   testWidgets('bulk delete disables its own controls while in flight',

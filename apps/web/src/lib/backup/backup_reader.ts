@@ -13,9 +13,9 @@
  * `apps/mobile_android/lib/backup.dart`.
  */
 
-import JSZip from 'jszip';
 import type { JsonObject } from '../types';
 import { AppError } from '../core/app_error';
+import { openZip, type ZipArchive } from '../core/zip_archive';
 
 import { BACKUP_FORMAT, BACKUP_VERSION } from './backup_writer';
 
@@ -38,7 +38,7 @@ export interface ParsedBackup {
  * Open + validate a backup archive. Throws on invalid manifest;
  * everything else is best-effort (missing files → empty defaults).
  *
- * Accepts any JSZip-loadable input: production calls hand a `File`
+ * Accepts a zip as a `Blob` or as bytes: production calls hand a `File`
  * or `Blob` from the file picker; tests can pass `Uint8Array` or
  * `ArrayBuffer` directly so `node --test` doesn't need a `Blob`
  * polyfill round-trip.
@@ -46,15 +46,15 @@ export interface ParsedBackup {
 export async function parseBackupArchive(
 	file: File | Blob | Uint8Array | ArrayBuffer
 ): Promise<ParsedBackup> {
-	const zip = await JSZip.loadAsync(file as Parameters<typeof JSZip.loadAsync>[0]);
+	const zip = await openZip(file);
 
-	const manifestFile = zip.file('manifest.json');
-	if (!manifestFile) {
+	const manifestText = await zip.text('manifest.json');
+	if (manifestText === null) {
 		throw new AppError('settingsAccount.restoreMissingManifest', {
 			message: 'Not a valid backup — missing manifest.json'
 		});
 	}
-	const rawManifest: unknown = JSON.parse(await manifestFile.async('string'));
+	const rawManifest: unknown = JSON.parse(manifestText);
 	if (!isPlainObject(rawManifest)) {
 		throw new AppError('settingsAccount.restoreBadManifest', {
 			message: 'Not a valid backup — manifest.json is not an object'
@@ -85,9 +85,9 @@ export async function parseBackupArchive(
 
 	let profile: JsonObject | null = null;
 	let settingsPrefs: JsonObject = {};
-	const profileFile = zip.file('profile.json');
-	if (profileFile) {
-		const parsed = JSON.parse(await profileFile.async('string')) as {
+	const profileText = await zip.text('profile.json');
+	if (profileText !== null) {
+		const parsed = JSON.parse(profileText) as {
 			profile?: unknown;
 			settings_prefs?: unknown;
 		};
@@ -110,9 +110,7 @@ export async function parseBackupArchive(
 		profile,
 		settingsPrefs,
 		async getTrackBytes(runId: string): Promise<Uint8Array | null> {
-			const entry = zip.file(`tracks/${runId}.json.gz`);
-			if (!entry) return null;
-			return entry.async('uint8array');
+			return zip.bytes(`tracks/${runId}.json.gz`);
 		}
 	};
 }
@@ -126,10 +124,10 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 /// loop, which would throw part-way with nothing to say which file was wrong.
 /// A non-object ELEMENT is left for the restore to skip with a warning, so
 /// one bad row does not cost the rest of the section.
-async function readRowList(zip: JSZip, name: string): Promise<JsonObject[]> {
-	const file = zip.file(name);
-	if (!file) return [];
-	const parsed: unknown = JSON.parse(await file.async('string'));
+async function readRowList(zip: ZipArchive, name: string): Promise<JsonObject[]> {
+	const text = await zip.text(name);
+	if (text === null) return [];
+	const parsed: unknown = JSON.parse(text);
 	if (!Array.isArray(parsed)) {
 		throw new AppError('settingsAccount.restoreSectionNotList', {
 			params: { name },

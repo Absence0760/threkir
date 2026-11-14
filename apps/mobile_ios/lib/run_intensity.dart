@@ -2,7 +2,7 @@ import 'package:core_models/core_models.dart';
 
 /// Per-zone time + sample-count breakdown of how a runner has been
 /// training over a fixed window. Mirrors the inline `intensityBreakdown`
-/// derived value on web's `/dashboard/+page.svelte` so the time-in-zone
+/// derived value in web's `dashboard/DashboardView.svelte` so the time-in-zone
 /// readout reads the same way on both surfaces.
 ///
 /// MVP classifies each run by `metadata.avg_bpm` against the supplied

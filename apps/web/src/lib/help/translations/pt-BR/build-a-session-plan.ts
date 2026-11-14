@@ -65,7 +65,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Abra o plano e clique em **Iniciar sessão**. As posturas sustentadas e os flows cronometrados avançam sozinhos; nas repetições, clique em **Pronto** quando terminar. Você pode **Pausar**, **Retomar**, **Pular** uma etapa ou **Abandonar**. Quando você termina, a sessão é salva no seu registro de academia como um treino.',
+					text: 'Abra o plano e clique em **Iniciar sessão**. As posturas sustentadas e os flows cronometrados avançam sozinhos; nas repetições, clique em **Concluído** quando terminar. Você pode **Pausar**, **Retomar**, **Pular** uma etapa ou **Abandonar**. Quando você termina, a sessão é salva no seu registro de academia como um treino.',
 				},
 				{
 					type: 'p',

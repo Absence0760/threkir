@@ -11,6 +11,14 @@
 // not listed has not been swept — adding one to this list is how the sweep
 // grows, and the test then names every control on it that owes an explanation.
 //
+// An `AppSearchField` is a control like the input it renders, and names its
+// explanation with its `describedby` prop, which it passes on as the input's
+// `aria-describedby`.
+//
+// A `ListRow` switch (`kind="toggle"`) is a control too: its `subtitle` is
+// rendered as the input's `aria-describedby`, and so is its `describedby`
+// prop when the explanation lives elsewhere on the page.
+//
 // A `<textarea>` is deliberately not a control here: its label plus its
 // placeholder is already the whole story on a free-text field, and demanding a
 // line under each one adds the density #905 exists to remove.
@@ -76,20 +84,25 @@ interface Control {
 
 function controls(source: string): Control[] {
 	const found: Control[] = [];
-	for (const m of source.matchAll(/<(input|select)\b|<div\b[^>]*role="(?:radio)?group"/g)) {
-		found.push({ tag: openingTag(source, m.index!), at: m.index! });
+	for (const m of source.matchAll(/<(input|select|AppSearchField|ListRow)\b|<div\b[^>]*role="(?:radio)?group"/g)) {
+		const tag = openingTag(source, m.index!);
+		// A ListRow is a control only as a switch; a nav row is a link.
+		if (m[1] === 'ListRow' && !/\bkind="toggle"/.test(tag)) continue;
+		found.push({ tag, at: m.index! });
 	}
 	return found;
 }
 
 function explained(source: string, control: Control): string | null {
-	const described = control.tag.match(/aria-describedby="([^"]+)"/);
+	const described = control.tag.match(/(?<![\w-])(?:aria-)?describedby="([^"]+)"/);
 	if (described) {
 		for (const id of described[1].split(/\s+/)) {
 			if (!source.includes(`id="${id}"`)) return `aria-describedby names "${id}", which no element has`;
 		}
 		return null;
 	}
+	// A ListRow switch renders its subtitle as the input's description.
+	if (control.tag.startsWith('<ListRow') && /\ssubtitle=/.test(control.tag)) return null;
 	if (/type="checkbox"/.test(control.tag)) {
 		const labelEnd = source.indexOf('</label>', control.at);
 		const inLabel = labelEnd >= 0 ? source.slice(control.at, labelEnd) : '';
@@ -114,6 +127,40 @@ for (const surface of SURFACES) {
 		assert.deepEqual(missing, [], `${surface.name} has controls with no explanation`);
 	});
 }
+
+// The /races filter hints live in the Filters sheet (issue #1374 owner
+// decision): each control there names an explanation that sits inside the
+// same sheet, so opening the sheet shows the control and its explanation
+// together, and no hint paragraph is left on the page outside it.
+test('every /races filter control has its hint inside the Filters sheet', () => {
+	const source = stripSvelteComments(read('routes/races/+page.svelte'));
+	const open = source.indexOf('{#snippet raceFilters()}');
+	assert.ok(open >= 0, '/races no longer defines the raceFilters sheet snippet');
+	const close = source.indexOf('{/snippet}', open);
+	// A snippet the sheet renders is part of the sheet.
+	const sheet = source
+		.slice(open, close)
+		.replace(/\{@render (\w+)\(\)\}/g, (_, name: string) => {
+			const at = source.indexOf(`{#snippet ${name}()}`);
+			return at < 0 ? '' : source.slice(at, source.indexOf('{/snippet}', at));
+		});
+	assert.match(source, /filters=\{[^}]*raceFilters[^}]*\}/, 'the sheet snippet is not what FilterBar opens');
+
+	const found = controls(sheet);
+	assert.ok(found.length >= 3, `found ${found.length} controls in the sheet; the place, When and Distance controls live there`);
+	const missing = found
+		.map((c) => {
+			const ids = c.tag.match(/(?<![\w-])(?:aria-)?describedby="([^"]+)"/)?.[1].split(/\s+/) ?? [];
+			if (ids.length === 0) return `${c.tag.replace(/\s+/g, ' ').slice(0, 90)} — names no hint`;
+			const outside = ids.filter((id) => !sheet.includes(`id="${id}"`));
+			return outside.length > 0 ? `${c.tag.replace(/\s+/g, ' ').slice(0, 90)} — hint ${outside.join(', ')} is not in the sheet` : null;
+		})
+		.filter((x) => x !== null);
+	assert.deepEqual(missing, [], '/races has filter controls whose hint is not beside them in the sheet');
+
+	const rest = source.slice(0, open) + source.slice(close);
+	assert.doesNotMatch(rest, /class="filter-hint"/, 'a /races filter hint sits on the page outside the Filters sheet');
+});
 
 test('every hint a swept surface renders is real, non-empty English copy', () => {
 	const enRecord = en as Record<string, string>;

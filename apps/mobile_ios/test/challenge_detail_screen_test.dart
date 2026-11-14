@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'worst_case_layout.dart';
 
 /// Never resolves the challenge fetch, so the loading frame is observable.
 class _HangingSocial extends SocialService {
@@ -127,6 +128,17 @@ Widget _app(SocialService social) => MaterialApp(
     );
 
 void main() {
+  worstCaseTestWidgets('Challenge detail', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ChallengeDetailScreen(
+          social: _FakeSocial(_ch(myValue: 20000)), challengeId: 'c1'),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Challenge detail');
+  });
+
   testWidgets('the loading frame is the full-body loader, not a bare spinner',
       (tester) async {
     await tester.pumpWidget(_app(_HangingSocial()));

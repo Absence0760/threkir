@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -139,14 +140,11 @@ class _GearBackfillSheetState extends State<_GearBackfillSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    final bottomInset = mq.viewInsets.bottom > 0
-        ? mq.viewInsets.bottom
-        : mq.viewPadding.bottom;
     final allSelected = _selected.length == widget.candidates.length;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      scrollBody: false,
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -167,37 +165,27 @@ class _GearBackfillSheetState extends State<_GearBackfillSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Checkbox(
-                value: allSelected,
-                tristate: false,
-                onChanged: _saving ? null : (v) => _selectAll(v ?? false),
+          // One control: the checkbox and its label were two stops, and the
+          // checkbox had no name (#1374 A11Y-13).
+          CheckboxListTile(
+            key: const Key('gearBackfillSelectAll'),
+            value: allSelected,
+            onChanged: _saving ? null : (v) => _selectAll(v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              allSelected
+                  ? l10n.gearBackfillSelectNone
+                  : l10n.gearBackfillSelectAll,
+              style: theme.textTheme.bodyMedium,
+            ),
+            secondary: Text(
+              l10n.gearBackfillSelectedCount(
+                  _selected.length, widget.candidates.length),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  child: GestureDetector(
-                    onTap: _saving ? null : () => _selectAll(!allSelected),
-                    child: Text(
-                      allSelected
-                          ? l10n.gearBackfillSelectNone
-                          : l10n.gearBackfillSelectAll,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-              ),
-              Text(
-                l10n.gearBackfillSelectedCount(
-                    _selected.length, widget.candidates.length),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
           const Divider(height: 1),
           Flexible(

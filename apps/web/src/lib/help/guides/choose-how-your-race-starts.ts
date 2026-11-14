@@ -116,7 +116,7 @@ export const guide: Guide = {
 				},
 				{
 					type: 'p',
-					text: 'Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Preferences** in the **You** tab.',
+					text: 'Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Notifications** in the **You** tab.',
 				},
 			],
 		},

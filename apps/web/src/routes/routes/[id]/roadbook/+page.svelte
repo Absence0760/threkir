@@ -508,6 +508,7 @@
 				<p class="weight-hint" id="roadbook-weight-hint" data-testid="roadbook-weight-hint">
 					{#if consentedWeightKg == null}
 						{m('fuelPlan.weightUnavailable')}
+						<a href="/settings/body#body-metrics">{m('settingsLayout.tabBody')}</a>
 					{:else if fluidRate.source === 'fromWeight'}
 						{m('fuelPlan.weightUsing', { ml: String(fluidRate.value) })}
 					{:else}

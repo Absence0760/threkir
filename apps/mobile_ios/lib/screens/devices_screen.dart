@@ -1,7 +1,16 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, StatusPill, StatusPillSize;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SheetScaffold,
+        StatusPill,
+        StatusPillSize;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -10,6 +19,7 @@ import '../l10n/locale_support.dart';
 import '../typed_decimal.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/form_sheet.dart';
 import '../widgets/top_banner.dart';
 
 /// Resolve an l10n key IDENTIFIER carried by an [OverrideKeySpec] to its
@@ -174,10 +184,8 @@ class _DevicesScreenState extends State<DevicesScreen> {
   Future<void> _editOverrides(UserDeviceSettingRow d) async {
     final prefs = Map<String, dynamic>.from(
         (d.prefs as Map?) ?? const <String, dynamic>{});
-    final next = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final next = await showFormSheet<Map<String, dynamic>>(
+      context,
       builder: (_) => _OverridesSheet(initial: prefs),
     );
     if (next == null) return;
@@ -207,12 +215,12 @@ class _DevicesScreenState extends State<DevicesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.devicesTitle)),
+    return PushedPage(
+      title: l10n.devicesTitle,
       body: _loading
           ? ListSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(message: l10n.devicesLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.devicesLoadError, onRetry: _load)
               : _devices.isEmpty
                   ? Center(
                       child: Padding(
@@ -227,70 +235,69 @@ class _DevicesScreenState extends State<DevicesScreen> {
                       onRefresh: _load,
                       child: ListView.separated(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _devices.length,
+                        itemCount: _devices.length + 1,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) {
-                          final d = _devices[i];
+                        itemBuilder: (_, index) {
+                          if (index == 0) {
+                            return PageHeader(
+                              title: l10n.devicesTitle,
+                              padding: EdgeInsets.zero,
+                            );
+                          }
+                          final d = _devices[index - 1];
                           final isCurrent =
                               d.deviceId == widget.currentDeviceId;
                           final overrideCount =
                               ((d.prefs as Map?) ?? const {}).length;
-                          return Card(
-                            child: ListTile(
-                              leading: Icon(
-                                _iconFor(d.platform),
-                                color: theme.colorScheme.primary,
-                              ),
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(d.label ?? d.platform),
-                                  ),
-                                  if (isCurrent)
-                                    StatusPill(
-                                      label: l10n.devicesThisDevice,
-                                      foreground: theme
-                                          .colorScheme.onPrimaryContainer,
-                                      fill:
-                                          theme.colorScheme.primaryContainer,
-                                      size: StatusPillSize.compact,
-                                    ),
-                                ],
-                              ),
-                              subtitle: Text(
-                                l10n.devicesLastSeen(_fmtRelative(d.lastSeenAt,
-                                        l10n,
-                                        localeToTag(Localizations.localeOf(context)))) +
-                                    (overrideCount > 0
-                                        ? '  •  ${l10n.devicesOverrideCount(overrideCount)}'
-                                        : ''),
-                              ),
-                              trailing: PopupMenuButton<String>(
-                                onSelected: (v) async {
-                                  switch (v) {
-                                    case 'rename':
-                                      await _rename(d);
-                                      break;
-                                    case 'overrides':
-                                      await _editOverrides(d);
-                                      break;
-                                    case 'remove':
-                                      await _remove(d);
-                                      break;
-                                  }
-                                },
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                      value: 'rename',
-                                      child: Text(l10n.devicesRename)),
-                                  PopupMenuItem(
-                                      value: 'overrides',
-                                      child: Text(l10n.devicesEditOverrides)),
-                                  PopupMenuItem(
-                                      value: 'remove',
-                                      child: Text(l10n.devicesRemove)),
-                                ],
-                              ),
+                          return ListCard.row(
+                            margin: EdgeInsets.zero,
+                            leading: Icon(
+                              _iconFor(d.platform),
+                              color: theme.colorScheme.primary,
+                            ),
+                            title: d.label ?? d.platform,
+                            badge: isCurrent
+                                ? StatusPill(
+                                    label: l10n.devicesThisDevice,
+                                    foreground:
+                                        theme.colorScheme.onPrimaryContainer,
+                                    fill: theme.colorScheme.primaryContainer,
+                                    size: StatusPillSize.compact,
+                                  )
+                                : null,
+                            subtitle: l10n.devicesLastSeen(_fmtRelative(
+                                    d.lastSeenAt,
+                                    l10n,
+                                    localeToTag(
+                                        Localizations.localeOf(context)))) +
+                                (overrideCount > 0
+                                    ? '  •  ${l10n.devicesOverrideCount(overrideCount)}'
+                                    : ''),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (v) async {
+                                switch (v) {
+                                  case 'rename':
+                                    await _rename(d);
+                                    break;
+                                  case 'overrides':
+                                    await _editOverrides(d);
+                                    break;
+                                  case 'remove':
+                                    await _remove(d);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                    value: 'rename',
+                                    child: Text(l10n.devicesRename)),
+                                PopupMenuItem(
+                                    value: 'overrides',
+                                    child: Text(l10n.devicesEditOverrides)),
+                                PopupMenuItem(
+                                    value: 'remove',
+                                    child: Text(l10n.devicesRemove)),
+                              ],
                             ),
                           );
                         },
@@ -444,10 +451,8 @@ class _OverridesSheetState extends State<_OverridesSheet> {
       showTopBanner(context, AppLocalizations.of(context).devicesEveryKeySet);
       return;
     }
-    final entry = await showModalBottomSheet<MapEntry<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final entry = await showFormSheet<MapEntry<String, dynamic>>(
+      context,
       builder: (_) => _AddOverrideSheet(eligible: eligible),
     );
     if (entry == null) return;
@@ -456,13 +461,32 @@ class _OverridesSheetState extends State<_OverridesSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => !mapEquals(_current, widget.initial),
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.maybePop(context),
+            child: Text(l10n.devicesCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, _current),
+            child: Text(l10n.devicesSave),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -504,21 +528,6 @@ class _OverridesSheetState extends State<_OverridesSheet> {
               icon: const Icon(Icons.add),
               label: Text(l10n.devicesAddOverride),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.devicesCancel),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, _current),
-                child: Text(l10n.devicesSave),
-              ),
-            ],
           ),
         ],
       ),
@@ -583,14 +592,47 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _numCtrl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final spec = _picked;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () {
+              if (spec != null) {
+                setState(() {
+                  _picked = null;
+                  _enumValue = null;
+                  _boolValue = false;
+                  _numCtrl.clear();
+                  _numError = null;
+                });
+              } else {
+                Navigator.maybePop(context);
+              }
+            },
+            child: Text(spec == null ? l10n.devicesCancel : l10n.devicesBack),
+          ),
+          if (spec != null) ...[
+            FilledButton(
+              onPressed: _commit,
+              child: Text(l10n.devicesAdd),
+            ),
+          ],
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -626,35 +668,6 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
           else
             // Value-editor pass — switch on the spec's declared kind.
             _buildEditor(spec, theme, l10n),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {
-                  if (spec != null) {
-                    setState(() {
-                      _picked = null;
-                      _enumValue = null;
-                      _boolValue = false;
-                      _numCtrl.clear();
-                      _numError = null;
-                    });
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text(spec == null ? l10n.devicesCancel : l10n.devicesBack),
-              ),
-              if (spec != null) ...[
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _commit,
-                  child: Text(l10n.devicesAdd),
-                ),
-              ],
-            ],
-          ),
         ],
       ),
     );

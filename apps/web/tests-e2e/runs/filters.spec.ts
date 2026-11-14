@@ -513,6 +513,22 @@ test.describe('/runs — filters', () => {
 			await expect(page.getByText('Pick dates…')).toHaveCount(0);
 		});
 
+		// #1374 A11Y-10 (web twin): a day cell named only its date, and the
+		// range's start, end and the days inside it were only drawn.
+		test('Custom picker cells announce the range they are in', async ({ page }) => {
+			await page.getByLabel('Date range').selectOption('custom');
+			const picker = page.getByRole('dialog', { name: /Select dates/i });
+			await expect(picker).toBeVisible({ timeout: 10_000 });
+			const cells = picker.locator('button.cell:not(.empty)');
+			await cells.nth(4).click();
+			await cells.nth(8).click();
+			await expect(cells.nth(4)).toHaveAttribute('aria-pressed', 'true');
+			await expect(cells.nth(4)).toHaveAccessibleName(/^Start date /);
+			await expect(cells.nth(6)).toHaveAttribute('aria-pressed', 'true');
+			await expect(cells.nth(8)).toHaveAccessibleName(/^End date /);
+			await expect(cells.nth(12)).toHaveAttribute('aria-pressed', 'false');
+		});
+
 		test('Custom picker cell-click round-trip — open → pick → apply', async ({
 			page
 		}) => {

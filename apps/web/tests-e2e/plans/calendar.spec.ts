@@ -129,7 +129,7 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 
 	test('Calendar section mounts under the plan-detail hero', async ({ page }) => {
 		// `<section class="calendar-section">` — a named expander since #905
-		// workstream 3, so the `<h2 class="section-title">Calendar</h2>` now sits
+		// workstream 3, so its `SectionHeader` h2 "Calendar" now sits
 		// in its `<summary>` and `.cal` from PlanCalendar in its body. Open by
 		// default. A regression that dropped the component from the page (e.g.
 		// inadvertent {#if} guard) would surface here. The .cal class is unique
@@ -138,8 +138,9 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		await expect(page.locator('section.calendar-section')).toBeVisible({
 			timeout: 10_000
 		});
-		await expect(page.locator('section.calendar-section h2.section-title'))
-			.toHaveText('Calendar');
+		await expect(
+			page.locator('section.calendar-section').getByRole('heading', { level: 2, name: 'Calendar' })
+		).toBeVisible();
 		await expect(page.locator('.cal')).toBeVisible();
 		// 7-column grid is the load-bearing layout invariant — the cell
 		// count must be a multiple of 7 (full weeks only).

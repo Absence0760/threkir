@@ -1,10 +1,12 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import '../group_errors.dart';
 import '../group_messages.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../widgets/confirm_discard.dart';
 import '../widgets/group_people_picker.dart';
 import '../widgets/top_banner.dart';
 
@@ -65,55 +67,53 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.groupsCreateTitle)),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextField(
-              key: const ValueKey('group-title-input'),
-              controller: _title,
-              enabled: !_busy,
-              maxLength: kGroupTitleMax,
-              textCapitalization: TextCapitalization.sentences,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.groupsTitleLabel,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.groupsCreateHint,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            GroupPeoplePicker(
-              api: widget.api,
-              selected: _selected,
-              onChanged: (ids) => setState(() => _selected = ids),
-              max: groupSeatsLeft(1, 0),
-              disabled: _busy,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
+    return DiscardGuard(
+      isDirty: () => _title.text.trim().isNotEmpty || _selected.isNotEmpty,
+      isBusy: () => _busy,
+      child: EditorPage(
+        title: l10n.groupsCreateTitle,
+        save: EditorSave(
+          key: const ValueKey('group-create-submit'),
+          label: _busy ? l10n.groupsCreating : l10n.groupsCreateSubmit,
+          busy: _busy,
+          onPressed: _ready ? _create : null,
+        ),
+        status: _error == null
+            ? null
+            : Text(
                 _error!,
                 key: const ValueKey('group-create-error'),
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.error),
               ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton(
-              key: const ValueKey('group-create-submit'),
-              onPressed: _ready && !_busy ? _create : null,
-              child: Text(_busy ? l10n.groupsCreating : l10n.groupsCreateSubmit),
+        fields: [
+          TextField(
+            key: const ValueKey('group-title-input'),
+            controller: _title,
+            enabled: !_busy,
+            maxLength: kGroupTitleMax,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: l10n.groupsTitleLabel,
+              border: const OutlineInputBorder(),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.groupsCreateHint,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          GroupPeoplePicker(
+            api: widget.api,
+            selected: _selected,
+            onChanged: (ids) => setState(() => _selected = ids),
+            max: groupSeatsLeft(1, 0),
+            disabled: _busy,
+          ),
+        ],
       ),
     );
   }

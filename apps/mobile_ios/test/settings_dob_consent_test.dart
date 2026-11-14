@@ -86,6 +86,7 @@ Future<void> _pump(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.training,
         apiClient: api,
         preferences: prefs,
         settingsSync: sync,

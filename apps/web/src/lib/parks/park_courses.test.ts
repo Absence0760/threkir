@@ -19,6 +19,12 @@ import {
 	regionSlug,
 	pickShareCourse,
 	recapParkSummary,
+	shareCoursePlaces,
+	parseBoardPeriod,
+	boardPeriodParam,
+	boardPeriodArgs,
+	stepBoardMonth,
+	SHARE_COURSE_YEAR_PLACE_MAX,
 } from './park_courses';
 
 test('parseCourseCheckpoints: reads an ordered list of points', () => {
@@ -269,27 +275,92 @@ const TIME = {
 	region_code: 'US-VA',
 	time_seconds: 900,
 	season: 2027,
+	month: 11,
+	season_rank: null,
 };
 
 test('pickShareCourse: no park course, no sticker', () => {
 	assert.equal(pickShareCourse([]), null);
 });
 
-test('pickShareCourse: the best season rank wins', () => {
+test('pickShareCourse: the best month place wins', () => {
 	const rows = [
-		{ ...TIME, course_name: 'A', season_rank: 7 },
-		{ ...TIME, course_name: 'B', season_rank: 2 },
-		{ ...TIME, course_name: 'C', season_rank: null },
+		{ ...TIME, course_name: 'A', month_rank: 7, season_rank: 1 },
+		{ ...TIME, course_name: 'B', month_rank: 2, season_rank: 40 },
+		{ ...TIME, course_name: 'C', month_rank: null },
 	];
 	assert.equal(pickShareCourse(rows)?.course_name, 'B');
 });
 
-test('pickShareCourse: with nothing ranked, the first time', () => {
+test('pickShareCourse: a tied month place goes to the better year place', () => {
 	const rows = [
-		{ ...TIME, course_name: 'A', season_rank: null },
-		{ ...TIME, course_name: 'B', season_rank: null },
+		{ ...TIME, course_name: 'A', month_rank: 1, season_rank: null },
+		{ ...TIME, course_name: 'B', month_rank: 1, season_rank: 12 },
+		{ ...TIME, course_name: 'C', month_rank: 1, season_rank: 3 },
+	];
+	assert.equal(pickShareCourse(rows)?.course_name, 'C');
+});
+
+test('pickShareCourse: with nothing placed, the first time', () => {
+	const rows = [
+		{ ...TIME, course_name: 'A', month_rank: null },
+		{ ...TIME, course_name: 'B', month_rank: null },
 	];
 	assert.equal(pickShareCourse(rows)?.course_name, 'A');
+});
+
+test('shareCoursePlaces: the year place only when it is in the top 10', () => {
+	assert.equal(SHARE_COURSE_YEAR_PLACE_MAX, 10);
+	assert.deepEqual(shareCoursePlaces({ month_rank: 2, season_rank: 9 }), { monthRank: 2, seasonRank: 9 });
+	assert.deepEqual(shareCoursePlaces({ month_rank: 2, season_rank: 10 }), { monthRank: 2, seasonRank: 10 });
+	assert.deepEqual(shareCoursePlaces({ month_rank: 4, season_rank: 11 }), { monthRank: 4, seasonRank: null });
+	assert.deepEqual(shareCoursePlaces({ month_rank: null, season_rank: null }), { monthRank: null, seasonRank: null });
+});
+
+const NOW = { season: 2026, month: 11 };
+
+test('parseBoardPeriod: a month and all time', () => {
+	assert.deepEqual(parseBoardPeriod('2026-11', NOW), { kind: 'month', season: 2026, month: 11 });
+	assert.deepEqual(parseBoardPeriod('2025-01', NOW), { kind: 'month', season: 2025, month: 1 });
+	assert.deepEqual(parseBoardPeriod('2000-01', NOW), { kind: 'month', season: 2000, month: 1 });
+	assert.deepEqual(parseBoardPeriod('all', NOW), { kind: 'all' });
+});
+
+test('parseBoardPeriod: anything else, an impossible month or a month still to come is null', () => {
+	for (const raw of [null, undefined, '', '2026', '2026-1', '2026-001', '26-11', '2026-00', '2026-13', '1999-12', '2026-12', '2027-01', 'ALL', ' 2026-11', '2026-11 ']) {
+		assert.equal(parseBoardPeriod(raw, NOW), null, String(raw));
+	}
+});
+
+test('boardPeriodParam: a month is zero-padded, all time is all, the year has none', () => {
+	assert.equal(boardPeriodParam({ kind: 'month', season: 2026, month: 3 }), '2026-03');
+	assert.equal(boardPeriodParam({ kind: 'month', season: 2026, month: 11 }), '2026-11');
+	assert.equal(boardPeriodParam({ kind: 'all' }), 'all');
+	assert.equal(boardPeriodParam({ kind: 'year', season: 2026 }), null);
+	assert.deepEqual(parseBoardPeriod(boardPeriodParam({ kind: 'month', season: 2026, month: 3 }), NOW), {
+		kind: 'month',
+		season: 2026,
+		month: 3,
+	});
+});
+
+test('boardPeriodArgs: the season and month each board call passes', () => {
+	assert.deepEqual(boardPeriodArgs({ kind: 'month', season: 2026, month: 10 }), { season: 2026, month: 10 });
+	assert.deepEqual(boardPeriodArgs({ kind: 'year', season: 2026 }), { season: 2026, month: null });
+	assert.deepEqual(boardPeriodArgs({ kind: 'all' }), { season: null, month: null });
+});
+
+test('stepBoardMonth: steps across a year in both directions', () => {
+	assert.deepEqual(stepBoardMonth({ kind: 'month', season: 2026, month: 1 }, -1, NOW), { kind: 'month', season: 2025, month: 12 });
+	assert.deepEqual(stepBoardMonth({ kind: 'month', season: 2025, month: 12 }, 1, NOW), { kind: 'month', season: 2026, month: 1 });
+	assert.deepEqual(stepBoardMonth({ kind: 'month', season: 2026, month: 10 }, 1, NOW), { kind: 'month', season: 2026, month: 11 });
+});
+
+test('stepBoardMonth: never past the park\'s month, nor before 2000, and only from a month', () => {
+	assert.equal(stepBoardMonth({ kind: 'month', season: 2026, month: 11 }, 1, NOW), null);
+	assert.equal(stepBoardMonth({ kind: 'month', season: 2000, month: 1 }, -1, NOW), null);
+	assert.equal(stepBoardMonth({ kind: 'year', season: 2026 }, -1, NOW), null);
+	assert.equal(stepBoardMonth({ kind: 'all' }, 1, NOW), null);
 });
 
 test('parseSharedUse: reads a known key and nothing else', () => {

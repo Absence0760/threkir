@@ -1,5 +1,5 @@
 <script lang="ts">
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-13';
 </script>
 
 <svelte:head>
@@ -21,9 +21,9 @@
 
 	<h2>1. Consumer health data we collect</h2>
 	<ul>
-		<li><strong>Heart rate</strong>, when you pair a sensor or import from a connected service.</li>
-		<li><strong>Body measurements</strong>: height, body-weight entries, and activity level, if you enter them.</li>
-		<li><strong>Nutrition data</strong>: food-log entries, macro targets, and hydration amounts, if you use the nutrition features.</li>
+		<li><strong>Heart rate</strong>, when you pair a sensor or import from a connected service, and only with your health-data consent: without it, heart rate shows on screen while you record but is not saved, and an import keeps the activity without it.</li>
+		<li><strong>Body measurements and profile health data</strong>: height, weight history and activity level, if you enter them, and your gender and any cycle or pregnancy details. Height, weight history, gender and cycle or pregnancy details are kept only with your health-data consent, which also covers the heart-rate targets in your plans, your heart-rate medication setting and any use of your date of birth as health data.</li>
+		<li><strong>Nutrition data</strong>: food-log entries, macro targets, and hydration amounts, if you use the nutrition features. The food log is kept only with your health-data consent.</li>
 		<li><strong>Exercise data</strong>: runs, gym workouts, step counts, and derived fitness metrics.</li>
 		<li><strong>Precise location</strong>: GPS tracks of your activities and, if you enable it, live location during a run.</li>
 		<li><strong>Race medical data</strong>: at organised events using medical weigh-ins, your weight and any medical hold or note recorded by event staff (scrubbed after 90 days).</li>
@@ -33,9 +33,9 @@
 	<p>
 		We collect this data only to provide the features you use — recording and displaying your
 		activities, computing training and nutrition targets, powering the AI Coach when you open it,
-		and running the safety features you enable. Health-related categories (heart rate, body
-		measurements, nutrition) are gated behind an explicit in-app consent you can withdraw at any
-		time in Settings → Account. We do not use consumer health data for advertising, and we
+		and running the safety features you enable. Heart rate, the food log and the other health data
+		section 1 says need your health-data consent are kept only with that explicit in-app consent, which you can withdraw at any
+		time; section 4 says where, and what withdrawing erases. We do not use consumer health data for advertising, and we
 		<strong>do not sell consumer health data</strong> — so no "sale" authorization is ever
 		requested.
 	</p>
@@ -52,9 +52,9 @@
 
 	<h2>4. Your rights</h2>
 	<ul>
-		<li><strong>Access</strong>: Settings → Export your data gives you a machine-readable copy, including all health data.</li>
-		<li><strong>Withdraw consent</strong>: Settings → Account → health-data consent; withdrawal blocks further collection and processing of the consented categories.</li>
-		<li><strong>Delete</strong>: delete individual entries (runs, weights, food logs) in-app, or the whole account via Settings → Delete account. Deletion cascades through our systems and our processors on the schedule in the Privacy Policy.</li>
+		<li><strong>Access</strong>: ask for a full account archive, <strong>Download full account archive</strong> under Data Export on the Account page on the web (Settings → Account), or <strong>Account export</strong> on the Account page in the app's You tab. We build it on our servers as machine-readable JSON, with all of your consumer health data, and keep it for you to download for 7 days.</li>
+		<li><strong>Withdraw consent</strong>: on the web, untick the health-data consent box under Settings → Body metrics and press Save demographics, or untick it on the Account page and press Save Profile. In the app, open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"; it is the switch whose description lists the health data it covers), and tap Save. You are then asked to confirm, because withdrawing permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and stops us using your date of birth as health data. Your activities themselves are kept. Your date of birth stays on your account as an age record, because it also keeps under-18 members out of people search.</li>
+		<li><strong>Delete</strong>: delete individual entries (runs, weights, food logs) in-app, or the whole account via Settings → Account → Delete account on the web, or Account → Delete account in the app's You tab. Deletion cascades through our systems and our processors on the schedule in the Privacy Policy.</li>
 		<li><strong>Appeal</strong>: if we decline a request, you may appeal by replying to our decision or emailing <a href="mailto:privacy@threkir.com">privacy@threkir.com</a> with "Appeal" in the subject. If the appeal fails, Washington residents may contact the <a href="https://www.atg.wa.gov/" target="_blank" rel="noopener noreferrer">Washington Attorney General</a>.</li>
 	</ul>
 

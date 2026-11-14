@@ -99,7 +99,12 @@ test.describe('health-data consent — withdrawal erases Art 9, keeps the age re
 			await expect(consent).toBeChecked({ timeout: 15_000 });
 			await consent.uncheck();
 
+			// The box names only the date of birth, so the erasure is confirmed
+			// before it runs, as on Body metrics.
 			await page.getByRole('button', { name: /Save Profile/ }).click();
+			const confirm = page.getByTestId('withdraw-health-consent-confirm');
+			await expect(confirm).toBeVisible();
+			await confirm.getByRole('button', { name: 'Withdraw & erase' }).click();
 			await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({
 				timeout: 15_000,
 			});
@@ -146,6 +151,48 @@ test.describe('health-data consent — withdrawal erases Art 9, keeps the age re
 			// The weight series' mirror, which every calorie estimate (web,
 			// phone, Wear OS) reads — it goes with the series (§ 1811).
 			expect(settings.prefs?.body_weight_kg ?? null).toBeNull();
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('cancelling the withdrawal confirm on /settings/account erases nothing', async ({
+		browser,
+	}) => {
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/settings/account');
+			const consent = page
+				.locator('label.consent-checkbox')
+				.locator('input[type="checkbox"]')
+				.first();
+			await expect(consent).toBeChecked({ timeout: 15_000 });
+			await consent.uncheck();
+			await page.getByRole('button', { name: /Save Profile/ }).click();
+			const confirm = page.getByTestId('withdraw-health-consent-confirm');
+			await expect(confirm).toBeVisible();
+			await confirm.getByRole('button', { name: 'Cancel' }).click();
+			await expect(confirm).toBeHidden();
+
+			const prof = await readRow<{
+				data: { health_data_consent_at: string | null; height_cm: number | null } | null;
+				error: { message: string } | null;
+			}>(
+				'profile after a cancelled withdrawal',
+				admin
+					.from('user_profiles')
+					.select('health_data_consent_at, height_cm')
+					.eq('id', user.id)
+					.single(),
+			);
+			expect(prof.health_data_consent_at).not.toBeNull();
+			expect(prof.height_cm).toBe(HEIGHT_CM);
+			const weights = await readRows(
+				'body_metrics after a cancelled withdrawal',
+				admin.from('body_metrics').select('id').eq('user_id', user.id),
+			);
+			expect(weights).toHaveLength(1);
 		} finally {
 			await ctx.close();
 		}

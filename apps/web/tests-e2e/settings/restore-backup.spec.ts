@@ -11,7 +11,7 @@ import { USER_A } from '../fixtures/users';
  * confirm the dialog, then verify two downstream surfaces actually
  * see the new rows:
  *
- *   1. /dashboard — the "This Week" mileage card increases by the
+ *   1. /dashboard/progress — the "This Week" mileage card increases by the
  *      total distance of imported runs that fall in the current
  *      week. This is the easiest user-visible signal that the
  *      restore actually wrote data, since the card aggregates runs
@@ -81,12 +81,12 @@ async function cleanup(ids: string[]): Promise<void> {
 	await admin.from('runs').delete().in('id', ids);
 }
 
-/** Read the current week's distance from the dashboard week lead, Home's
+/** Read the current week's distance from the Progress week lead, Progress's
  *  one this-week view (decisions § 2283). It renders e.g. "12.4 km" or
  *  "7.7 mi" — we just scrape the numeric prefix. Returns 0 for an empty
  *  week, which the lead says in words. */
 async function thisWeekDistanceKm(page: import('@playwright/test').Page): Promise<number> {
-	await page.goto('/dashboard');
+	await page.goto('/dashboard/progress');
 	const card = page.getByTestId('dash-week-lead');
 	await expect(card).toBeVisible({ timeout: 10_000 });
 	const text = (await card.locator('.week-lead-value').innerText()).trim();
@@ -138,8 +138,8 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
 			await dialog.getByRole('button', { name: /^Restore$/ }).click();
 
-			// Result line on the page: "Restored 1 runs, 0 tracks, 0 routes."
-			await expect(page.getByText(/Restored 1 runs/)).toBeVisible({ timeout: 15_000 });
+			// Result line on the page: "Restored 1 run, 0 tracks, 0 routes."
+			await expect(page.getByText(/Restored 1 run,/)).toBeVisible({ timeout: 15_000 });
 
 			// Dashboard now reflects the +7.32 km. Allow a small float
 			// tolerance for unit rounding (the card may render "12.4 km"
@@ -245,7 +245,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			// not a failure.
 			await expect(page.locator('.error-text')).toHaveCount(0);
 			// "Restored N runs" line never rendered.
-			await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+			await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 
 			// DB-level proof: the deterministic id has no row.
 			const admin = getAdminClient();
@@ -287,7 +287,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 			{ timeout: 10_000 }
 		);
 		// Nothing was imported.
-		await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+		await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 	});
 
 	test('a ZIP with the wrong manifest.format surfaces the "Unexpected format" error', async ({
@@ -334,7 +334,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 		await expect(page.locator('.error-text')).toContainText(
 			/some-other-backup-format/,
 		);
-		await expect(page.getByText(/Restored \d+ runs/)).toHaveCount(0);
+		await expect(page.getByText(/Restored \d+ runs?\b/)).toHaveCount(0);
 	});
 
 	test('re-importing the same backup is idempotent (no duplicate rows)',
@@ -365,7 +365,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 				const dialog = page.locator('.modal', { hasText: /Restore from backup/i });
 				await expect(dialog).toBeVisible({ timeout: 5_000 });
 				await dialog.getByRole('button', { name: /^Restore$/ }).click();
-				await expect(page.getByText(/Restored 1 runs/)).toBeVisible({ timeout: 15_000 });
+				await expect(page.getByText(/Restored 1 run,/)).toBeVisible({ timeout: 15_000 });
 			}
 
 			await importOnce('first');

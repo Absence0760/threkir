@@ -4,7 +4,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow, PageHeading;
 
 import '../lib/club_slug.dart';
 import '../lib/text_limits.dart';
@@ -164,7 +164,7 @@ void main() {
     testWidgets('renders the New club heading and Name / Description / Location fields',
         (tester) async {
       await _openSheet(tester);
-      expect(find.text('New club'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New club'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Description (optional)'),
           findsOneWidget);
@@ -573,7 +573,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);
 
-      // The form has its own Cancel button — scope to the dialog's.
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog), matching: find.text('Cancel')));
       await tester.pump();
@@ -609,15 +608,14 @@ void main() {
       expect(find.text('result=<cancelled>'), findsOneWidget);
     });
 
-    testWidgets('typed name: the Cancel button routes through the confirm',
+    testWidgets('typed name: the close button routes through the confirm',
         (tester) async {
       await _openSheet(tester);
       await tester.enterText(
           find.widgetWithText(TextField, 'Name'), 'Sunday Runners');
       await tester.pump();
 
-      await tester.ensureVisible(find.widgetWithText(TextButton, 'Cancel'));
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);

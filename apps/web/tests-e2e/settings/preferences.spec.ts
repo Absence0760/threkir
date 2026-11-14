@@ -70,13 +70,13 @@ test.describe('settings preference pages', () => {
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 
-		// ── /dashboard Recent Runs (formatDistance per-row) ──
+		// ── /dashboard/progress Recent Runs (formatDistance per-row) ──
 		// Stat cards are an unreliable target: "Longest Run" pre-fetch
 		// renders as 0, which formats as "0 yd" in mi mode — substring-
 		// matches "mi" → false-pass / false-fail depending on race. The
 		// .run-row distance is rendered from a non-empty `filteredRuns`
 		// so its presence already proves the fetch completed.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		const recentRunDistance = page
 			.locator('.run-row .run-distance')
 			.first();
@@ -240,14 +240,14 @@ test.describe('settings preference pages', () => {
 		// reads. Absent reads as on; unticking writes the literal 'off'.
 		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder', 'notify-park-course-month']) {
 			const box = page.getByTestId(id);
 			await expect(box).toBeChecked();
 			await box.uncheck();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 		}
 		await page.reload();
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder', 'notify-park-course-month']) {
 			const box = page.getByTestId(id);
 			await expect(box).not.toBeChecked();
 			await box.check();

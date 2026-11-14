@@ -456,74 +456,66 @@ class _GymScreenState extends State<GymScreen>
     final theme = Theme.of(context);
     final workouts = widget.store.workouts;
     final pending = widget.store.hasPending || _routineStore.hasPending;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymTitle)),
-      // The Fitness hub's modality tabs all put their add in the same place,
-      // so switching tabs doesn't move the one control the surface exists for
-      // — it used to be a top-right glyph here and a bottom-right FAB on the
-      // run tabs. Never gated on the arrival refresh: logging a lift is an
-      // offline-first write, and the one thing that refresh feeds the composer
-      // — the exercise catalogue — reaches an already-open sheet through its
-      // own listenable (§ 1571).
-      //
-      // The tag is per-mount because the hub's Gym tab stays alive under a
-      // GymScreen pushed from Home or the run list.
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: ObjectKey(this),
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: Text(l10n.gymLog),
+    return HubTabBody(
+      title: l10n.fitnessTabGym,
+      // The Fitness hub's tabs all put their add in the same place, the hub's
+      // FAB, so switching tabs doesn't move the one control the surface
+      // exists for. Never gated on the arrival refresh: logging a lift is an
+      // offline-first write, and the one thing that refresh feeds the
+      // composer — the exercise catalogue — reaches an already-open sheet
+      // through its own listenable (§ 1571).
+      primary: PrimaryAction(
+        label: l10n.gymLog,
+        icon: Icons.add,
         tooltip: l10n.gymLog,
+        onPressed: _create,
       ),
+      filters: SurfacePeerStrip(
+        label: l10n.gymSurfaceLabel,
+        peers: _peers(l10n, workouts),
+      ),
+      banner: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isOnline && !pending)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppInsets.gutter, vertical: AppSpace.sm),
+              color: theme.colorScheme.surfaceContainerHigh,
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 16),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.gymOfflineCached,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          PendingSyncBanner(
+            api: widget.api,
+            isOnline: _isOnline,
+            stores: [widget.store, _routineStore],
+          ),
+          if (_resumableDraft() case final d?) _draftCard(d, theme, l10n),
+        ],
+      ),
+      onRefresh: _refresh,
       body: contentColumn(
         context,
-        Column(
-          children: [
-            SurfacePeerStrip(
-              label: l10n.gymSurfaceLabel,
-              peers: _peers(l10n, workouts),
-            ),
-            if (!_isOnline && !pending)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: theme.colorScheme.surfaceContainerHigh,
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_off, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.gymOfflineCached,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            PendingSyncBanner(
-              api: widget.api,
-              isOnline: _isOnline,
-              stores: [widget.store, _routineStore],
-            ),
-            if (_resumableDraft() case final d?) _draftCard(d, theme, l10n),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: workouts.isEmpty
-                    ? EmptyState(
-                        icon: Icons.fitness_center,
-                        title: l10n.gymEmptyTitle,
-                        body: l10n.gymEmptyBody,
-                        ctaLabel: l10n.gymLog,
-                        onCta: _create,
-                      )
-                    : _list(workouts, theme, l10n),
-              ),
-            ),
-          ],
-        ),
+        workouts.isEmpty
+            ? EmptyState(
+                icon: Icons.fitness_center,
+                title: l10n.gymEmptyTitle,
+                body: l10n.gymEmptyBody,
+                ctaLabel: l10n.gymLog,
+                onCta: _create,
+              )
+            : _list(workouts, theme, l10n),
       ),
     );
   }
@@ -541,67 +533,35 @@ class _GymScreenState extends State<GymScreen>
         final title = w.workout.title?.trim();
         final started = w.startedAt;
         final volume = gymWorkoutVolume(w);
-        return Card(
+        final unit = activeWeightUnit;
+        return ListCard.row(
           margin: EdgeInsets.zero,
-          child: InkWell(
-            onTap: () => _open(w),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title == null || title.isEmpty
-                              ? l10n.gymUntitled
-                              : title,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        if (started != null)
-                          Text(
-                            formatDateMed(started.toLocal(), tag),
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (prIds.contains(w.id)) ...[
-                    _prBadge(theme, l10n),
-                    const SizedBox(width: 8),
-                  ],
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        l10n.gymExercisesShort(gymExerciseCount(w)),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                      if (volume > 0)
-                        Text(
-                          // Volume is summed in canonical kg; show it in the
-                          // user's weight unit (rounded — it's an aggregate).
-                          '${WeightFormat.toDisplay(volume.toDouble(), activeWeightUnit).round()} ${WeightFormat.label(activeWeightUnit)}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                    ],
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
-              ),
-            ),
+          dense: true,
+          onTap: () => _open(w),
+          chevron: true,
+          title: title == null || title.isEmpty ? l10n.gymUntitled : title,
+          badge: prIds.contains(w.id) ? _prBadge(theme, l10n) : null,
+          subtitle: started == null
+              ? null
+              : formatDateMed(started.toLocal(), tag),
+          // Count and volume on one line under the date rather than stacked
+          // at the row's end, where at 2x they took the title's width.
+          meta: Wrap(
+            spacing: AppSpace.smPlus,
+            children: [
+              for (final fact in [
+                l10n.gymExercisesShort(gymExerciseCount(w)),
+                // Volume is summed in canonical kg; show it in the user's
+                // weight unit (rounded — it's an aggregate).
+                if (volume > 0)
+                  '${WeightFormat.toDisplay(volume.toDouble(), unit).round()} ${WeightFormat.label(unit)}',
+              ])
+                Text(
+                  fact,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+            ],
           ),
         );
       },
@@ -611,67 +571,30 @@ class _GymScreenState extends State<GymScreen>
   Widget _draftCard(({StoredGymWorkout draft, StoredRoutine routine}) d,
       ThemeData theme, AppLocalizations l10n) {
     final title = d.routine.title.trim();
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _resumeDraft(d),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.play_circle_outline,
-                      color: theme.colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.gymDraftTitle,
-                            style: theme.textTheme.titleSmall),
-                        Text(
-                          '${title.isEmpty ? l10n.gymUntitled : title} · ${l10n.gymDraftSetCount(d.draft.sets.length)}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: Wrap(
-                  spacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => _discardDraft(d.draft),
-                      style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.error),
-                      child: Text(l10n.gymSessionDiscardConfirm),
-                    ),
-                    TextButton(
-                      onPressed: () => _saveDraftAsIs(d.draft),
-                      child: Text(l10n.gymDraftSave),
-                    ),
-                    FilledButton(
-                      onPressed: () => _resumeDraft(d),
-                      child: Text(l10n.gymDraftResume),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return ListCard.row(
+      margin: const EdgeInsets.fromLTRB(
+          AppInsets.gutter, AppInsets.pageTop, AppInsets.gutter, 0),
+      dense: true,
+      onTap: () => _resumeDraft(d),
+      leading: Icon(Icons.play_circle_outline, color: theme.colorScheme.primary),
+      title: l10n.gymDraftTitle,
+      subtitle:
+          '${title.isEmpty ? l10n.gymUntitled : title} · ${l10n.gymDraftSetCount(d.draft.sets.length)}',
+      actions: [
+        TextButton(
+          onPressed: () => _discardDraft(d.draft),
+          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+          child: Text(l10n.gymSessionDiscardConfirm),
         ),
-      ),
+        TextButton(
+          onPressed: () => _saveDraftAsIs(d.draft),
+          child: Text(l10n.gymDraftSave),
+        ),
+        FilledButton(
+          onPressed: () => _resumeDraft(d),
+          child: Text(l10n.gymDraftResume),
+        ),
+      ],
     );
   }
 

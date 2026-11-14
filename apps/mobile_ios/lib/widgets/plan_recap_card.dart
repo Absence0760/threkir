@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart' show PlanWorkoutRow, TrainingPlanRow;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -133,33 +134,31 @@ class _PlanRecapCardState extends State<PlanRecapCard> {
       body = _stats(theme, l10n, tag, recap, muted);
     }
 
-    return Card(
+    return ListCard(
       key: const Key('planRecapCard'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.flag_outlined, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      l10n.planRecapTitle(widget.plan.name),
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    l10n.planRecapTitle(widget.plan.name),
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...body,
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...body,
+        ],
       ),
     );
   }

@@ -189,7 +189,7 @@ void main() {
         true,
         reason: 'an absent anchorVolume must read as off');
     expect(
-        code('lib/screens/dashboard_screen.dart')
+        code('lib/screens/today_screen.dart')
             .contains('final anchorVolume = adaptiveFitnessGate;'),
         true,
         reason: 'Home passes the gate itself as anchorVolume');

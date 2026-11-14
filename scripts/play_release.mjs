@@ -4,7 +4,7 @@
 // way an iOS release goes to App Store review and then a 7-day phased release
 // (decisions § 2040, § 2478). It also puts a `watch_wear@<version>` bundle on
 // the Wear OS internal testing track of the same app, the phone's listing
-// (decisions § 2480).
+// (decisions § 2529).
 //
 // Commands:
 //

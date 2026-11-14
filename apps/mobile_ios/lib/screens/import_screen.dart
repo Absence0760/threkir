@@ -4,8 +4,10 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListCard, PageHeader, ProgressBar, PushedPage;
 
+import '../health_consent_gate.dart';
 import '../auth_error.dart';
 import '../backup.dart';
 import '../cross_source_dedup.dart';
@@ -18,6 +20,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
 import '../restore_warning.dart';
+import '../settings_destination.dart';
 import '../settings_sync.dart';
 import '../strava_importer.dart';
 import '../widgets/import_failure_report.dart';
@@ -85,6 +88,10 @@ class ImportScreen extends StatefulWidget {
     List<String>? allowedExtensions,
   })? pickFilesFn;
 
+  /// Where "Make a backup" goes. Null opens the Account page, where Full
+  /// backup is; the Account page itself passes a pop back to that row.
+  final VoidCallback? onMakeBackup;
+
   const ImportScreen({
     super.key,
     this.apiClient,
@@ -97,6 +104,7 @@ class ImportScreen extends StatefulWidget {
     this.requestHealthRoutePermissionFn,
     this.fetchHealthRoutesFn,
     this.pickFilesFn,
+    this.onMakeBackup,
   });
 
   @override
@@ -119,6 +127,9 @@ class _ImportScreenState extends State<ImportScreen> {
   // success hid it entirely, and reporting only "some" makes 3-of-400
   // indistinguishable from 400-of-400.
   int _cloudPushDeferredCount = 0;
+  // Runs the last import kept without heart rate, for want of health-data
+  // consent (decisions § 2514).
+  int _heartRateDroppedCount = 0;
   // Sessions the last Health Connect import found a route for but wasn't
   // allowed to read. Drives the route-permission offer — the runner is never
   // shown it speculatively, only once there are maps behind it.
@@ -162,6 +173,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -227,6 +239,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     final granted = await _requestHealthRoutePermission();
@@ -377,6 +390,14 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final log = failures ?? newImportFailureLog();
     final savedRuns = <Run>[];
+    // Heart rate is kept only with health-data consent (decisions § 2514).
+    // Known absent: the runs are stored without it, here and on the server.
+    // Unknown (offline): kept on this device, stripped by the upload.
+    final heartRateDroppedIds = <String>{};
+    if (await healthDataConsented(widget.apiClient) == false) {
+      heartRateDroppedIds.addAll(runs.where(runHasHeartRate).map((r) => r.id));
+      runs = [for (final r in runs) runWithoutHeartRate(r)];
+    }
     // Persona-hunt Round 2 #3: cross-source dedup. The store's
     // existing runs include any prior Strava + Garmin ZIP imports;
     // an HC import of the same Garmin activity should skip rather
@@ -468,6 +489,8 @@ class _ImportScreenState extends State<ImportScreen> {
       _failures = log;
       _failureProvider = provider;
       _cloudPushDeferredCount = pushDeferredCount;
+      _heartRateDroppedCount =
+          savedRuns.where((r) => heartRateDroppedIds.contains(r.id)).length;
       _status = buildImportStatus(
         savedCount: savedRuns.length,
         errorCount: log.total,
@@ -497,6 +520,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -537,6 +561,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -581,6 +606,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -605,335 +631,342 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.importTitle)),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-        padding: const EdgeInsets.all(16),
+    return PushedPage(
+      title: l10n.importTitle,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFC4C02).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.directions_run,
-                            color: Color(0xFFFC4C02), size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l10n.importStravaCardTitle,
-                                style: theme.textTheme.titleMedium),
-                            Text(
-                              l10n.importStravaCardSubtitle,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.importStravaHowToHeader,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.importStravaHowToSteps,
-                    style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _importStrava,
-                      icon: const Icon(Icons.upload_file),
-                      label: Text(l10n.importStravaButton),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          PageHeader(
+            title: l10n.importTitle,
+            padding: const EdgeInsets.only(top: 16, bottom: 12),
           ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.favorite,
-                            color: theme.colorScheme.primary, size: 24),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFC4C02).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_healthLabel(l10n),
-                                style: theme.textTheme.titleMedium),
-                            Text(
-                              Platform.isIOS
-                                  ? l10n.importHealthSubtitleIos
-                                  : l10n.importHealthSubtitleAndroid,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                      child: const Icon(Icons.directions_run,
+                          color: Color(0xFFFC4C02), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.importStravaCardTitle,
+                              style: theme.textTheme.titleMedium),
+                          Text(
+                            l10n.importStravaCardSubtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    Platform.isIOS
-                        ? l10n.importHealthDescriptionIos
-                        : l10n.importHealthDescriptionAndroid,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _importHealthConnect,
-                      icon: const Icon(Icons.health_and_safety),
-                      label: Text(l10n.importHealthButton(_healthLabel(l10n))),
-                    ),
-                  ),
-                  if (_withheldRouteIds.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.importHealthRoutesWithheld(_withheldRouteIds.length),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _busy ? null : _allowRouteImport,
-                        icon: const Icon(Icons.map_outlined),
-                        label: Text(l10n.importHealthRoutesAllowButton),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.importStravaHowToHeader,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.importStravaHowToSteps,
+                  style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _importStrava,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(l10n.importStravaButton),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.table_chart_outlined,
-                            color: theme.colorScheme.tertiary, size: 24),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l10n.importCsvCardTitle,
-                                style: theme.textTheme.titleMedium),
-                            Text(
-                              l10n.importCsvCardSubtitle,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                      child: Icon(Icons.favorite,
+                          color: theme.colorScheme.primary, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_healthLabel(l10n),
+                              style: theme.textTheme.titleMedium),
+                          Text(
+                            Platform.isIOS
+                                ? l10n.importHealthSubtitleIos
+                                : l10n.importHealthSubtitleAndroid,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  Platform.isIOS
+                      ? l10n.importHealthDescriptionIos
+                      : l10n.importHealthDescriptionAndroid,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
                   ),
-                  const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _importHealthConnect,
+                    icon: const Icon(Icons.health_and_safety),
+                    label: Text(l10n.importHealthButton(_healthLabel(l10n))),
+                  ),
+                ),
+                if (_withheldRouteIds.isNotEmpty) ...[
+                  const SizedBox(height: 16),
                   Text(
-                    l10n.importCsvCardDescription,
+                    l10n.importHealthRoutesWithheld(_withheldRouteIds.length),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _importCsv,
-                      icon: const Icon(Icons.upload_file),
-                      label: Text(l10n.importCsvButton),
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _allowRouteImport,
+                      icon: const Icon(Icons.map_outlined),
+                      label: Text(l10n.importHealthRoutesAllowButton),
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppSemanticColors.of(context)
-                              .success
-                              .withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.unarchive_outlined,
-                            color: AppSemanticColors.of(context).success,
-                            size: 24),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.tertiary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l10n.importBackupCardTitle,
-                                style: theme.textTheme.titleMedium),
-                            Text(
-                              l10n.importBackupCardSubtitle,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                      child: Icon(Icons.table_chart_outlined,
+                          color: theme.colorScheme.tertiary, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.importCsvCardTitle,
+                              style: theme.textTheme.titleMedium),
+                          Text(
+                            l10n.importCsvCardSubtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.importBackupCardDescription,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.5,
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.importCsvCardDescription,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _importBackupZip,
-                      icon: const Icon(Icons.folder_zip_outlined),
-                      label: Text(l10n.importBackupButton),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _importCsv,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(l10n.importCsvButton),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppSemanticColors.of(context)
+                            .success
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.unarchive_outlined,
+                          color: AppSemanticColors.of(context).success,
+                          size: 24),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.importBackupCardTitle,
+                              style: theme.textTheme.titleMedium),
+                          Text(
+                            l10n.importBackupCardSubtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.importBackupCardDescription,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
                   ),
-                ],
-              ),
+                ),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    key: const Key('importBackupMakeOne'),
+                    onPressed: widget.onMakeBackup ??
+                        () => openSettings(SettingsDestination.account),
+                    child: Text(l10n.importBackupMakeOne),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _importBackupZip,
+                    icon: const Icon(Icons.folder_zip_outlined),
+                    label: Text(l10n.importBackupButton),
+                  ),
+                ),
+              ],
             ),
           ),
           if (_busy || _status.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (_busy) ...[
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 12),
-                        ] else
-                          Icon(Icons.check_circle,
-                              color: theme.colorScheme.primary, size: 18),
-                        if (!_busy) const SizedBox(width: 12),
-                        Expanded(child: Text(_status)),
-                      ],
-                    ),
-                    if (_busy && _total > 0) ...[
-                      const SizedBox(height: 12),
-                      ProgressBar(value: _imported / _total),
-                    ],
-                    if (!_busy && _cloudPushDeferredCount > 0) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.importStatusCloudPushDeferred(
-                            _cloudPushDeferredCount),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          height: 1.4,
+            ListCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (_busy) ...[
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                      ] else
+                        Icon(Icons.check_circle,
+                            color: theme.colorScheme.primary, size: 18),
+                      if (!_busy) const SizedBox(width: 12),
+                      Expanded(child: Text(_status)),
                     ],
-                    if (_errors.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      Text(l10n.importErrorsHeader,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          )),
-                      const SizedBox(height: 4),
-                      ..._errors.take(10).map((w) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(restoreWarningText(l10n, w),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                )),
-                          )),
-                      if (_errors.length > 10)
-                        Text(l10n.importErrorsMore(_errors.length - 10),
-                            style: theme.textTheme.bodySmall),
-                    ],
+                  ),
+                  if (_busy && _total > 0) ...[
+                    const SizedBox(height: 12),
+                    ProgressBar(value: _imported / _total),
                   ],
-                ),
+                  if (!_busy && _heartRateDroppedCount > 0) ...[
+                    const SizedBox(height: 8),
+                    HeartRateNotKeptNote(
+                      message: l10n.importHeartRateNotKept(
+                          _heartRateDroppedCount),
+                      onGiveConsent: () => openHealthConsent(context,
+                          api: widget.apiClient,
+                          settingsSync: widget.settingsSync,
+                          preferences: widget.preferences),
+                    ),
+                  ],
+                  if (!_busy && _cloudPushDeferredCount > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.importStatusCloudPushDeferred(
+                          _cloudPushDeferredCount),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  if (_errors.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(l10n.importErrorsHeader,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        )),
+                    const SizedBox(height: 4),
+                    ..._errors.take(10).map((w) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(restoreWarningText(l10n, w),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                              )),
+                        )),
+                    if (_errors.length > 10)
+                      Text(l10n.importErrorsMore(_errors.length - 10),
+                          style: theme.textTheme.bodySmall),
+                  ],
+                ],
               ),
             ),
           ],
@@ -947,7 +980,6 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ],
         ],
-        ),
       ),
     );
   }

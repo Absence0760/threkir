@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import 'package:image_picker/image_picker.dart';
 
 import '../diary_day.dart';
@@ -8,8 +10,10 @@ import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../nutrition_totals.dart' show mealSlots;
 import '../plate_photo_client.dart';
+import '../settings_destination.dart';
 import '../typed_decimal.dart';
 import '../widgets/full_screen_form.dart';
+import '../widgets/pro_upsell_link.dart';
 
 /// Picks a picture. Returns null when the runner backs out.
 typedef PlatePhotoPicker = Future<Uint8List?> Function(ImageSource source);
@@ -31,6 +35,19 @@ Future<Uint8List?> _defaultPicker(ImageSource source) async {
   return f == null ? null : await f.readAsBytes();
 }
 
+/// Reads back a photo the camera took for a process Android killed while the
+/// camera ran (the low-memory hand-off). Null when there is none, and always
+/// null off Android, where the picker returns in-process.
+typedef PlatePhotoLostReader = Future<Uint8List?> Function();
+
+Future<Uint8List?> _defaultLostReader() async {
+  if (defaultTargetPlatform != TargetPlatform.android) return null;
+  final response = await ImagePicker().retrieveLostData();
+  if (response.isEmpty) return null;
+  final file = response.file ?? response.files?.firstOrNull;
+  return file == null ? null : await file.readAsBytes();
+}
+
 /// Open the plate-photo logger. Resolves true when entries were saved.
 Future<bool?> showPlatePhotoScreen({
   required BuildContext context,
@@ -42,6 +59,7 @@ Future<bool?> showPlatePhotoScreen({
     context,
     title: AppLocalizations.of(context).platePhotoTitle,
     isDirty: () => key.currentState?.isDirty ?? false,
+    isBusy: () => key.currentState?.isBusy ?? false,
     builder: (_) => PlatePhotoForm(key: key, store: store, diaryDate: diaryDate),
   );
 }
@@ -56,6 +74,7 @@ class PlatePhotoForm extends StatefulWidget {
   final String? diaryDate;
   final PlatePhotoPicker? picker;
   final PlatePhotoEstimator? estimator;
+  final PlatePhotoLostReader? lostReader;
 
   const PlatePhotoForm({
     super.key,
@@ -63,6 +82,7 @@ class PlatePhotoForm extends StatefulWidget {
     this.diaryDate,
     this.picker,
     this.estimator,
+    this.lostReader,
   });
 
   @override
@@ -108,7 +128,30 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
   PlatePhotoErrorKind? _error;
   String? _saveError;
 
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
+
   bool get isDirty => _bytes != null || (_drafts?.isNotEmpty ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostPhoto();
+  }
+
+  /// Android can kill the app while the camera runs; the photo survives in
+  /// the picker's cache, so opening the logger again picks up where the
+  /// runner left off instead of asking for the picture a second time (issue
+  /// #1374 NS-14).
+  Future<void> _recoverLostPhoto() async {
+    try {
+      final bytes = await (widget.lostReader ?? _defaultLostReader)();
+      if (bytes == null || !mounted || _bytes != null) return;
+      setState(() => _bytes = bytes);
+    } catch (e) {
+      debugPrint('plate_photo_screen: lost-photo recovery failed: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -237,7 +280,28 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final drafts = _drafts;
+    // One primary action per stage: estimate the photo, then save the
+    // reviewed items.
     return FullScreenFormBody(
+      save: drafts == null
+          ? EditorSave(
+              key: const ValueKey('plate-photo-estimate'),
+              label: _estimating
+                  ? l10n.platePhotoEstimating
+                  : l10n.platePhotoEstimate,
+              busy: _estimating,
+              onPressed: _bytes == null ? null : _estimate,
+            )
+          : drafts.isEmpty
+              ? null
+              : EditorSave(
+                  key: const ValueKey('plate-photo-save'),
+                  label: _saving
+                      ? l10n.platePhotoSaving
+                      : l10n.platePhotoSave(drafts.length),
+                  busy: _saving,
+                  onPressed: _save,
+                ),
       children: [
         Text(l10n.platePhotoIntro, style: theme.textTheme.bodyMedium),
         const SizedBox(height: 16),
@@ -282,11 +346,6 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
               hintText: l10n.platePhotoNoteHint,
             ),
           ),
-          FilledButton(
-            key: const ValueKey('plate-photo-estimate'),
-            onPressed: _bytes == null || _estimating ? null : _estimate,
-            child: Text(_estimating ? l10n.platePhotoEstimating : l10n.platePhotoEstimate),
-          ),
         ] else if (drafts.isEmpty) ...[
           Text(l10n.platePhotoEmpty),
         ] else ...[
@@ -295,6 +354,7 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
           Text(l10n.platePhotoReviewHint, style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _mealSlot,
             decoration: InputDecoration(labelText: l10n.platePhotoMealSlot),
             items: [
@@ -305,66 +365,77 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
           ),
           const SizedBox(height: 12),
           for (final d in drafts)
-            Card(
+            ListCard(
               key: ObjectKey(d),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: d.name,
-                            decoration: InputDecoration(labelText: l10n.platePhotoItemName),
-                          ),
+              dense: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: d.name,
+                          decoration: InputDecoration(labelText: l10n.platePhotoItemName),
                         ),
-                        IconButton(
-                          tooltip: l10n.platePhotoRemoveItem(d.name.text),
-                          icon: const Icon(Icons.close),
-                          onPressed: () => setState(() {
-                            _drafts = [...drafts]..remove(d);
-                            d.dispose();
-                          }),
-                        ),
-                      ],
-                    ),
-                    if (d.source.lowConfidence)
-                      Text(l10n.platePhotoLowConfidence, style: theme.textTheme.bodySmall),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _num(l10n.platePhotoCalories, d.calories),
-                        const SizedBox(width: 8),
-                        _num(l10n.platePhotoProtein, d.protein),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _num(l10n.platePhotoCarbs, d.carbs),
-                        const SizedBox(width: 8),
-                        _num(l10n.platePhotoFat, d.fat),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.platePhotoRemoveItem(d.name.text),
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(() {
+                          _drafts = [...drafts]..remove(d);
+                          d.dispose();
+                        }),
+                      ),
+                    ],
+                  ),
+                  if (d.source.lowConfidence)
+                    Text(l10n.platePhotoLowConfidence, style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _num(l10n.platePhotoCalories, d.calories),
+                      const SizedBox(width: 8),
+                      _num(l10n.platePhotoProtein, d.protein),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _num(l10n.platePhotoCarbs, d.carbs),
+                      const SizedBox(width: 8),
+                      _num(l10n.platePhotoFat, d.fat),
+                    ],
+                  ),
+                ],
               ),
             ),
-          const SizedBox(height: 12),
-          FilledButton(
-            key: const ValueKey('plate-photo-save'),
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.platePhotoSaving : l10n.platePhotoSave(drafts.length)),
-          ),
         ],
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _errorText(l10n, _error!),
-            key: const ValueKey('plate-photo-error'),
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-          ),
+          if (_error == PlatePhotoErrorKind.proRequired)
+            ProUpsellLink(
+              key: const ValueKey('plate-photo-error'),
+              message: _errorText(l10n, _error!),
+              color: theme.colorScheme.error,
+              style: theme.textTheme.bodyMedium,
+            )
+          else
+            Text(
+              _errorText(l10n, _error!),
+              key: const ValueKey('plate-photo-error'),
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            ),
+          // The Account page accepts the disclosure for every AI feature;
+          // the Coach's own gate only covers the Coach.
+          if (_error == PlatePhotoErrorKind.consent)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                key: const ValueKey('plate-photo-consent-link'),
+                onPressed: () => openSettings(SettingsDestination.account),
+                child: Text(l10n.settingsAccountAiConsentGrantTitle),
+              ),
+            ),
         ],
         if (_saveError != null) ...[
           const SizedBox(height: 12),

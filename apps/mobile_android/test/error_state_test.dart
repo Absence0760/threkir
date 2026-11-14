@@ -14,7 +14,7 @@ Future<void> _pump(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: ErrorState(
+        body: AppErrorState(
           message: message,
           onRetry: onRetry,
           icon: icon,

@@ -12,6 +12,23 @@ import XCTest
 /// seams — same convention as the Kotlin bridge tests on the Android twin.
 final class WatchIngestBridgeTests: XCTestCase {
 
+    /// The suite runs inside Runner.app, whose launch boots the Flutter engine
+    /// on the main thread. On a cold CI simulator that holds the main queue
+    /// for several seconds, which outlasted the first test's five-second
+    /// `drainMainQueue` and failed it with the re-buffer still queued. Waiting
+    /// once for the launch to finish keeps every per-test drain a real bound
+    /// on the bridge rather than on the host app's start-up.
+    private static var hostLaunched = false
+
+    override func setUp() {
+        super.setUp()
+        guard !Self.hostLaunched else { return }
+        let launched = expectation(description: "host app finished launching")
+        DispatchQueue.main.async { launched.fulfill() }
+        wait(for: [launched], timeout: 120)
+        Self.hostLaunched = true
+    }
+
     private func routeArgs(
         points: Int,
         id: String = "route-1",

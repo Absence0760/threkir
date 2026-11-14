@@ -9,12 +9,18 @@ class LiveOverlay {
   final bool showHeartRate;
   final DateTime? createdAt;
 
+  /// Whether the owner's health-data consent is on. Heart rate is health
+  /// data: the server serves it to the overlay only while this holds, and a
+  /// client offers the switch only then (or to turn it off).
+  final bool heartRateConsent;
+
   const LiveOverlay({
     required this.token,
     required this.delaySeconds,
     required this.showMap,
     required this.showHeartRate,
     this.createdAt,
+    this.heartRateConsent = false,
   });
 
   /// One `get_live_overlay()` row. A missing setting reads as the server's
@@ -28,14 +34,22 @@ class LiveOverlay {
       showMap: row['show_map'] == true,
       showHeartRate: row['show_heart_rate'] == true,
       createdAt: parseIsoStrictValue(created),
+      heartRateConsent: row['heart_rate_consent'] == true,
     );
   }
 
-  LiveOverlay copyWith({String? token, int? delaySeconds}) => LiveOverlay(
+  LiveOverlay copyWith({
+    String? token,
+    int? delaySeconds,
+    bool? showMap,
+    bool? showHeartRate,
+  }) =>
+      LiveOverlay(
         token: token ?? this.token,
         delaySeconds: delaySeconds ?? this.delaySeconds,
-        showMap: showMap,
-        showHeartRate: showHeartRate,
+        showMap: showMap ?? this.showMap,
+        showHeartRate: showHeartRate ?? this.showHeartRate,
         createdAt: createdAt,
+        heartRateConsent: heartRateConsent,
       );
 }

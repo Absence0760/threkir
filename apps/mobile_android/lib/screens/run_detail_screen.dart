@@ -13,7 +13,21 @@ import 'package:flutter/material.dart' hide Route;
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppRadius, AppSemanticColors, ChartPalette, StatGrid, StatTile;
+    show
+        AppBarAction,
+        AppRadius,
+        AppSemanticColors,
+        ChartPalette,
+        DetailHero,
+        DetailPage,
+        FieldColumn,
+        KeepAliveChild,
+        ListCard,
+        MapOverlayChip,
+        StatGrid,
+        StatTile,
+        StatusPill,
+        StatusPillSize;
 import 'package:uuid/uuid.dart';
 
 import '../adaptive_width.dart';
@@ -941,16 +955,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                controller: titleCtl,
-                decoration: InputDecoration(labelText: l10n.runDetailFieldTitle),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesCtl,
-                decoration: InputDecoration(labelText: l10n.runDetailFieldNotes),
-                maxLines: 4,
-              ),
+              FieldColumn(children: [
+                TextField(
+                  controller: titleCtl,
+                  decoration: InputDecoration(labelText: l10n.runDetailFieldTitle),
+                ),
+                TextField(
+                  controller: notesCtl,
+                  decoration: InputDecoration(labelText: l10n.runDetailFieldNotes),
+                  maxLines: 4,
+                ),
+              ]),
               if (canEditStats) ...[
                 const SizedBox(height: 16),
                 TextField(
@@ -1111,6 +1126,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     String label, {
     bool hours = false,
   }) {
+    // semantics-children: names a field that shows no label or hint of its own
     return Semantics(
       label: label,
       child: TextField(
@@ -1144,156 +1160,96 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Flexible(child: Text(_title, overflow: TextOverflow.ellipsis)),
-            if (_isDnf) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  l10n.runDetailDnfBadge,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-            ],
-            if (_isRecoveredUnfinished) ...[
-              const SizedBox(width: 8),
-              Tooltip(
-                message: l10n.runDetailIncompleteTooltip,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    l10n.runDetailIncompleteBadge,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onTertiaryContainer,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
-              ),
-            ],
-          ],
+    final signedIn = widget.apiClient?.userId != null;
+    return DetailPage(
+      title: _title,
+      moreTooltip: l10n.runDetailMoreTooltip,
+      busyLabel: _deleting ? l10n.runDetailDeleting : null,
+      // Edit and Share are the two the runner reaches for; sharing a PR
+      // card, saving as a route and the visibility switch sit behind More.
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.edit_outlined),
+          label: l10n.runDetailEditTooltip,
+          onPressed: _editDetails,
         ),
-        // Action row polish: pre-polish had 4 stacked icon buttons
-        // (Edit / Save as route / Share / Delete) which crowded
-        // the AppBar — common at standard widths, broken at
-        // narrow widths. Keep Edit + Share visible (most-used
-        // actions), move Save as route + Delete into an overflow
-        // (`...`) menu.
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: l10n.runDetailEditTooltip,
-            onPressed: _editDetails,
+        AppBarAction(
+          icon: const Icon(Icons.share_outlined),
+          label: l10n.runDetailShareTooltip,
+          onPressed: _sharing ? null : _shareRun,
+        ),
+        if (_runRecords.isNotEmpty)
+          AppBarAction(
+            key: const Key('run-detail-share-pr'),
+            icon: const Icon(Icons.military_tech),
+            label: l10n.runDetailSharePr,
+            onPressed: _sharing ? null : _sharePrCard,
           ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: l10n.runDetailShareTooltip,
-            onPressed: _sharing ? null : _shareRun,
+        AppBarAction(
+          icon: const Icon(Icons.add_road),
+          label: l10n.runDetailSaveAsRoute,
+          onPressed: _saveAsRoute,
+        ),
+        if (signedIn && _isPublic == false)
+          AppBarAction(
+            icon: const Icon(Icons.public),
+            label: l10n.runDetailMakePublic,
+            onPressed: _makePublicFromControl,
           ),
-          if (_runRecords.isNotEmpty)
-            IconButton(
-              key: const Key('run-detail-share-pr'),
-              icon: const Icon(Icons.military_tech),
-              tooltip: l10n.runDetailSharePr,
-              onPressed: _sharing ? null : _sharePrCard,
+        if (signedIn && _isPublic == true)
+          AppBarAction(
+            icon: const Icon(Icons.lock_outline),
+            label: l10n.runDetailMakePrivate,
+            onPressed: _visibilityBusy ? null : _makePrivate,
+          ),
+        if (_canRecomputeDistance)
+          AppBarAction(
+            key: const ValueKey('recalculate-distance'),
+            icon: const Icon(Icons.straighten),
+            label: l10n.runDetailRecalculateDistance,
+            onPressed: _recomputeBusy ? null : _recomputeDistance,
+          ),
+        AppBarAction(
+          icon: const Icon(Icons.delete_outline),
+          label: l10n.runDetailDeleteRun,
+          destructive: true,
+          onPressed: () => _confirmDelete(context),
+        ),
+      ],
+      body: LayoutBuilder(
+        builder: (context, viewport) =>
+            _buildBody(theme, l10n, unit, viewport.maxHeight),
+      ),
+    );
+  }
+
+  /// The run's name, wrapping, with its DNF and incomplete markers: the
+  /// page's heading, which the bar repeats once it scrolls away.
+  Widget _buildHero(AppLocalizations l10n) {
+    final scheme = Theme.of(context).colorScheme;
+    return DetailHero(
+      key: const ValueKey('run-detail-hero'),
+      title: _title,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      badges: [
+        if (_isDnf)
+          StatusPill(
+            label: l10n.runDetailDnfBadge,
+            foreground: scheme.onErrorContainer,
+            fill: scheme.errorContainer,
+            size: StatusPillSize.compact,
+          ),
+        if (_isRecoveredUnfinished)
+          Tooltip(
+            message: l10n.runDetailIncompleteTooltip,
+            child: StatusPill(
+              label: l10n.runDetailIncompleteBadge,
+              foreground: scheme.onTertiaryContainer,
+              fill: scheme.tertiaryContainer,
+              size: StatusPillSize.compact,
             ),
-          PopupMenuButton<String>(
-            tooltip: l10n.runDetailMoreTooltip,
-            onSelected: (action) {
-              switch (action) {
-                case 'save_as_route':
-                  _saveAsRoute();
-                case 'make_public':
-                  _makePublicFromControl();
-                case 'make_private':
-                  _makePrivate();
-                case 'recalculate_distance':
-                  _recomputeDistance();
-                case 'delete':
-                  _confirmDelete(context);
-              }
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'save_as_route',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.add_road),
-                  title: Text(l10n.runDetailSaveAsRoute),
-                ),
-              ),
-              if (widget.apiClient?.userId != null && _isPublic == false)
-                PopupMenuItem(
-                  value: 'make_public',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.public),
-                    title: Text(l10n.runDetailMakePublic),
-                  ),
-                ),
-              if (widget.apiClient?.userId != null && _isPublic == true)
-                PopupMenuItem(
-                  value: 'make_private',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.lock_outline),
-                    title: Text(l10n.runDetailMakePrivate),
-                  ),
-                ),
-              if (_canRecomputeDistance)
-                PopupMenuItem(
-                  key: const ValueKey('recalculate-distance'),
-                  value: 'recalculate_distance',
-                  enabled: !_recomputeBusy,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.straighten),
-                    title: Text(l10n.runDetailRecalculateDistance),
-                  ),
-                ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.delete_outline,
-                      color: AppSemanticColors.of(context).danger),
-                  title: Text(l10n.runDetailDeleteRun,
-                      style: TextStyle(
-                          color: AppSemanticColors.of(context).danger)),
-                ),
-              ),
-            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, viewport) =>
-              _buildBody(theme, l10n, unit, viewport.maxHeight),
-        ),
-      ),
+      ],
     );
   }
 
@@ -1334,7 +1290,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           // FlutterMap + MapController; scrolling back rebuilt it from
           // scratch — a visible tile reload plus a jank spike. Keeping it
           // alive also pauses its pulse ticker while off-screen.
-          _KeepAliveMap(
+          KeepAliveChild(
             child: SizedBox(
               height: detailMapHeight(viewportHeight),
               child: _buildMapStack(l10n),
@@ -1498,22 +1454,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         if (_loadingTrack)
           Positioned(
             top: 12,
+            left: 12,
             right: 12,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(l10n.runDetailLoadingGps,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
+            child: Align(
+              alignment: AlignmentDirectional.topEnd,
+              child: MapOverlayChip(
+                label: l10n.runDetailLoadingGps,
+                leading: const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             ),
@@ -1521,20 +1471,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         if (_trackFetchFailed && run.track.isEmpty)
           Positioned(
             top: 12,
+            left: 12,
             right: 12,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.cloud_off, size: 14,
-                        color: Theme.of(context).colorScheme.outline),
-                    const SizedBox(width: 8),
-                    Text(l10n.runDetailGpsUnavailable,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
-                ),
+            child: Align(
+              alignment: AlignmentDirectional.topEnd,
+              child: MapOverlayChip(
+                label: l10n.runDetailGpsUnavailable,
+                leading: Icon(Icons.cloud_off,
+                    size: 14, color: Theme.of(context).colorScheme.outline),
               ),
             ),
           ),
@@ -1548,6 +1492,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final secondaryStats = _secondaryStatCells(l10n, unit);
     final milestone = _milestone;
     return [
+      _buildHero(l10n),
       // Never beside a blocked sync or a DNF: Grisnir stays out of every
       // failure state.
       if (milestone != null &&
@@ -2322,63 +2267,60 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isBest ? Icons.emoji_events : Icons.timer,
-                      size: 20,
-                      color: isBest
-                          ? AppSemanticColors.ofTheme(theme).crown
-                          : theme.colorScheme.outline,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isBest
-                            ? l10n.runDetailPersonalBest(routeName)
-                            : l10n.runDetailBehindPb(
-                                formatSignedDelta(summary.deltaSeconds)),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isBest
-                              ? AppSemanticColors.ofTheme(theme).crown
-                              : theme.colorScheme.onSurface,
-                        ),
+        child: ListCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isBest ? Icons.emoji_events : Icons.timer,
+                    size: 20,
+                    color: isBest
+                        ? AppSemanticColors.ofTheme(theme).crown
+                        : theme.colorScheme.outline,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isBest
+                          ? l10n.runDetailPersonalBest(routeName)
+                          : l10n.runDetailBehindPb(
+                              formatSignedDelta(summary.deltaSeconds)),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isBest
+                            ? AppSemanticColors.ofTheme(theme).crown
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.runDetailAttemptOf(summary.rank, summary.total,
-                      _formatDuration(Duration(seconds: summary.pb.durationS))),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (widget.apiClient case final api?) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    key: const Key('route-head-to-head-open'),
-                    onPressed: () => showHeadToHeadSheet(
-                      context,
-                      api: api,
-                      kind: 'route',
-                      targetId: run.routeId!,
-                      activityType: thisActivity,
-                    ),
-                    icon: const Icon(Icons.people_outline),
-                    label: Text(l10n.headToHeadCompare),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.runDetailAttemptOf(summary.rank, summary.total,
+                    _formatDuration(Duration(seconds: summary.pb.durationS))),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (widget.apiClient case final api?) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('route-head-to-head-open'),
+                  onPressed: () => showHeadToHeadSheet(
+                    context,
+                    api: api,
+                    kind: 'route',
+                    targetId: run.routeId!,
+                    activityType: thisActivity,
+                  ),
+                  icon: const Icon(Icons.people_outline),
+                  label: Text(l10n.headToHeadCompare),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -2541,6 +2483,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     context,
                     MaterialPageRoute(
                       builder: (_) => SettingsPreferencesScreen(
+                        page: PreferencesPage.training,
+                        focus: PreferencesRow.maxHr,
                         apiClient: widget.apiClient,
                         preferences: widget.preferences,
                         settingsSync: widget.settingsSync,
@@ -3142,6 +3086,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// link, the visibility chip or the overflow menu.
   bool _visibilityBusy = false;
 
+  /// A delete is in flight: the overflow menu becomes a spinner, so a second
+  /// confirm cannot fire while the first is still waiting on the network
+  /// (issue #1374 FS-13).
+  bool _deleting = false;
+
   /// The visibility chip under the title. It is the control for who can see
   /// the run, not a label: the owner could not find how to make a run public
   /// when the only path was the Share sheet's link action.
@@ -3383,6 +3332,19 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   Future<void> _makePrivate() async {
     final api = widget.apiClient;
     if (api == null || api.userId == null || _visibilityBusy) return;
+    // Busy from the confirm until the write settles, so a second tap on the
+    // chip or the menu cannot open a second confirm (issue #1374 FS-13).
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      await _makePrivateConfirmed(api);
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _makePrivateConfirmed(ApiClient api) async {
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
@@ -3513,31 +3475,43 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         ],
       ),
     );
-    if (ok == true) {
-      final api = widget.apiClient;
-      if (api != null && api.userId != null) {
-        try {
-          await api.deleteRun(run);
-        } catch (e) {
-          debugPrint('run_detail: remote delete failed, queued for retry: $e');
-          // Keep the local copy — deleting it while the cloud row survives
-          // makes the run resurrect on the next resync (and keeps a shared
-          // public link alive). Queue the delete for SyncService to retry;
-          // on success the retry also removes the local copy. Mirrors the
-          // runs_screen bulk-delete path (data-sync audit P0-1).
-          await widget.runStore.markPendingRemoteDelete(
-            run.id,
-            ownerUserId: api.userId,
-          );
-          if (context.mounted) {
-            showTopBanner(context, l10n.runDetailDeleteQueued);
-          }
-          return;
-        }
-      }
-      await widget.runStore.delete(run.id);
-      if (context.mounted) Navigator.pop(context);
+    if (ok != true || _deleting || !mounted) return;
+    setState(() => _deleting = true);
+    try {
+      await _deleteConfirmed(context, l10n);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
+  }
+
+  Future<void> _deleteConfirmed(
+      BuildContext context, AppLocalizations l10n) async {
+    final api = widget.apiClient;
+    if (api != null && api.userId != null) {
+      try {
+        // A delete is idempotent, so it may carry the load timeout: a
+        // network that never answers falls into the queued-retry path
+        // below rather than holding the screen for minutes.
+        await api.deleteRun(run).timeout(kBackendLoadTimeout);
+      } catch (e) {
+        debugPrint('run_detail: remote delete failed, queued for retry: $e');
+        // Keep the local copy — deleting it while the cloud row survives
+        // makes the run resurrect on the next resync (and keeps a shared
+        // public link alive). Queue the delete for SyncService to retry;
+        // on success the retry also removes the local copy. Mirrors the
+        // runs_screen bulk-delete path (data-sync audit P0-1).
+        await widget.runStore.markPendingRemoteDelete(
+          run.id,
+          ownerUserId: api.userId,
+        );
+        if (context.mounted) {
+          showTopBanner(context, l10n.runDetailDeleteQueued);
+        }
+        return;
+      }
+    }
+    await widget.runStore.delete(run.id);
+    if (context.mounted) Navigator.pop(context);
   }
 
 
@@ -3613,13 +3587,10 @@ class _RouteSuggestBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
           Icon(Icons.link, color: theme.colorScheme.primary),
@@ -3783,43 +3754,41 @@ class _SegmentStatsCard extends StatelessWidget {
         _stat(theme, l10n.runDetailSegStatGain,
             '+${UnitFormat.elevation(segment.eleGainMetres, unit)}'),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.runDetailSegRange(
-                      UnitFormat.distanceValue(
-                          segment.startDistanceMetres, unit),
-                      UnitFormat.distanceValue(segment.endDistanceMetres, unit),
-                      UnitFormat.distanceLabel(unit),
-                    ),
-                    style: theme.textTheme.titleSmall,
+    return ListCard(
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.runDetailSegRange(
+                    UnitFormat.distanceValue(
+                        segment.startDistanceMetres, unit),
+                    UnitFormat.distanceValue(segment.endDistanceMetres, unit),
+                    UnitFormat.distanceLabel(unit),
                   ),
+                  style: theme.textTheme.titleSmall,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: l10n.runDetailSegDismiss,
-                  onPressed: onDismiss,
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 4,
-                children: stats,
               ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: l10n.runDetailSegDismiss,
+                onPressed: onDismiss,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 4,
+              children: stats,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -3904,32 +3873,6 @@ void applyDnfFlag(Map<String, dynamic> metadata, bool dnf) {
   }
 }
 
-
-/// Preserves its child's State when it scrolls out of the enclosing
-/// ListView's cache extent. Wraps the run-detail map so the FlutterMap +
-/// MapController aren't disposed and rebuilt (with a full tile reload) on
-/// every scroll past it. Same `AutomaticKeepAliveClientMixin` idiom as
-/// `_LazyKeepAliveTab` on the home shell.
-class _KeepAliveMap extends StatefulWidget {
-  final Widget child;
-  const _KeepAliveMap({required this.child});
-
-  @override
-  State<_KeepAliveMap> createState() => _KeepAliveMapState();
-}
-
-class _KeepAliveMapState extends State<_KeepAliveMap>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
-}
-
 /// The run's push is parked: nothing will retry it, and the runner has to
 /// decide. Names the reason, states what survives the one action offered, and
 /// puts the export beside it — the trace is the only copy of something that
@@ -3965,63 +3908,60 @@ class _BlockedPushCard extends StatelessWidget {
         l10n.runDetailBlockedDurationTooLong(kMaxRunDurationS ~/ 3600),
     };
     final edit = onEdit;
-    return Card(
+    return ListCard(
       color: theme.colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.cloud_off,
-                    size: 20, color: theme.colorScheme.onErrorContainer),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l10n.runDetailBlockedTitle,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_off,
+                  size: 20, color: theme.colorScheme.onErrorContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.runDetailBlockedTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (waypoints > 0)
-                  OutlinedButton.icon(
-                    onPressed: busy ? null : () => onExport(),
-                    icon: const Icon(Icons.download_outlined),
-                    label: Text(l10n.runDetailBlockedExport),
-                  ),
-                if (reason == RunPushBlockReason.trackTooLarge)
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => onDropTrack(),
-                    icon: const Icon(Icons.cloud_upload),
-                    label: Text(l10n.runDetailBlockedDropTrack),
-                  ),
-                if (reason == RunPushBlockReason.durationOutOfRange &&
-                    edit != null)
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => edit(),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: Text(l10n.runDetailEditTitle),
-                  ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onErrorContainer),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (waypoints > 0)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => onExport(),
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(l10n.runDetailBlockedExport),
+                ),
+              if (reason == RunPushBlockReason.trackTooLarge)
+                FilledButton.icon(
+                  onPressed: busy ? null : () => onDropTrack(),
+                  icon: const Icon(Icons.cloud_upload),
+                  label: Text(l10n.runDetailBlockedDropTrack),
+                ),
+              if (reason == RunPushBlockReason.durationOutOfRange &&
+                  edit != null)
+                FilledButton.icon(
+                  onPressed: busy ? null : () => edit(),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(l10n.runDetailEditTitle),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

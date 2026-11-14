@@ -104,6 +104,12 @@ class SettingsKeys {
   /// which raises no starting-soon row for a muted runner, and by the Go
   /// worker's `kindMuted` on push (migration 20271121002400).
   static const notifyRaceStartingSoon = 'notify_race_starting_soon';
+  /// Opt-OUT for the park course month-close notice,
+  /// `park_course_month_closed` — `'on'` | `'off'` (default `'on'`; only the
+  /// literal `'off'` mutes). Read by `enqueue_park_course_month_notices()`,
+  /// which raises no row for a muted runner, and by the Go worker's
+  /// `kindMuted` on email and push (migration 20271226041343, issue #1343).
+  static const notifyParkCourseMonth = 'notify_park_course_month';
   /// Where the AI Coach sits in the Messages inbox — `'pinned'` (default) |
   /// `'listed'` | `'hidden'`; anything else reads as pinned
   /// (`parseCoachInboxPlacement`, decisions § 2227). Never read in SQL.

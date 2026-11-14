@@ -256,7 +256,7 @@ The matrix of "what lives where":
 | `REVENUECAT_WEBHOOK_SECRET` | RevenueCat dashboard | Supabase EF env |
 | `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1671](../architecture/decisions.md)) |
 | `PUBLIC_MAPTILER_KEY` | MapTiler dashboard | GitHub Secrets (injected at CI build-time as `PUBLIC_*`); Mobile build configs |
-| Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`); the Wear OS release signs with it too, since the watch ships under the phone's package ([decisions § 2480](../architecture/decisions.md)) |
+| Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`); the Wear OS release signs with it too, since the watch ships under the phone's package ([decisions § 2529](../architecture/decisions.md)) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
 | Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) on `production`, and a copy on the reviewer-less `play-rollout` environment restricted to `main`, which `play-rollout.yml` reads daily to widen a staged production rollout ([decisions § 2478](../architecture/decisions.md)) |
 | App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
@@ -353,7 +353,7 @@ it.
 
 ### What runs on a pull request and does not block it
 
-Seven workflows trigger on a pull request and reach nothing the gate waits for.
+Eight workflows trigger on a pull request and reach nothing the gate waits for.
 Each is a decision rather than a backlog item, and the decisions live in code:
 `PR_ADVISORY` in
 [`scripts/check_ci_diagnostics.mjs`](../../scripts/check_ci_diagnostics.mjs)
@@ -402,6 +402,13 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   diffs the PR against its base (section below,
   [§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md),
   [§ 2457](../architecture/decisions.md)).
+- `store-screenshots.yml` -- it captures the store-listing screens on an
+  emulator against a seeded local stack and composes the captioned panels,
+  which are images for the owner to judge rather than a verdict. Its
+  `pull_request` trigger is filtered to the pipeline's own files. A fold would
+  put a second emulator and a Supabase stack on every PR and gate merges on
+  MapTiler serving tiles, and the capture suite already compiles under the
+  required `dart analyze` (issue #1375).
 
 The register carries each reason in full; the list above is the operator's
 index into it. Apart from the CodeQL and zizmor findings the ruleset blocks on,

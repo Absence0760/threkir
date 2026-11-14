@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart' show PlanWeekRow, PlanWorkoutRow;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../backend_timeout.dart';
 import '../auth_error.dart';
@@ -182,68 +183,66 @@ class _MissedWorkoutPromptCardState extends State<MissedWorkoutPromptCard> {
     final offerMakeUp = p.makeUp != null && widget.onMakeUp != null;
     final day = formatDowDateShort(DateTime.parse(p.scheduledDate), tag);
     final kind = workoutKindLabel(l10n, workoutKindFromDb(p.kind));
-    return Card(
+    return ListCard(
       key: const Key('missedPrompt'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.event_busy, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.missedPromptTitle(kind, day),
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.event_busy, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.missedPromptTitle(kind, day),
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _body(l10n, p),
+                      key: const Key('missedPromptBody'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _body(l10n, p),
-                        key: const Key('missedPromptBody'),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (offerMakeUp)
-                  FilledButton(
-                    key: const Key('missedPromptMakeUp'),
-                    onPressed: _busy ? null : widget.onMakeUp,
-                    child: _label(theme, l10n.missedPromptMakeUp, true, l10n),
-                  ),
-                if (offerMakeUp)
-                  OutlinedButton(
-                    key: const Key('missedPromptLetGo'),
-                    onPressed: _busy ? null : _letGo,
-                    child: _label(theme, l10n.missedPromptLetGo, false, l10n),
-                  )
-                else
-                  FilledButton(
-                    key: const Key('missedPromptLetGo'),
-                    onPressed: _busy ? null : _letGo,
-                    child: _label(theme, l10n.missedPromptLetGo, true, l10n),
-                  ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (offerMakeUp)
+                FilledButton(
+                  key: const Key('missedPromptMakeUp'),
+                  onPressed: _busy ? null : widget.onMakeUp,
+                  child: _label(theme, l10n.missedPromptMakeUp, true, l10n),
+                ),
+              if (offerMakeUp)
+                OutlinedButton(
+                  key: const Key('missedPromptLetGo'),
+                  onPressed: _busy ? null : _letGo,
+                  child: _label(theme, l10n.missedPromptLetGo, false, l10n),
+                )
+              else
+                FilledButton(
+                  key: const Key('missedPromptLetGo'),
+                  onPressed: _busy ? null : _letGo,
+                  child: _label(theme, l10n.missedPromptLetGo, true, l10n),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
@@ -79,53 +80,51 @@ class _FinishPlanCardState extends State<FinishPlanCard> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
-    return Card(
+    return ListCard(
       key: const Key('finishPlanCard'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.check_circle_outline,
-                    color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.planFinishTitle(widget.planName),
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_circle_outline,
+                  color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.planFinishTitle(widget.planName),
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.planFinishBody(
+                          formatDateMed(widget.endDate, tag)),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.planFinishBody(
-                            formatDateMed(widget.endDate, tag)),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton(
-                key: const Key('finishPlanButton'),
-                onPressed: _busy ? null : _finish,
-                child: Text(
-                    _busy ? l10n.planFinishFinishing : l10n.planFinishAction),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton(
+              key: const Key('finishPlanButton'),
+              onPressed: _busy ? null : _finish,
+              child: Text(
+                  _busy ? l10n.planFinishFinishing : l10n.planFinishAction),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

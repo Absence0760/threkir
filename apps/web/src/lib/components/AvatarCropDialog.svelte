@@ -224,6 +224,7 @@
 						step="0.01"
 						value={crop?.zoom ?? 1}
 						disabled={!crop}
+						aria-valuetext="{(crop?.zoom ?? 1).toFixed(1)}×"
 						oninput={(e) => {
 							if (crop) crop = rezoom(crop, Number((e.currentTarget as HTMLInputElement).value));
 						}}

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/import_failures.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/import_failure_report.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester, ImportFailureLog log,
     {VoidCallback? onDismiss}) async {
@@ -24,6 +25,23 @@ Future<void> _pump(WidgetTester tester, ImportFailureLog log,
 }
 
 void main() {
+  // Issue #1374: the report is a ListCard; its heading and chips fit.
+  worstCaseTestWidgets('Import failure report', (tester, locale) async {
+    final log = newImportFailureLog();
+    recordImportFailure(log,
+        name: 'Morning Run', error: const FormatException('Failed to fetch'));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: ImportFailureReport(
+              log: log, provider: 'strava', onDismiss: () {}),
+        ),
+      ),
+    ));
+    await tester.pump();
+  });
+
   testWidgets('names the count and one chip per reason', (tester) async {
     final log = newImportFailureLog();
     recordImportFailure(log,

@@ -1,11 +1,13 @@
 <script lang="ts">
+	import { dmRelationLabelKey } from '#lib/social/dm_relation_label.ts';
 	import Modal from './Modal.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { addShare, fetchFollowers, fetchFollowing, sendDm } from '#lib/core/data.ts';
+	import { addShare, fetchFollowGraph, sendDm } from '#lib/core/data.ts';
 	import {
 		dmRecipientCandidates,
 		filterDmRecipients,
@@ -74,8 +76,8 @@
 		loading = true;
 		loadFailed = false;
 		try {
-			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
+			const { followers, following } = await fetchFollowGraph(me);
+			candidates = dmRecipientCandidates(followers, following, me);
 		} catch {
 			// Never degrade to an empty list: "you have nobody to send to" and
 			// "we couldn't find out who you could send to" are different
@@ -114,9 +116,7 @@
 	}
 
 	function relationLabel(r: DmRecipient): string {
-		if (r.relation === 'mutual') return tr('routeDetail.sendDm.relationMutual');
-		if (r.relation === 'follows_you') return tr('routeDetail.sendDm.relationFollowsYou');
-		return tr('routeDetail.sendDm.relationYouFollow');
+		return tr(dmRelationLabelKey(r.relation));
 	}
 </script>
 
@@ -157,16 +157,9 @@
 		{:else if candidates.length === 0}
 			<p class="muted">{tr('routeDetail.sendDm.empty')}</p>
 		{:else}
-			<label class="search">
-				<span class="material-symbols" aria-hidden="true">search</span>
-				<input
-					type="text"
-					bind:value={query}
-					placeholder={tr('routeDetail.sendDm.searchPlaceholder')}
-					aria-label={tr('routeDetail.sendDm.searchPlaceholder')}
-					data-testid="send-route-search"
-				/>
-			</label>
+			<div class="search">
+				<AppSearchField bind:value={query} label={tr('routeDetail.sendDm.searchPlaceholder')} testid="send-route-search" />
+			</div>
 			{#if shown.length === 0}
 				<p class="muted">{tr('routeDetail.sendDm.noMatches')}</p>
 			{:else}
@@ -216,26 +209,7 @@
 	}
 	.search {
 		display: flex;
-		align-items: center;
-		gap: var(--space-xs);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		padding: 0 var(--space-sm);
 		margin-block-end: var(--space-sm);
-	}
-	.search input {
-		flex: 1 1 auto;
-		border: none;
-		background: none;
-		color: inherit;
-		padding: var(--space-sm) 0;
-	}
-	.search input:focus {
-		outline: none;
-	}
-	.search input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
 	}
 	.recipient:focus-visible {
 		outline: 2px solid var(--color-primary);

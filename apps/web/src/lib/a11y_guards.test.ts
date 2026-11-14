@@ -203,6 +203,20 @@ test(
 	},
 );
 
+test('accessibility: Today and Progress render their h1 through PageHeader (WCAG 1.3.1 + 2.4.6)', () => {
+	// The dashboard's visually-hidden h1 became a visible PageHeader when it
+	// split into Today and Progress (decisions § 2506); PageHeader renders the
+	// <h1>, so the pin is that each view passes its own heading key.
+	const view = read('src/routes/dashboard/DashboardView.svelte');
+	const header = read('src/lib/components/PageHeader.svelte');
+	assert.match(header, /<h1\b/, 'PageHeader must render the page h1');
+	assert.match(view, /<PageHeader title=\{m\('dash\.pageTitle'\)\}/, 'Today must title itself with dash.pageTitle');
+	assert.match(view, /<PageHeader\s+title=\{m\('dash\.progressTitle'\)\}/, 'Progress must title itself with dash.progressTitle');
+	const en = read('src/lib/i18n/locales/en.ts');
+	assert.match(en, /"dash\.pageTitle":\s*"Today"/);
+	assert.match(en, /"dash\.progressTitle":\s*"Progress"/);
+});
+
 test('accessibility: every top-level page renders an h1 (WCAG 1.3.1 + 2.4.6)', () => {
 	// Reason: audit/accessibility High — Dashboard / Runs / Coach
 	// had no h1, so a screen-reader user navigating by headings
@@ -214,11 +228,9 @@ test('accessibility: every top-level page renders an h1 (WCAG 1.3.1 + 2.4.6)', (
 	// English copy still names the route. Same heading-by-headings anchor.
 	const en = read('src/lib/i18n/locales/en.ts');
 	for (const [path, key, expectedText] of [
-		['src/routes/dashboard/+page.svelte', 'dash.pageHeading', 'Dashboard'],
-		// /history is the unified cross-modal timeline; the dedicated
-		// run-list page moved to /runs in the §63-amendment restructure.
-		['src/routes/history/+page.svelte', 'history.timelineHeading', 'History'],
-		['src/routes/runs/+page.svelte', 'history.heading', 'Run history'],
+		// /history and /runs say their name in a visible PageHeader now
+		// (issue #1374); page_chrome_guard.test.ts holds every sidebar root
+		// to that.
 		// The Coach is a conversation in Messages (decisions § 2227): the
 		// layout's h1 names Messages, the pane's h2 names the Coach.
 		['src/routes/messages/+layout.svelte', 'messages.heading', 'Messages'],
@@ -312,15 +324,16 @@ test('accessibility: ToastContainer announces from permanently-mounted live regi
 		);
 	}
 
-	const firstIf = markup.indexOf('{#if');
-	if (firstIf >= 0) {
-		for (const politeness of ['polite', 'assertive']) {
-			assert.ok(
-				markup.indexOf(`aria-live="${politeness}"`) < firstIf,
-				`The aria-live="${politeness}" region must be mounted unconditionally — a region ` +
-					'that appears together with its text announces nothing.',
-			);
-		}
+	// An `{#if}` INSIDE a region (a toast's optional action) is fine; one still
+	// open where a region starts would mount the region with its text.
+	const openIfsBefore = (at: number) =>
+		(markup.slice(0, at).match(/\{#if/g) ?? []).length - (markup.slice(0, at).match(/\{\/if\}/g) ?? []).length;
+	for (const politeness of ['polite', 'assertive']) {
+		assert.ok(
+			openIfsBefore(markup.indexOf(`aria-live="${politeness}"`)) === 0,
+			`The aria-live="${politeness}" region must be mounted unconditionally — a region ` +
+				'that appears together with its text announces nothing.',
+		);
 	}
 
 	// The message renders once. Two `{#each}` blocks over the toast list, one
@@ -393,3 +406,37 @@ test('accessibility: the tap-target tokens sit above the bars they clear', () =>
 			'for the same reason.',
 	);
 });
+
+// #1374 A11Y-4. A range input's value is read as its bare number ("300")
+// unless aria-valuetext gives it the unit the page shows. The mobile twin
+// is `slider_semantics_guard_test.dart`.
+test('accessibility: every range input carries aria-valuetext', () => {
+	const roots = [resolve(__dirname), resolve(__dirname, '..', 'routes')];
+	const offenders: string[] = [];
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = resolve(dir, e.name);
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.svelte')) {
+				const src = readFileSync(p, 'utf-8');
+				for (const m of src.matchAll(/type="range"/g)) {
+					const start = src.lastIndexOf('<input', m.index);
+					// The tag ends at the first `>` outside a `{…}` expression,
+					// since an arrow function in a binding holds one.
+					let depth = 0;
+					let end = start;
+					for (; end < src.length; end++) {
+						const c = src[end];
+						if (c === '{') depth++;
+						else if (c === '}') depth--;
+						else if (c === '>' && depth === 0) break;
+					}
+					if (!/aria-valuetext=/.test(src.slice(start, end))) offenders.push(p);
+				}
+			}
+		}
+	};
+	roots.forEach(walk);
+	assert.deepEqual(offenders, [], `range inputs without aria-valuetext:\n${offenders.join('\n')}`);
+});
+

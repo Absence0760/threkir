@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import '../lib/l10n/gen/app_localizations_en.dart';
 import '../lib/screens/coach_screen.dart';
 
 void main() {
@@ -153,6 +155,27 @@ void main() {
       expect(parsed!.event, 'done');
       expect(parsed.data['assistant_message_id'], 'a1');
       expect(parsed.data['cache']['output_tokens'], 20);
+    });
+  });
+
+  group('coach failures read from the catalogue, never the server body', () {
+    final l10n = AppLocalizationsEn();
+
+    test('each refused status has its own copy', () {
+      expect(coachHttpErrorCopy(l10n, 401), l10n.coachSessionExpired);
+      expect(coachHttpErrorCopy(l10n, 409), l10n.coachStaleThread);
+      expect(coachHttpErrorCopy(l10n, 500), l10n.coachUnavailable);
+      expect(coachHttpErrorCopy(l10n, 503), l10n.coachUnavailable);
+      expect(coachHttpErrorCopy(l10n, 418), l10n.coachGenericError(418));
+    });
+
+    test('the screen never reads a message or error field out of a response',
+        () {
+      // § 2509: the server's `message` / `error` are English for logs. A
+      // banner built from them put that English (or an upstream detail) in
+      // front of a reader of any language, mid-stream and on a refused send.
+      final src = File('lib/screens/coach_screen.dart').readAsStringSync();
+      expect(RegExp(r"\[\s*'(?:message|error)'\s*\]").allMatches(src), isEmpty);
     });
   });
 }

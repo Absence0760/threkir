@@ -6,11 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage;
 import '../lib/local_run_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/add_run_screen.dart';
+import '../lib/widgets/route_picker_sheet.dart';
+import 'editor_layout.dart';
 import 'pump_until.dart';
 
 late Directory _runsDir;
@@ -106,10 +109,32 @@ void main() {
           reason: 'got: $labels');
     });
 
-    testWidgets('Save action is present in the app bar', (tester) async {
+    testWidgets('one Save, pinned under the form, none in the app bar',
+        (tester) async {
       final s = await _makeStores();
       await _pump(tester, s.runs, s.routes, s.prefs);
-      expect(find.text('Save'), findsOneWidget);
+      expect(find.byType(EditorPage), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Save run'), findsOneWidget);
+      expect(find.text('Save'), findsNothing);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar), matching: find.byType(TextButton)),
+          findsNothing);
+    });
+
+    testWidgets(
+        'Save run is reachable at 320 dp, 2x text and a 3-button bar, with '
+        'and without the keyboard', (tester) async {
+      final s = await _makeStores();
+      await expectEditorSaveReachable(
+        tester,
+        page: () => AddRunScreen(
+          runStore: s.runs,
+          routeStore: s.routes,
+          preferences: s.prefs,
+        ),
+        save: find.widgetWithText(FilledButton, 'Save run'),
+      );
     });
 
     testWidgets('renders ChoiceChips for all four activity types',
@@ -126,7 +151,7 @@ void main() {
     testWidgets('tapping Save without values does not save a run', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s.runs, s.routes, s.prefs);
-      await tester.tap(find.text('Save'));
+      await tester.tap(find.text('Save run'));
       await tester.pumpAndSettle();
       // Form validation blocks save — store remains empty.
       expect(s.runs.runs, isEmpty);
@@ -155,7 +180,7 @@ void main() {
 
       await tester.enterText(durationBox('Hours'), '240');
       await tester.enterText(durationBox('Minutes'), '1');
-      await tester.tap(find.text('Save'));
+      await tester.tap(find.text('Save run'));
       await tester.pump();
 
       expect(find.text("A run can't be longer than 240 hours"), findsOneWidget);
@@ -174,7 +199,7 @@ void main() {
         tester.widget<TextField>(durationBox('Minutes')).controller!.text,
         '75',
       );
-      await tester.tap(find.text('Save'));
+      await tester.tap(find.text('Save run'));
       await tester.pump();
 
       expect(find.text('Minutes must be between 0 and 59'), findsOneWidget);
@@ -190,7 +215,7 @@ void main() {
 
       await tester.enterText(find.byType(TextFormField).first, '2');
       await tester.enterText(durationBox('Hours'), '21');
-      await tester.tap(find.text('Save'));
+      await tester.tap(find.text('Save run'));
       await tester.pumpAndSettle();
 
       expect(find.text('Check the duration'), findsOneWidget);
@@ -254,7 +279,7 @@ void main() {
       // notification, which lands after the write and the index flush.
       var saved = false;
       s.runs.addListener(() => saved = true);
-      await tester.runAsync(() => tester.tap(find.text('Save')));
+      await tester.runAsync(() => tester.tap(find.text('Save run')));
       await pumpUntil(tester, () => saved,
           describe: "the run's file + index to land on disk");
 
@@ -360,12 +385,14 @@ void main() {
       await tester.tap(find.text('Search saved routes'));
       await tester.pumpAndSettle();
 
-      // Both rows visible in the picker.
+      // The same route sheet the Run tab opens, not a page of its own.
+      expect(find.byType(RoutePickerSheet), findsOneWidget);
       expect(find.text('Park loop'), findsOneWidget);
       expect(find.text('River out-and-back'), findsOneWidget);
 
       // Filter to a single match.
-      await tester.enterText(find.byType(TextField).first, 'river');
+      await tester.enterText(
+          find.byKey(const ValueKey('route-picker-search')), 'river');
       await tester.pumpAndSettle();
       expect(find.text('River out-and-back'), findsOneWidget);
       expect(find.text('Park loop'), findsNothing);
@@ -375,8 +402,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Back on AddRunScreen: the InputDecorator now shows the route
-      // name (the formatted distance follows the bullet separator).
-      expect(find.textContaining('River out-and-back'), findsOneWidget);
+      // name (the formatted distance follows the bullet separator), and the
+      // empty title field took the route's name.
+      expect(
+          find.descendant(
+              of: find.byType(InputDecorator),
+              matching: find.textContaining('River out-and-back •')),
+          findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'River out-and-back'),
+          findsOneWidget);
       // Clear icon replaces the search icon when a route is selected.
       expect(find.byIcon(Icons.clear), findsOneWidget);
       expect(find.byIcon(Icons.search), findsNothing,
@@ -387,6 +421,45 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Search saved routes'), findsOneWidget);
       expect(find.byIcon(Icons.search), findsOneWidget);
+    });
+
+    testWidgets('the picker marks the attached route, and "No route" '
+        'detaches it', (tester) async {
+      final s = await _makeStores();
+      s.routes.debugSeed([
+        cm.Route(
+          id: 'r-park',
+          userId: 'test-user',
+          name: 'Park loop',
+          waypoints: const [
+            cm.Waypoint(lat: 47.37, lng: 8.54),
+            cm.Waypoint(lat: 47.371, lng: 8.541),
+          ],
+          distanceMetres: 4200,
+        ),
+      ]);
+      await _pump(tester, s.runs, s.routes, s.prefs);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Search saved routes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('route-picker-route-r-park')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Park loop •'), findsOneWidget);
+
+      await tester.tap(find.textContaining('Park loop •'));
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<RadioGroup<String>>(find.byType(RadioGroup<String>))
+              .groupValue,
+          'r-park',
+          reason: 'the sheet marks the route already attached');
+
+      await tester.tap(find.byKey(const ValueKey('route-picker-no-route')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutePickerSheet), findsNothing);
+      expect(find.text('Search saved routes'), findsOneWidget,
+          reason: '"No route" detaches the route');
     });
   });
 

@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import 'preferences_page.dart';
+
+export 'preferences_page.dart' show PreferencesRow;
+
 /// A Settings sub-screen named as an INTENT rather than as a widget.
 ///
 /// Every settings screen takes some slice of `Preferences` +
@@ -15,14 +19,33 @@ import 'package:flutter/foundation.dart';
 /// not a destination here: it is embedded in the You tab rather than pushed,
 /// so "open Settings" is a tab switch with different back-stack semantics,
 /// and no caller has asked for it.
+///
+/// Preferences is five pages, so a link names the page whose setting it is
+/// about (the HR disclaimer → Training, the nearby list → Privacy), not a
+/// "Preferences" that no longer exists as one screen.
 enum SettingsDestination {
-  preferences,
+  display(PreferencesPage.display),
+  recording(PreferencesPage.recording),
+  training(PreferencesPage.training),
+  privacy(PreferencesPage.privacy),
+  notifications(PreferencesPage.notifications),
   account,
   safety,
   integrations,
+  gear,
   bodyMetrics,
   about,
-  pro,
+  pro;
+
+  const SettingsDestination([this.preferencesPage]);
+
+  /// The Preferences page this destination is, or null for any other
+  /// settings screen.
+  final PreferencesPage? preferencesPage;
+
+  /// The destination that is [page].
+  static SettingsDestination of(PreferencesPage page) =>
+      values.firstWhere((d) => d.preferencesPage == page);
 }
 
 /// Cross-screen handoff for "open this Settings sub-screen".
@@ -47,5 +70,27 @@ final ValueNotifier<SettingsDestination?> pendingSettingsDestination =
 /// host clears the slot as it navigates, which is also what lets the same
 /// destination be requested twice in a row.
 void openSettings(SettingsDestination destination) {
+  _pendingRow = null;
   pendingSettingsDestination.value = destination;
+}
+
+PreferencesRow? _pendingRow;
+
+/// Ask the shell to open the Preferences page [row] is on, landed on [row]:
+/// scrolled into view, highlighted and announced. A link about one setting
+/// names the setting, not only its page, so nobody is left at the top of a
+/// page the setting is several screens down (decisions § 2494, amended).
+void openSettingsRow(PreferencesRow row) {
+  _pendingRow = row;
+  pendingSettingsDestination.value = SettingsDestination.of(row.page);
+}
+
+/// The row the parked destination lands on, if any.
+PreferencesRow? get pendingSettingsRow => _pendingRow;
+
+/// [pendingSettingsRow], cleared: the shell takes it once per drain.
+PreferencesRow? takePendingSettingsRow() {
+  final row = _pendingRow;
+  _pendingRow = null;
+  return row;
 }

@@ -19,10 +19,20 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:run_recorder/run_recorder.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppRadius, AppSemanticColors, StatTile, motionDuration;
+    show
+        AppMotion,
+        AppRadius,
+        AppSemanticColors,
+        SheetScaffold,
+        StatTile,
+        StatusPill,
+        ListCard,
+        MapOverlayChip,
+        motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../health_consent_gate.dart';
 import '../mascot.dart';
 import '../widgets/grisnir_moments.dart';
 import '../fitness_surface_requests.dart';
@@ -56,6 +66,7 @@ import '../main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../live_cutoff_eta.dart';
 import '../off_route_flag.dart';
 import '../preferences.dart';
+import '../pre_run_status.dart' show PlatformPreRunProbe, PreRunProbe;
 import '../privacy.dart';
 import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
@@ -84,8 +95,10 @@ import '../watch_settings.dart';
 import '../web_base_url.dart';
 import '../widgets/finish_plan_card.dart';
 import '../widgets/idle_setup_chip.dart';
+import '../widgets/pre_run_status.dart';
+import '../widgets/race_strategy_sheet.dart';
 import '../widgets/cutoff_card.dart';
-import 'route_picker_screen.dart';
+import '../widgets/route_picker_sheet.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
 import '../live_activity_bridge.dart';
@@ -108,16 +121,12 @@ import '../widgets/streamer_overlay_sheet.dart';
 import '../widgets/loaded_workout_card.dart';
 import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
-import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/track_preview.dart' show projectTrack;
-import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
 import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
-import 'run_detail_screen.dart';
-import 'workout_detail_screen.dart';
 
 /// Whether the recording view should darken the live map to save battery
 /// (issue #271). Only while actually recording (not during the countdown,
@@ -145,6 +154,23 @@ final ValueNotifier<bool> runRecordingActive = ValueNotifier<bool>(false);
 /// start surface, so the shell does not count a runner looking at their last
 /// run as already on the start screen ([RunSummaryDismissRequests]).
 final ValueNotifier<bool> runSummaryShowing = ValueNotifier<bool>(false);
+
+/// Whether the Run page shows its start screen, so the shell's docked centre
+/// button can be the recorder's Start there ([RunStartRequests]). True by
+/// default and on tear-down: a recorder is built idle, and a tap the recorder
+/// cannot honour is dropped by it rather than starting anything.
+final ValueNotifier<bool> runIdleShowing = ValueNotifier<bool>(true);
+
+/// Whether the recorder is counting down to a start, so the docked centre
+/// button cancels it rather than offering a second Start.
+final ValueNotifier<bool> runCountdownShowing = ValueNotifier<bool>(false);
+
+/// Whether a start is under way but its countdown has not begun: the
+/// permission, GPS, background-location and battery checks (and a planned
+/// workout still loading) sit between the tap and the 3-2-1. The Run page
+/// still shows its start screen then, so the shell's docked Start reads this
+/// to say the start is pending rather than offering a second one.
+final ValueNotifier<bool> runStartPending = ValueNotifier<bool>(false);
 
 /// How far the live pace may sit from the target before the pace cue speaks.
 /// Held against both watches by `scripts/check_shared_constants.mjs`
@@ -176,6 +202,12 @@ const double kIdleStartFadeHeight = 32;
 /// wholly clear of Start.
 double idleStartAreaHeight(double buttonSize, double dockInset) =>
     kIdleStartFadeHeight + buttonSize + 16 + dockInset;
+
+/// The backing behind the countdown's "Tap to cancel", over the 0.45 black
+/// scrim: white on it is 11.71:1 over a white basemap (the old 0.7-alpha
+/// white straight on the scrim was 2.46:1).
+@visibleForTesting
+const Color kCountdownHintBacking = Color(0x99000000);
 
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
@@ -228,6 +260,10 @@ class RunScreen extends StatefulWidget {
   /// on another device or the web would otherwise stay "to do" here.
   final ValueListenable<bool>? shown;
 
+  /// The platform calls behind the idle page's GPS and permission status.
+  @visibleForTesting
+  final PreRunProbe preRunProbe;
+
   /// The live broadcaster's throttle clock. Tests advance it instead of
   /// sleeping out the real 5 s ping window.
   @visibleForTesting
@@ -253,6 +289,7 @@ class RunScreen extends StatefulWidget {
     this.watchTransportFactory,
     this.initialResumablePartial,
     this.shown,
+    this.preRunProbe = const PlatformPreRunProbe(),
   });
 
   @override
@@ -280,6 +317,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _state = next;
     runRecordingActive.value = next == _ScreenState.recording;
     runSummaryShowing.value = next == _ScreenState.finished;
+    runIdleShowing.value = next == _ScreenState.idle;
+    runCountdownShowing.value = next == _ScreenState.countdown;
   }
 
   RunRecorder? _recorder;
@@ -685,6 +724,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // fix at all, so there is nothing for the accuracy gate to reject.
   bool _preciseLocationOff = false;
 
+  /// Whether the idle page may hold a position stream: false from the moment
+  /// a recorder is built until it is torn down ([_newRecorder]).
+  final ValueNotifier<bool> _preRunFixesAllowed = ValueNotifier<bool>(true);
+
   // Foreground-only ("While using the app") location disclosure state.
   // `_leftForegroundAt` is the wall-clock moment the app left the screen
   // during an active recording; `_backgroundLimitDisclosed` keeps the
@@ -812,13 +855,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Finished run
   cm.Run? _finishedRun;
   bool _synced = false;
+  // Health-data consent, read when the run starts so the finish never waits
+  // on the network: true / false, or null when it could not be read. Heart
+  // rate shows live either way; without consent it is not saved
+  // (decisions § 2514).
+  bool? _healthConsent;
+  // The finished run had heart rate that was not saved for want of consent.
+  bool _heartRateNotSaved = false;
   String? _syncError;
 
-  // Next RSVP'd event in the social layer, if within the next 48h. Shown on
-  // the idle Run tab as a priority card above the last-run summary.
-  EventView? _upcomingEvent;
-
-  // Active-plan overview; drives the today's-workout card on idle.
+  // Active-plan overview; drives the Training plans chip on idle.
   ActivePlanOverview? _planOverview;
 
   // Measured height of the stats overlay. Insets the map (camera offset,
@@ -863,12 +909,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     widget.preferences.addListener(_onPrefsChange);
     widget.runStore.addListener(_onPrefsChange);
-    widget.social.addListener(_onSocialChange);
     widget.training.addListener(_onTrainingChange);
     widget.shown?.addListener(_onShownChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
+    runStartRequests.addListener(_onDockedStartRequest);
     runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
     widget.raceController?.addListener(_onRaceChange);
     widget.raceController?.onStartLineCrossed = _onRaceStartCrossed;
@@ -879,7 +925,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _rebuildTurnAnnouncer();
     _loadCutoffLegs();
     _maybePreloadWorkoutRunner();
-    _refreshUpcomingEvent();
     _refreshPlanOverview();
     unawaited(_probeSafetyAudience());
     unawaited(_probeLiveOverlay());
@@ -890,6 +935,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onPendingStartWorkout();
       _onPendingArmGuidedRun();
+      _onDockedStartRequest();
     });
     // A process-killed run was recovered as resumable at cold start. Prompt
     // once, after first frame (so `_l10n` + a Navigator context exist), to
@@ -994,8 +1040,21 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       return;
     }
     pendingStartWorkout.value = null;
-    _startStructuredWorkout(wo);
+    final load = _startStructuredWorkout(wo);
+    _workoutLoad = load;
+    unawaited(load
+        .catchError((Object e) => debugPrint('workout load failed: $e'))
+        .whenComplete(() {
+      if (identical(_workoutLoad, load)) _workoutLoad = null;
+    }));
   }
+
+  /// A planned workout still loading onto this recorder. A Start that
+  /// arrives with it (Today's workout, a plan's Start) waits for the load,
+  /// so the runner is armed before the 3-2-1 rather than part-way into the
+  /// run; the load ends within [kBackendLoadTimeout] and a failed one leaves
+  /// a plain run to start.
+  Future<void>? _workoutLoad;
 
   /// A guided-run surface elsewhere in the app armed a script for this
   /// recorder. Resolve the parked id against the library for THIS screen's
@@ -1007,6 +1066,25 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _onDockedStopRequest() {
     if (_state != _ScreenState.recording) return;
     unawaited(_requestStop());
+  }
+
+  /// A tap on the shell's docked centre button while this page is not
+  /// recording, or Home's quick Start ([RunStartRequests]). Start goes
+  /// through [_beginCountdown], so the permission checks and the cancellable
+  /// 3-2-1 are the panel's own; cancel is the countdown's tap-to-cancel.
+  void _onDockedStartRequest() {
+    if (!mounted) return;
+    final request = runStartRequests.take();
+    switch (request) {
+      case RunStartRequest.start when _state == _ScreenState.idle:
+        unawaited(_beginCountdown());
+      case RunStartRequest.cancel when _state == _ScreenState.countdown:
+        _discard();
+      case _:
+        if (request != null) {
+          debugPrint('run start request dropped: $request, state=$_state');
+        }
+    }
   }
 
   bool _raceEndedShown = false;
@@ -1343,44 +1421,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _refreshUpcomingEvent() async {
-    try {
-      final evt = await widget.social
-          .fetchNextRsvpedEvent()
-          .timeout(kBackendLoadTimeout);
-      if (mounted) setState(() => _upcomingEvent = evt);
-    } catch (e) {
-      // Non-critical — leave the card hidden if the fetch fails. Log
-      // so an upstream API rename doesn't surface only as a missing
-      // UI card. See docs/architecture/conventions.md § Layered resilience.
-      debugPrint('refresh upcoming-event card failed: $e');
-    }
-  }
-
   Future<void> _refreshPlanOverview() async {
     try {
       final p = await widget.training.fetchActiveOverview();
       if (mounted) setState(() => _planOverview = p);
     } catch (e) {
-      // Non-critical — same logging rationale as `_refreshUpcomingEvent`.
+      // Non-critical — leave the chip on its default if the fetch fails, and
+      // log so an upstream API rename doesn't surface only as a missing plan
+      // name. See docs/architecture/conventions.md § Layered resilience.
       debugPrint('refresh plan-overview card failed: $e');
     }
   }
 
-  // Both services notify several times in a row when the user takes a
-  // single action (e.g. RSVP toggle → membership row update + count
-  // refresh + my-rsvp refresh). Debounce so we don't fire 3 fetches
-  // for one logical change.
-  Timer? _socialDebounce;
+  // The training service notifies several times in a row for one action
+  // (a plan switch rewrites the plan, its weeks and its workouts). Debounce
+  // so we don't fire 3 fetches for one logical change.
   Timer? _trainingDebounce;
   static const _listenerDebounce = Duration(milliseconds: 500);
-
-  void _onSocialChange() {
-    _socialDebounce?.cancel();
-    _socialDebounce = Timer(_listenerDebounce, () {
-      if (mounted) _refreshUpcomingEvent();
-    });
-  }
 
   void _onTrainingChange() {
     _trainingDebounce?.cancel();
@@ -1433,6 +1490,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // NotificationManager.notify silently no-ops and the lock-screen stats
     // never appear. Idempotent; skipped by the OS on older versions.
     final notif = await Permission.notification.request();
+    // ACTIVITY_RECOGNITION is a runtime grant on Android 10+, and the step
+    // counter delivers nothing without it: steps, cadence and the indoor
+    // pedometer distance (L1a) were silently absent because nothing asked.
+    // The idle page says what is lost while it is off.
+    if (Platform.isAndroid) {
+      try {
+        await Permission.activityRecognition.request();
+      } catch (e) {
+        debugPrint('activity recognition request failed: $e');
+      }
+    }
     // A denied notification permission used to be swallowed: the run still
     // recorded but the live lock-screen notification never showed, with no
     // explanation. Surface a one-time hint so the runner knows why (and that
@@ -1701,10 +1769,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       return;
     }
     final unit = widget.preferences.unit;
-    // Full-screen page (was a modal bottom sheet). Surfaces a
-    // search field at the top + sorts starred routes first per
-    // user feedback. See `route_picker_screen.dart`.
-    final picked = await pickRoute(context, routes: routes, unit: unit);
+    final picked = await pickRoute(context,
+        routes: routes, unit: unit, selected: _selectedRoute);
     if (picked == null || !mounted) return;
     _setFollowedRoute(switch (picked) {
       RoutePicked(:final route) => route,
@@ -1723,6 +1789,29 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Future<void> _beginCountdown() async {
     if (_startRequested || _state != _ScreenState.idle) return;
     _startRequested = true;
+    runStartPending.value = true;
+    try {
+      await _runStartChecks();
+    } finally {
+      runStartPending.value = false;
+    }
+  }
+
+  /// What stands between a Start and its countdown, then the countdown. Each
+  /// exit clears [_startRequested]; [_beginCountdown] owns [runStartPending].
+  Future<void> _runStartChecks() async {
+    final load = _workoutLoad;
+    if (load != null) {
+      try {
+        await load;
+      } catch (e) {
+        debugPrint('workout load before start failed: $e');
+      }
+      if (!mounted) {
+        _startRequested = false;
+        return;
+      }
+    }
     await _maybeRequestPermission();
     if (!mounted) {
       _startRequested = false;
@@ -1747,6 +1836,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _setScreenState(_ScreenState.countdown);
       _countdownValue = 3;
     });
+    // The big digits are drawn, not read: say once that the run is about to
+    // start and how to stop it (#1374 A11Y-11).
+    _announceA11yState(_l10n.runA11yStartingIn(_countdownValue));
 
     // Warm up everything that would otherwise delay the start of the run —
     // GPS stream, pedometer sensor, wakelock — while the countdown ticks.
@@ -1783,11 +1875,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     };
   }
 
-  void _preload() {
-    _recorder = RunRecorder(
+  /// geolocator keeps one position stream per process and hands every later
+  /// caller the stream the first one opened, with the first caller's
+  /// settings. The idle page's GPS preview must therefore let go of its
+  /// stream before the recorder asks for one, or the recorder would record on
+  /// the preview's settings without its foreground service. The notifier's
+  /// listeners run synchronously, so the preview has cancelled by the time
+  /// this returns.
+  RunRecorder _newRecorder() {
+    _preRunFixesAllowed.value = false;
+    return RunRecorder(
       gnssPositions: gnssPositionsForPlatform(),
       gnssStatus: gnssStatusForPlatform(),
     );
+  }
+
+  void _preload() {
+    _recorder = _newRecorder();
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -2324,7 +2428,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Base URL of the spectator web app.
   String _liveLinkBase() => resolveWebBaseUrl();
 
+  Future<void> _loadHealthConsent() async {
+    final consented = await healthDataConsented(widget.apiClient);
+    if (mounted) _healthConsent = consented;
+  }
+
   Future<void> _begin() async {
+    unawaited(_loadHealthConsent());
     // In the common case prepare has already completed during the 3-second
     // countdown, so this await is a no-op. On a slow device it waits for
     // the GPS stream to come up before starting the clock. If prepare
@@ -2778,10 +2888,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder(
-      gnssPositions: gnssPositionsForPlatform(),
-      gnssStatus: gnssStatusForPlatform(),
-    );
+    _recorder = _newRecorder();
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
@@ -4164,6 +4271,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // skip clearInProgress so the next launch promotes the partial via
     // the recovery path in main.dart. Pinned by
     // architecture_guards_test.dart#_stop saves before clearInProgress.
+    // Without health-data consent the heart rate stays on screen during the
+    // run and is not saved (decisions § 2514). Consent unknown (offline at
+    // the start) keeps it on this device; the upload strips it then.
+    final heartRateNotSaved =
+        _healthConsent == false && cm.runHasHeartRate(run);
+    if (heartRateNotSaved) run = cm.runWithoutHeartRate(run);
+
     bool localSaved = false;
     try {
       await widget.runStore.save(run);
@@ -4188,6 +4302,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final guidedWasArmed = _guidedRun != null;
     setState(() {
       _finishedRun = run;
+      _heartRateNotSaved = heartRateNotSaved;
       _setScreenState(_ScreenState.finished);
       // A guided run is armed for ONE recording — the metadata above has the
       // attribution, and leaving it armed would silently script the next run.
@@ -4468,6 +4583,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _permissionWatchdogTimer?.cancel();
     _recorder?.dispose();
     _recorder = null;
+    _preRunFixesAllowed.value = true;
     _prepareFuture = null;
     _prepareError = null;
     _stepSamples.clear();
@@ -4580,10 +4696,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // shell in non-swipeable state.
     runRecordingActive.value = false;
     runSummaryShowing.value = false;
+    runIdleShowing.value = true;
+    runCountdownShowing.value = false;
+    runStartPending.value = false;
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     runStopRequests.removeListener(_onDockedStopRequest);
+    runStartRequests.removeListener(_onDockedStartRequest);
     runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
     widget.raceController?.removeListener(_onRaceChange);
     if (widget.raceController?.onStartLineCrossed == _onRaceStartCrossed) {
@@ -4592,10 +4712,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _raceUndoTimer?.cancel();
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
-    widget.social.removeListener(_onSocialChange);
     widget.training.removeListener(_onTrainingChange);
     widget.shown?.removeListener(_onShownChange);
-    _socialDebounce?.cancel();
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
@@ -4619,6 +4737,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _workoutRunner?.dispose();
     _workoutBand.dispose();
     _recorder?.dispose();
+    _preRunFixesAllowed.dispose();
     _statsNotifier.dispose();
     _liveShareActive.dispose();
     super.dispose();
@@ -4640,15 +4759,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final chosen = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: ListView(
+      builder: (ctx) => SheetScaffold(
+        padding: EdgeInsets.zero,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(l10n.runGuidedRun),
+        ),
+        scrollBody: false,
+        body: ListView(
           shrinkWrap: true,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(l10n.runGuidedRun,
-                  style: Theme.of(ctx).textTheme.titleMedium),
-            ),
             RadioListTile<String>(
               value: '',
               groupValue: _guidedRun?.id ?? '',
@@ -4717,89 +4837,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final distPrefill = resolved == null
         ? ''
         : (resolved / (isMi ? 1609.344 : 1000)).toStringAsFixed(2);
-    final distCtrl = TextEditingController(text: distPrefill);
-    final goalCtrl = TextEditingController(text: _strategyGoalText);
-    var preset = _strategyPreset;
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.runRaceStrategy,
-                      style: Theme.of(ctx).textTheme.titleMedium),
-                  RadioListTile<RacePhasePreset?>(
-                    value: null,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyNone),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.tenTenTen,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyTenTenTen),
-                    subtitle: Text(l10n.runStrategyTenTenTenHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.negativeSplit,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyNegativeSplit),
-                    subtitle: Text(l10n.runStrategyNegativeSplitHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.even,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyEven),
-                    subtitle: Text(l10n.runStrategyEvenHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  if (preset != null) ...[
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: distCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: InputDecoration(
-                        labelText: l10n.runStrategyDistance,
-                        suffixText: isMi ? 'mi' : 'km',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: goalCtrl,
-                      keyboardType: TextInputType.datetime,
-                      decoration: InputDecoration(
-                        labelText: l10n.runStrategyGoalTime,
-                        hintText: 'hh:mm:ss',
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child:
-                        Text(MaterialLocalizations.of(ctx).okButtonLabel),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    final result = await showRaceStrategySheet(
+      context,
+      preset: _strategyPreset,
+      distance: distPrefill,
+      goal: _strategyGoalText,
+      miles: isMi,
     );
-    if (result == true && mounted) {
-      final distVal = parseTypedDecimal(distCtrl.text);
+    if (result != null && mounted) {
+      final preset = result.preset;
+      final distVal = parseTypedDecimal(result.distance);
       final manualM = distVal != null && distVal > 0
           ? distVal * (isMi ? 1609.344 : 1000.0)
           : null;
@@ -4810,8 +4857,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // setting the strategy would build phases from the old route's
         // length.
         _strategyDistanceM =
-            distCtrl.text.trim() == distPrefill ? null : manualM;
-        _strategyGoalText = goalCtrl.text.trim();
+            result.distance.trim() == distPrefill ? null : manualM;
+        _strategyGoalText = result.goal.trim();
       });
       if (preset != null && _resolvedStrategyDistanceM == null) {
         _showTopBanner(l10n.runStrategyNeedsDistance);
@@ -4820,30 +4867,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // the phase target pace just went missing with no feedback.
         _showTopBanner(l10n.runStrategyInvalidGoal);
       }
-    }
-    distCtrl.dispose();
-    goalCtrl.dispose();
-  }
-
-  /// Today's-workout card tap: open the workout detail. The card's own
-  /// Start button loads the runner, so a tap no longer asks Start or Details,
-  /// and a workout already done or skipped never offers Start (#1186). The
-  /// detail screen pops with the row when its own Start is tapped.
-  Future<void> _openTodayWorkoutDetail(
-      PlanWorkoutRow wo, String planId) async {
-    final result = await Navigator.of(context).push<PlanWorkoutRow?>(
-      MaterialPageRoute<PlanWorkoutRow?>(
-        builder: (_) => WorkoutDetailScreen(
-          training: widget.training,
-          planId: planId,
-          workoutId: wo.id,
-          initial: wo,
-        ),
-      ),
-    );
-    _refreshPlanOverview();
-    if (result != null && mounted) {
-      await _startStructuredWorkout(result);
     }
   }
 
@@ -5079,281 +5102,261 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Widget _buildIdle(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final lastRun = _mostRecentRun();
+    // On the phone shell the docked centre button is this page's Start, as
+    // it is the Stop mid-run ([RunStartRequests]), so the panel draws no
+    // second one a thumb's width above it. Where nothing is docked (the rail,
+    // the keyboard up, a recorder mounted outside the shell) it keeps its own.
+    final docked = RunStopDock.of(context);
     // Start is the L0/L1 entry point, so it floats over the scroll rather
-    // than ending it: every card above (race, route, event, plan workout,
-    // last run) is auxiliary, and when they stacked up Start was pushed
-    // under the bottom bar and had to be scrolled to. The cards run on
-    // behind it under a fade, so the page reads as continuing rather than
-    // cut off, and the scroll is padded so the last card clears Start.
+    // than ending it: every card above (race, route, loaded workout) is
+    // auxiliary, and when they stacked up Start was pushed under the bottom
+    // bar and had to be scrolled to. The cards run on behind it under a
+    // fade, so the page reads as continuing rather than cut off, and the
+    // scroll is padded so the last card clears Start.
     final dockInset = DockedFabInset.of(context);
     return SafeArea(
       child: LayoutBuilder(builder: (context, constraints) {
         final startSize = idleStartButtonSize(constraints.maxHeight);
-        final startArea = idleStartAreaHeight(startSize, dockInset);
+        final startArea =
+            docked ? dockInset : idleStartAreaHeight(startSize, dockInset);
         final page = theme.scaffoldBackgroundColor;
         return Stack(
           children: [
             Positioned.fill(
-              child: SingleChildScrollView(
+              child: CustomScrollView(
                 key: const ValueKey('run-idle-scroll'),
-                padding: EdgeInsets.fromLTRB(24, 16, 24, 8 + startArea),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 4),
-                    Center(
-                      child: Wrap(
-                        spacing: 8,
-                        children: ActivityType.values.map((t) {
-                          final selected = t == _activityType;
-                          return ChoiceChip(
-                            showCheckmark: false,
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 4),
+                          Center(
+                            child: Wrap(
+                              spacing: 8,
+                              children: ActivityType.values.map((t) {
+                                final selected = t == _activityType;
+                                // The icon is the chip's avatar, so the chip lays
+                                // the label out in the width it has; an icon and
+                                // label in a Row as the label overflowed the chip
+                                // by 27 dp at 2x on 320 dp (#1374 TO-6).
+                                return ChoiceChip(
+                                  showCheckmark: false,
+                                  avatar: Icon(t.icon, size: 16),
+                                  label: Text(activityTypeLabel(_l10n, t)),
+                                  selected: selected,
+                                  onSelected: (_) {
+                                    if (_state != _ScreenState.idle) return;
+                                    setState(() => _activityType = t);
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
                               children: [
-                                Icon(t.icon, size: 16),
-                                const SizedBox(width: 4),
-                                Text(activityTypeLabel(_l10n, t)),
+                                IdleSetupChip(
+                                  icon: Icons.route,
+                                  label: _selectedRoute == null
+                                      ? l10n.runChooseRoute
+                                      : l10n.runChangeRoute,
+                                  isSet: _selectedRoute != null,
+                                  onPressed: _selectRoute,
+                                ),
+                                // Armed is the runner's intent, not only a live
+                                // broadcaster: a failed pre-GO begin is retried on
+                                // GO, so the link is still theirs to stop.
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: _liveShareActive,
+                                  builder: (context, active, _) {
+                                    final armed = active || _liveShareRequested;
+                                    return IdleSetupChip(
+                                      icon: Icons.podcasts,
+                                      label: armed
+                                          ? l10n.runLiveShareArmed
+                                          : l10n.runShareLiveLink,
+                                      isSet: armed,
+                                      onPressed: armed
+                                          ? _onLiveShareIndicatorTap
+                                          : _shareLiveLink,
+                                    );
+                                  },
+                                ),
+                                IdleSetupChip(
+                                  icon: Icons.headset_mic_outlined,
+                                  label: _guidedRun?.title ?? l10n.runGuidedRun,
+                                  isSet: _guidedRun != null,
+                                  onPressed: _pickGuidedRun,
+                                  onClear: _guidedRun == null
+                                      ? null
+                                      : () => _armGuidedRun(null),
+                                  clearTooltip: l10n.runClearGuidedRunTooltip,
+                                ),
+                                if (_activityType == ActivityType.run)
+                                  IdleSetupChip(
+                                    icon: Icons.flag_outlined,
+                                    label: _strategyPreset == null
+                                        ? l10n.runRaceStrategy
+                                        : _strategyLabel(l10n, _strategyPreset!),
+                                    isSet: _strategyPreset != null,
+                                    onPressed: _editRaceStrategy,
+                                    // The same as None in the sheet: the typed
+                                    // distance and goal stay for the next preset.
+                                    onClear: _strategyPreset == null
+                                        ? null
+                                        : () =>
+                                            setState(() => _strategyPreset = null),
+                                    clearTooltip: l10n.runClearRaceStrategyTooltip,
+                                  ),
+                                IdleSetupChip(
+                                  isSet: _planOverview != null,
+                                  onPressed: () async {
+                                    final overview = _planOverview;
+                                    if (overview != null) {
+                                      await Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => PlanDetailScreen(
+                                            training: widget.training,
+                                            planId: overview.plan.id,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      await openFitnessSurface(
+                                        context,
+                                        FitnessTab.plans,
+                                        fallback: () => PlansScreen(
+                                          training: widget.training,
+                                          apiClient: widget.apiClient,
+                                        ),
+                                      );
+                                    }
+                                    _refreshPlanOverview();
+                                  },
+                                  icon: Icons.calendar_month,
+                                  // A plan whose dates have run out is not the plan
+                                  // this run trains for; the chip asks to file it
+                                  // and still opens it, where Finish plan sits.
+                                  label: _planOverview == null
+                                      ? l10n.runTrainingPlans
+                                      : FinishPlanCard.shows(
+                                              status: _planOverview!.plan.status,
+                                              endDate: _planOverview!.plan.endDate,
+                                              now: DateTime.now())
+                                          ? l10n.planFinishAction
+                                          : _planOverview!.plan.name,
+                                ),
                               ],
                             ),
-                            selected: selected,
-                            onSelected: (_) {
-                              if (_state != _ScreenState.idle) return;
-                              setState(() => _activityType = t);
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          IdleSetupChip(
-                            icon: Icons.route,
-                            label: _selectedRoute == null
-                                ? l10n.runChooseRoute
-                                : l10n.runChangeRoute,
-                            isSet: _selectedRoute != null,
-                            onPressed: _selectRoute,
                           ),
-                          // Armed is the runner's intent, not only a live
-                          // broadcaster: a failed pre-GO begin is retried on
-                          // GO, so the link is still theirs to stop.
-                          ValueListenableBuilder<bool>(
-                            valueListenable: _liveShareActive,
-                            builder: (context, active, _) {
-                              final armed = active || _liveShareRequested;
-                              return IdleSetupChip(
-                                icon: Icons.podcasts,
-                                label: armed
-                                    ? l10n.runLiveShareArmed
-                                    : l10n.runShareLiveLink,
-                                isSet: armed,
-                                onPressed: armed
-                                    ? _onLiveShareIndicatorTap
-                                    : _shareLiveLink,
-                              );
-                            },
-                          ),
-                          IdleSetupChip(
-                            icon: Icons.headset_mic_outlined,
-                            label: _guidedRun?.title ?? l10n.runGuidedRun,
-                            isSet: _guidedRun != null,
-                            onPressed: _pickGuidedRun,
-                            onClear: _guidedRun == null
-                                ? null
-                                : () => _armGuidedRun(null),
-                            clearTooltip: l10n.runClearGuidedRunTooltip,
-                          ),
-                          if (_activityType == ActivityType.run)
-                            IdleSetupChip(
-                              icon: Icons.flag_outlined,
-                              label: _strategyPreset == null
-                                  ? l10n.runRaceStrategy
-                                  : _strategyLabel(l10n, _strategyPreset!),
-                              isSet: _strategyPreset != null,
-                              onPressed: _editRaceStrategy,
-                              // The same as None in the sheet: the typed
-                              // distance and goal stay for the next preset.
-                              onClear: _strategyPreset == null
-                                  ? null
-                                  : () =>
-                                      setState(() => _strategyPreset = null),
-                              clearTooltip: l10n.runClearRaceStrategyTooltip,
+                          const SizedBox(height: 20),
+                          // Only what this run will carry: the race it is armed
+                          // for, the route it follows and the workout it loads.
+                          // Today's workout, the next club event and the last run
+                          // are Home's (issue #1374); this page used to repeat all
+                          // three under its own Start.
+                          if (widget.raceController != null)
+                            ListenableBuilder(
+                              listenable: widget.raceController!,
+                              builder: (_, __) {
+                                final race = widget.raceController!.active;
+                                if (race == null) return const SizedBox.shrink();
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: RaceBanner(
+                                    race: race,
+                                    controller: widget.raceController!,
+                                    onCountdownCue: _speakRaceCountdown,
+                                  ),
+                                );
+                              },
                             ),
-                          IdleSetupChip(
-                            isSet: _planOverview != null,
-                            onPressed: () async {
-                              final overview = _planOverview;
-                              if (overview != null) {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlanDetailScreen(
-                                      training: widget.training,
-                                      planId: overview.plan.id,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                await openFitnessSurface(
-                                  context,
-                                  FitnessTab.plans,
-                                  fallback: () => PlansScreen(
-                                    training: widget.training,
-                                    apiClient: widget.apiClient,
-                                  ),
-                                );
-                              }
-                              _refreshPlanOverview();
-                            },
-                            icon: Icons.calendar_month,
-                            // A plan whose dates have run out is not the plan
-                            // this run trains for; the chip asks to file it
-                            // and still opens it, where Finish plan sits.
-                            label: _planOverview == null
-                                ? l10n.runTrainingPlans
-                                : FinishPlanCard.shows(
-                                        status: _planOverview!.plan.status,
-                                        endDate: _planOverview!.plan.endDate,
-                                        now: DateTime.now())
-                                    ? l10n.planFinishAction
-                                    : _planOverview!.plan.name,
-                          ),
+                          if (_selectedRoute != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _RoutePreviewCard(
+                                route: _selectedRoute!,
+                                onTap: _selectRoute,
+                                onClear: () => _setFollowedRoute(null),
+                              ),
+                            ),
+                          if (_workoutRunner != null && _activeWorkoutRow != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: LoadedWorkoutCard(
+                                workout: _activeWorkoutRow!,
+                                onUnload: () => setState(_unloadWorkout),
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Priority-card *stack* (previously a pick-one chain).
-                    // When the user has multiple signals active — an RSVP
-                    // event tomorrow, a plan workout today, and a recent
-                    // run — showing them together fills the space that
-                    // was sitting empty between the chips and the START
-                    // button. A followed route is this run's context, so
-                    // the event card and the last-run summary yield to it;
-                    // today's workout does not, because a runner on their
-                    // race route on a plan day still needs the card that
-                    // loads the session.
-                    if (widget.raceController != null)
-                      ListenableBuilder(
-                        listenable: widget.raceController!,
-                        builder: (_, __) {
-                          final race = widget.raceController!.active;
-                          if (race == null) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: RaceBanner(
-                              race: race,
-                              controller: widget.raceController!,
-                              onCountdownCue: _speakRaceCountdown,
-                            ),
-                          );
-                        },
-                      ),
-                    if (_selectedRoute != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _RoutePreviewCard(
-                          route: _selectedRoute!,
-                          onTap: _selectRoute,
-                          onClear: () => _setFollowedRoute(null),
-                        ),
-                      ),
-                    if (_workoutRunner != null && _activeWorkoutRow != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: LoadedWorkoutCard(
-                          workout: _activeWorkoutRow!,
-                          onUnload: () => setState(_unloadWorkout),
-                        ),
-                      ),
-                    if (_selectedRoute == null && _upcomingEvent != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: UpcomingEventCard(
-                          event: _upcomingEvent!,
-                          onTap: () async {
-                            await openUpcomingEvent(
-                                context, widget.social, _upcomingEvent!);
-                            _refreshUpcomingEvent();
-                          },
-                        ),
-                      ),
-                    // The loaded card already stands for today's workout once
-                    // it is the one loaded.
-                    if (_planOverview?.todayWorkout != null &&
-                        !(_workoutRunner != null &&
-                            _activeWorkoutId ==
-                                _planOverview!.todayWorkout!.id))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: TodaysWorkoutCard(
-                          workout: _planOverview!.todayWorkout!,
-                          onTap: () => _openTodayWorkoutDetail(
-                            _planOverview!.todayWorkout!,
-                            _planOverview!.plan.id,
-                          ),
-                          onStart: () => _startStructuredWorkout(
-                              _planOverview!.todayWorkout!),
-                        ),
-                      ),
-                    if (_selectedRoute == null) ...[
-                      if (lastRun != null)
-                        _LastRunCard(
-                          run: lastRun,
-                          onTap: () => _openLastRun(lastRun),
-                        )
-                      else if (_upcomingEvent == null &&
-                          _planOverview?.todayWorkout == null)
-                        _FirstRunPrompt(theme: theme),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: startArea,
-              child: Stack(
-                children: [
-                  // Only the circle takes taps; a tap on the fade or
-                  // beside Start reaches the card underneath it.
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      key: const ValueKey('run-idle-start-scrim'),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              page.withValues(alpha: 0),
-                              page.withValues(alpha: 0.7),
-                              page,
-                            ],
-                            stops: const [0, 0.5, 1],
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 16 + dockInset,
-                    child: Center(
-                      child: _buildIdleStartButton(theme, l10n, startSize),
+                  // What the next run's GPS will be, in the area the page has
+                  // left: the map once location works, the one fix when it
+                  // does not. It ends above the area Start floats in.
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: PreRunStatusSliver(
+                      probe: widget.preRunProbe,
+                      shown: widget.shown,
+                      fixesAllowed: _preRunFixesAllowed,
+                      unit: widget.preferences.unit,
+                      plannedRoute: _selectedRoute?.waypoints,
+                      offlinePackRouteId: _selectedRoute?.id,
+                      bottomPadding: 8 + startArea,
                     ),
                   ),
                 ],
               ),
             ),
+            if (!docked)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: startArea,
+                child: Stack(
+                  children: [
+                    // Only the circle takes taps; a tap on the fade or
+                    // beside Start reaches the card underneath it.
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        key: const ValueKey('run-idle-start-scrim'),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                page.withValues(alpha: 0),
+                                page.withValues(alpha: 0.7),
+                                page,
+                              ],
+                              stops: const [0, 0.5, 1],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 16 + dockInset,
+                      child: Center(
+                        child: _buildIdleStartButton(theme, l10n, startSize),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         );
       }),
@@ -5369,6 +5372,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // wraps the whole circle so the button is announced
     // as a discrete control with a meaningful label.
     return Semantics(
+      excludeSemantics: true,
+      onTap: _beginCountdown,
       key: const ValueKey('run-idle-start'),
       button: true,
       label: l10n.runStartA11yLabel,
@@ -5426,30 +5431,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  cm.Run? _mostRecentRun() {
-    final runs = widget.runStore.runs;
-    if (runs.isEmpty) return null;
-    final sorted = [...runs]
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    return sorted.first;
-  }
-
-  void _openLastRun(cm.Run run) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RunDetailScreen(
-          run: run,
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          preferences: widget.preferences,
-          apiClient: widget.apiClient,
-          settingsSync: widget.settingsSync,
         ),
       ),
     );
@@ -5569,14 +5550,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       bottom: 48,
                       left: 0,
                       right: 0,
+                      // On its own backing, so its contrast does not depend
+                      // on the tile under the scrim: white at 0.7 over the
+                      // scrim over a white basemap was about 2.5:1.
                       child: Center(
-                        child: Text(
-                          l10n.runTapToCancel,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
+                        child: StatusPill(
+                          key: const Key('runCountdownCancelHint'),
+                          label: l10n.runTapToCancel,
+                          foreground: Colors.white,
+                          fill: kCountdownHintBacking,
                         ),
                       ),
                     ),
@@ -5592,6 +5574,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
         // Every top-anchored overlay in ONE column — see [RunTopOverlay].
         RunTopOverlay(
+          bottomClearance: _statsOverlayHeight + 12,
           // Structured-workout band — only mounts when the run was
           // started from a planned workout. Reads through its own
           // ValueListenable so the band rebuilds on transitions /
@@ -5707,26 +5690,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 if (_raceUndoOpen)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
+                    child: ListCard(
                       key: const ValueKey('race-undo'),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l10n.runRaceFinishRecorded,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
+                      dense: true,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.runRaceFinishRecorded,
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            const SizedBox(width: 8),
-                            FilledButton(
-                              key: const ValueKey('race-undo-resume'),
-                              onPressed: () => unawaited(_onRaceUndo()),
-                              child: Text(l10n.runRaceUndoResume),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            key: const ValueKey('race-undo-resume'),
+                            onPressed: () => unawaited(_onRaceUndo()),
+                            child: Text(l10n.runRaceUndoResume),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -5739,17 +5720,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Center(
-                          child: Card(
+                          child: MapOverlayChip(
                             key: const ValueKey('race-to-start'),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              child: Text(
-                                l10n.runRaceToStartLine(
-                                    UnitFormat.distance(toStart, _unit)),
-                                style: Theme.of(context).textTheme.labelLarge,
-                              ),
-                            ),
+                            label: l10n.runRaceToStartLine(
+                                UnitFormat.distance(toStart, _unit)),
                           ),
                         ),
                       );
@@ -5781,17 +5755,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Center(
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              child: Text(text,
-                                  style:
-                                      Theme.of(context).textTheme.labelLarge),
-                            ),
-                          ),
-                        ),
+                        child: Center(child: MapOverlayChip(label: text)),
                       );
                     },
                   ),
@@ -5898,6 +5862,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// a direct `setState` would assert "Build scheduled during frame"; the
   /// change lands in a post-frame callback instead.
   void _onStatsOverlaySized(Size size) {
+    // Includes the transparent strip above the panel that is the stats
+    // handle's touch target (`CollapsiblePanel.handleOverhang`), so the map
+    // credit and the floating cards stay clear of it rather than under it.
     final h = size.height;
     if ((h - _statsOverlayHeight).abs() <= 1) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -5937,7 +5904,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           }
       }
     }
-    return Card(
+    return ListCard.flush(
       color: theme.colorScheme.surface.withValues(alpha: 0.94),
       margin: EdgeInsets.zero,
       child: SwitchListTile(
@@ -5993,6 +5960,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             syncError: _syncError,
             onDone: _discard,
             milestone: milestone,
+            onGiveHealthConsent: _heartRateNotSaved
+                ? () => openHealthConsent(context,
+                    api: widget.apiClient,
+                    settingsSync: widget.settingsSync,
+                    preferences: widget.preferences)
+                : null,
           ),
         ),
       ],
@@ -6019,11 +5992,17 @@ class FinishedSummary extends StatelessWidget {
     required this.syncError,
     required this.onDone,
     this.milestone,
+    this.onGiveHealthConsent,
   });
 
   /// Grisnir's milestone for this run, or null; the caller passes null on a
   /// failed sync, a DNF and when the runner hides him.
   final MilestoneKind? milestone;
+
+  /// Non-null when the run's heart rate was not saved for want of
+  /// health-data consent: the summary says so and this opens the consent
+  /// screen (decisions § 2514).
+  final VoidCallback? onGiveHealthConsent;
 
   final String distanceValue;
   final String distanceUnit;
@@ -6113,6 +6092,13 @@ class FinishedSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(l10n.runSyncing),
+                ],
+                if (onGiveHealthConsent != null) ...[
+                  const SizedBox(height: 12),
+                  HeartRateNotKeptNote(
+                    message: l10n.runHeartRateNotSaved,
+                    onGiveConsent: onGiveHealthConsent!,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 FilledButton(onPressed: onDone, child: Text(l10n.runDone)),
@@ -6330,6 +6316,7 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         children: [
           _clock(context, theme, l10n),
           const SizedBox(height: _gap),
+          // semantics-children: the stat values on the page stay readable under the pager
           Semantics(
             container: true,
             button: true,
@@ -6508,6 +6495,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // couldn't end the run from this control.
         // Semantics(button: true, label:) is the Flutter idiom.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onDiscard,
           button: true,
           enabled: true,
           label: l10n.runDiscardA11yLabel,
@@ -6535,6 +6524,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // audit/accessibility (May 2026) Critical — see
         // above. Toggle label reflects current state.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onPauseToggle,
           button: true,
           enabled: true,
           toggled: paused,
@@ -6575,6 +6566,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // pattern. Lap count is announced so a screen-reader
         // user knows how many laps the gesture produced.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onLap,
           button: true,
           enabled: true,
           label: lapCount > 0
@@ -6688,6 +6681,7 @@ class RunTopOverlay extends StatelessWidget {
     this.workoutBand,
     required this.badges,
     required this.banners,
+    required this.bottomClearance,
   });
 
   /// The structured-workout band, or null when no workout is armed.
@@ -6699,6 +6693,13 @@ class RunTopOverlay extends StatelessWidget {
   /// The conditional banner stack ([RunTopBanners]).
   final Widget banners;
 
+  /// How far above the bottom of the screen the band must stop: the stats
+  /// overlay's height and its gap. At 2x in de / es / fr the safety nudge
+  /// alone is taller than the screen above the stats, and a band hung from
+  /// the top with no limit drew its Share button off the bottom; bounded,
+  /// the band scrolls, so every line and both actions stay reachable.
+  final double bottomClearance;
+
   /// Clearance from the top of the screen. The column carries the whole top
   /// band now, so it takes the larger of this and the device's status-bar
   /// inset — the band used to anchor on the inset itself and must not end up
@@ -6707,19 +6708,31 @@ class RunTopOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: math.max(topInset, MediaQuery.of(context).padding.top),
-      left: 12,
-      right: 12,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (workoutBand != null) workoutBand!,
-          badges,
-          const SizedBox(height: 4),
-          banners,
-        ],
+    // A top band, bounded below: it takes only its content's height, and
+    // the space under it stays the map's, for taps as well as paint.
+    return Positioned.fill(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          12,
+          math.max(topInset, MediaQuery.of(context).padding.top),
+          12,
+          bottomClearance,
+        ),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (workoutBand != null) workoutBand!,
+                badges,
+                const SizedBox(height: 4),
+                banners,
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -6768,126 +6781,124 @@ class RunTopBanners extends StatelessWidget {
         // both can show at once and stack.
         if (offRouteMetres != null)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(
-                  l10n.runOffRoute(offRouteMetres!.round()),
-                  style: TextStyle(
-                      color: semantic.onDanger, fontWeight: FontWeight.w600),
-                ),
+              dense: true,
+              child: Text(
+                l10n.runOffRoute(offRouteMetres!.round()),
+                style: TextStyle(
+                    color: semantic.onDanger, fontWeight: FontWeight.w600),
               ),
             ),
           ),
         if (permissionLost)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_off,
-                        color: semantic.onDanger, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_off,
+                      color: semantic.onDanger, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runPermissionRevoked,
                       style: TextStyle(
                           color: semantic.onDanger,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           )
         else if (gpsLost)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.gps_off, color: semantic.onDanger, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gps_off, color: semantic.onDanger, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runGpsLost,
                       style: TextStyle(
                           color: semantic.onDanger,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           )
         else if (approximateLocation)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.warning,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 8, 2),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.gps_not_fixed,
-                            color: semantic.onWarning, size: 18),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            l10n.runWeakGpsApproximate,
-                            style: TextStyle(
-                                color: semantic.onWarning,
-                                fontWeight: FontWeight.w600),
-                          ),
+              dense: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.gps_not_fixed,
+                          color: semantic.onWarning, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          l10n.runWeakGpsApproximate,
+                          style: TextStyle(
+                              color: semantic.onWarning,
+                              fontWeight: FontWeight.w600),
                         ),
-                      ],
-                    ),
-                    if (onTurnOnPreciseLocation != null)
-                      TextButton(
-                        onPressed: onTurnOnPreciseLocation,
-                        style: TextButton.styleFrom(
-                          foregroundColor: semantic.onWarning,
-                        ),
-                        child: Text(l10n.runTurnOnPreciseLocation),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+                  if (onTurnOnPreciseLocation != null)
+                    TextButton(
+                      onPressed: onTurnOnPreciseLocation,
+                      style: TextButton.styleFrom(
+                        foregroundColor: semantic.onWarning,
+                      ),
+                      child: Text(l10n.runTurnOnPreciseLocation),
+                    ),
+                ],
               ),
             ),
           )
         else if (weakGps)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.warning,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.gps_not_fixed,
-                        color: semantic.onWarning, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gps_not_fixed,
+                      color: semantic.onWarning, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runWeakGps,
                       style: TextStyle(
                           color: semantic.onWarning,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -7348,27 +7359,6 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
   }
 }
 
-String _formatAgo(BuildContext context, DateTime when) {
-  final l10n = AppLocalizations.of(context);
-  final diff = DateTime.now().difference(when);
-  if (diff.inMinutes < 60) {
-    return diff.inMinutes <= 1
-        ? l10n.runAgoJustNow
-        : l10n.runAgoMinutes(diff.inMinutes);
-  }
-  if (diff.inHours < 24) {
-    return l10n.runAgoHours(diff.inHours);
-  }
-  if (diff.inDays == 1) return l10n.runAgoYesterday;
-  if (diff.inDays < 7) return l10n.runAgoDays(diff.inDays);
-  if (diff.inDays < 30) {
-    final weeks = (diff.inDays / 7).floor();
-    return l10n.runAgoWeeks(weeks);
-  }
-  final months = (diff.inDays / 30).floor();
-  return l10n.runAgoMonths(months);
-}
-
 /// How long the app must have been off screen before an absent GPS fix is
 /// evidence that Android cut location delivery, rather than simply the gap
 /// between two fixes. One fix interval plus margin.
@@ -7453,134 +7443,6 @@ PostLiveVisibilityAction postLiveVisibilityActionOnStop({
       : PostLiveVisibilityAction.revertToDefault;
 }
 
-String _formatPace(Duration duration, double metres) {
-  if (metres < 10) return '--:--';
-  return formatPaceForPref(duration.inSeconds / (metres / 1000));
-}
-
-class _LastRunCard extends StatelessWidget {
-  final cm.Run run;
-  final VoidCallback onTap;
-  const _LastRunCard({required this.run, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Semantics(
-      button: true,
-      label: l10n.runLastRunOpenA11yLabel,
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Row(
-              children: [
-                if (cm.trackLine(run.track).length >= 2)
-                  SizedBox(
-                    width: 72,
-                    height: 56,
-                    child: CustomPaint(
-                      painter: _TrackSparkPainter(
-                        track: cm.trackLine(run.track),
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    width: 72,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.directions_run,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        run.distanceMetres < 50
-                            ? l10n.runLastActivity
-                            : l10n.runLastRun,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatAgo(context, run.startedAt),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // A Wrap, not a Row: the column is ~190 dp on a
-                      // 360 dp phone, so the two pills side by side overflow
-                      // at the default text size and the pace pill must drop
-                      // to its own line under a large OS text scale.
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _metricPill(
-                            theme,
-                            formatDistanceForPref(run.distanceMetres),
-                          ),
-                          _metricPill(
-                            theme,
-                            _formatPace(run.duration, run.distanceMetres),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _metricPill(ThemeData theme, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-/// The followed route on the idle screen. A tap reopens the picker and the
-/// corner x stops following it; clearing needs no confirm because picking the
-/// route again restores it (conventions.md § Destructive actions).
 class _RoutePreviewCard extends StatelessWidget {
   final cm.Route route;
   final VoidCallback onTap;
@@ -7629,6 +7491,15 @@ class _RoutePreviewCard extends StatelessWidget {
     );
   }
 
+  Widget _routeStat(ThemeData theme, IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: theme.colorScheme.outline),
+          const SizedBox(width: 4),
+          Flexible(child: Text(text, style: theme.textTheme.bodySmall)),
+        ],
+      );
+
   Widget _content(ThemeData theme, AppLocalizations l10n) {
     return Row(
         children: [
@@ -7667,31 +7538,17 @@ class _RoutePreviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                // A Wrap, not a Row: the column is ~160 dp on a 360 dp phone,
+                // and at 2x text the distance alone overflowed a Row.
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
-                    Icon(
-                      Icons.straighten,
-                      size: 14,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      formatDistanceForPref(route.distanceMetres),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    if (route.elevationGainMetres > 0) ...[
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.terrain,
-                        size: 14,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatElevationForPref(route.elevationGainMetres),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
+                    _routeStat(theme, Icons.straighten,
+                        formatDistanceForPref(route.distanceMetres)),
+                    if (route.elevationGainMetres > 0)
+                      _routeStat(theme, Icons.terrain,
+                          formatElevationForPref(route.elevationGainMetres)),
                   ],
                 ),
               ],
@@ -7702,39 +7559,8 @@ class _RoutePreviewCard extends StatelessWidget {
   }
 }
 
-class _FirstRunPrompt extends StatelessWidget {
-  final ThemeData theme;
-  const _FirstRunPrompt({required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.rocket_launch, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context).runFirstRunPrompt,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Scales a waypoint list to fit a small rect and paints a rounded polyline.
-/// Cheap — used for last-run and route-preview cards on the Run tab idle view.
+/// Cheap — used for the route-preview card on the Run tab idle view.
 ///
 /// Projection is delegated to `projectTrack`, the same helper the routes-list
 /// thumbnails use, so the finish card and the routes list draw one shape for

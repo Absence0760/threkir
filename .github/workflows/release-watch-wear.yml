@@ -3,7 +3,7 @@ name: Release Wear OS
 # Tag: `watch_wear@1.2.3`. Builds a signed release AAB and puts it on the
 # Wear OS internal testing track of the PHONE app's package, `com.threkir.app`:
 # Wear OS is a form factor of the phone's Play listing, not an app of its own
-# (decisions § 2480). Promotion to Wear OS production stays a Play Console step
+# (decisions § 2529). Promotion to Wear OS production stays a Play Console step
 # after a real-watch smoke test.
 #
 # One package means one app signing key and one upload key, so this signs with

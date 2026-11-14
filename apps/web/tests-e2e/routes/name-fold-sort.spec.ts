@@ -100,7 +100,9 @@ test.describe('/routes — name fold + A–Z order', () => {
 		await page.getByLabel('Search routes').fill(tag);
 		await expect(page.locator('.route-card')).toHaveCount(NAMES.length);
 
-		await page.getByLabel('Sort').selectOption('az');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-sort').selectOption('az');
+		await page.getByTestId('routes-filters-done').click();
 		await expect
 			.poll(() => page.locator('.route-card h3').allTextContents(), { timeout: 10_000 })
 			.toEqual([

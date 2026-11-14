@@ -1,14 +1,16 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchAllParkCourses, fetchParks, type Park, type ParkCourseWithPark } from '#lib/core/data.ts';
-	import { groupParksByRegion, regionName, regionSlug } from '#lib/parks/park_courses.ts';
-	import { AGENCY_LABEL, labelKey } from '#lib/parks/park_labels.ts';
-	import { fmtCourseDistanceRange } from '#lib/parks/course_distance_format.ts';
-	import ParkCourseLinesThumb from '#lib/components/parks/ParkCourseLinesThumb.svelte';
-	import type { TrackPoint } from '#lib/types.ts';
+	import { groupParksByRegion, regionName } from '#lib/parks/park_courses.ts';
+	import ParkCard from '#lib/components/parks/ParkCard.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import { parkSearchMatches, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
 
 	let parks = $state<Park[]>([]);
 	let loading = $state(true);
@@ -17,7 +19,44 @@
 	// without their course count, distances and thumbnail.
 	let courses = $state<ParkCourseWithPark[]>([]);
 
-	const groups = $derived(groupParksByRegion(parks));
+	// The search once typing pauses. Every park and course is already loaded,
+	// so it is matched on the list. A park is found by its own name and place,
+	// or by any of its courses' names, so a course name leads to its park.
+	// Opens on `?q=`, which Races & courses' "See all" carries.
+	let query = $state(page.url.searchParams.get('q') ?? '');
+	let settledQuery = $state(page.url.searchParams.get('q') ?? '');
+	let queryTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const next = query;
+		clearTimeout(queryTimer);
+		queryTimer = setTimeout(() => (settledQuery = next), 250);
+		return () => clearTimeout(queryTimer);
+	});
+	const terms = $derived(parkSearchTerms(settledQuery));
+
+	function clearSearch() {
+		clearTimeout(queryTimer);
+		query = '';
+		settledQuery = '';
+	}
+
+	const shownParks = $derived(
+		terms.length === 0
+			? parks
+			: parks.filter(
+					(p) =>
+						parkSearchMatches(terms, { parkName: p.name, regionCode: p.region_code }) ||
+						(byPark.get(p.id) ?? []).some((c) =>
+							parkSearchMatches(terms, {
+								courseName: c.segment.name,
+								parkName: p.name,
+								regionCode: p.region_code,
+							}),
+						),
+				),
+	);
+
+	const groups = $derived(groupParksByRegion(shownParks));
 
 	const byPark = $derived.by(() => {
 		const out = new Map<string, ParkCourseWithPark[]>();
@@ -28,10 +67,6 @@
 		}
 		return out;
 	});
-
-	function linesOf(list: ParkCourseWithPark[]): TrackPoint[][] {
-		return list.map((c) => c.segment.waypoints.map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })));
-	}
 
 	async function loadCourses() {
 		try {
@@ -69,10 +104,7 @@
 		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{m('races.pageTitle')}
 	</a>
-	<header class="page-header">
-		<h1>{m('parks.title')}</h1>
-		<p class="subtitle">{m('parks.intro')}</p>
-	</header>
+	<PageHeader title={m('parks.title')} subtitle={m('parks.intro')} />
 
 	{#if loading}
 		<p class="state-msg">{m('parks.loading')}</p>
@@ -92,35 +124,24 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
+		<div class="parks-search">
+			<AppSearchField bind:value={query} label={m('parks.searchPlaceholder')} testid="parks-search" />
+		</div>
+		{#if groups.length === 0}
+			<EmptyState icon="search_off" title={m('parks.noMatch', { query: settledQuery.trim() })} data-testid="parks-no-match">
+				{#snippet actions()}
+					<button type="button" class="btn btn-outline" onclick={clearSearch} data-testid="parks-clear-search">
+						{m('filterBar.clearSearch')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{/if}
 		{#each groups as group (group.regionCode)}
 			<section class="region" data-testid="parks-region" aria-labelledby="region-{group.regionCode}">
-				<h2 id="region-{group.regionCode}">{regionName(group.regionCode)}</h2>
+				<SectionHeader label={regionName(group.regionCode)} id="region-{group.regionCode}" class="parks-region-head" />
 				<ul class="park-grid">
 					{#each group.parks as park (park.id)}
-						{@const agencyKey = labelKey(AGENCY_LABEL, park.agency)}
-						{@const list = byPark.get(park.id) ?? []}
-						{@const range = fmtCourseDistanceRange(list.map((c) => c.segment.distance_m))}
-						{@const lines = linesOf(list)}
-						<li>
-							<a href="/parks/{regionSlug(park.region_code)}/{park.slug}" class="park-card" data-testid="park-card">
-								<span class="thumb" aria-hidden="true">
-									{#if lines.some((l) => l.length >= 2)}
-										<ParkCourseLinesThumb {lines} />
-									{:else}
-										<span class="material-symbols thumb-icon">park</span>
-									{/if}
-								</span>
-								<span class="park-text">
-									<span class="park-name">{park.name}</span>
-									{#if agencyKey}<span class="park-agency">{m(agencyKey)}</span>{/if}
-									{#if list.length > 0}
-										<span class="park-facts" data-testid="park-card-facts">
-											{m('parks.courseCount', { n: list.length })}{#if range}&nbsp;·&nbsp;{range}{/if}
-										</span>
-									{/if}
-								</span>
-							</a>
-						</li>
+						<li><ParkCard {park} courses={byPark.get(park.id) ?? []} /></li>
 					{/each}
 				</ul>
 			</section>
@@ -141,25 +162,14 @@
 		font-size: 0.85rem;
 		text-decoration: none;
 	}
-	.page-header h1 {
-		margin: 0 0 0.25rem;
-	}
-	.subtitle {
-		margin: 0 0 var(--space-lg);
-		max-width: var(--page-measure);
-		color: var(--color-text-secondary);
-		line-height: 1.5;
+	.parks-search {
+		max-width: 32rem;
 	}
 	.state-msg {
 		color: var(--color-text-tertiary);
 	}
-	.region h2 {
-		margin: var(--space-lg) 0 var(--space-sm);
-		font-size: var(--font-size-section-label);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: var(--section-label-tracking);
-		color: var(--color-text-secondary);
+	:global(.parks-region-head) {
+		margin-top: var(--space-lg);
 	}
 	.park-grid {
 		list-style: none;
@@ -168,53 +178,5 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
 		gap: var(--space-md);
-	}
-	.park-card {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		text-decoration: none;
-		overflow: hidden;
-	}
-	.park-card:hover,
-	.park-card:focus-visible {
-		border-color: var(--color-primary);
-	}
-	.thumb {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		aspect-ratio: 2 / 1;
-		background: var(--color-fill-subtle);
-	}
-	.thumb-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-	}
-	.park-text {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		padding: var(--space-sm) var(--space-md) var(--space-md);
-		min-width: 0;
-	}
-	.park-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.park-agency {
-		font-size: 0.8rem;
-		color: var(--color-text-tertiary);
-	}
-	.park-facts {
-		margin-top: var(--space-xs);
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		font-variant-numeric: tabular-nums;
 	}
 </style>

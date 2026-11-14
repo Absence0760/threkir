@@ -1,3 +1,4 @@
+import { localStore } from '../core/browser_storage';
 /// Open/closed state for the named disclosures on a surface, remembered
 /// across visits.
 ///
@@ -39,7 +40,7 @@ export function readDisclosureState(
 	defaults: DisclosureState,
 ): DisclosureState {
 	try {
-		const raw = localStorage.getItem(disclosureStorageKey(scope, userId));
+		const raw = localStore()?.getItem(disclosureStorageKey(scope, userId)) ?? null;
 		return mergeDisclosureState(defaults, raw === null ? null : JSON.parse(raw));
 	} catch (_) {
 		return { ...defaults };
@@ -52,7 +53,7 @@ export function writeDisclosureState(
 	state: DisclosureState,
 ): void {
 	try {
-		localStorage.setItem(disclosureStorageKey(scope, userId), JSON.stringify(state));
+		localStore()?.setItem(disclosureStorageKey(scope, userId), JSON.stringify(state));
 	} catch (_) {
 		/* storage unavailable or full — the surface still renders */
 	}

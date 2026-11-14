@@ -37,6 +37,8 @@ names the reader on its own — `navYou` "Tu", web `clubEvent.youTag`
 "(tu)", `messages.youPrefix` "Tu: " (§ 760; the register guard does not
 list bare `tu` for this reason). Don't extend it to running prose.
 
+- **A string around `{distance}` agrees with both units.** *quilómetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Registou {distance} no total", "Clube {distance}", never "{distance} registados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this (a pt-PT string that breaks them fails the PR)
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group
@@ -55,6 +57,22 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   `podes`, `estás`, `tens`, `queres`, the `-te` enclitic, the proclitic
   `te`, the `-aste`/`-este`/`-iste` preterite …), and no tu affirmative
   imperative that the pt-BR twin doesn't also have.
+  A bare third-person verb that opens a clause after a comma reads as a tu
+  imperative too: "Antes de definir os ritmos, confirma que …" became
+  "… vai confirmar que …" (2026-11-13). Give the clause a subject or a
+  future.
+
+- **Brazilian colloquial verbs the guard cannot ban.** *Become* is
+  **passar a ser** / **tornar-se**, never `virar` ("cada uma passa a ser uma
+  rota própria", "provas passam a ser corridas leves"); `virar` stays only
+  for *turn* ("Vire à esquerda"), which is why it is not on the banned list.
+  A consequence is **por isso**, not `então` ("…não está no CSV, por isso as
+  corridas importadas…"). Settled 2026-11-13 (#1374 round 3.8).
+- **Runners nearby.** The section is **Corredores por perto** and its
+  switch **Mostrar-me em Corredores por perto** on both surfaces (mobile
+  `prefsDiscoverableNearby`, web `prefs.discoverableNearby`, and every
+  string that quotes it); `cross_platform_terms.test.ts` fails a drift.
+  Settled 2026-11-13.
 
 ## Spelling and style authority
 
@@ -66,7 +84,7 @@ consonants), but the European forms that AO1990 keeps: `contacto` (21 /
 proparoxytones: `quilómetro`, `género`, `oxigénio`, `cronómetro`.
 
 House vocabulary (verified in both catalogues): `registar` / `registo`
-(never `registrar`/`registro`), `guardar` (never `salvar`), `partilhar`,
+(never `registrar`/`registro`) for logging, `gravar` / `gravação` for GPS recording, `guardar` (never `salvar`), `partilhar`,
 `ecrã`, `telemóvel`, `ficheiro`, `palavra-passe`, `em direto` (live),
 `utilizador`, `ginásio`, `passadeira` (treadmill), `aceder`, `equipa`,
 `transferir` (download), `pequeno-almoço`, `predefinição`.
@@ -87,8 +105,13 @@ House vocabulary (verified in both catalogues): `registar` / `registo`
 Web `pt-PT` uses `Intl.PluralRules('pt-PT')`: `one` = exactly 1. The
 phone resolves `app_pt.arb` through intl's **`pt`** rule (its localeName
 is `pt`), where `one` = **0 and 1**. So in mobile strings never write a
-literal `1` in a `one` branch — 11 already do (e.g. `importFailuresHeading`),
-rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
+literal `1` in a `one` branch (it renders "1 …" for 0). Use `{count}` (ARB)
+/ `#` (web). And when the plural is the **whole message**, its `one` branch
+must name the count ("{count} convite enviado") or the plural must carry an
+`=0{…}` branch: a count-free "Convite enviado" is what 0 renders. A plural
+inside a longer sentence is agreement and stays as it is. Write the web
+twin the same way so the two surfaces read alike. Both rules are guards
+(`l10n_parity_test.dart`, `messages_parity.test.ts`).
 
 ## Running glossary (what the catalogues already use)
 
@@ -106,9 +129,16 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | elevation gain | **Ganho de elevação** (web); "Subida" (mobile) | `runStatElevation` "Elevação" |
 | heart rate / HR | Frequência cardíaca / FC | |
 | heart rate zone | Zonas de frequência cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Condicionamento** / **Fadiga** / **Forma** — "Condicionamento, fadiga e forma", "Condicionamento (CTL)", "Forma (TSB)", "condicionamento − fadiga". *Fitness* in its everyday sense ("reflete o seu condicionamento atual", VDOT "pontuação de condicionamento") takes the same word, as the English does; same terms as pt-BR | settled 2026-11-12; never "forma física" / "condição física" / bare "Forma" for fitness, never "Frescor" / "frescura" for form. The idiom "Manter a forma" (*stay fit*, `setupGoalGeneralFitness`) is not the noun and stays. The *Fitness* destination (`navFitness`) stays "Fitness" |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** everywhere: workout kind, nav and tabs ("Provas"), `races.title` "Calendário de provas", race control ("Preparar prova", "Encerrar prova") | settled 2026-10-13; *corrida* is only ever a run, so the Runs and Races tabs no longer collide |
+| sign in (in a sentence) | « Inicie sessão » — « Inicie sessão primeiro para … » | settled 2026-11-13 (#1374 round 3.5), both surfaces; a bare « Entre » is only a button label |
+| @username help | « nome de utilizador/usuário público (@…) », never « @nome de … » | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| Threkir's gender | **o Threkir** for the app (« no Threkir », « do Threkir »); **a Threkir** only for the company in legal and consent text (« em nome da Threkir ») | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| cue (guided run) | **dica** / dicas — « Ouvir dica », « # dicas na corrida » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « alerta », « sinal » or « indicação » for a guided-run cue (a session plan's breath / alignment cue stays « Indicação ») |
+| backup (the full archive you download and restore) | **cópia de segurança** (feminine: « a cópia de segurança completa », « nesta cópia de segurança ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « backup » |
+| build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
 | gun time / chip time | **Tempo oficial** / **Tempo de chip**; short forms "oficial {gun} · chip {chip}" | settled 2026-10-13; not "bruto"/"líquido" (Brazilian race-results usage) nor "tempo real" (collides with *em tempo real*) |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |
@@ -119,17 +149,29 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | gym | **Ginásio** | |
 | nutrition | Nutrição | |
 | log (verb) | Registar | `navLog` |
+| record (GPS / an activity), recording | **Gravar** / **gravação** — "A gravar", "Gravação e voz", "Começar uma gravação", "corrida gravada", "distância gravada", "grave com uma cinta" | settled 2026-11-12; never *registar* / *registo* for recording. *Registar* / *registo* stay for logging (manual entry, diary, gym and food log), sign-up, records on file (consent, DNF / DNS, weigh-ins, payment records, a DNS record) and a race finish being recorded |
 | streak | Sequência | |
 | goal | Meta / Metas (dominant); "Objetivo" on web onboarding and plans | |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está a pensar"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
+| health-data consent | **consentimento de dados de saúde**; Review consent button **Rever (o) consentimento (de dados de saúde)**; a sentence about what is kept under consent names **a Threkir** ("a Threkir só guarda…") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "consentimento para dados de saúde", never "Dar consentimento" on a button that only opens the screen. The consent statement and every withdrawal list name the same items in the same order as the English (gender, height, weight history, cycle or pregnancy details, heart rate recorded with activities, heart-rate targets in plans, heart-rate medication setting, food log); `health_consent_scope.test.ts` pins the English. The heart-rate medication item names the setting, never a statement that a drug affects the reader: « a sua definição de medicação que afeta a frequência cardíaca » |
+| GDPR citation | **art. 9, n.º 2, alínea a), do RGPD**, "art. 7, n.º 3, do RGPD", "art. 20 do RGPD" | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "RGPD art. 9" |
+| race (the race-strategy phase intent) | **Competir** (`phaseIntentRace`, `runDetail.phaseRace`) | settled 2026-11-13 (#1374 round 3.6); never "Correr", which is just *run* |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar a app"); "suporte" is tech support |
 | sign in | **Iniciar sessão** ("Inicie sessão…", "início de sessão", "sem sessão iniciada"); a bare "Entrar" on a button | never "login" / "Faça login" — guarded |
 | pair (Bluetooth) | **Emparelhar** / emparelhado / emparelhamento | never "parear" — guarded |
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, ; a string names the page, never a path to it (decisions § 2496) | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
+| readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Deixar a carga do ginásio fora da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
+| taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |
+| load trend going down (the coach roster's and load card's "Tapering": acute load more than 15 % below the 28-day average, `loadTrend` in `coach_load.ts`) | **A diminuir** (beside « A subir », « Estável »), as the load card's « A sua carga está a diminuir » | settled 2026-11-13 (#1374 round 3.7); it is a measured drop, not a planned taper, so never « Polimento » here, and not « A reduzir », which reads as an instruction |
+| a planned gym set that was not performed (status) | **Não atingido** (`gymReviewStatusMissed`, `gym.review.status.missed`), beside "Parcial" | settled 2026-11-13, phone aligned to web; never "Não feito" / "Falhado" |
+| Let it go (missed workout) | button **Deixar passar**; its banner says the same act back: "Deixou passar. O seu plano continua como estava." | settled 2026-11-13; never a bare "Pronto." / "Feito.", which drops what was let go |
+| unlinking a matched run | "O treino aparecerá como ainda não feito" on both platforms (`workoutUnlinkBody`, `workoutDetail.unlinkRunMessage`): the planned item is a *treino*, not a *sessão* | settled 2026-11-13 |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
 | app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app", plural "as apps" | settled 2026-10-13; never "aplicação" in UI text (the last web and phone strings moved 2026-11-10). Only an Android menu path quotes the OS ("Definições → Aplicações") |
@@ -138,6 +180,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | self-timed (race) | **de tempo próprio** ("prova de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
 | GO (the start signal) | **GO** — the button on the web and in the phone app, "GO do organizador", "GO agendado"; prose "dar o GO", "o GO", "depois do GO", "a aguardar o GO" | settled 2026-11-10; never "JÁ" / "Disparar o Go" for the button or "dar a partida" for the signal. *Partida* stays for the start line and the time fields ("linha de partida", "Hora da partida", "Partida às {when}") |
 | race on the Wear watch | "PROVA PREPARADA", "Prova encerrada", "Terminar prova", "Prova {clock}", "Prova DNF" | settled 2026-11-10; *corrida* only where the watch means a run ("Esta corrida é a minha tentativa") |
+| link (a URL: invite, share, calendar-feed, overlay, sign-in email) | **link** (masculine: "o link", "este link", "links partilhados") | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help. **ligação** stays only for a connection: network ("Verifique a sua ligação"), a connected account ("a sua ligação ao Strava"), HTTPS, and an association between items (a workout linked to a run) |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

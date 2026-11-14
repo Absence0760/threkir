@@ -11,6 +11,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/gear_screen.dart';
+import '../lib/screens/run_screen.dart' show kCountdownHintBacking;
 import '../lib/widgets/run_segment_efforts.dart';
 import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/workout_review_section.dart';
@@ -91,6 +92,17 @@ Map<String, dynamic> _gearRow(String id, String name, num total, num target) => 
     };
 
 void main() {
+  // #1374 A11Y-11: the countdown's "Tap to cancel" sat at 0.7 white straight
+  // on the 0.45 scrim, 2.46:1 over a white basemap. It has its own backing.
+  test('the countdown cancel hint clears AA over the lightest basemap', () {
+    for (final tile in [Colors.white, const Color(0xFFF2F2F2), Colors.black]) {
+      final scrim = Color.alphaBlend(Colors.black.withValues(alpha: 0.45), tile);
+      final backing = Color.alphaBlend(kCountdownHintBacking, scrim);
+      expect(_contrast(Colors.white, backing), greaterThanOrEqualTo(4.5),
+          reason: 'over $tile');
+    }
+  });
+
   group('gear wear badge meets WCAG AA', () {
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {
       testWidgets('due + worn badges in $mode', (tester) async {

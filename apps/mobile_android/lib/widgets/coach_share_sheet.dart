@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../coach_share.dart';
 import '../dm_send_error.dart';
@@ -110,11 +111,8 @@ class _CoachShareSheetState extends State<CoachShareSheet> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final sentTo = _sentTo;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
+    return SheetScaffold(
+      body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -126,7 +124,6 @@ class _CoachShareSheetState extends State<CoachShareSheet> {
               ..._pickView(l10n, theme),
           ],
         ),
-      ),
     );
   }
 

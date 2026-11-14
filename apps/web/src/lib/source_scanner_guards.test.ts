@@ -64,6 +64,16 @@ test('every source-scanning guard blanks comments through the one shared strippe
 			why: 'the empty-card rule scan reads <style> blocks, which are CSS.',
 		},
 		{
+			file: 'src/lib/page_chrome_guard.test.ts',
+			count: 2,
+			why: 'the page-header rule scan reads a component\'s <style> block, which is CSS.',
+		},
+		{
+			file: 'src/lib/section_header_guard.test.ts',
+			count: 2,
+			why: 'the uppercased-heading rule scan reads a component\'s <style> block, which is CSS.',
+		},
+		{
 			file: 'src/lib/consent_guards.test.ts',
 			count: 2,
 			why: 'the font-source scan reads app.css, where `//` is not a comment.',

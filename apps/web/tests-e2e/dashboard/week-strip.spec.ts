@@ -5,7 +5,7 @@ import { deleteRun, insertRun, withCleanCurrentWeek } from '../fixtures/simulate
 import { USER_A } from '../fixtures/users';
 
 /**
- * /dashboard — the "This Week" calendar-week activity ribbon
+ * /dashboard/progress — the "This Week" calendar-week activity ribbon
  * (ThisWeekStrip.svelte over lib/training/current_week.ts). It left Home when
  * the week lead became Home's one this-week view and lives in the weekly
  * summary the lead's Week summary opens (decisions § 2283).
@@ -16,7 +16,7 @@ import { USER_A } from '../fixtures/users';
  * afterwards so the rest of the dashboard suite sees the seeded baseline.
  */
 
-test.describe('/dashboard This Week strip', () => {
+test.describe('/dashboard/progress This Week strip', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('renders the week ribbon and folds in a run logged today', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('/dashboard This Week strip', () => {
 		});
 
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.getByRole('region', { name: 'This Week' })).toHaveCount(0, {
 				timeout: 15_000,
 			});

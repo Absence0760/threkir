@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import 'package:flutter/services.dart';
 
 import '../challenge_invite_link.dart';
@@ -132,71 +133,67 @@ class _ChallengeInviteCardState extends State<ChallengeInviteCard> {
     if (!showInvite && !showRetry && !widget.isPublic) {
       return const SizedBox.shrink();
     }
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.challengeInviteLinkTitle, style: theme.textTheme.titleMedium),
-            if (showRetry) ...[
-              const SizedBox(height: 8),
-              Text(l10n.challengeInviteLinkLoadFailed,
-                  style: TextStyle(color: theme.colorScheme.error)),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton(onPressed: _load, child: Text(l10n.errorStateRetry)),
-              ),
-            ],
-            if (showInvite) ...[
-              const SizedBox(height: 8),
-              Text(widget.isPublic
-                  ? l10n.challengeInviteLinkBodyPublic
-                  : l10n.challengeInviteLinkBodyPrivate),
-              const SizedBox(height: 8),
-              SelectableText(
-                _url(challengeInvitePath(token)),
-                key: const ValueKey('challenge-invite-url'),
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton.tonal(
-                    onPressed: () => _share(_url(challengeInvitePath(token))),
-                    child: Text(l10n.challengeInviteShare),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _copy(_url(challengeInvitePath(token))),
-                    child: Text(l10n.challengeInviteCopy),
-                  ),
-                  TextButton(
-                    key: const ValueKey('challenge-invite-rotate'),
-                    onPressed: _busy ? null : _rotate,
-                    child: Text(l10n.challengeInviteRotate),
-                  ),
-                ],
-              ),
-            ],
-            if (widget.isPublic) ...[
-              const SizedBox(height: 8),
-              Text(l10n.challengeInviteShareBody),
-              const SizedBox(height: 8),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: OutlinedButton(
-                  key: const ValueKey('challenge-share-page'),
-                  onPressed: () => _share(withShareRef(
-                      _url(challengeSharePath(widget.challengeId)), _shareRef)),
-                  child: Text(l10n.challengeInviteSharePage),
-                ),
-              ),
-            ],
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.challengeInviteLinkTitle, style: theme.textTheme.titleMedium),
+          if (showRetry) ...[
+            const SizedBox(height: 8),
+            Text(l10n.challengeInviteLinkLoadFailed,
+                style: TextStyle(color: theme.colorScheme.error)),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(onPressed: _load, child: Text(l10n.errorStateRetry)),
+            ),
           ],
-        ),
+          if (showInvite) ...[
+            const SizedBox(height: 8),
+            Text(widget.isPublic
+                ? l10n.challengeInviteLinkBodyPublic
+                : l10n.challengeInviteLinkBodyPrivate),
+            const SizedBox(height: 8),
+            SelectableText(
+              _url(challengeInvitePath(token)),
+              key: const ValueKey('challenge-invite-url'),
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: () => _share(_url(challengeInvitePath(token))),
+                  child: Text(l10n.challengeInviteShare),
+                ),
+                OutlinedButton(
+                  onPressed: () => _copy(_url(challengeInvitePath(token))),
+                  child: Text(l10n.challengeInviteCopy),
+                ),
+                TextButton(
+                  key: const ValueKey('challenge-invite-rotate'),
+                  onPressed: _busy ? null : _rotate,
+                  child: Text(l10n.challengeInviteRotate),
+                ),
+              ],
+            ),
+          ],
+          if (widget.isPublic) ...[
+            const SizedBox(height: 8),
+            Text(l10n.challengeInviteShareBody),
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OutlinedButton(
+                key: const ValueKey('challenge-share-page'),
+                onPressed: () => _share(withShareRef(
+                    _url(challengeSharePath(widget.challengeId)), _shareRef)),
+                child: Text(l10n.challengeInviteSharePage),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

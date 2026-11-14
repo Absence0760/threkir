@@ -3,7 +3,8 @@ import 'package:core_models/core_models.dart'
     show ClubRow, StravaClubLinkError, StravaClubLinkFailure;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, FieldColumn;
 
 import '../auth_error.dart';
 import '../club_slug.dart';
@@ -44,6 +45,7 @@ Future<String?> showClubFormSheet(
         ? AppLocalizations.of(context).clubFormTitle
         : AppLocalizations.of(context).clubFormEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) =>
         _ClubFormScreen(
           key: formKey,
@@ -137,6 +139,9 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
         _isPublic.toString(),
         if (!_isEdit) _joinPolicy,
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _busy;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -292,8 +297,12 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    // Heading + Scaffold/SafeArea come from the host showFullScreenForm.
     return FullScreenFormBody(
+      save: EditorSave(
+        label: _isEdit ? l10n.clubEditorSaveChanges : l10n.clubFormCreate,
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
               if (!_isEdit && widget.stravaClubId != null) ...[
                 Text(
@@ -305,44 +314,40 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
                 ),
                 const SizedBox(height: 8),
               ],
-              TextField(
-                controller: _name,
-                autofocus: true,
-                maxLength: kClubNameMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormNameLabel,
-                  errorText: _nameError,
+              FieldColumn(children: [
+                TextField(
+                  controller: _name,
+                  autofocus: true,
+                  maxLength: kClubNameMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormNameLabel,
+                    errorText: _nameError,
+                  ),
+                  onChanged: (_) {
+                    if (_nameError != null) setState(() => _nameError = null);
+                  },
                 ),
-                onChanged: (_) {
-                  if (_nameError != null) setState(() => _nameError = null);
-                },
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _description,
-                maxLines: 3,
-                maxLength: kClubDescriptionMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormDescriptionLabel,
+                TextField(
+                  controller: _description,
+                  maxLines: 3,
+                  maxLength: kClubDescriptionMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormDescriptionLabel,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _location,
-                maxLength: kClubLocationLabelMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormLocationLabel,
-                  hintText: l10n.clubFormLocationHint,
+                TextField(
+                  controller: _location,
+                  maxLength: kClubLocationLabelMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormLocationLabel,
+                    hintText: l10n.clubFormLocationHint,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              _LinkField(controller: _website, label: l10n.clubEditorWebsite, hint: 'https://example.com'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _instagram, label: l10n.clubEditorInstagram, hint: 'https://instagram.com/yourclub'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _strava, label: l10n.clubEditorStrava, hint: 'https://strava.com/clubs/yourclub'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _facebook, label: l10n.clubEditorFacebook, hint: 'https://facebook.com/yourclub'),
+                _LinkField(controller: _website, label: l10n.clubEditorWebsite, hint: 'https://example.com'),
+                _LinkField(controller: _instagram, label: l10n.clubEditorInstagram, hint: 'https://instagram.com/yourclub'),
+                _LinkField(controller: _strava, label: l10n.clubEditorStrava, hint: 'https://strava.com/clubs/yourclub'),
+                _LinkField(controller: _facebook, label: l10n.clubEditorFacebook, hint: 'https://facebook.com/yourclub'),
+              ]),
               const SizedBox(height: 12),
               ChoiceChipRow<bool>(
                 options: [
@@ -407,30 +412,6 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                overflowAlignment: OverflowBarAlignment.end,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed:
-                        _busy ? null : () => Navigator.maybePop(context),
-                    child: Text(l10n.clubFormCancel),
-                  ),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(_isEdit ? l10n.clubEditorSaveChanges : l10n.clubFormCreate),
-                  ),
-                ],
-              ),
             ],
           );
   }

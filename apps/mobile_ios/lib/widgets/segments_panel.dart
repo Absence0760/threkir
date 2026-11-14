@@ -1,7 +1,15 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppInsets,
+        AppSemanticColors,
+        AppSpace,
+        FieldColumn,
+        IdentityAvatar,
+        ListCard,
+        SectionHeader;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -240,24 +248,21 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(l10n.segmentsPanelTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium),
-              ),
-              if (widget.canCreate)
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      setState(() => _showCreate = !_showCreate),
-                  icon: Icon(_showCreate ? Icons.close : Icons.add, size: 18),
-                  label: Text(_showCreate
-                      ? l10n.segmentsPanelCancel
-                      : l10n.segmentsPanelNew),
-                ),
-            ],
+          // The shared heading: its action drops under the title when the
+          // two do not share a line (a Row overflowed at 2x on 320 dp,
+          // #1374 TO-6).
+          SectionHeader.title(
+            label: l10n.segmentsPanelTitle,
+            trailing: widget.canCreate
+                ? OutlinedButton.icon(
+                    onPressed: () =>
+                        setState(() => _showCreate = !_showCreate),
+                    icon: Icon(_showCreate ? Icons.close : Icons.add, size: 18),
+                    label: Text(_showCreate
+                        ? l10n.segmentsPanelCancel
+                        : l10n.segmentsPanelNew),
+                  )
+                : null,
           ),
           if (_showCreate) ...[
             const SizedBox(height: 8),
@@ -282,7 +287,7 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
               ),
             )
           else if (_loadError)
-            ErrorState(
+            AppErrorState(
               message: l10n.segmentsPanelLoadError,
               onRetry: _load,
             )
@@ -362,48 +367,47 @@ class _CreateForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final hint = l10n.segmentsPanelRouteHint(routeDistanceM.round());
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return ListCard(
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: nameCtrl,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.segmentsPanelNameLabel,
-                hintText: l10n.segmentsPanelNameHint,
-                isDense: true,
+            FieldColumn(children: [
+              TextField(
+                controller: nameCtrl,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: l10n.segmentsPanelNameLabel,
+                  hintText: l10n.segmentsPanelNameHint,
+                  isDense: true,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: startCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.segmentsPanelStartLabel,
-                      isDense: true,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: startCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.segmentsPanelStartLabel,
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: endCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.segmentsPanelEndLabel,
-                      helperText: hint,
-                      isDense: true,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: endCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.segmentsPanelEndLabel,
+                        helperText: hint,
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ]),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
@@ -420,7 +424,6 @@ class _CreateForm extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -465,15 +468,16 @@ class _SegmentTile extends StatelessWidget {
     final theme = Theme.of(context);
     final length =
         seg.lengthM ?? (seg.endDistanceM - seg.startDistanceM);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+    // Flush: the header is the card's tap and its ripple runs to the edges;
+    // the leaderboard under it, once expanded, holds controls of its own.
+    return ListCard.flush(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: AppInsets.cardDense,
               child: Row(
                 children: [
                   Expanded(
@@ -511,11 +515,12 @@ class _SegmentTile extends StatelessWidget {
           ),
           if (expanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md, 0, AppSpace.md, AppSpace.smPlus),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _TierFilters(
+                  SegmentTierFilters(
                     genderFilter: genderFilter,
                     ageFilter: ageFilter,
                     onGenderChanged: onGenderChanged,
@@ -555,19 +560,32 @@ class _SegmentTile extends StatelessWidget {
       UnitFormat.shortDistance(m, activeDistanceUnit);
 }
 
-class _TierFilters extends StatelessWidget {
+/// The gender and age-band filters over a segment leaderboard, and Reset
+/// once one is set. One widget for the route segment panel, the catalogue
+/// segment page and the park course page, which had each copied it.
+///
+/// Each dropdown is as wide as its longest choice and no wider than the row:
+/// a bare `DropdownButton` sizes to its widest item and overflowed a 320 dp
+/// phone at 2x text in every locale (issue #1374), so it is expanded inside
+/// an `IntrinsicWidth` and its labels ellipsize.
+class SegmentTierFilters extends StatelessWidget {
   final String? genderFilter;
   final String? ageFilter;
   final ValueChanged<String?> onGenderChanged;
   final ValueChanged<String?> onAgeChanged;
   final VoidCallback onReset;
 
-  const _TierFilters({
+  /// Draws the row on its own tinted panel, as the route segment panel does.
+  final bool framed;
+
+  const SegmentTierFilters({
+    super.key,
     required this.genderFilter,
     required this.ageFilter,
     required this.onGenderChanged,
     required this.onAgeChanged,
     required this.onReset,
+    this.framed = true,
   });
 
   @override
@@ -575,61 +593,71 @@ class _TierFilters extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final hasFilter = genderFilter != null || ageFilter != null;
+    Widget item(String label) =>
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
+    Widget dropdown({
+      required String? value,
+      required String allLabel,
+      required List<(String, String)> choices,
+      required ValueChanged<String?> onChanged,
+    }) =>
+        IntrinsicWidth(
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: value,
+              isDense: true,
+              isExpanded: true,
+              hint: item(allLabel),
+              items: [
+                DropdownMenuItem(value: null, child: item(allLabel)),
+                for (final (v, label) in choices)
+                  DropdownMenuItem(value: v, child: item(label)),
+              ],
+              onChanged: onChanged,
+            ),
+          ),
+        );
+    final row = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        dropdown(
+          value: genderFilter,
+          allLabel: l10n.segmentsPanelAllGenders,
+          choices: [
+            ('male', l10n.segmentsPanelGenderMen),
+            ('female', l10n.segmentsPanelGenderWomen),
+          ],
+          onChanged: onGenderChanged,
+        ),
+        dropdown(
+          value: ageFilter,
+          allLabel: l10n.segmentsPanelAllAges,
+          choices: [for (final b in kSegmentAgeBands) (b, b)],
+          onChanged: onAgeChanged,
+        ),
+        if (hasFilter)
+          TextButton.icon(
+            onPressed: onReset,
+            icon: const Icon(Icons.close, size: 16),
+            label: Text(l10n.segmentsPanelResetFilters),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
+    );
+    if (!framed) return row;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: genderFilter,
-              isDense: true,
-              hint: Text(l10n.segmentsPanelAllGenders),
-              items: [
-                DropdownMenuItem(
-                    value: null, child: Text(l10n.segmentsPanelAllGenders)),
-                DropdownMenuItem(
-                    value: 'male', child: Text(l10n.segmentsPanelGenderMen)),
-                DropdownMenuItem(
-                    value: 'female',
-                    child: Text(l10n.segmentsPanelGenderWomen)),
-              ],
-              onChanged: onGenderChanged,
-            ),
-          ),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: ageFilter,
-              isDense: true,
-              hint: Text(l10n.segmentsPanelAllAges),
-              items: [
-                DropdownMenuItem(
-                    value: null, child: Text(l10n.segmentsPanelAllAges)),
-                for (final b in kSegmentAgeBands)
-                  DropdownMenuItem(value: b, child: Text(b)),
-              ],
-              onChanged: onAgeChanged,
-            ),
-          ),
-          if (hasFilter)
-            TextButton.icon(
-              onPressed: onReset,
-              icon: const Icon(Icons.close, size: 16),
-              label: Text(l10n.segmentsPanelResetFilters),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-        ],
-      ),
+      child: row,
     );
   }
 }
@@ -658,7 +686,7 @@ class _Leaderboard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (error) {
-      return ErrorState(
+      return AppErrorState(
         message: l10n.segmentsPanelLeaderboardError,
         onRetry: onRetry,
       );
@@ -712,14 +740,11 @@ class _CrownBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final crown = AppSemanticColors.of(context).crown;
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: crown.withValues(alpha: 0.12),
-        border: Border.all(color: crown.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      dense: true,
+      color: crown.withValues(alpha: 0.12),
+      outline: crown.withValues(alpha: 0.35),
       child: Row(
         children: [
           Icon(Icons.emoji_events, color: crown, size: 18),
@@ -790,30 +815,35 @@ class _LeaderboardRow extends StatelessWidget {
             imageUrl: entry.athlete.avatarUrl,
           ),
           const SizedBox(width: 8),
+          // The viewer's "You" sits under the name, not beside it: inline
+          // at 320 dp and 2x it and the time left the name no width. The
+          // label and the weight are the cue; the row tint is too faint.
           Expanded(
-            child: Text(
-              entry.athlete.displayName ??
-                  AppLocalizations.of(context).segmentsPanelRunnerFallback,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: isViewer ? FontWeight.w700 : null,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  entry.athlete.displayName ??
+                      AppLocalizations.of(context).segmentsPanelRunnerFallback,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: isViewer ? FontWeight.w700 : null,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isViewer)
+                  Text(
+                    AppLocalizations.of(context).navYou,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
             ),
           ),
-          // The viewer tint is 1.078:1 light / 1.013:1 dark against a
-          // neighbouring row, so the label and the weight are the cue.
-          if (isViewer) ...[
-            const SizedBox(width: 6),
-            Text(
-              AppLocalizations.of(context).navYou,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           Text(
             formatEffortTime(entry.effort.timeSeconds),
             style: theme.textTheme.titleSmall?.copyWith(

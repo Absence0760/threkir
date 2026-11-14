@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, FieldPair, ListCard;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -44,6 +45,7 @@ Future<bool?> showNutritionLogSheet({
     context,
     title: title,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) =>
         NutritionLogSheet(key: formKey, store: store, diaryDate: diaryDate),
   );
@@ -120,6 +122,9 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
   final _manualSodium = TextEditingController();
   final _manualSatFat = TextEditingController();
   final _manualCholesterol = TextEditingController();
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   // Only the manual-entry composer holds loseable work: a search query /
   // its results and the meal-slot pick are one tap to recreate, and a
@@ -338,9 +343,20 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Picking a search result logs it at once; only a manual entry has a
+    // Save to press.
     return FullScreenFormBody(
+      save: _manualOpen
+          ? EditorSave(
+              label: l10n.nutritionAdd,
+              busy: _saving,
+              onPressed:
+                  _manualName.text.trim().isEmpty ? null : _saveManual,
+            )
+          : null,
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: _mealSlot,
           decoration: InputDecoration(labelText: l10n.nutritionMealSlot),
           items: [
@@ -409,14 +425,14 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
             child: Text(l10n.nutritionSearching),
           )
         else if (_results.isNotEmpty)
-          ..._results.map((r) => Card(
-                margin: const EdgeInsets.only(bottom: 6),
-                child: ListTile(
-                  title: Text(r.brand == null ? r.name : '${r.name} · ${r.brand}'),
-                  subtitle: Text('${r.calories100g.round()} kcal / 100 g'),
-                  trailing: _SourceTag(source: r.source, l10n: l10n),
-                  onTap: _saving ? null : () => _pick(r),
-                ),
+          ..._results.map((r) => ListCard.row(
+                title: r.brand == null ? r.name : '${r.name} · ${r.brand}',
+                // The source as the title's badge rather than a trailing
+                // value: it wraps under a long name instead of crowding it.
+                badge: _SourceTag(source: r.source, l10n: l10n),
+                subtitle: l10n.nutritionSearchKcalPer100g(r.calories100g.round()),
+                enabled: !_saving,
+                onTap: () => _pick(r),
               ))
         else if (_searchFailed)
           Padding(
@@ -446,56 +462,37 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
           onPressed: () => setState(() => _manualOpen = !_manualOpen),
         ),
         if (_manualOpen) ...[
-          TextField(
-            controller: _manualName,
-            decoration: InputDecoration(labelText: l10n.nutritionItemName),
-          ),
-          Row(
-            children: [
-              Expanded(child: _numField(_manualKcal, l10n.nutritionCalories)),
-              const SizedBox(width: 8),
-              Expanded(child: _numField(_manualProtein, '${l10n.nutritionProtein} (g)')),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(child: _numField(_manualCarbs, '${l10n.nutritionCarbs} (g)')),
-              const SizedBox(width: 8),
-              Expanded(child: _numField(_manualFat, '${l10n.nutritionFat} (g)')),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(child: _numField(_manualFiber, '${l10n.nutritionFiber} (g)')),
-              const SizedBox(width: 8),
-              Expanded(child: _numField(_manualSugar, '${l10n.nutritionSugar} (g)')),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(child: _numField(_manualSatFat, '${l10n.nutritionSaturatedFat} (g)')),
-              const SizedBox(width: 8),
-              Expanded(child: _numField(_manualSodium, '${l10n.nutritionSodium} (mg)')),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(child: _numField(_manualCholesterol, '${l10n.nutritionCholesterol} (mg)')),
-              const SizedBox(width: 8),
-              const Expanded(child: SizedBox()),
-            ],
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _saving || _manualName.text.trim().isEmpty ? null : _saveManual,
-            child: Text(l10n.nutritionAdd),
-          ),
+          FieldColumn(children: [
+            TextField(
+              controller: _manualName,
+              decoration: InputDecoration(labelText: l10n.nutritionItemName),
+              // Add is enabled by the name, so it has to rebuild as one is typed.
+              onChanged: (_) => setState(() {}),
+            ),
+            FieldPair(
+              first: _numField(_manualKcal, l10n.nutritionCalories),
+              second: _numField(_manualProtein, '${l10n.nutritionProtein} (g)'),
+            ),
+            FieldPair(
+              first: _numField(_manualCarbs, '${l10n.nutritionCarbs} (g)'),
+              second: _numField(_manualFat, '${l10n.nutritionFat} (g)'),
+            ),
+            FieldPair(
+              first: _numField(_manualFiber, '${l10n.nutritionFiber} (g)'),
+              second: _numField(_manualSugar, '${l10n.nutritionSugar} (g)'),
+            ),
+            FieldPair(
+              first: _numField(_manualSatFat, '${l10n.nutritionSaturatedFat} (g)'),
+              second: _numField(_manualSodium, '${l10n.nutritionSodium} (mg)'),
+            ),
+            _numField(_manualCholesterol, '${l10n.nutritionCholesterol} (mg)'),
+          ]),
         ],
       ],
     );
   }
 
-  Widget _numField(TextEditingController c, String label) => TextField(
+  TextField _numField(TextEditingController c, String label) => TextField(
         controller: c,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: InputDecoration(labelText: label),

@@ -516,11 +516,11 @@ $neutralised$;`,
   [
     'global_segment_leaderboard',
     {
-      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season (decisions § 2383), which are the query the caller asked for",
+      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season and month (decisions § 2383, § 2426), which are the query the caller asked for",
       sql: `create or replace function public.global_segment_leaderboard(
    p_segment_id uuid, p_gender text default null::text, p_age_band text default null::text,
    p_limit integer default 50, p_club_id uuid default null::uuid,
-   p_season integer default null::integer)
+   p_season integer default null::integer, p_month integer default null::integer)
  returns table(effort_id uuid, user_id uuid, run_id uuid, time_seconds integer,
                started_at timestamptz, display_name text, avatar_url text,
                gender text, age integer)
@@ -554,6 +554,12 @@ as $neutralised$
            (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
              where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_season
     )
+    and (
+      p_month is null
+      or extract(month from (se.started_at at time zone coalesce(
+           (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+             where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_month
+    )
     and ${mine('se')}
   order by se.user_id, se.time_seconds asc, se.started_at asc;
 $neutralised$;`,
@@ -578,9 +584,10 @@ $neutralised$;`,
   [
     'global_segment_completions',
     {
-      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and the distinct-local-day count, which are the query the caller asked for',
+      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and month (decisions § 2426) and the distinct-local-day count, which are the query the caller asked for',
       sql: `create or replace function public.global_segment_completions(
-   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50)
+   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50,
+   p_month integer default null::integer)
  returns table(user_id uuid, completions integer, last_completed_at timestamptz,
                display_name text, avatar_url text)
  language sql stable security definer set search_path to 'public', 'private'
@@ -599,6 +606,8 @@ as $neutralised$
   where se.global_segment_id = p_segment_id
     and (p_season is null
          or extract(year from (se.started_at at time zone tz.v))::integer = p_season)
+    and (p_month is null
+         or extract(month from (se.started_at at time zone tz.v))::integer = p_month)
     and ${mine('se')}
   group by se.user_id;
 $neutralised$;`,
@@ -2073,6 +2082,92 @@ $neutralised$;`,
                           '00000000-0000-0000-0000-00000000c0f1');
                 select set_config('request.jwt.claims', '', true);`,
         probe: `select count(*) from race_course_review_queue() where listing_id = '00000000-0000-0000-0000-00000000c0f3';`,
+      },
+    },
+  ],
+  [
+    'public_food_log',
+    {
+      why: "drops the owner's health-data consent term (decisions § 2514) and the private-profile clause (an approved follower or the owner); keeps `is_public = true`, which says the assertion is about a SHARED meal",
+      sql: `create or replace view public.public_food_log as
+ select f.id, f.user_id, f.started_at, f.item_name, f.meal_slot, f.calories,
+        f.protein_g, f.carbs_g, f.fat_g, f.is_public, f.created_at
+   from food_log f
+  where f.is_public = true and ${mine('f')};`,
+      subject: 'food_log f',
+      witness: {
+        // A shared meal whose owner has no consent on record. The consent is
+        // cleared first (its AFTER trigger erases what is already logged),
+        // then the meal is filed past the write gate, as a pre-gate row was.
+        setup: `update user_profiles set health_data_consent_at = null
+                 where id = (select id from user_profiles order by id limit 1);
+ alter table food_log disable trigger food_log_health_gate;
+ insert into food_log (id, user_id, item_name, is_public)
+   values ('00000000-0000-0000-0000-00000000c0f1',
+           (select id from user_profiles order by id limit 1), 'guard witness', true);
+ alter table food_log enable trigger food_log_health_gate;`,
+        probe: `select count(*) from public_food_log
+                 where id = '00000000-0000-0000-0000-00000000c0f1';`,
+      },
+    },
+  ],
+  [
+    'park_course_month_runners',
+    {
+      why: "drops `private.is_run_visible_to(se.run_id, caller)` and the block graph; keeps the signed-in check, the park's `is_active`, the active segment and the park-local month, which say WHICH efforts the count is about",
+      sql: `create or replace function public.park_course_month_runners(p_park_id uuid)
+ returns table(course_id uuid, runners integer)
+ language plpgsql stable security definer set search_path = public, private
+as $neutralised$
+declare
+  caller uuid := auth.uid();
+  v_tz text;
+  v_month_start timestamp;
+begin
+  if caller is null then
+    raise exception 'park_course_month_runners requires an authenticated caller'
+      using errcode = '42501';
+  end if;
+  select p.timezone into v_tz from public.parks p
+   where p.id = p_park_id and p.is_active;
+  if v_tz is null then
+    return;
+  end if;
+  v_month_start := date_trunc('month', now() at time zone v_tz);
+  return query
+  select pc.id, count(distinct se.user_id)::integer
+  from public.park_courses pc
+  join public.global_segments gs on gs.id = pc.global_segment_id and gs.is_active
+  join public.global_segment_efforts se on se.global_segment_id = pc.global_segment_id
+  where pc.park_id = p_park_id
+    and se.started_at >= (v_month_start at time zone v_tz)
+    and se.started_at < ((v_month_start + interval '1 month') at time zone v_tz)
+    and ${mine('se')}
+  group by pc.id;
+end;
+$neutralised$;`,
+      subject: 'global_segment_efforts se — the efforts counted; the dropped predicate guards the RUN behind each',
+      witness: {
+        // Another runner's private run on a course of a park filed here,
+        // read by a signed-in caller who may not see it.
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+   values ('00000000-0000-0000-0000-00000000c0e1', 'Guard Witness Loop',
+           '[{"lat":37.0,"lng":-77.0},{"lat":37.004,"lng":-77.0}]', 450, true);
+ insert into parks (id, slug, name, agency, region_code, country_code, timezone, is_active)
+   values ('00000000-0000-0000-0000-00000000c0a1', 'guard-witness-park', 'Guard Witness Park',
+           'state', 'US-VA', 'US', 'UTC', true);
+ insert into park_courses (id, park_id, global_segment_id, slug, course_shape, geometry_source)
+   values ('00000000-0000-0000-0000-00000000c0c1', '00000000-0000-0000-0000-00000000c0a1',
+           '00000000-0000-0000-0000-00000000c0e1', 'guard-witness-loop', 'loop', 'osm');
+ insert into runs (id, user_id, started_at, duration_s, distance_m, source, metadata, is_public)
+   values ('00000000-0000-0000-0000-00000000c0b1', (select id from auth.users order by id limit 1),
+           now(), 1200, 5000, 'app', '{"activity_type":"run"}', false);
+ insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
+   values ('00000000-0000-0000-0000-00000000c0e1', '00000000-0000-0000-0000-00000000c0b1',
+           (select id from auth.users order by id limit 1), 300, now());
+ select set_config('request.jwt.claims',
+   json_build_object('sub', (select id from auth.users order by id offset 1 limit 1))::text, true);`,
+        probe: `select count(*) from park_course_month_runners('00000000-0000-0000-0000-00000000c0a1');`,
       },
     },
   ],

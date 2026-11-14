@@ -47,7 +47,7 @@ test.describe('/social — activity discovery', () => {
 	test('discipline search + category + weekday filters surface a public class', async ({
 		page,
 	}) => {
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Search by discipline → the seeded class surfaces, linking to its event.
 		await page.getByTestId('discover-search').fill(discipline);
@@ -67,6 +67,9 @@ test.describe('/social — activity discovery', () => {
 
 		// Back to class; the Sunday weekday filter keeps it, Monday drops it.
 		await page.getByTestId('discover-cat-class').click();
+		// Day and time live in the Filters sheet (#1374); its changes apply at
+		// once, so the list behind it is already filtered.
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-day').selectOption('SU');
 		await expect(row).toBeVisible({ timeout: 10_000 });
 		await page.getByTestId('discover-day').selectOption('MO');
@@ -146,7 +149,7 @@ test.describe('/social — proximity discovery', () => {
 		page,
 		context,
 	}) => {
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Narrow to the seeded event by discipline so other public events near
 		// the fix don't interfere with the visibility assertions.
@@ -155,7 +158,9 @@ test.describe('/social — proximity discovery', () => {
 		const row = results.getByRole('link', { name: new RegExp(discipline) });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		// Near fix (NYC) → still visible, now with a distance label.
+		// Near fix (NYC) → still visible, now with a distance label. "Use my
+		// location" lives in the Filters sheet (#1374).
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-use-location').click();
 		await expect(row).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('discover-distance').first()).toBeVisible();
@@ -167,6 +172,7 @@ test.describe('/social — proximity discovery', () => {
 		await page.reload();
 		await page.getByTestId('discover-search').fill(discipline);
 		await expect(row).toBeVisible({ timeout: 10_000 });
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-use-location').click();
 		await expect(row).toBeHidden({ timeout: 10_000 });
 	});
@@ -196,7 +202,7 @@ test.describe('/social — discovery failure', () => {
 			}
 		});
 
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Distinct error state, not the empty state.
 		await expect(page.getByTestId('discover-error')).toBeVisible({ timeout: 10_000 });

@@ -179,7 +179,7 @@
 		const dayMs = 86_400_000;
 		if (today < start) {
 			const d = Math.round((start.getTime() - today.getTime()) / dayMs);
-			return d === 1 ? m('plansPage.startsTomorrow') : m('plansPage.startsInDays', { d });
+			return m('plansPage.startsIn', { d });
 		}
 		if (today.getTime() === end.getTime()) return m('plansPage.raceDay');
 		if (today > end) return m('plansPage.ended');
@@ -200,15 +200,6 @@
 			return compareOrdinal(b.start_date, a.start_date);
 		});
 		return out;
-	});
-
-	let counts = $derived.by(() => {
-		const c = { all: plans.length, active: 0, paused: 0, completed: 0, abandoned: 0 } as Record<
-			StatusFilter,
-			number
-		>;
-		for (const p of plans) c[p.status] = (c[p.status] ?? 0) + 1;
-		return c;
 	});
 
 	/// A paused plan is still a plan the runner has not finished with, so it
@@ -305,7 +296,7 @@
 
 <div class="page">
 	<RunSurfaceTabs active="plans" />
-	<header class="page-header">
+	<div class="surface-toolbar">
 		<div class="toolbar">
 			<!-- A filter over nothing is noise: with no plans every bucket is 0.
 			     Shown while loading so a populated list doesn't shift on arrival. -->
@@ -322,9 +313,6 @@
 						>
 							<span class="material-symbols" aria-hidden="true">{f.icon}</span>
 							<span class="activity-label">{f.label()}</span>
-							{#if counts[f.value] > 0}
-								<span class="count-pill">{counts[f.value]}</span>
-							{/if}
 						</button>
 					{/each}
 				</div>
@@ -347,7 +335,7 @@
 				</button>
 			</div>
 		</div>
-	</header>
+	</div>
 
 	{#if loading}
 		<div class="grid grid-skel" aria-hidden="true" aria-busy="true">
@@ -426,6 +414,14 @@
 			</div>
 		</EmptyState>
 	{:else}
+		<!-- The count of what the filter shows is this one line, as on /runs
+		     and /routes and the mobile twin, never a count on some status
+		     buttons and none on a zero (issue #1374). -->
+		{#if filteredPlans.length > 0}
+			<p class="list-summary" data-testid="plans-summary">
+				{m('plansPage.planCount', { shown: filteredPlans.length, total: plans.length })}
+			</p>
+		{/if}
 		<div class="grid">
 			{#each filteredPlans as p (p.id)}
 				{@const total = totalWeeks(p)}
@@ -555,7 +551,7 @@
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 
-	.page-header {
+	.surface-toolbar {
 		margin-bottom: var(--space-xl);
 	}
 
@@ -610,20 +606,11 @@
 	.activity-btn.active:hover {
 		background: var(--color-primary-hover);
 	}
-	.count-pill {
-		font-size: var(--font-size-section-label);
-		font-weight: 600;
-		padding: 0 var(--space-xs);
-		border-radius: 9999px;
-		background: var(--color-bg-tertiary);
+
+	.list-summary {
+		margin: calc(-1 * var(--space-md)) 0 var(--space-md);
+		font-size: 0.85rem;
 		color: var(--color-text-secondary);
-		min-width: 1.25rem;
-		text-align: center;
-		font-variant-numeric: tabular-nums;
-	}
-	.activity-btn.active .count-pill {
-		background: rgba(255, 255, 255, 0.22);
-		color: var(--color-surface);
 	}
 
 	.toolbar-actions {

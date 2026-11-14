@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ui_kit/ui_kit.dart' show ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show EmptyState, HubPrimaryActions, HubTabScope, ProgressBar;
 
 import '../lib/fab_clearance.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -61,11 +62,11 @@ ChallengeView _ch({
 Widget _app(SocialService social) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: ChallengesScreen(social: social, embedded: true)),
+      home: Scaffold(body: ChallengesScreen(social: social)),
     );
 
-/// Standalone mount — the screen owns its own Scaffold, and with it the
-/// create FAB the embedded mount hands to SocialScreen to hoist.
+/// Standalone mount: no hub is listening, so the tab body draws its own small
+/// app bar and the create FAB it hands the hub when it is a hub tab.
 Widget _standalone(SocialService social) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -81,10 +82,47 @@ void main() {
     await tester.pumpWidget(_app(social));
     await tester.pump();
 
-    expect(find.text('My challenges'), findsOneWidget);
-    expect(find.text('Browse'), findsOneWidget);
+    // Section eyebrows are ui_kit SectionHeaders, which uppercase.
+    expect(find.text('MY CHALLENGES'), findsOneWidget);
+    expect(find.text('BROWSE'), findsOneWidget);
     expect(find.text('June 100k'), findsOneWidget);
     expect(find.text('Public 50k'), findsOneWidget);
+  });
+
+  testWidgets('a search narrows both sections by title, and one that '
+      'matches nothing says so and clears (issue #1374)', (tester) async {
+    final social = _FakeSocial([
+      _ch(id: 'a', title: 'June 100k', joined: true),
+      _ch(id: 'b', title: 'Public 50k'),
+      _ch(id: 'c', title: 'Hill week'),
+    ]);
+    await tester.pumpWidget(_app(social));
+    await tester.pump();
+    final field = find.widgetWithText(TextField, 'Search challenges');
+    expect(field, findsOneWidget);
+    await tester.enterText(field, 'HILL');
+    await tester.pump();
+    expect(find.text('Hill week'), findsOneWidget);
+    expect(find.text('Public 50k'), findsNothing);
+    expect(find.text('June 100k'), findsNothing);
+
+    await tester.enterText(field, 'zzz');
+    await tester.pump();
+    final noMatch = find.byKey(const ValueKey('challenges-no-match'));
+    expect(noMatch, findsOneWidget);
+    expect(find.text('No challenges match your search'), findsOneWidget);
+    await tester.tap(
+        find.descendant(of: noMatch, matching: find.text('Clear search')));
+    await tester.pump();
+    expect(find.text('June 100k'), findsOneWidget);
+    expect(find.text('Public 50k'), findsOneWidget);
+  });
+
+  testWidgets('with no challenges at all there is no search over nothing',
+      (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(const [])));
+    await tester.pump();
+    expect(find.byType(TextField), findsNothing);
   });
 
   testWidgets('self-hides into empty copy when the user is in none', (tester) async {
@@ -107,8 +145,8 @@ void main() {
     expect(find.byType(ErrorState), findsOneWidget);
     expect(find.text("Couldn't load challenges."), findsOneWidget);
     // The friendly no-data sections are NOT shown on failure.
-    expect(find.text('My challenges'), findsNothing);
-    expect(find.text('Browse'), findsNothing);
+    expect(find.text('MY CHALLENGES'), findsNothing);
+    expect(find.text('BROWSE'), findsNothing);
     // The shared retry affordance is present.
     expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
   });
@@ -118,10 +156,12 @@ void main() {
     await tester.pumpWidget(_app(_FakeSocial(const [])));
     await tester.pump();
 
+    // Nothing in either section: one shared empty state with a next step,
+    // not two headed sections of hint text.
     expect(find.byType(ErrorState), findsNothing);
-    expect(find.text('My challenges'), findsOneWidget);
-    expect(find.text('Browse'), findsOneWidget);
+    expect(find.byType(EmptyState), findsOneWidget);
     expect(find.text('No challenges yet.'), findsOneWidget);
+    expect(find.text('MY CHALLENGES'), findsNothing);
   });
 
   group('joined-row progress signal', () {
@@ -197,16 +237,41 @@ void main() {
       await tester.pumpWidget(_standalone(_FakeSocial(const [])));
       await tester.pump();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.text('Create challenge'), findsOneWidget);
+      expect(find.widgetWithText(FloatingActionButton, 'Create challenge'),
+          findsOneWidget);
     });
 
-    testWidgets('the embedded mount carries none — SocialScreen hoists it',
+    testWidgets('inside a hub it draws no FAB and hands Create challenge to '
+        'the hub', (tester) async {
+      final actions = HubPrimaryActions();
+      addTearDown(actions.dispose);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: HubTabScope(
+            tab: 'challenges',
+            actions: actions,
+            child: ChallengesScreen(social: _FakeSocial(const [])),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(AppBar), findsNothing);
+      expect(actions.of('challenges')?.label, 'Create challenge');
+    });
+
+    testWidgets('an empty board offers Create challenge as its next step',
         (tester) async {
       await tester.pumpWidget(_app(_FakeSocial(const [])));
       await tester.pump();
 
-      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Create challenge'),
+          findsOneWidget);
     });
 
     testWidgets('the FAB opens the create form', (tester) async {

@@ -2,8 +2,8 @@ import type { Guide } from '../types';
 
 export const guide: Guide = {
 	id: 'park-courses',
-	title: 'Park courses: checkpoints, seasons and the boards',
-	summary: 'How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.',
+	title: 'Park courses: checkpoints, seasons, months and the boards',
+	summary: 'How a park course times your run, why every checkpoint counts, when a season and a month start, and how the Fastest and Most completions boards rank people.',
 	kind: 'explainer',
 	category: 'running',
 	audience: ['runner'],
@@ -15,7 +15,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]].',
+					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]]. Select **Courses** at the top of Races & courses to list every course on its own, without the race calendar.',
 				},
 				{
 					type: 'list',
@@ -66,7 +66,7 @@ export const guide: Guide = {
 					type: 'list',
 					items: [
 						'**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.',
-						'It shows this year by default. Select **All time** for the best times ever.',
+						'It shows this year by default. Select **This month** for the month so far, or **All time** for the best times ever.',
 						'Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board.',
 					],
 				},
@@ -78,6 +78,25 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: '**Most completions** rewards the regulars. It counts the days you completed the course, in the park\'s time zone, so running several laps on one day counts as one.',
+				},
+			],
+		},
+		{
+			heading: 'Months: a fresh board every month',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Both boards also run month by month. A month is a calendar month in the park\'s time zone, from midnight on the 1st to midnight on the 1st of the next month, so a run at 23:30 on 31 October where the park is counts for October.',
+				},
+				{
+					type: 'list',
+					items: [
+						'Select **This month** to see the month so far, and use the arrows beside the month\'s name to look back at earlier months.',
+						'Each course on a park\'s page shows how many people have run it this month.',
+						'A park course time on your run\'s page shows its place that month and that year, such as #2 in November, #9 in 2026. The **Park course** sticker on a shared image shows the month\'s place, and the year\'s place too when it is in the top 10.',
+						'When a month ends where the park is, your inbox gets a notice with your best time that month on each course you ran. Turn it off with **Park course months**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Notifications** in the **You** tab.',
+						'The park months badges count the months in which you completed a park course, at 3, 6, 12 and 24 months. They count completions, never places.',
+					],
 				},
 			],
 		},

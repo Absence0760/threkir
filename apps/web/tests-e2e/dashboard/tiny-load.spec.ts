@@ -45,7 +45,7 @@ test.describe('dashboard with a near-zero training load', () => {
 		});
 
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expandTrainingLoad(page);
 
 			const ticks = page.locator('.fitness-card .y-tick');
@@ -89,7 +89,7 @@ test.describe('dashboard whose only run is 0 m', () => {
 		const page = await ctx.newPage();
 
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const bars = page.locator('.bar-col .bar');
 			await expect(bars.first()).toBeAttached({ timeout: 15_000 });
 			await expect(page.getByText('Internal Error')).toHaveCount(0);

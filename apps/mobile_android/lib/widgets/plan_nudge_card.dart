@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart' show SettingsKeys;
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../plan_nudges.dart';
@@ -187,69 +188,67 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
           l10n.planNudgeRestBody(n.weeks, n.ofWeeks)
         ),
     };
-    return Card(
+    return ListCard(
       key: const Key('planNudgeCard'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, right: 12),
-                  child: Icon(
-                    n.kind == PlanNudgeKind.restDayRuns
-                        ? Icons.self_improvement
-                        : Icons.tune,
-                    color: theme.colorScheme.primary,
-                  ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2, right: 12),
+                child: Icon(
+                  n.kind == PlanNudgeKind.restDayRuns
+                      ? Icons.self_improvement
+                      : Icons.tune,
+                  color: theme.colorScheme.primary,
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Semantics(
-                        header: true,
-                        child: Text(title, style: theme.textTheme.titleSmall),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(title, style: theme.textTheme.titleSmall),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      body,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        body,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            Wrap(
-              alignment: WrapAlignment.end,
-              children: [
-                Semantics(
-                  label: l10n.planNudgeDismissA11y,
-                  button: true,
-                  excludeSemantics: true,
-                  onTap: () => _dismiss(n),
-                  child: TextButton(
-                    key: const Key('planNudgeDismiss'),
-                    onPressed: () => _dismiss(n),
-                    child: Text(l10n.planNudgeDismiss),
-                  ),
+              ),
+            ],
+          ),
+          Wrap(
+            alignment: WrapAlignment.end,
+            children: [
+              Semantics(
+                label: l10n.planNudgeDismissA11y,
+                button: true,
+                excludeSemantics: true,
+                onTap: () => _dismiss(n),
+                child: TextButton(
+                  key: const Key('planNudgeDismiss'),
+                  onPressed: () => _dismiss(n),
+                  child: Text(l10n.planNudgeDismiss),
                 ),
-                if (n.kind != PlanNudgeKind.restDayRuns)
-                  TextButton(
-                    key: const Key('planNudgeReview'),
-                    onPressed: () => _review(n),
-                    child: Text(l10n.planNudgeReview),
-                  ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              if (n.kind != PlanNudgeKind.restDayRuns)
+                TextButton(
+                  key: const Key('planNudgeReview'),
+                  onPressed: () => _review(n),
+                  child: Text(l10n.planNudgeReview),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-11-10';
+	const lastUpdated = '2026-11-13';
 </script>
 
 <svelte:head>
@@ -64,7 +64,7 @@
 	<ul>
 		<li>
 			<strong>Account</strong>: email address, optional display name, optional profile photo,
-			optional gender and date of birth (used for tiered leaderboards and age-graded results).
+			optional gender and date of birth. Your date of birth is your age record (it keeps under-18 members out of people search and gives age-graded results); your gender, and any use of your date of birth as health data, need your health-data consent (below).
 		</li>
 		<li>
 			<strong>Settings</strong>: your app preferences, including your preferred language (the
@@ -74,14 +74,22 @@
 		</li>
 		<li>
 			<strong>Activity</strong>: GPS tracks, distance, duration, pace, elevation, heart rate
-			(when paired with a sensor or imported from a third-party app), step count, activity type,
-			and activity photos you upload.
+			(when paired with a sensor or imported from a third-party app, and only with your
+			health-data consent), step count, activity type, and activity photos you upload.
 		</li>
 		<li>
-			<strong>Health and body data (with your explicit consent)</strong>: height, body-weight
-			entries, activity level, nutrition targets, food-log entries, and hydration amounts. Gym
-			workouts (exercises, sets, reps, weights) are also stored. Heart rate and health imports
-			fall under the same explicit-consent gate.
+			<strong>Health data (only with your explicit health-data consent)</strong>: your gender,
+			height, weight history, any cycle or pregnancy details, the heart rate recorded with your
+			activities, the heart-rate targets in your plans, your heart-rate medication setting and your
+			food log, which we store and use together with your date of birth to personalise your
+			training and nutrition targets and to place you in gender and age-band segment
+			leaderboards. Health imports fall under the same consent. Activity level, nutrition
+			targets, hydration amounts and gym workouts (exercises, sets, reps, weights) are also
+			stored. Without that consent, heart rate shows on screen
+			while you record but is not saved or uploaded, an import keeps the activity without its heart
+			rate, and the food log stores nothing. Heart rate or food entries saved before we began asking
+			for this consent, by someone who has not given it, are hidden, not deleted: they come back if
+			you give consent, and are erased if you withdraw it.
 		</li>
 		<li>
 			<strong>Race checkpoint data</strong>: if you take part in an organised event that uses our
@@ -355,8 +363,8 @@
 		data minimisation: it sends no default personal identifiers and strips request bodies and
 		headers before transmission. On the website, client-side error monitoring stays off until
 		you accept the consent banner. In the iPhone and Android apps it is on by default, on the same
-		legitimate-interest basis, and you can turn it off at any time under <strong>Settings →
-		Account → Send error reports</strong>. The Wear OS watch app sends crash reports with the
+		legitimate-interest basis, and you can turn it off at any time with <strong>Send error reports</strong> on the
+		Privacy &amp; sharing page, in Preferences on the app's You tab. The Wear OS watch app sends crash reports with the
 		same minimisation and has no separate switch.
 	</p>
 	<p>
@@ -422,13 +430,15 @@
 	<h2>8. Your rights</h2>
 	<p>Under the GDPR / UK GDPR / CCPA / LGPD you have the right to:</p>
 	<ul>
-		<li><strong>Access</strong> your personal data (Art 15) — use Settings → Export your data.</li>
-		<li><strong>Rectify</strong> inaccurate data (Art 16) — use Settings → Profile.</li>
-		<li><strong>Erase</strong> your data (Art 17) — use Settings → Delete account. Deletion cascades through our database, drains your uploaded files from storage, and disconnects or deletes linked third-party resources (for example Strava authorisation and any connected Stripe account). Step-by-step instructions, including what to do if you can no longer sign in, are on the <a href="/delete-account">Delete your account</a> page.</li>
+		<li><strong>Access</strong> your personal data (Art 15) — ask for a full account archive: <strong>Download full account archive</strong> under Data Export on the Account page on the web (Settings → Account), or <strong>Account export</strong> on the Account page in the app's You tab. We build it on our servers from everything on your account, health data included, and keep it for you to download for 7 days.</li>
+		<li><strong>Rectify</strong> inaccurate data (Art 16) — edit your profile on the Account page (Settings → Account on the web, Account in the app's You tab).</li>
+		<li><strong>Erase</strong> your data (Art 17) — use Settings → Account → Delete account on the web, or Account → Delete account in the app's You tab. Deletion cascades through our database, drains your uploaded files from storage, and disconnects or deletes linked third-party resources (for example Strava authorisation and any connected Stripe account). Step-by-step instructions, including what to do if you can no longer sign in, are on the <a href="/delete-account">Delete your account</a> page.</li>
 		<li><strong>Restrict</strong> or <strong>object to</strong> processing (Arts 18 + 21) — email <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>. There is no self-service toggle yet; we action these manually and confirm within one month.</li>
-		<li><strong>Portability</strong> (Art 20) — use Settings → Export your data; the bundle is machine-readable JSON plus GPX.</li>
-		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. AI Coach consent and health-data consent are each withdrawable self-service in Settings → Account; withdrawing blocks the corresponding processing immediately.</li>
-		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)) — every marketing email carries an unsubscribe link, and the email preference is in Settings. Transactional mail (receipts, security notices) is not marketing.</li>
+		<li><strong>Portability</strong> (Art 20) — the same full account archive is a zip of machine-readable JSON files, one for each kind of data, with each activity's GPS track and heart-rate series as compressed JSON and your run photos as image files. On the web, <strong>Cloud export (GPX zip)</strong> under Data Export also gives you one GPX file per activity, for importing into other apps. The other export and backup buttons give narrower copies (runs only, or what is on your device).</li>
+		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. Both consents are withdrawable self-service.
+			<strong>AI features</strong>: <strong>Withdraw consent</strong> on the Account page (Settings → Account on the web, Account in the app's You tab); the AI Coach and the other AI features stop at once and stay off until you consent again.
+			<strong>Health data</strong>: clear the health-data consent and save. On the web, untick the consent box under Settings → Body metrics and press Save demographics, or untick the health-data box on the Account page and press Save Profile. In the app, open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"; it is the switch whose description lists the health data it covers), and tap Save. Every path then asks you to confirm, because withdrawing permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and stops us using your date of birth as health data. Your activities themselves are kept. Your date of birth itself stays on your account as an age record, because it also keeps under-18 members out of people search. Giving consent again later does not bring the erased data back.</li>
+		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)). Our marketing emails are the weekly digest and the tips and encouragement emails. Both are off unless you turn them on, each email carries a one-click unsubscribe link, and you can turn either off under Optional emails on the Notifications page (Settings → Notifications on the web, Notifications in Preferences on the app's You tab). Transactional mail (receipts, security notices) is not marketing.</li>
 		<li><strong>Lodge a complaint</strong> with your local supervisory authority. UK residents may contact the <a href="https://ico.org.uk/" target="_blank" rel="noopener noreferrer">ICO</a>; EU residents the DPA of their member state; Brazilian residents the ANPD; Canadian residents the OPC (Quebec: the CAI); Australian residents the OAIC.</li>
 	</ul>
 	<p>

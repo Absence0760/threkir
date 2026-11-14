@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Jede Änderung führen Threkirs eigene Planregeln aus. Die KI schreibt nie ein Training, eine Distanz oder eine Pace, daher bekommt eine Bitte wie *füge eine Bergeinheit hinzu* nur den Hinweis, dass das nicht geht. Für alles andere nutze **Plan bearbeiten**.',
+					text: 'Jede Änderung führen Threkirs eigene Planregeln aus. Die KI schreibt nie ein Training, eine Distanz oder ein Tempo, daher bekommt eine Bitte wie *füge eine Bergeinheit hinzu* nur den Hinweis, dass das nicht geht. Für alles andere nutze **Plan bearbeiten**.',
 				},
 				{
 					type: 'note',
@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Jede Anfrage verbraucht eine deiner täglichen KI-Coach-Nachrichten, dasselbe Kontingent wie beim Coach.',
-						'Sie setzt den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, wähle **In den Einstellungen ansehen** und akzeptiere ihn dort.',
+						'Es setzt die aktuellen KI-Hinweise voraus. Wirst du gebeten, sie zu akzeptieren, wähle **In den Einstellungen ansehen** und akzeptiere sie dort.',
 						'An die KI gehen nur die anstehenden Trainings deines Plans und die Änderung, die du eingegeben hast.',
 					],
 				},

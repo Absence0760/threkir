@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
@@ -48,18 +50,13 @@
 <svelte:head><title>{t('session.title')}</title></svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<div class="head-text">
-			<a class="back-link" href="/gym">
-				<span class="material-symbols" aria-hidden="true">arrow_back</span>
-				{t('gym.back')}
-			</a>
-			<h1>{t('session.title')}</h1>
-		</div>
-		<button type="button" class="btn btn-primary" onclick={() => (showCreate = true)}>
-			{t('session.new')}
-		</button>
-	</header>
+	<PageHeader back={{ href: '/gym', label: t('gym.back') }} title={t('session.title')}>
+		{#snippet actions()}
+			<button type="button" class="btn btn-primary" onclick={() => (showCreate = true)}>
+				{t('session.new')}
+			</button>
+		{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<p class="muted">…</p>
@@ -83,15 +80,22 @@
 		<ul class="plan-list">
 			{#each plans as plan (plan.id)}
 				<li>
-					<a class="card-elevated plan-row" href={`/sessions/${plan.id}`}>
-						<span class="plan-title">{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge />{/if}</span>
-						<span class="plan-meta">
-							{#if plan.discipline}{plan.discipline}{/if}
-							{#if plan.est_duration_min}
-								· {t('session.estDuration', { minutes: plan.est_duration_min })}
-							{/if}
-						</span>
-					</a>
+					<ListCard
+						class="plan-row"
+						href={`/sessions/${plan.id}`}
+						title={plan.title || t('session.untitled')}
+						subtitle={[
+							plan.discipline,
+							plan.est_duration_min
+								? t('session.estDuration', { minutes: plan.est_duration_min })
+								: null,
+						]
+							.filter(Boolean)
+							.join(' · ') || undefined}
+						chevron
+					>
+						{#snippet badge()}{#if plan.is_official}<OfficialBadge />{/if}{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -106,21 +110,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
-	.page-head {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
-	}
 	.muted {
 		color: var(--color-text-tertiary);
 	}
@@ -131,24 +120,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.plan-row {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2xs);
-		padding: var(--space-md);
-		text-decoration: none;
-		color: inherit;
-	}
-	.plan-title {
-		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.plan-meta {
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
 	}
 	.error-banner {
 		display: flex;

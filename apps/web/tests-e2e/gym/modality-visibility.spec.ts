@@ -25,7 +25,7 @@ test.describe('gym and nutrition visibility switches', () => {
 	let user: SagaUser;
 
 	test.beforeAll(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Modality Saga'] });
+		[user] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Modality Saga'] });
 	});
 
 	test.afterAll(async () => {
@@ -117,8 +117,8 @@ test.describe('gym and nutrition visibility switches', () => {
 			const reads = presenceReads(page);
 			await page.goto('/settings/display');
 			await reads;
-			const showGym = page.getByRole('checkbox', { name: /^Show Gym/ });
-			const showNutrition = page.getByRole('checkbox', { name: /^Show Nutrition/ });
+			const showGym = page.getByRole('switch', { name: /^Show Gym/ });
+			const showNutrition = page.getByRole('switch', { name: /^Show Nutrition/ });
 			await expect(showGym).not.toBeChecked({ timeout: 15_000 });
 			await expect(showNutrition).not.toBeChecked();
 			await expect(navLabel(page, 'Gym')).toHaveCount(0);

@@ -132,7 +132,8 @@ void main() {
       expect(_weekKm(tester, 2), isNot(before));
 
       await tester.tap(find.text('Add your date of birth'));
-      expect(pendingSettingsDestination.value, SettingsDestination.preferences);
+      expect(pendingSettingsDestination.value, SettingsDestination.training);
+      expect(pendingSettingsRow, PreferencesRow.dateOfBirth);
     });
 
     testWidgets(
@@ -160,6 +161,7 @@ void main() {
 
       await tester.tap(find.text('Review consent'));
       expect(pendingSettingsDestination.value, SettingsDestination.bodyMetrics);
+      expect(pendingSettingsRow, isNull);
     });
 
     testWidgets('a failed profile read shows the switch but no hint',
@@ -201,6 +203,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SettingsPreferencesScreen(
+          page: PreferencesPage.training,
           apiClient: _Api(),
           preferences: prefs,
           settingsSync: sync,
@@ -214,7 +217,10 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     final row = tester
-        .widget<SwitchListTile>(find.byKey(const Key('prefsExtraRecovery')));
+        .widget<SwitchListTile>(find.descendant(
+        of: find.byKey(const Key('prefsExtraRecovery')),
+        matching: find.byType(SwitchListTile),
+      ));
     expect(row.value, isFalse);
     await tester.tap(find.byKey(const Key('prefsExtraRecovery')));
     await tester.pumpAndSettle();

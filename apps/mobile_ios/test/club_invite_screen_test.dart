@@ -10,12 +10,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_invite_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'editor_layout.dart';
 import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
@@ -85,9 +87,22 @@ void main() {
     testWidgets('renders the Join club title + invite-code field',
         (tester) async {
       await _pump(tester);
-      expect(find.text('Join club'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Join club'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Invite code'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Join'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Join is reachable at 320 dp, 2x text and a 3-button bar, with and '
+        'without the keyboard (IK-11)', (tester) async {
+      await expectEditorSaveReachable(
+        tester,
+        page: () => ClubInviteScreen(
+          social: _FakeSocialService(),
+          training: TrainingService(),
+        ),
+        save: find.widgetWithText(FilledButton, 'Join'),
+      );
     });
 
     testWidgets('empty token shows hint instead of calling the RPC',

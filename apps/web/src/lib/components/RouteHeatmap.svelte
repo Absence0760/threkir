@@ -163,6 +163,9 @@
 	let clubPinsCount = $state(0);
 	let racePinsCount = $state(0);
 	let routePinsCount = $state(0);
+	// The last routes read failed: the list says so with Retry instead of "No
+	// routes here", and pins from an earlier read stay (issue #1374 FS-10).
+	let routesFailed = $state(false);
 
 	// Route-discovery lens. The chip bar swaps which routes the pin
 	// layer fetches (popular / official / featured / friends / hidden gems) so the
@@ -943,9 +946,7 @@
 			? `<img class="pin-avatar" src="${escapeHtml(d.avatarUrl)}" alt="" />`
 			: `<span class="pin-avatar pin-avatar-initials">${escapeHtml(initialsOf(d.name))}</span>`;
 		const memberLine =
-			d.memberCount === 1
-				? m('routeHeatmap.memberCountOne', { n: d.memberCount })
-				: m('routeHeatmap.memberCountMany', { n: d.memberCount });
+			m('routeHeatmap.memberCount', { n: d.memberCount });
 		const subtitle = d.locationLabel
 			? `<span class="pin-popup-location">📍 ${escapeHtml(d.locationLabel)}</span>`
 			: '';
@@ -1076,22 +1077,33 @@
 				maxLng: b.getEast(),
 				maxLat: b.getNorth(),
 			};
-			const [clubs, routes, races] = await Promise.all([
+			// Each layer settles on its own, so one failed read neither blanks the
+			// others nor reads as "nothing here".
+			const [clubsRes, routesRes, racesRes] = await Promise.allSettled([
 				fetchClubsInBbox(bbox),
 				fetchDiscoverableRoutesInBbox({ ...bbox, filter: routeFilter, bands: selectedBands }),
 				fetchUpcomingRacesInBbox({ ...bbox, officialOnly: routeFilter === 'official' }),
 			]);
-			clubPinsCount = clubs.length;
-			racePinsCount = races.length;
-			routePinsCount = routes.length;
-			routePins = routes;
-			// If geolocation has already bowed out, frame the view on this
-			// freshly-loaded data (no-op once the view has been framed).
-			fitToRoutePins();
+			routesFailed = routesRes.status === 'rejected';
+			for (const res of [clubsRes, routesRes, racesRes]) {
+				if (res.status === 'rejected') console.warn('heatmap layer refresh failed', res.reason);
+			}
+			if (routesRes.status === 'fulfilled') {
+				routePinsCount = routesRes.value.length;
+				routePins = routesRes.value;
+				// If geolocation has already bowed out, frame the view on this
+				// freshly-loaded data (no-op once the view has been framed).
+				fitToRoutePins();
+			}
+			const clubs = clubsRes.status === 'fulfilled' ? clubsRes.value : null;
+			const races = racesRes.status === 'fulfilled' ? racesRes.value : null;
+			const routes = routesRes.status === 'fulfilled' ? routesRes.value : null;
+			if (clubs) clubPinsCount = clubs.length;
+			if (races) racePinsCount = races.length;
 			const clubSrc = map.getSource(CLUB_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			clubSrc?.setData({
+			if (clubs) clubSrc?.setData({
 				type: 'FeatureCollection',
 				features: clubs.map((c) => ({
 					type: 'Feature',
@@ -1112,7 +1124,7 @@
 			const raceSrc = map.getSource(RACE_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			raceSrc?.setData({
+			if (races) raceSrc?.setData({
 				type: 'FeatureCollection',
 				features: races.map((r) => ({
 					type: 'Feature',
@@ -1130,7 +1142,7 @@
 			const routeSrc = map.getSource(ROUTE_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			routeSrc?.setData({
+			if (routes) routeSrc?.setData({
 				type: 'FeatureCollection',
 				features: routes.map((r) => ({
 					type: 'Feature',
@@ -1148,7 +1160,7 @@
 					geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
 				})),
 			});
-			lastUpdated = new Date();
+			if (!routesFailed) lastUpdated = new Date();
 		} catch (e) {
 			console.warn('heatmap pins refresh failed', e);
 		} finally {
@@ -1394,9 +1406,7 @@
 					formatDistance(r.distance_m),
 					r.surface,
 					r.run_count > 0
-						? r.run_count === 1
-							? m('routeHeatmap.runCountOne', { n: r.run_count })
-							: m('routeHeatmap.runCountMany', { n: r.run_count })
+						? m('routeHeatmap.runCount', { n: r.run_count })
 						: '',
 				]
 					.filter(Boolean)
@@ -1649,7 +1659,7 @@
 		<div class="results-header">
 			<span class="results-count">
 				<strong>{routePinsCount}</strong>
-				{routePinsCount === 1 ? m('routeHeatmap.routeWordOne') : m('routeHeatmap.routeWordMany')}
+				{m('routeHeatmap.routeWord', { n: routePinsCount })}
 			</span>
 			<span class="results-lens">
 				{activeFilterLabel}{#if selectedBands.length > 0} · {bandSummary}{/if}
@@ -1673,6 +1683,16 @@
 		</div>
 
 		<ul class="results-list" data-testid="discover-list">
+			{#if routesFailed && routePins.length > 0}
+				<!-- A failed reload keeps the routes already listed (L4) but says
+				     so, rather than leaving a stale list with no signal (FS-10). -->
+				<li class="results-empty results-error" role="alert" data-testid="discover-stale-error">
+					<span>{m('routeHeatmap.loadFailed')}</span>
+					<button type="button" class="btn btn-secondary btn-sm" onclick={() => void refreshPins()}>
+						{m('routeHeatmap.retry')}
+					</button>
+				</li>
+			{/if}
 			{#each routePins as r (r.id)}
 				{@const band = bandForDistance(r.distance_m)}
 				<li class="result-li" class:pinned={pinnedIds.has(r.id)}>
@@ -1706,7 +1726,7 @@
 							{#if band}<span class="result-band">{band.label}</span>{/if}
 							<span>{formatDistance(r.distance_m)}</span>
 							{#if r.surface}<span>· {routeSurfaceLabel(r.surface)}</span>{/if}
-							{#if r.run_count > 0}<span>· {r.run_count === 1 ? m('routeHeatmap.runCountOne', { n: r.run_count }) : m('routeHeatmap.runCountMany', { n: r.run_count })}</span>{/if}
+							{#if r.run_count > 0}<span>· {m('routeHeatmap.runCount', { n: r.run_count })}</span>{/if}
 						</span>
 					</button>
 					<a
@@ -1720,9 +1740,18 @@
 					</a>
 				</li>
 			{:else}
-				<li class="results-empty">
-					{m('routeHeatmap.emptyState')}
-				</li>
+				{#if routesFailed}
+					<li class="results-empty results-error" role="alert" data-testid="discover-load-error">
+						<span>{m('routeHeatmap.loadFailed')}</span>
+						<button type="button" class="btn btn-secondary btn-sm" onclick={() => void refreshPins()}>
+							{m('routeHeatmap.retry')}
+						</button>
+					</li>
+				{:else}
+					<li class="results-empty">
+						{m('routeHeatmap.emptyState')}
+					</li>
+				{/if}
 			{/each}
 		</ul>
 	</aside>
@@ -2201,6 +2230,13 @@
 		padding: 1.25rem var(--space-md);
 		font-size: 0.82rem;
 		color: var(--color-text-tertiary);
+	}
+	.results-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		color: var(--color-danger-text);
 	}
 
 	/* Narrow viewports: stack the sidebar above the map as a top sheet. */

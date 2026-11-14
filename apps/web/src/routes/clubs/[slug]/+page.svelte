@@ -4,6 +4,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -32,14 +33,14 @@
 		fetchClubPosts,
 		fetchPostReplies,
 		fetchPendingRequests,
-		fetchClubRoutes,
+		fetchClubRoutesWithError,
 		fetchRoutes,
 		setRouteClubId,
-		fetchClubTemplates,
+		fetchClubTemplatesWithError,
 		setPlanIsTemplate,
-		fetchClubSessionTemplates,
+		fetchClubSessionTemplatesWithError,
 		cloneSessionTemplate,
-		fetchClubGymRoutineTemplates,
+		fetchClubGymRoutineTemplatesWithError,
 		cloneGymRoutineTemplate,
 		approveMember,
 		bulkApproveMembers,
@@ -131,6 +132,9 @@
 		}
 	}
 	let clubRoutes = $state<Route[]>([]);
+	let routesError = $state<Error | null>(null);
+	let templatesError = $state<Error | null>(null);
+	let sectionRetrying = $state(false);
 	let transferableRoutes = $state<RouteListItem[]>([]);
 	let showTransferModal = $state(false);
 	let showEditModal = $state(false);
@@ -238,7 +242,7 @@
 			loading = false;
 			return;
 		}
-		const [up, pa, po, me, pe, rt, tp, st, gr] = await Promise.all([
+		const [up, pa, po, me, pe, rt, templates] = await Promise.all([
 			fetchUpcomingEvents(club.id),
 			fetchPastEvents(club.id, 6),
 			fetchClubPosts(club.id, 20),
@@ -246,10 +250,8 @@
 			club.viewer_role === 'owner' || club.viewer_role === 'admin'
 				? loadPending(club.id)
 				: Promise.resolve([]),
-			fetchClubRoutes(club.id),
-			fetchClubTemplates(club.id),
-			fetchClubSessionTemplates(club.id),
-			fetchClubGymRoutineTemplates(club.id)
+			fetchClubRoutesWithError(club.id),
+			loadTemplates(club.id)
 		]);
 		upcoming = up;
 		past = pa;
@@ -258,11 +260,52 @@
 		membersNext = me.next;
 		membersHasMore = me.next !== null;
 		pending = pe;
-		clubRoutes = rt;
-		clubTemplates = tp;
-		sessionTemplates = st;
-		gymRoutineTemplates = gr;
+		clubRoutes = rt.routes;
+		routesError = rt.error;
+		applyTemplates(templates);
 		loading = false;
+	}
+
+	// A failed Routes or Templates read is an error with Retry, never the
+	// "no routes yet" empty state (issue #1374 FS-3). Each tab fails alone.
+	async function loadTemplates(clubId: string) {
+		const [tp, st, gr] = await Promise.all([
+			fetchClubTemplatesWithError(clubId),
+			fetchClubSessionTemplatesWithError(clubId),
+			fetchClubGymRoutineTemplatesWithError(clubId)
+		]);
+		return { tp, st, gr };
+	}
+
+	function applyTemplates({ tp, st, gr }: Awaited<ReturnType<typeof loadTemplates>>) {
+		const error = tp.error ?? st.error ?? gr.error;
+		templatesError = error;
+		if (error) return;
+		clubTemplates = tp.plans;
+		sessionTemplates = st.plans;
+		gymRoutineTemplates = gr.routines;
+	}
+
+	async function retryRoutes() {
+		if (!club || sectionRetrying) return;
+		sectionRetrying = true;
+		try {
+			const rt = await fetchClubRoutesWithError(club.id);
+			routesError = rt.error;
+			if (!rt.error) clubRoutes = rt.routes;
+		} finally {
+			sectionRetrying = false;
+		}
+	}
+
+	async function retryTemplates() {
+		if (!club || sectionRetrying) return;
+		sectionRetrying = true;
+		try {
+			applyTemplates(await loadTemplates(club.id));
+		} finally {
+			sectionRetrying = false;
+		}
 	}
 
 	// The join queue is one admin card, so its failure is shown on that card
@@ -989,7 +1032,7 @@
 				{/if}
 				<p class="members-line">
 					<span class="material-symbols" aria-hidden="true">group</span>
-					{tr(club.member_count === 1 ? 'clubHome.memberCountOne' : 'clubHome.memberCountMany', { n: club.member_count })}
+					{tr('clubHome.memberCount', { n: club.member_count })}
 				</p>
 				{#if club.viewer_role === 'owner'}
 					<p class="role-line">
@@ -1381,9 +1424,9 @@
 										{#if post.reply_count === 0}
 											{tr('clubHome.reply')}
 										{:else if expandedThreads[post.id]}
-											{tr(post.reply_count === 1 ? 'clubHome.hideRepliesOne' : 'clubHome.hideRepliesMany', { n: post.reply_count })}
+											{tr('clubHome.hideReplies', { n: post.reply_count })}
 										{:else}
-											{tr(post.reply_count === 1 ? 'clubHome.repliesCountOne' : 'clubHome.repliesCountMany', { n: post.reply_count })}
+											{tr('clubHome.repliesCount', { n: post.reply_count })}
 										{/if}
 									</button>
 								</div>
@@ -1436,7 +1479,7 @@
 			{/if}
 		{:else if tab === 'events'}
 			{#if upcoming.length > 0}
-				<h2 class="section-title">{tr('clubHome.upcoming')}</h2>
+				<SectionHeader label={tr('clubHome.upcoming')} class="club-events-head" />
 				<div class="event-list">
 					{#each upcoming as evt (evt.id)}
 						<a href="/clubs/{club.slug}/events/{evt.id}" class="event-row">
@@ -1504,7 +1547,7 @@
 			{/if}
 
 			{#if past.length > 0}
-				<h2 class="section-title muted-title">{tr('clubHome.past')}</h2>
+				<SectionHeader label={tr('clubHome.past')} class="club-events-head club-past-head" />
 				<div class="event-list">
 					{#each past as evt (evt.id)}
 						<a href="/clubs/{club.slug}/events/{evt.id}" class="event-row past">
@@ -1540,7 +1583,24 @@
 					</button>
 				</div>
 			{/if}
-			{#if clubRoutes.length === 0}
+			{#if routesError && clubRoutes.length === 0}
+				<EmptyState
+					icon="cloud_off"
+					tone="danger"
+					headingLevel={3}
+					title={tr('clubHome.routesLoadFailed')}
+					text={errorCopy(routesError, tr, 'clubs/[slug]: routesError')}
+					role="alert"
+					data-testid="club-routes-error"
+				>
+					{#snippet actions()}
+						<button class="btn btn-primary" type="button" onclick={retryRoutes} disabled={sectionRetrying}>
+							<span class="material-symbols" aria-hidden="true">refresh</span>
+							{tr('clubHome.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{:else if clubRoutes.length === 0}
 				{@const clubId = club.id}
 				<EmptyState
 					icon="route"
@@ -1626,7 +1686,24 @@
 				</div>
 			{/if}
 
-			{#if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
+			{#if templatesError && clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
+				<EmptyState
+					icon="cloud_off"
+					tone="danger"
+					headingLevel={3}
+					title={tr('clubHome.templatesLoadFailed')}
+					text={errorCopy(templatesError, tr, 'clubs/[slug]: templatesError')}
+					role="alert"
+					data-testid="club-templates-error"
+				>
+					{#snippet actions()}
+						<button class="btn btn-primary" type="button" onclick={retryTemplates} disabled={sectionRetrying}>
+							<span class="material-symbols" aria-hidden="true">refresh</span>
+							{tr('clubHome.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{:else if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
 				<EmptyState
 					icon="list_alt"
 					headingLevel={3}
@@ -2418,15 +2495,11 @@
 		background: var(--color-danger-light);
 	}
 
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: var(--space-lg) 0 var(--space-sm) 0;
+	:global(.club-events-head) {
+		margin-top: var(--space-lg);
 	}
 
-	.muted-title {
+	:global(.club-events-head.club-past-head) {
 		margin-top: var(--space-xl);
 	}
 

@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.',
+						'Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Privacidade e partilha**, no separador **Tu**.',
 						'Para alterar uma única corrida mais tarde, abra-a e toque em **Privado** ou **Público** por baixo do título. Antes de tornar uma corrida pública, pedimos confirmação e mostramos o que as suas zonas de privacidade vão esconder.',
 					],
 				},
@@ -59,7 +59,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'**Transferir ficheiro completo da conta** (no telemóvel, **Exportação da conta**): tudo o que guardamos sobre si, incluindo conversas com o treinador, mensagens, integrações e contactos de segurança, num único zip. É gerado no nosso servidor, por isso pode fechar a página e voltar mais tarde para o obter. Uma exportação concluída é mantida durante 7 dias.',
-						'**Transferir backup completo** (no telemóvel, **Backup completo**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de um backup**.',
+						'**Transferir cópia de segurança completa** (no telemóvel, **Cópia de segurança completa**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de uma cópia de segurança**.',
 						'**Exportação na nuvem (zip GPX)**: um ficheiro GPX por corrida, com frequência cardíaca, pronto a importar noutras apps. As contas gratuitas podem exportar duas vezes por hora; as contas Pro, oito vezes.',
 						'**Exportar todas as corridas (CSV)** (no telemóvel, **Exportar corridas como CSV**): uma linha por corrida para uma folha de cálculo, sem trajetos GPS.',
 					],
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
-		's1.b0.i0': '7b3a2d8b5b822576',
+		's1.b0.i0': 'bf8692c8ac6194c3',
 		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',

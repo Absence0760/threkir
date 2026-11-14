@@ -30,7 +30,7 @@ Since 2026-11-11 the release workflow uploads to the **Internal track** and then
 
 1. **Pay the $25 developer registration fee.** One time, per Google account. **The login identity is a dedicated Gmail** (e.g. `threkir.app@gmail.com`), **not** a branded `@threkir.com` address — see § Account identity below for why. Set the Play Console *contact* addresses to `google@` / `support@` / `privacy@threkir.com` so the domain still shows up on the operator-facing side.
 2. **Create the app.** Play Console → Create app. Name, default language (en-GB), Type: App, Free.
-3. **Fill the Store listing.** Short description, long description, screenshots (need at least 2 phone screenshots, 1 7"+ tablet, 1 10"+ tablet for newer Play guidelines), feature graphic (1024×500 PNG — committed at `assets/feature-graphic.png`, regenerate from the SVG source with `assets/gen-feature-graphic.sh`), app icon (512×512 32-bit PNG — committed at `assets/play-store-icon-512.png`, regenerated with the launcher icons by `assets/gen-icons.sh`).
+3. **Fill the Store listing.** Short description, long description, screenshots (need at least 2 phone screenshots, 1 7"+ tablet, 1 10"+ tablet for newer Play guidelines; the phone set is generated, see below), feature graphic (1024×500 PNG — committed at `assets/feature-graphic.png`, regenerate from the SVG source with `assets/gen-feature-graphic.sh`), app icon (512×512 32-bit PNG — committed at `assets/play-store-icon-512.png`, regenerated with the launcher icons by `assets/gen-icons.sh`).
 4. **Privacy policy URL.** Required for any app that touches location. Host at `threkir.com/privacy` — see § Privacy policy below.
 5. **App content questionnaire.** Click through every "Privacy", "Ads", "Target audience", "Data safety" form. **Data safety is non-trivial** — see § Data safety below.
 6. **App access.** Provide test credentials (`runner@test.com` / `testtest` against a *staging* Supabase project — never production seed). The Play review team uses these to access functionality behind sign-in.
@@ -39,6 +39,16 @@ Since 2026-11-11 the release workflow uploads to the **Internal track** and then
 9. **Set up the "Internal testing" track.** Add at least 1 internal tester email so the link is live.
 
 ---
+
+### Phone screenshots — generated, then uploaded by hand
+
+The phone screenshots for both stores come from the app itself, not from a design tool ([assets/store/README.md](../../assets/store/README.md), issue #1375):
+
+1. Run **Actions → Store screenshots → Run workflow** on the commit you're listing. It captures Today, a run's detail, the training plan (the one light panel) and the coach on an emulator signed in to a seeded local demo account. It then composes captioned panels at 1080x1920 for Play and 1320x2868 for the App Store's 6.9" slot.
+2. Download the `store-screenshots-panels` artifact and look at every panel. A wrong screen means a layout change moved something; fix `apps/mobile_android/integration_test/store/store_selectors.dart` and re-run. Don't edit the images.
+3. Upload `en/play-phone/*` under Phone screenshots on the Play Console main store listing, and `en/appstore-6.9/*` under the App Store Connect version's 6.9" Display, both in file-name order. Captions are English only today. A locale is one more `assets/store/captions/<locale>.json`.
+
+Tablet screenshots are not generated yet.
 
 ## Account identity — dedicated Gmail login, threkir.com contact addresses
 
@@ -126,7 +136,7 @@ Lets the workflow upload an `.aab` without a human in the loop:
 5. Generate a JSON key for the service account (Service Accounts → … → Manage keys → Add key → JSON).
 6. Paste the entire JSON into the GitHub Secret `PLAY_SERVICE_ACCOUNT_JSON`.
 
-The Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) uses the same secret with no extra grant: Wear OS is a form factor of this same app, `com.threkir.app` (decisions § 2480), and its bundle goes to the Wear OS internal track, which "Release apps to testing tracks" already covers. It stops there; Wear OS production is promoted by hand in Play Console.
+The Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) uses the same secret with no extra grant: Wear OS is a form factor of this same app, `com.threkir.app` (decisions § 2529), and its bundle goes to the Wear OS internal track, which "Release apps to testing tracks" already covers. It stops there; Wear OS production is promoted by hand in Play Console.
 
 The daily rollout job reads its own copy of this secret from the reviewer-less `play-rollout` environment (restricted to `main`), because a cron job on `production` would wait every day for an approval nobody is watching for.
 

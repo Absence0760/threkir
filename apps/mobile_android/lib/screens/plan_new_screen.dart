@@ -33,6 +33,7 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/confirm_discard.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/plan_import_sheet.dart';
 import '../widgets/plan_overlap_dialog.dart';
@@ -262,6 +263,30 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   // race the new description no longer mentions; a date the runner picked by
   // hand is left alone.
   DateTime? _aiRaceStart;
+
+  /// The form as it opened, presets and default name applied; Back asks
+  /// before throwing away anything that differs from it (issue #1374 NS-6).
+  String? _initialSnapshot;
+
+  String _snapshot() => [
+    _nameCtrl.text,
+    _goalHoursCtrl.text,
+    _goalMinutesCtrl.text,
+    _goalSecondsCtrl.text,
+    _recent5kMinCtrl.text,
+    _recent5kSecCtrl.text,
+    _weekOverrideCtrl.text,
+    _aiCtrl.text,
+    _ultraDistanceCtrl.text,
+    _goal.name,
+    _ultraChoice ?? '',
+    _startDate.toIso8601String(),
+    _daysPerWeek,
+    _recent5kConfirmed,
+    _beginnerWalkRun,
+    _startingPoint.name,
+    _easeBack,
+  ].join('\u0000');
 
   /// The race day the dates were preset around and the race's name: the plan
   /// ends on that day with the race as its one A race (#1294).
@@ -651,14 +676,19 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       name: raceName == null || raceName.isEmpty
           ? null
           : raceName.length > cap
-              ? raceName.substring(0, cap)
-              : raceName,
+          ? raceName.substring(0, cap)
+          : raceName,
     );
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _defaultName();
+    _initialSnapshot ??= _snapshot();
+  }
+
+  void _defaultName() {
     // When the wizard opens preselected to a goal (the onboarding "create my
     // training plan" nudge) the name field would otherwise be empty, leaving
     // the Create button silently disabled on arrival — a dead-end tap. Seed a
@@ -968,8 +998,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             startDate: _startDate,
             daysPerWeek: _daysPerWeek,
             generated: preview,
-            raceListingId:
-                _racePreset?.ok == true ? widget.raceListingId : null,
+            raceListingId: _racePreset?.ok == true
+                ? widget.raceListingId
+                : null,
             onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
@@ -1053,11 +1084,21 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             !_beginnerWalkRun
         ? goalAheadOfRecentRuns(_goalDistanceM, _goalTimeSec, _efforts)
         : null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planNewTitle)),
-      body: ListView(
+    return DiscardGuard(
+      isDirty: () =>
+          _initialSnapshot != null && _snapshot() != _initialSnapshot,
+      isBusy: () => _busy || _cloning || _creatingStarter,
+      child: EditorPage(
+        title: l10n.planNewTitle,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
+        save: EditorSave(
+          key: const Key('plan-new-create'),
+          label: _busy ? l10n.planNewCreating : l10n.planNewCreate,
+          busy: _busy,
+          onPressed: canCreate ? _submit : null,
+        ),
+        status: _actionStatus(theme, l10n, preview, tag),
+        fields: [
           if (_aiPlanAvailable) ...[
             _aiCard(theme, l10n),
             const SizedBox(height: 12),
@@ -1067,9 +1108,16 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           Row(
             children: [
               const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(l10n.planNewBuildOwn, style: muted),
+              Flexible(
+                flex: 4,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    l10n.planNewBuildOwn,
+                    style: muted,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
               const Expanded(child: Divider()),
             ],
@@ -1079,100 +1127,99 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             Text(raceNote, key: const Key('plan-new-race-note'), style: muted),
             const SizedBox(height: 12),
           ],
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SectionLabel(l10n.planNewStartingPoint),
-                  RadioGroup<_StartingPoint>(
-                    groupValue: _startingPoint,
-                    onChanged: (v) {
-                      if (v != null) setState(() => _setStartingPoint(v));
-                    },
-                    child: Column(
-                      children: [
-                        for (final (sp, title, hint) in [
-                          (
-                            _StartingPoint.newRunner,
-                            l10n.planNewStartingPointNew,
-                            l10n.planNewStartingPointNewHint,
-                          ),
-                          (
-                            _StartingPoint.building,
-                            l10n.planNewStartingPointBuilding,
-                            l10n.planNewStartingPointBuildingHint,
-                          ),
-                          (
-                            _StartingPoint.race,
-                            l10n.planNewStartingPointRace,
-                            l10n.planNewStartingPointRaceHint,
-                          ),
-                        ])
-                          RadioListTile<_StartingPoint>(
-                            key: Key('plan-new-starting-${sp.name}'),
-                            value: sp,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(title),
-                            subtitle: Text(hint),
-                          ),
-                      ],
-                    ),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionLabel(l10n.planNewStartingPoint),
+                RadioGroup<_StartingPoint>(
+                  groupValue: _startingPoint,
+                  onChanged: (v) {
+                    if (v != null) setState(() => _setStartingPoint(v));
+                  },
+                  child: Column(
+                    children: [
+                      for (final (sp, title, hint) in [
+                        (
+                          _StartingPoint.newRunner,
+                          l10n.planNewStartingPointNew,
+                          l10n.planNewStartingPointNewHint,
+                        ),
+                        (
+                          _StartingPoint.building,
+                          l10n.planNewStartingPointBuilding,
+                          l10n.planNewStartingPointBuildingHint,
+                        ),
+                        (
+                          _StartingPoint.race,
+                          l10n.planNewStartingPointRace,
+                          l10n.planNewStartingPointRaceHint,
+                        ),
+                      ])
+                        RadioListTile<_StartingPoint>(
+                          key: Key('plan-new-starting-${sp.name}'),
+                          value: sp,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(title),
+                          subtitle: Text(hint),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _nameCtrl,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewNameLabel,
-                      hintText: l10n.planNewNameHint,
-                      helperText: l10n.planNewNameHelp,
-                      helperMaxLines: 3,
-                      errorText: _nameTouched && nameEmpty
-                          ? l10n.planNewNameRequired
-                          : null,
-                    ),
-                    maxLength: columnLength('training_plans.name'),
-                    // Re-evaluate the Create button's enabled state as the
-                    // name is typed.
-                    onChanged: (_) => setState(() => _nameTouched = true),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameCtrl,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: l10n.planNewNameLabel,
+                    hintText: l10n.planNewNameHint,
+                    helperText: l10n.planNewNameHelp,
+                    helperMaxLines: 3,
+                    errorText: _nameTouched && nameEmpty
+                        ? l10n.planNewNameRequired
+                        : null,
                   ),
-                  if (_showGoalRace) ...[
-                    const SizedBox(height: 12),
-                    _SectionLabel(l10n.planNewGoalRace),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        for (final (value, label) in [
-                          for (final g in const [
-                            GoalEvent.distance5k,
-                            GoalEvent.distance10k,
-                            GoalEvent.distanceHalf,
-                            GoalEvent.distanceFull,
-                          ])
-                            (goalEventDbValue(g), goalEventLabel(l10n, g)),
-                          for (final p in kUltraPresets)
-                            (p.id, _kUltraLabels[p.id]!),
-                          (_kUltraOther, l10n.planNewUltraOther),
+                  maxLength: columnLength('training_plans.name'),
+                  // Re-evaluate the Create button's enabled state as the
+                  // name is typed.
+                  onChanged: (_) => setState(() => _nameTouched = true),
+                ),
+                if (_showGoalRace) ...[
+                  const SizedBox(height: 12),
+                  _SectionLabel(l10n.planNewGoalRace),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final (value, label) in [
+                        for (final g in const [
+                          GoalEvent.distance5k,
+                          GoalEvent.distance10k,
+                          GoalEvent.distanceHalf,
+                          GoalEvent.distanceFull,
                         ])
-                          ChoiceChip(
-                            key: Key('plan-new-goal-$value'),
-                            label: Text(label),
-                            selected:
-                                (_ultraChoice ?? goalEventDbValue(_goal)) ==
-                                value,
-                            onSelected: (_) =>
-                                setState(() => _onGoalChanged(value)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(l10n.planNewGoalRaceHint, style: muted),
-                  ],
+                          (goalEventDbValue(g), goalEventLabel(l10n, g)),
+                        for (final p in kUltraPresets)
+                          (p.id, _kUltraLabels[p.id]!),
+                        (_kUltraOther, l10n.planNewUltraOther),
+                      ])
+                        ChoiceChip(
+                          key: Key('plan-new-goal-$value'),
+                          label: Text(label),
+                          selected:
+                              (_ultraChoice ?? goalEventDbValue(_goal)) ==
+                              value,
+                          onSelected: (_) =>
+                              setState(() => _onGoalChanged(value)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(l10n.planNewGoalRaceHint, style: muted),
+                ],
+                const SizedBox(height: 16),
+                FieldColumn(children: [
                   if (_showGoalRace && _ultraChoice != null) ...[
-                    const SizedBox(height: 12),
                     TextField(
                       key: const Key('plan-new-ultra-distance'),
                       controller: _ultraDistanceCtrl,
@@ -1203,7 +1250,6 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       },
                     ),
                   ],
-                  const SizedBox(height: 16),
                   InkWell(
                     key: const Key('plan-new-start-date'),
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -1220,284 +1266,241 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       child: Text(formatDateMed(_startDate, tag)),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionLabel(l10n.planNewDaysPerWeek),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                ]),
+                const SizedBox(height: 12),
+                _SectionLabel(l10n.planNewDaysPerWeek),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final n in _dayOptions)
+                      ChoiceChip(
+                        key: Key('plan-new-days-$n'),
+                        label: Text(l10n.planNewDaysOption(n)),
+                        selected: _daysPerWeek == n,
+                        onSelected: (_) => setState(() => _daysPerWeek = n),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _beginnerWalkRun
+                      ? l10n.planNewDaysPerWeekWalkRunHint
+                      : l10n.planNewDaysPerWeekHint,
+                  style: muted,
+                ),
+                if (_showGoalTime) ...[
+                  const SizedBox(height: 16),
+                  _SectionLabel(l10n.planNewGoalTimeSection),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final n in _dayOptions)
-                        ChoiceChip(
-                          key: Key('plan-new-days-$n'),
-                          label: Text(l10n.planNewDaysOption(n)),
-                          selected: _daysPerWeek == n,
-                          onSelected: (_) => setState(() => _daysPerWeek = n),
+                      Expanded(
+                        child: _numField(
+                          _goalHoursCtrl,
+                          (v) => setState(() => _goalHours = v),
+                          0,
+                          raceGoalMaxHours,
+                          labelText: l10n.planNewHoursLabel,
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _goalMinutesCtrl,
+                          (v) => setState(() => _goalMinutes = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewMinutesLabel,
+                          key: const Key('planNewGoalMinutes'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _goalSecondsCtrl,
+                          (v) => setState(() => _goalSeconds = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewSecondsLabel,
+                          last: true,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _beginnerWalkRun
-                        ? l10n.planNewDaysPerWeekWalkRunHint
-                        : l10n.planNewDaysPerWeekHint,
-                    style: muted,
-                  ),
-                  if (_showGoalTime) ...[
-                    const SizedBox(height: 16),
-                    _SectionLabel(l10n.planNewGoalTimeSection),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _numField(
-                            _goalHoursCtrl,
-                            (v) => setState(() => _goalHours = v),
-                            0,
-                            raceGoalMaxHours,
-                            labelText: l10n.planNewHoursLabel,
-                          ),
+                  Text(l10n.planNewGoalTimeHint, style: muted),
+                  if (goalAhead != null) ...[
+                    const SizedBox(height: 8),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        l10n.planNewGoalAheadOfRecent(
+                          fmtHms(goalAhead.round()),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _goalMinutesCtrl,
-                            (v) => setState(() => _goalMinutes = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewMinutesLabel,
-                            key: const Key('planNewGoalMinutes'),
-                          ),
+                        key: const Key('plan-new-goal-ahead'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _goalSecondsCtrl,
-                            (v) => setState(() => _goalSeconds = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewSecondsLabel,
-                            last: true,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(l10n.planNewGoalTimeHint, style: muted),
-                    if (goalAhead != null) ...[
-                      const SizedBox(height: 8),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          l10n.planNewGoalAheadOfRecent(
-                            fmtHms(goalAhead.round()),
-                          ),
-                          key: const Key('plan-new-goal-ahead'),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                  ],
+                ],
+                if (_startingPoint != _StartingPoint.newRunner) ...[
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    value: _beginnerWalkRun,
+                    onChanged: (v) => setState(() => _setWalkRun(v ?? false)),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(l10n.planNewBeginnerTitle),
+                    subtitle: Text(l10n.planNewBeginnerSubtitle),
+                  ),
+                ],
+                if (!_beginnerWalkRun) ...[
+                  const SizedBox(height: 12),
+                  ..._recoveryBlock(theme, l10n),
+                ],
+                // A walk-run plan is duration-based intervals: its paces are
+                // not anchored on a 5K time, and a runner who has never run
+                // has no recent 5K to enter.
+                if (_showRecent5k) ...[
+                  const SizedBox(height: 12),
+                  _SectionLabel(l10n.planNewRecent5kSection),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _numField(
+                          _recent5kMinCtrl,
+                          (v) => setState(() => _recent5kMin = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewMinutesLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _recent5kSecCtrl,
+                          (v) => setState(() => _recent5kSec = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewSecondsLabel,
+                          last: true,
                         ),
                       ),
                     ],
-                  ],
-                  if (_startingPoint != _StartingPoint.newRunner) ...[
-                    const SizedBox(height: 12),
-                    CheckboxListTile(
-                      value: _beginnerWalkRun,
-                      onChanged: (v) => setState(() => _setWalkRun(v ?? false)),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text(l10n.planNewBeginnerTitle),
-                      subtitle: Text(l10n.planNewBeginnerSubtitle),
-                    ),
-                  ],
-                  if (!_beginnerWalkRun) ...[
-                    const SizedBox(height: 12),
-                    ..._recoveryBlock(theme, l10n),
-                  ],
-                  // A walk-run plan is duration-based intervals: its paces are
-                  // not anchored on a 5K time, and a runner who has never run
-                  // has no recent 5K to enter.
-                  if (_showRecent5k) ...[
-                    const SizedBox(height: 12),
-                    _SectionLabel(l10n.planNewRecent5kSection),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _numField(
-                            _recent5kMinCtrl,
-                            (v) => setState(() => _recent5kMin = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewMinutesLabel,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _recent5kSecCtrl,
-                            (v) => setState(() => _recent5kSec = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewSecondsLabel,
-                            last: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    MetricSentence(
-                      metric: Metric.riegel,
-                      sentence: 'plan',
-                      style: muted,
-                    ),
-                    if (widget.initialRecent5kSec != null &&
-                        _recent5kTotal == widget.initialRecent5kSec &&
-                        !_recent5kConfirmed)
-                      Padding(
-                        key: const Key('plan-new-recent5k-suggested'),
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(l10n.planNewRecent5kSuggested,
-                            style: muted),
-                      ),
-                    if (_recent5kComplete)
-                      SwitchListTile(
-                        key: const Key('plan-new-recent5k-confirm'),
-                        value: _recent5kConfirmed,
-                        onChanged: (v) =>
-                            setState(() => _recent5kConfirmed = v),
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.planNewRecent5kConfirm),
-                        subtitle: Text(l10n.planNewRecent5kConfirmHint),
-                      ),
-                    if (_recent5kNeedsConfirm)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          l10n.planNewRecent5kWarning,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
-                  const SizedBox(height: 16),
-                  _numField(
-                    _weekOverrideCtrl,
-                    (v) => setState(() => _weekOverride = v),
-                    4,
-                    24,
-                    labelText: l10n.planNewOverrideLabel(
-                      _beginnerWalkRun
-                          ? walkRunDefaultWeeks()
-                          : defaultPlanWeeks(_goal, _goalDistanceM),
-                    ),
-                    helperText: l10n.planNewOverrideHelp,
-                    last: true,
                   ),
+                  const SizedBox(height: 4),
+                  MetricSentence(
+                    metric: Metric.riegel,
+                    sentence: 'plan',
+                    style: muted,
+                  ),
+                  if (widget.initialRecent5kSec != null &&
+                      _recent5kTotal == widget.initialRecent5kSec &&
+                      !_recent5kConfirmed)
+                    Padding(
+                      key: const Key('plan-new-recent5k-suggested'),
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l10n.planNewRecent5kSuggested,
+                        style: muted,
+                      ),
+                    ),
+                  if (_recent5kComplete)
+                    SwitchListTile(
+                      key: const Key('plan-new-recent5k-confirm'),
+                      value: _recent5kConfirmed,
+                      onChanged: (v) =>
+                          setState(() => _recent5kConfirmed = v),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(l10n.planNewRecent5kConfirm),
+                      subtitle: Text(l10n.planNewRecent5kConfirmHint),
+                    ),
+                  if (_recent5kNeedsConfirm)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l10n.planNewRecent5kWarning,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                 ],
-              ),
+                const SizedBox(height: 16),
+                _numField(
+                  _weekOverrideCtrl,
+                  (v) => setState(() => _weekOverride = v),
+                  4,
+                  24,
+                  labelText: l10n.planNewOverrideLabel(
+                    _beginnerWalkRun
+                        ? walkRunDefaultWeeks()
+                        : defaultPlanWeeks(_goal, _goalDistanceM),
+                  ),
+                  helperText: l10n.planNewOverrideHelp,
+                  last: true,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
           if (preview != null) _buildPreview(theme, l10n, preview),
         ],
       ),
-      bottomNavigationBar: _actionBar(theme, l10n, preview, canCreate, tag),
     );
   }
 
-  /// Cancel and Create, pinned under the form so neither scrolls out of
-  /// sight, with the plan's length and end date beside them and a create
-  /// failure announced right above.
-  Widget _actionBar(
+  /// Above the pinned Create: the plan's length and end date, and a create
+  /// failure announced where it cannot scroll out of sight.
+  Widget? _actionStatus(
     ThemeData theme,
     AppLocalizations l10n,
     GeneratedPlan? preview,
-    bool canCreate,
     String tag,
   ) {
     final error = _error;
-    return Material(
-      elevation: 3,
-      color: theme.colorScheme.surfaceContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (error != null)
-                Semantics(
-                  liveRegion: true,
-                  child: Container(
-                    key: const Key('plan-new-error'),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Text(
-                      error,
-                      style: TextStyle(
-                        color: theme.colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                ),
-              if (preview != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    l10n.planNewSummary(
-                      preview.weeks.length,
-                      formatDateMed(preview.endDate, tag),
-                    ),
-                    key: const Key('plan-new-summary'),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.planNewCancel),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: canCreate ? _submit : null,
-                      child: _busy
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(l10n.planNewCreating)),
-                              ],
-                            )
-                          : Text(l10n.planNewCreate),
-                    ),
-                  ),
-                ],
+    if (error == null && preview == null) return null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (error != null)
+          Semantics(
+            liveRegion: true,
+            child: Container(
+              key: const Key('plan-new-error'),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-            ],
+              child: Text(
+                error,
+                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              ),
+            ),
           ),
-        ),
-      ),
+        if (preview != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              l10n.planNewSummary(
+                preview.weeks.length,
+                formatDateMed(preview.endDate, tag),
+              ),
+              key: const Key('plan-new-summary'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1543,9 +1546,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,
     );
-    return Card(
+    // Flush: the ExpansionTile owns its insets and its header's ripple.
+    return ListCard.flush(
       key: const Key('plan-new-ai-card'),
-      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         // Open on arrival only when there is something in it already: a
         // description handed in from the Coach. Otherwise the form leads.
@@ -1676,70 +1679,73 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   /// as its main action.
   Widget _readyMadeCard(ThemeData theme, AppLocalizations l10n) {
     final busy = _creatingStarter || _cloning;
-    return Card(
+    return ListCard(
       key: const Key('plan-new-ready-made'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.planNewReadyMadeTitle,
-                style: theme.textTheme.titleSmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.planNewReadyMadeTitle,
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.planNewReadyMadeBody,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                key: const Key('plan-new-ready-made-open'),
+                onPressed: busy || _checkingOverlap ? null : _openReadyMade,
+                icon: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(
+                        Icons.library_books_outlined,
+                        size: AppIconSize.standard,
+                      ),
+                label: Text(
+                  _creatingStarter
+                      ? l10n.planNewStarterCreating
+                      : _cloning
+                      ? l10n.planNewTemplateCloning
+                      : l10n.planNewReadyMadeButton,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.planNewReadyMadeBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              TextButton.icon(
+                key: const Key('planNewImport'),
+                onPressed: _importPlan,
+                icon: const Icon(
+                  Icons.content_paste,
+                  size: AppIconSize.standard,
+                ),
+                label: Text(l10n.planNewImportButton),
               ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  key: const Key('plan-new-ready-made-open'),
-                  onPressed: busy || _checkingOverlap ? null : _openReadyMade,
-                  icon: busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.library_books_outlined,
-                          size: AppIconSize.standard),
-                  label: Text(
-                    _creatingStarter
-                        ? l10n.planNewStarterCreating
-                        : _cloning
-                        ? l10n.planNewTemplateCloning
-                        : l10n.planNewReadyMadeButton,
-                  ),
+              TextButton.icon(
+                key: const Key('planNewSeason'),
+                onPressed: _openSeason,
+                icon: const Icon(
+                  Icons.event_note,
+                  size: AppIconSize.standard,
                 ),
-                TextButton.icon(
-                  key: const Key('planNewImport'),
-                  onPressed: _importPlan,
-                  icon: const Icon(Icons.content_paste,
-                      size: AppIconSize.standard),
-                  label: Text(l10n.planNewImportButton),
-                ),
-                TextButton.icon(
-                  key: const Key('planNewSeason'),
-                  onPressed: _openSeason,
-                  icon: const Icon(Icons.event_note,
-                      size: AppIconSize.standard),
-                  label: Text(l10n.seasonPlanTitle),
-                ),
-              ],
-            ),
-          ],
-        ),
+                label: Text(l10n.seasonPlanTitle),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1840,113 +1846,110 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ),
           )
         : null;
-    return Card(
+    return ListCard(
       key: const Key('plan-new-preview'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.planNewPreviewTitle,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.planNewPreviewTitle,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            if (!isWalkRun) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 6,
-                children: [
-                  _pacePill(theme, l10n.planNewPaceEasy, p.paces.easy),
-                  _pacePill(theme, l10n.planNewPaceMarathon, p.paces.marathon),
-                  _pacePill(theme, l10n.planNewPaceTempo, p.paces.tempo),
-                  _pacePill(theme, l10n.planNewPaceInterval, p.paces.interval),
-                  _pacePill(theme, l10n.planNewPaceRep, p.paces.repetition),
-                ],
-              ),
-              if (p.pacesAreFallback) ...[
-                const SizedBox(height: 8),
-                Text(
-                  l10n.planNewPacesFallback,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+          ),
+          if (!isWalkRun) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              children: [
+                _pacePill(theme, l10n.planNewPaceEasy, p.paces.easy),
+                _pacePill(theme, l10n.planNewPaceMarathon, p.paces.marathon),
+                _pacePill(theme, l10n.planNewPaceTempo, p.paces.tempo),
+                _pacePill(theme, l10n.planNewPaceInterval, p.paces.interval),
+                _pacePill(theme, l10n.planNewPaceRep, p.paces.repetition),
               ],
-              if (p.vdot != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        metricText(
-                          l10n,
-                          Metric.vdot,
-                          variant: 'daniels',
-                          args: {
-                            'value': formatFixed(p.vdot!, 1, activeLocaleTag),
-                          },
-                        ),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+            ),
+            if (p.pacesAreFallback) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.planNewPacesFallback,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            if (p.vdot != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      metricText(
+                        l10n,
+                        Metric.vdot,
+                        variant: 'daniels',
+                        args: {
+                          'value': formatFixed(p.vdot!, 1, activeLocaleTag),
+                        },
+                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const MetricInfoButton(metric: Metric.vdot),
-                  ],
+                  ),
+                  const MetricInfoButton(metric: Metric.vdot),
+                ],
+              ),
+            ],
+          ],
+          if (returnMessage != null)
+            _note(
+              theme,
+              key: const Key('plan-new-return-note'),
+              title: l10n.planNewReturnTitle,
+              body: returnMessage,
+              children: [
+                SwitchListTile(
+                  key: const Key('plan-new-ease-back'),
+                  value: _easeBack,
+                  onChanged: (v) => setState(() => _easeBack = v),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.planNewReturnEaseBack),
+                ),
+                OutlinedButton(
+                  onPressed: () => setState(() => _setWalkRun(true)),
+                  child: Text(l10n.planNewReturnWalkRun),
                 ),
               ],
-            ],
-            if (returnMessage != null)
-              _note(
-                theme,
-                key: const Key('plan-new-return-note'),
-                title: l10n.planNewReturnTitle,
-                body: returnMessage,
-                children: [
-                  SwitchListTile(
-                    key: const Key('plan-new-ease-back'),
-                    value: _easeBack,
-                    onChanged: (v) => setState(() => _easeBack = v),
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(l10n.planNewReturnEaseBack),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => setState(() => _setWalkRun(true)),
-                    child: Text(l10n.planNewReturnWalkRun),
-                  ),
-                ],
-              )
-            else if (rampMessage != null)
-              _note(theme, title: l10n.planNewRampLabel, body: rampMessage)
-            else if (thinHistory != null)
-              _note(
-                theme,
-                key: const Key('plan-new-thin-history'),
-                title: l10n.planNewRampLabel,
-                body: thinHistory,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => setState(() => _setWalkRun(true)),
-                    child: Text(l10n.planNewThinHistoryWalkRun),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.planNewWeekOutline,
-                style: theme.textTheme.titleSmall,
-              ),
+            )
+          else if (rampMessage != null)
+            _note(theme, title: l10n.planNewRampLabel, body: rampMessage)
+          else if (thinHistory != null)
+            _note(
+              theme,
+              key: const Key('plan-new-thin-history'),
+              title: l10n.planNewRampLabel,
+              body: thinHistory,
+              children: [
+                OutlinedButton(
+                  onPressed: () => setState(() => _setWalkRun(true)),
+                  child: Text(l10n.planNewThinHistoryWalkRun),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            for (final w in p.weeks) _previewWeek(theme, l10n, w),
-          ],
-        ),
+          const SizedBox(height: 12),
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.planNewWeekOutline,
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final w in p.weeks) _previewWeek(theme, l10n, w),
+        ],
       ),
     );
   }
@@ -2000,10 +2003,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -2121,7 +2126,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         ),
       ];
     }
-    Widget hint(Key key, String text, String action, SettingsDestination to) =>
+    Widget hint(Key key, String text, String action, VoidCallback open) =>
         Padding(
           key: key,
           padding: const EdgeInsets.only(top: 4),
@@ -2135,7 +2140,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   minimumSize: const Size(0, 44),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => openSettings(to),
+                onPressed: open,
                 child: Text(action),
               ),
             ],
@@ -2171,14 +2176,14 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           const Key('plan-new-dob-hint'),
           l10n.planNewDobHintAbsent,
           l10n.planNewDobHintAbsentAction,
-          SettingsDestination.preferences,
+          () => openSettingsRow(PreferencesRow.dateOfBirth),
         )
       else if (_viewerDobState == HealthUseDobState.consentWithheld)
         hint(
           const Key('plan-new-dob-consent-hint'),
           l10n.planNewDobHintHealthData,
           l10n.planNewDobHintHealthDataAction,
-          SettingsDestination.bodyMetrics,
+          () => openSettings(SettingsDestination.bodyMetrics),
         ),
     ];
   }
@@ -2251,58 +2256,46 @@ class _ReadyMadePicker extends StatelessWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.planNewReadyMadeTitle, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  _SectionLabel(l10n.planNewReadyMadeBuiltIn),
-                  for (final p in starters)
-                    ListTile(
-                      key: Key('plan-new-starter-${p.id}'),
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event_note),
-                      title: Text(starterPlanName(l10n, p.id)),
-                      subtitle: Text(
-                        starterSummaryText(l10n, p.id) ?? '',
-                        style: muted,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pop(context, p),
-                    ),
-                  if (templates.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _SectionLabel(l10n.planNewReadyMadeClubs),
-                    for (final o in templates)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.groups_outlined),
-                        title: Text(o.template.name),
-                        subtitle: Text(o.clubName, style: muted),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pop(context, o),
-                      ),
-                  ],
-                ],
+    return SheetScaffold(
+      title: Text(l10n.planNewReadyMadeTitle),
+      scrollBody: false,
+      body: ListView(
+        shrinkWrap: true,
+        children: [
+          _SectionLabel(l10n.planNewReadyMadeBuiltIn),
+          for (final p in starters)
+            ListTile(
+              key: Key('plan-new-starter-${p.id}'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_note),
+              title: Text(starterPlanName(l10n, p.id)),
+              subtitle: Text(
+                starterSummaryText(l10n, p.id) ?? '',
+                style: muted,
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pop(context, p),
             ),
+          if (templates.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.planNewCancel),
+            _SectionLabel(l10n.planNewReadyMadeClubs),
+            for (final o in templates)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.groups_outlined),
+                title: Text(o.template.name),
+                subtitle: Text(o.clubName, style: muted),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(context, o),
               ),
-            ),
           ],
+        ],
+      ),
+      actions: Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.planNewCancel),
         ),
       ),
     );

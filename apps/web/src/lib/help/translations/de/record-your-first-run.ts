@@ -84,7 +84,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Distanz, Gesamtzeit, Bewegungszeit und Tempo.',
 						'Dein GPS-Track, aus dem Karte und Splits entstehen.',
-						'Höhe, Schritte und Herzfrequenz, wenn du einen Herzfrequenz-Brustgurt gekoppelt hast.',
+						'Höhe, Schritte und Herzfrequenz, wenn du einen Herzfrequenzgurt gekoppelt hast.',
 					],
 				},
 				{

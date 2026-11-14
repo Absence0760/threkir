@@ -1,5 +1,8 @@
 <script lang="ts">
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { goto } from '$app/navigation';
 	import {
@@ -55,22 +58,20 @@
 </svelte:head>
 
 <div class="library">
-	<header class="library-head">
-		<a class="back" href="/plans">{m('planLibrary.backToLibrary')}</a>
-		<h1>{m('planLibrary.heading')}</h1>
-		<p class="sub">{m('planLibrary.subheading')}</p>
-	</header>
+	<PageHeader
+		back={{ href: '/plans', label: m('planLibrary.backToLibrary') }}
+		title={m('planLibrary.heading')}
+		subtitle={m('planLibrary.subheading')}
+	/>
 
-	<label class="search">
-		<span class="visually-hidden">{m('planLibrary.searchAria')}</span>
-		<input
-			type="search"
+	<div class="search">
+		<AppSearchField
 			bind:value={query}
 			oninput={onSearchInput}
+			label={m('planLibrary.searchAria')}
 			placeholder={m('planLibrary.searchPlaceholder')}
-			aria-label={m('planLibrary.searchAria')}
 		/>
-	</label>
+	</div>
 
 	{#if loading && !loaded}
 		<p class="state">{m('planLibrary.loading')}</p>
@@ -89,19 +90,16 @@
 		<ul class="plan-grid" aria-busy={loading}>
 			{#each plans as p (p.id)}
 				<li>
-					<a class="plan-card" href="/plans/library/{p.id}">
-						<span class="plan-name">{p.name}{#if p.is_official}<OfficialBadge />{/if}</span>
-						<span class="plan-author">
-							{m('planLibrary.byAuthor', {
-								author: p.author_handle ?? m('planLibrary.anonymousAuthor'),
-							})}
-						</span>
-						<span class="plan-meta">
+					<ListCard class="plan-card" href="/plans/library/{p.id}" title={p.name} subtitle={m('planLibrary.byAuthor', { author: p.author_handle ?? m('planLibrary.anonymousAuthor') })}>
+						{#snippet badge()}{#if p.is_official}<OfficialBadge />{/if}{/snippet}
+						{#snippet meta()}
+							<span class="plan-meta">
 							<span class="chip">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
 							<span class="chip">{planLengthLabel(m, weeksOf(p), p.days_per_week)}</span>
-						</span>
-						<span class="plan-cta">{m('planLibrary.preview')}</span>
-					</a>
+							</span>
+						{/snippet}
+						{#snippet trailing()}<span class="plan-cta">{m('planLibrary.preview')}</span>{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -114,32 +112,9 @@
 		margin: 0 auto;
 		padding: 1rem;
 	}
-	.library-head {
-		margin-bottom: 1rem;
-	}
-	.back {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-	}
-	.library-head h1 {
-		margin: 0.25rem 0 0.25rem;
-		font-size: 1.4rem;
-	}
-	.sub {
-		margin: 0;
-		color: var(--color-text-secondary);
-	}
 	.search {
-		display: block;
+		display: flex;
 		margin-bottom: 1rem;
-	}
-	.search input {
-		width: 100%;
-		padding: 0.6rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.5rem;
-		font-size: 1rem;
 	}
 	.state {
 		text-align: center;
@@ -160,29 +135,6 @@
 		grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 		gap: 0.75rem;
 	}
-	.plan-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.75rem;
-		text-decoration: none;
-		color: inherit;
-		background: var(--color-surface);
-		transition: border-color var(--transition-fast);
-	}
-	.plan-card:hover {
-		border-color: var(--color-primary);
-	}
-	.plan-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.plan-author {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
 	.plan-meta {
 		display: flex;
 		flex-wrap: wrap;
@@ -201,16 +153,5 @@
 		font-size: 0.85rem;
 		font-weight: 600;
 		color: var(--color-primary);
-	}
-	.visually-hidden {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

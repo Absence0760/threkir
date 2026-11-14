@@ -12,7 +12,8 @@ If you object to a planned change you can:
 1. Email `privacy@threkir.com` ([live](mailto:privacy@threkir.com))
    before the activation date listed below — we will pause the rollout
    while we discuss your case.
-2. Delete your account via Settings → Account → Delete account before
+2. Delete your account via Settings → Account → Delete account (in the
+   mobile app: the You tab → Account → Delete account) before
    the activation date if no acceptable accommodation can be reached.
 
 The current canonical sub-processor list lives at

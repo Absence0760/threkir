@@ -245,7 +245,7 @@ See [local_testing.md](local_testing.md).
 
 ## Deploying to production
 
-See [deployment.md](deployment.md) — ships as the Wear OS form factor of the phone app's Play listing (`com.threkir.app`, decisions § 2480), signed with the phone's upload key, version codes offset past the phone's, generated store screenshots, observability, rollback, DR.
+See [deployment.md](deployment.md) — ships as the Wear OS form factor of the phone app's Play listing (`com.threkir.app`, decisions § 2529), signed with the phone's upload key, version codes offset past the phone's, generated store screenshots, observability, rollback, DR.
 
 Build and install on a Wear OS emulator (after `npm run dev:core` from the repo
 root starts the local stack + runs `adb reverse` for the watch):
@@ -890,7 +890,7 @@ Android string resources** — no custom framework, no in-app picker
 
 ## Testing convention
 
-Pure-JVM JUnit tests in `app/src/test/kotlin/com/runapp/watchwear/`. Run with `./gradlew testDebugUnitTest`. Current total: 717 tests across 70 files (measured 2026-09-03; the count is not gated and drifts fast). No Robolectric, no Compose UI test instrumentation — deliberate. The one exception is `ui/store/WearStoreScreenshotTest.kt`, which renders four screens under Robolectric (Roborazzi) to produce the Play store screenshots (`assets/store/wear/gen-wear-screenshots.sh`, decisions § 2480) and asserts nothing about them; it is a generator, not the place to test behaviour. The pattern when a load-bearing piece of logic is bound to an Android API (foreground service, OkHttp, Health Services, SensorEventListener, Compose):
+Pure-JVM JUnit tests in `app/src/test/kotlin/com/runapp/watchwear/`. Run with `./gradlew testDebugUnitTest`. Current total: 717 tests across 70 files (measured 2026-09-03; the count is not gated and drifts fast). No Robolectric, no Compose UI test instrumentation — deliberate. The one exception is `ui/store/WearStoreScreenshotTest.kt`, which renders four screens under Robolectric (Roborazzi) to produce the Play store screenshots (`assets/store/wear/gen-wear-screenshots.sh`, decisions § 2529) and asserts nothing about them; it is a generator, not the place to test behaviour. The pattern when a load-bearing piece of logic is bound to an Android API (foreground service, OkHttp, Health Services, SensorEventListener, Compose):
 
 1. **Extract the pure logic** into a file-level `internal fun` (or a `companion object` static when it must live on the host class). The Android-bound wrapper method delegates one-line to the helper.
 2. **Test the helper** in isolation against a JVM target. No Robolectric runner, no `androidx.compose.ui.test.*`.

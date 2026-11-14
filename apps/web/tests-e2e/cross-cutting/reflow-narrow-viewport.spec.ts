@@ -35,11 +35,13 @@ test.describe('no horizontal document scroll at 300 / 320 / 360 px', () => {
 			await acceptCookieConsent(context);
 		});
 
-		// /dashboard is the route the audit named; the rest are the other
+		// /dashboard is the route the audit named (its cards now split across
+		// Today and Progress, so both are swept); the rest are the other
 		// shapes the same sweep found — a card grid, a filter toolbar, a
 		// timeline, a settings shell, and the two split/grid editors.
 		for (const route of [
 			'/dashboard',
+			'/dashboard/progress',
 			'/runs',
 			'/routes',
 			'/segments',

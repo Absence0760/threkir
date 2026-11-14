@@ -158,7 +158,7 @@ const KEY_FIXTURES: Array<[flagged: boolean, key: string]> = [
 	// Same word, different value domain.
 	[false, 'plansPage.statusActive'],
 	[false, 'coachingAthlete.statusDone'],
-	[false, 'clubEvent.waitlistNoteOne'],
+	[false, 'clubEvent.waitlistNote'],
 	// Whole sentences, not names: "You're the owner" cannot be resolved
 	// through as a label, so it is not a second vocabulary.
 	[false, 'clubHome.viewerRoleOwner'],

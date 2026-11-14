@@ -6,9 +6,10 @@
 	// explains why a block is never drawn here).
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchFollowers, fetchFollowing } from '#lib/core/data.ts';
+	import { fetchFollowGraph } from '#lib/core/data.ts';
 	import { dmRecipientCandidates, filterDmRecipients, type DmRecipient } from '#lib/social/dm_recipients.ts';
 
 	interface Props {
@@ -37,8 +38,8 @@
 		loading = true;
 		loadFailed = false;
 		try {
-			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
+			const { followers, following } = await fetchFollowGraph(me);
+			candidates = dmRecipientCandidates(followers, following, me);
 		} catch {
 			// "Nobody to invite" and "couldn't find out who" are different answers.
 			candidates = [];
@@ -74,16 +75,7 @@
 	{:else if available.length === 0}
 		<p class="muted">{tr('groups.peopleEmpty')}</p>
 	{:else}
-		<label class="search">
-			<span class="material-symbols" aria-hidden="true">search</span>
-			<input
-				type="text"
-				bind:value={query}
-				placeholder={tr('groups.peopleSearch')}
-				aria-label={tr('groups.peopleSearch')}
-				data-testid="group-people-search"
-			/>
-		</label>
+		<AppSearchField bind:value={query} label={tr('groups.peopleSearch')} testid="group-people-search" />
 		<p class="count" aria-live="polite" data-testid="group-people-count">
 			{tr('groups.peopleSelected', { count: selected.length, max })}
 		</p>
@@ -126,31 +118,6 @@
 <style>
 	.muted {
 		color: var(--color-text-secondary);
-	}
-	.search {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-bg);
-	}
-	.search:focus-within {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
-	}
-	.search input {
-		flex: 1 1 auto;
-		min-width: 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		padding: 0.45rem 0;
-	}
-	.search input:focus-visible {
-		outline: none;
 	}
 	.count {
 		margin: var(--space-sm) 0 0;

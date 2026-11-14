@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' show DistanceUnit, Waypoint;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListCard, StatusPill;
 
 import '../goal_time.dart' show formatGoalTimeS;
 import '../l10n/gen/app_localizations.dart';
@@ -84,11 +85,8 @@ class PacingStrategySection extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: theme.dividerColor),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          child: ListCard.flush(
+            margin: EdgeInsets.zero,
             child: Column(
               children: [
                 _headerRow(theme, l10n),

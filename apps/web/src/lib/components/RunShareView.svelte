@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
 	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
@@ -223,7 +224,7 @@
 
 	{#if elevations.some((e) => e > 0)}
 		<section class="card">
-			<h2>{m('runShareView.elevationProfile')}</h2>
+			<SectionHeader label={m('runShareView.elevationProfile')} class="share-view-section-head" />
 			<ElevationProfile
 				{elevations}
 				totalGain={elevationGainM}
@@ -295,13 +296,8 @@
 		font-size: 1.25rem;
 	}
 
-	h2 {
-		font-size: 0.9rem;
-		font-weight: 600;
+	:global(.share-view-section-head) {
 		margin-bottom: var(--space-md);
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	.run-meta {

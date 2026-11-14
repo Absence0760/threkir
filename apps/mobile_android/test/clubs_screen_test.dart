@@ -104,6 +104,9 @@ Future<void> _pump(WidgetTester tester, SocialService social) {
   );
 }
 
+final _browseChip = find.descendant(
+    of: find.byKey(const Key('view-switch')), matching: find.text('Browse'));
+
 void main() {
   setUpAll(() {
     // ClubsScreen._load reads dotenv.env['MAPTILER_KEY']; without a
@@ -116,27 +119,103 @@ void main() {
     testWidgets('renders the Clubs app-bar title', (tester) async {
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      expect(find.text('Clubs'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Clubs'), findsOneWidget);
     });
 
-    testWidgets('renders the Browse / My clubs chip row', (tester) async {
+    testWidgets('Browse · My clubs is the view switch of the one FilterBar, '
+        'not chips', (tester) async {
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      expect(find.byType(ChoiceChipRow<int>), findsOneWidget);
-      expect(find.text('Browse'), findsOneWidget);
-      expect(find.text('My clubs'), findsOneWidget);
+      final bar = find.byKey(const ValueKey('clubs-filter-bar'));
+      expect(bar, findsOneWidget);
+      expect(
+          find.descendant(of: bar, matching: find.byType(ViewSwitch<int>)),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: _browseChip), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byType(ChoiceChip)),
+          findsNothing);
     });
 
-    testWidgets('starts on the My clubs tab — search field is hidden',
+    testWidgets('Join with invite code sits in the search row, not on a row '
+        'of its own, and the empty My clubs tab offers it too',
         (tester) async {
-      // Reason: returning users default to "My clubs" so they see the
-      // clubs they're already in. Browse-only widgets (the search
-      // TextField) must NOT render on first paint.
       await _pump(tester, _FakeSocial());
       await tester.pump();
+      final code = find.byKey(const ValueKey('clubs-join-with-code'));
+      expect(code, findsOneWidget);
+      expect(tester.getCenter(code).dy,
+          closeTo(tester.getCenter(find.byType(TextField)).dy, 1));
+      expect(find.widgetWithText(TextButton, 'Join with invite code'),
+          findsOneWidget);
+    });
+
+    testWidgets('starts on the My clubs tab, with My clubs\' own search',
+        (tester) async {
+      // Returning users default to "My clubs" so they see the clubs they're
+      // already in. Its search filters those; Browse's searches the catalogue.
+      await _pump(tester, _FakeSocial());
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Search your clubs'),
+          findsOneWidget);
       expect(find.widgetWithText(TextField, 'Search by name or location'),
           findsNothing);
     });
+
+    testWidgets('My clubs\' search narrows by name as it is typed, and a '
+        'search that matches none says so and clears', (tester) async {
+      final social = _FakeSocial(mine: [
+        _club(id: 'a', name: 'Morning Milers', slug: 'morning-milers'),
+        _club(id: 'b', name: 'Sunset Striders', slug: 'sunset-striders'),
+      ]);
+      await _pump(tester, social);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final field = find.widgetWithText(TextField, 'Search your clubs');
+      await tester.enterText(field, 'sunset');
+      await tester.pump();
+      expect(find.text('Sunset Striders'), findsOneWidget);
+      expect(find.text('Morning Milers'), findsNothing);
+      expect(social.lastSearchTerm, isNull,
+          reason: 'a filter over the loaded clubs, not a server search');
+
+      await tester.enterText(field, 'zzz');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('clubs-mine-no-match')), findsOneWidget);
+      expect(find.text('None of your clubs match your search'), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('clubs-mine-no-match')),
+          matching: find.text('Clear search')));
+      await tester.pump();
+      expect(find.text('Morning Milers'), findsOneWidget);
+      expect(find.text('Sunset Striders'), findsOneWidget);
+    });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('at 320 dp and ${scale}x the views, search and code button '
+          'fit, with nothing cut', (tester) async {
+        tester.view.physicalSize = const Size(320, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MediaQuery(
+            data: MediaQueryData(
+                size: const Size(320, 800),
+                textScaler: TextScaler.linear(scale)),
+            child: ClubsScreen(social: _FakeSocial(), training: TrainingService()),
+          ),
+        ));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final views = tester.getRect(find.byKey(const Key('view-switch')));
+        expect(views.left, greaterThanOrEqualTo(0));
+        final code =
+            tester.getRect(find.byKey(const ValueKey('clubs-join-with-code')));
+        expect(code.right, lessThanOrEqualTo(320));
+        expect(code.top, greaterThanOrEqualTo(views.bottom));
+      });
+    }
 
     testWidgets('renders the New club FAB with an add icon',
         (tester) async {
@@ -152,7 +231,7 @@ void main() {
       await _pump(tester, _FakeSocial());
       await tester.pump();
       // Tap the "Browse" segment.
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.widgetWithText(TextField, 'Search by name or location'),
           findsOneWidget);
@@ -164,7 +243,7 @@ void main() {
       final handle = tester.ensureSemantics();
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       // Semantics wrapper keeps the field named once the hint disappears on
       // typing (web parity: SocialClubs' aria-label).
@@ -252,7 +331,7 @@ void main() {
       await _pump(tester, _FakeSocial(mine: const [], browse: const []));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       // groups is the Browse empty glyph.
@@ -291,7 +370,7 @@ void main() {
       await _pump(tester, social);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
 
       await tester.enterText(
@@ -309,7 +388,7 @@ void main() {
       await _pump(tester, _FakeSocial());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       await tester.enterText(
           find.widgetWithText(TextField, 'Search by name or location'), term);
@@ -353,7 +432,7 @@ void main() {
       await _pump(tester, _ThrowingSocial());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.byType(ErrorState), findsOneWidget);
       expect(find.text('Set up your club'), findsNothing);
@@ -365,7 +444,7 @@ void main() {
       final social = _SlowSocial();
       await _pump(tester, social);
       await tester.pump();
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.byType(ListSkeleton), findsOneWidget);
       expect(find.text('Set up your club'), findsNothing);

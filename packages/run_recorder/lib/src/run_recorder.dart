@@ -118,6 +118,11 @@ List<LapSplit> lapsFromCanonicalJson(List<dynamic> json, {DateTime? startedAt}) 
   return out;
 }
 
+/// Horizontal accuracy, in metres, past which [RunRecorder] drops a fix by
+/// default. The idle Run page grades its pre-run GPS status against the same
+/// figure, so "GPS ready" there means the fixes this recorder will keep.
+const double kDefaultAccuracyGateMetres = 20;
+
 /// Manages a live GPS recording session: opens the position stream, filters
 /// noise, accumulates distance, and emits [RunSnapshot]s to the UI. Survives
 /// a missing/revoked GPS signal — [prepare] flips [prepared] even when the
@@ -346,7 +351,7 @@ class RunRecorder {
   List<double>? _routeCumulativeM;
   double _trackThresholdMetres = 3;
   double _maxSpeedMps = 10;
-  double _accuracyGateMetres = 20;
+  double _accuracyGateMetres = kDefaultAccuracyGateMetres;
   // A hop that fails the <100 m one-hop cap but spans at least this many
   // seconds is treated as a real GPS gap (fixes dropped under cover / in a
   // tunnel / while backgrounded, or a batch), not a corrupt teleport: the
@@ -591,7 +596,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
-    double accuracyGateMetres = 20,
+    double accuracyGateMetres = kDefaultAccuracyGateMetres,
     double? initialStrideM,
   }) async {
     if (_disposed) {
@@ -969,7 +974,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
-    double accuracyGateMetres = 20,
+    double accuracyGateMetres = kDefaultAccuracyGateMetres,
     double? initialStrideM,
   }) async {
     await prepare(
@@ -1020,7 +1025,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
-    double accuracyGateMetres = 20,
+    double accuracyGateMetres = kDefaultAccuracyGateMetres,
     double? initialStrideM,
     bool trackComplete = false,
   }) async {
@@ -1154,7 +1159,7 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    double accuracyGateMetres = 20,
+    double accuracyGateMetres = kDefaultAccuracyGateMetres,
     double? initialStrideM,
     bool trackComplete = false,
   }) {
@@ -1187,7 +1192,7 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    double accuracyGateMetres = 20,
+    double accuracyGateMetres = kDefaultAccuracyGateMetres,
     double? initialStrideM,
   }) {
     _startTime = null;

@@ -14,7 +14,7 @@ import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
 import { formatDecimal } from './number';
 import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
-import { formatShortDistance } from './short_distance';
+import { formatCompactDistance, formatShortDistance } from './short_distance';
 import { formatElevationIn, formatStrideLengthIn } from './elevation';
 import {
 	type WeightUnit,
@@ -142,6 +142,11 @@ export function fmtKm(metres: number | null | undefined, digits = 1): string {
 	const loc = currentLocale();
 	if (unit.value === 'mi') return `${formatDecimal(metres / METRES_PER_MILE, digits, loc)} mi`;
 	return `${formatDecimal(metres / 1000, digits, loc)} km`;
+}
+
+/// A distance for a narrow grid cell: "15 km", "6.4 mi" (`formatCompactDistance`).
+export function fmtCompactDistance(metres: number): string {
+	return formatCompactDistance(metres, unit.value, currentLocale());
 }
 
 /// Elevation gain label: `Xm` / `Xft` with the unit baked in. Used

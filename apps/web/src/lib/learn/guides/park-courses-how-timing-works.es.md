@@ -4,7 +4,7 @@ description: Cómo un recorrido permanente en un parque cronometra tu carrera, p
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-08
+updated: 2026-11-13
 cta:
   feature: parks
 ---
@@ -35,9 +35,15 @@ Cada clasificación tiene una temporada: el año natural **en la zona horaria de
 
 Una nueva temporada cada enero da a todos una nueva oportunidad de clasificarse, y la clasificación histórica guarda los récords.
 
+## Una clasificación nueva cada mes
+
+Las dos clasificaciones también van **mes a mes**, en la zona horaria del parque: desde la medianoche del día 1 hasta la medianoche del día 1 del mes siguiente, en la hora del parque. Una carrera a las 23:30 del 31 de octubre en un parque de Virginia cuenta para octubre.
+
+Un mes que empieza vacío es una oportunidad nueva para cualquiera, no solo para quien fue más rápido en enero. Cuando termina un mes, recibes en tu bandeja de entrada un aviso con tu mejor tiempo de ese mes en cada recorrido que corriste, y cada mes en que completas un recorrido de parque cuenta para las insignias de meses de parque.
+
 ## Dos clasificaciones, dos formas de ganar
 
-- **Más rápidos** ordena a cada corredor por su mejor tiempo, una vez por corredor. Cambia entre este año y todos los tiempos, y filtra por género o por grupo de edad.
+- **Más rápidos** ordena a cada corredor por su mejor tiempo, una vez por corredor. Cambia entre este mes, este año y todos los tiempos, y filtra por género o por grupo de edad.
 - **Más completados** cuenta los días en que completaste el recorrido durante la temporada. Varias vueltas el mismo día cuentan como una, así que premia a los habituales que vuelven semana tras semana en lugar de un largo día de vueltas.
 
 Las carreras privadas siguen siendo privadas: el tiempo de una carrera que los demás no pueden ver no se les muestra.

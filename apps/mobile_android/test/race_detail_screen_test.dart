@@ -11,6 +11,7 @@ import '../lib/screens/race_detail_screen.dart';
 import '../lib/training.dart' show toIsoDate;
 import '../lib/training_service.dart';
 import '../lib/widgets/undo_bar.dart';
+import 'worst_case_layout.dart';
 
 class _FakeTraining extends TrainingService {
   List<TrainingPlanRow> plans = const [];
@@ -264,6 +265,38 @@ TrainingPlanRow _activePlan({required String name, required int endsInDays}) {
 }
 
 void main() {
+  worstCaseTestWidgets('Race detail', (tester, locale) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        provider: 'runsignup',
+        raceDate: _isoDaysOut(60),
+        entryUrl: 'https://runsignup.com/Race/UT/Moab/X',
+        course: const RaceListingCourse(
+          distanceM: 42195,
+          ascentM: 640,
+          surface: 'trail',
+          source: 'official',
+        ),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Running Club of Grand County',
+      ),
+    );
+    final training = _FakeTraining()
+      ..plans = [_activePlan(name: 'Spring half marathon build', endsInDays: 20)];
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RaceDetailScreen(
+        service: service,
+        listingId: '11111111-1111-4111-8111-111111111111',
+        training: training,
+        loadAiPlanAvailable: () async => true,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Race detail');
+  });
+
   testWidgets('a future race offers the race page and says when the import opens',
       (tester) async {
     final service = _FakeRaceService(
@@ -279,7 +312,7 @@ void main() {
 
     expect(find.text('Listed on RunSignUp'), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, 'Race page & register'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Share'), findsOneWidget);
+    expect(find.byKey(const Key('race-detail-share')), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Import my result'), findsNothing);
     expect(find.textContaining('You can import your official result from race day'),
         findsOneWidget);
@@ -947,5 +980,32 @@ void main() {
   test('raceShareUrl points at the public share page', () {
     expect(raceShareUrl('abc', webBase: 'https://threkir.com/'),
         'https://threkir.com/share/race/abc');
+  });
+
+  // The runs linked to the race are ListCard rows (issue #1374).
+  worstCaseTestWidgets('Race detail with linked runs', (tester, locale) async {
+    final service =
+        _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(-3)))
+          ..runs = const [
+            RaceListingRun(
+              id: 'run-1',
+              startedAt: '2026-10-12T08:00:00.000Z',
+              distanceM: 42195,
+              durationS: 11530,
+              chipTime: '3:12:10',
+            ),
+          ];
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RaceDetailScreen(
+        service: service,
+        listingId: '11111111-1111-4111-8111-111111111111',
+        training: _FakeTraining(),
+        loadAiPlanAvailable: () async => false,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Race detail');
   });
 }

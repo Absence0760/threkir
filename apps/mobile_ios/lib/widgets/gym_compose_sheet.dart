@@ -4,7 +4,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, FieldColumn, ListCard, SectionHeader, TextLane;
 
 import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
@@ -110,6 +111,7 @@ Future<bool?> showGymComposeSheet({
     context,
     title: existing == null ? l10n.gymEditorNewTitle : l10n.gymEditorEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => GymComposeSheet(
       key: formKey,
       store: store,
@@ -441,6 +443,9 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     return b.toString();
   }
 
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
+
   bool get isDirty => _snapshot() != _initialSnapshot;
 
   /// Rebuild exercise blocks from a list of stored set maps. Sets arrive in
@@ -676,12 +681,17 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     final recoverable = _recoverable;
 
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.gymEditorSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
         if (recoverable != null) ...[
           _recoverCard(recoverable, theme, l10n),
           const SizedBox(height: 16),
         ],
-        FormSectionLabel(l10n.gymEditorTitleLabel),
+        SectionHeader(label: l10n.gymEditorTitleLabel),
         const SizedBox(height: 8),
             TextField(
               controller: _titleCtl,
@@ -720,95 +730,39 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     ?.copyWith(color: theme.colorScheme.error),
               ),
             ],
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed:
-                      _saving ? null : () => Navigator.maybePop(context),
-                  child: Text(l10n.gymEditorCancel),
-                ),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.gymEditorSave),
-                ),
-              ],
-            ),
           ],
         );
   }
 
   Widget _recoverCard(
       GymComposeDraft draft, ThemeData theme, AppLocalizations l10n) {
-    return Card(
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.history, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.gymComposeDraftTitle,
-                          style: theme.textTheme.titleSmall),
-                      Text(
-                        l10n.gymComposeDraftBody,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: _discardRecoverable,
-                    style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error),
-                    child: Text(l10n.gymSessionDiscardConfirm),
-                  ),
-                  FilledButton(
-                    onPressed: () => _restoreRecoverable(draft),
-                    child: Text(l10n.gymDraftResume),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      dense: true,
+      leading: Icon(Icons.history, color: theme.colorScheme.primary),
+      title: l10n.gymComposeDraftTitle,
+      subtitle: l10n.gymComposeDraftBody,
+      subtitleMaxLines: 4,
+      actions: [
+        TextButton(
+          onPressed: _discardRecoverable,
+          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+          child: Text(l10n.gymSessionDiscardConfirm),
         ),
-      ),
+        FilledButton(
+          onPressed: () => _restoreRecoverable(draft),
+          child: Text(l10n.gymDraftResume),
+        ),
+      ],
     );
   }
 
   Widget _exerciseCard(
       _EditExercise ex, int i, ThemeData theme, AppLocalizations l10n) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -833,12 +787,12 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             for (var si = 0; si < ex.sets.length; si++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: FieldColumn(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(left: 44, bottom: 6),
+                      padding: const EdgeInsets.only(left: 44),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         key: Key('gym-set-type-$i-$si'),
                         initialValue: ex.sets[si].setType,
                         isDense: true,
@@ -930,7 +884,6 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -949,16 +902,13 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     }
 
     if (_datalistNames.isEmpty) {
-      return Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      return TextField(
           controller: ex.name,
           focusNode: ex.nameFocus,
           textCapitalization: TextCapitalization.words,
           decoration: deco(),
           onChanged: clearNeedExercise,
-        ),
-      );
+        );
     }
     return RawAutocomplete<String>(
       textEditingController: ex.name,
@@ -970,9 +920,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
-      fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) => TextField(
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
@@ -980,7 +928,6 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
           onChanged: clearNeedExercise,
           onSubmitted: (_) => onSubmit(),
         ),
-      ),
       optionsViewBuilder: (context, onSelected, options) => Align(
         alignment: Alignment.topLeft,
         child: Material(

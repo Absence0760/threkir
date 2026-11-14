@@ -79,7 +79,7 @@ enum PushTargetKind {
   /// the alert is on, as web's resolver page does.
   courseAlert,
 
-  /// Settings → Account (`/settings/account`), where a finished Art 20
+  /// the Account page (web `/settings/account`, the You tab on mobile), where a finished Art 20
   /// export is collected. Carries no id: the export lives in
   /// `data_export_jobs` and the screen reads the subject's latest one.
   settingsAccount,

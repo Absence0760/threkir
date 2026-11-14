@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { page } from '$app/state';
@@ -242,16 +243,14 @@
 	{:else if denied}
 		<EmptyState icon="lock" title={m('checkpoint.boardTitle')} text={m('checkpoint.notOrganiser')} />
 	{:else}
-		<header class="board-head">
-			<div>
-				<h1>{m('checkpoint.boardTitle')}</h1>
-				{#if event}<p class="board-sub">{event.title}</p>{/if}
-			</div>
-			<button type="button" class="btn btn-secondary" onclick={load} disabled={busy !== null}>
-				<span class="material-symbols" aria-hidden="true">refresh</span>
-				{m('checkpoint.refresh')}
-			</button>
-		</header>
+		<PageHeader title={m('checkpoint.boardTitle')} subtitle={event?.title}>
+			{#snippet actions()}
+				<button type="button" class="btn btn-secondary" onclick={load} disabled={busy !== null}>
+					<span class="material-symbols" aria-hidden="true">refresh</span>
+					{m('checkpoint.refresh')}
+				</button>
+			{/snippet}
+		</PageHeader>
 
 		{#if checkpoints.length === 0}
 			<EmptyState icon="flag" title={m('checkpoint.boardNoCheckpoints')} />
@@ -388,21 +387,6 @@
 		color: var(--color-text-tertiary);
 		text-decoration: none;
 		margin-bottom: var(--space-md);
-	}
-	.board-head {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-end;
-		gap: var(--space-md);
-		flex-wrap: wrap;
-		margin-bottom: var(--space-lg);
-	}
-	.board-head h1 {
-		margin: 0;
-	}
-	.board-sub {
-		margin: 0.25rem 0 0;
-		color: var(--color-text-tertiary);
 	}
 	.board-scroll {
 		overflow-x: auto;

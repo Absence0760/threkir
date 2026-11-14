@@ -5,6 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show ExerciseRow, GymWorkoutRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
@@ -21,6 +22,7 @@ import '../lib/widgets/pending_sync_banner.dart';
 import '../lib/widgets/surface_peer_strip.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 /// No-op so a resumed session screen's `WakelockPlus.enable()` / `.disable()`
 /// don't hit the real pigeon channel (which throws under flutter_test).
@@ -519,7 +521,7 @@ void main() {
         await tester.tap(add);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text(l10n.gymEditorNewTitle), findsOneWidget);
+        expect(find.widgetWithText(PageHeading, l10n.gymEditorNewTitle), findsOneWidget);
         // And the read is bounded: its client timeout expires instead of
         // leaving the screen waiting on a request that never answers.
         await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
@@ -615,6 +617,24 @@ void main() {
       addTearDown(() => dir.deleteSync(recursive: true));
       return (store: store, routines: routines, dir: dir);
     }
+
+    worstCaseTestWidgets('the workout cards', (tester, locale) async {
+      final s = await seed(tester, withRecord: true);
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GymScreen(
+          api: _OfflineFakeApi(),
+          store: s.store,
+          routineStore: s.routines,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      // Built, if below the fold under the page's heading at 2x; the walk
+      // lays it out on screen.
+      expect(find.text('Push day', skipOffstage: false), findsOneWidget);
+      await walkScrollable(tester, primaryScrollable(), 'Gym');
+    });
 
     testWidgets('names Log + Gym routines; Records only once a record exists',
         (tester) async {
@@ -879,8 +899,13 @@ void main() {
 
       await tester.tap(find.text('Finish'));
       // The save banner is the last thing _finishAndSave does, so waiting for
-      // it proves the store write it awaited first has landed.
-      await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+      // it proves the store write it awaited first has landed. The api here
+      // is offline, so since #1374 FS-15 the banner says the workout is saved
+      // on the phone rather than claiming a sync that did not happen.
+      await _pumpUntil(
+          tester,
+          () => tester.any(find.text(
+              "Saved on this phone. It will sync when you're back online.")),
           describe: 'the saved banner _finishAndSave shows after its write');
 
       final w = s.store.workouts.single;

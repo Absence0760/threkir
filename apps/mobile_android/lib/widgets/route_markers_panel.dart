@@ -12,6 +12,7 @@ import '../route_markers.dart';
 import '../route_snap.dart';
 import '../typed_decimal.dart';
 import '../undo_queue.dart';
+import 'form_sheet.dart';
 import 'live_run_map.dart';
 import 'top_banner.dart';
 import 'undo_bar.dart';
@@ -215,10 +216,8 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     double? lat,
     double? lng,
   }) async {
-    final result = await showModalBottomSheet<_MarkerDraft>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final result = await showFormSheet<_MarkerDraft>(
+      context,
       builder: (ctx) => _MarkerEditorSheet(
         existing: existing,
         lat: lat,
@@ -374,19 +373,17 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(l10n.routeMarkerHeading,
-                  style: theme.textTheme.titleMedium),
-            ),
-            if (_canAdd && !_placing)
-              TextButton.icon(
-                onPressed: _startAdd,
-                icon: const Icon(Icons.add_location_alt, size: 18),
-                label: Text(l10n.routeMarkerAdd),
-              ),
-          ],
+        // The shared heading: its action drops under the title when the two
+        // do not share a line (a Row overflowed at 2x on 320 dp, #1374 TO-6).
+        SectionHeader.title(
+          label: l10n.routeMarkerHeading,
+          trailing: _canAdd && !_placing
+              ? TextButton.icon(
+                  onPressed: _startAdd,
+                  icon: const Icon(Icons.add_location_alt, size: 18),
+                  label: Text(l10n.routeMarkerAdd),
+                )
+              : null,
         ),
         if (_saving)
           const Padding(
@@ -400,23 +397,17 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.primary)),
           ),
-          InkWell(
-            onTap: () => setState(() => _snapEnabled = !_snapEnabled),
-            child: Row(
-              children: [
-                Checkbox(
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  value: _snapEnabled,
-                  onChanged: (v) =>
-                      setState(() => _snapEnabled = v ?? _snapEnabled),
-                ),
-                Expanded(
-                  child: Text(l10n.routeMarkerSnapToggle,
-                      style: theme.textTheme.bodySmall),
-                ),
-              ],
-            ),
+          // One named control with a 48 dp row: a row InkWell beside a
+          // shrink-wrapped, unnamed Checkbox gave two tap actions (#1374
+          // A11Y-13).
+          CheckboxListTile(
+            key: const Key('routeMarkerSnapToggle'),
+            value: _snapEnabled,
+            onChanged: (v) => setState(() => _snapEnabled = v ?? _snapEnabled),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.routeMarkerSnapToggle,
+                style: theme.textTheme.bodySmall),
           ),
           Wrap(
             spacing: 4,
@@ -809,6 +800,8 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
   // two alternatives from disagreeing.
   bool _cutoffElapsed = false;
   bool _targetClock = false;
+  late final FieldSnapshot _start;
+  late final String _startKind;
 
   /// The distance-along-route input needs a line with real geometry.
   bool get _canPlaceByDistance => widget.routeLine.length >= 2;
@@ -853,6 +846,16 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
     // mirror of the current position, so an edit that only touches lat/lng
     // isn't silently overridden by a pre-filled distance on save.
     _distanceAlong = TextEditingController();
+    _start = FieldSnapshot([
+      _label,
+      _note,
+      _cutoff,
+      _target,
+      _lat,
+      _lng,
+      _distanceAlong,
+    ]);
+    _startKind = _kind;
   }
 
   @override
@@ -999,80 +1002,93 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _start.changed || _kind != _startKind,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final spec = kindSpec(_kind);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: Text(l10n.routeMarkerCancel),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: Text(l10n.routeMarkerSave),
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Column(
+      body: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<String>(
-              initialValue: _kind,
-              decoration: InputDecoration(labelText: l10n.routeMarkerKindLabel),
-              items: [
-                for (final k in routeMarkerKinds)
-                  DropdownMenuItem(
-                    value: k.kind,
-                    child: Text(_kindLabel(l10n, k.kind)),
-                  ),
-              ],
-              onChanged: (v) => setState(() => _kind = v ?? _kind),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _label,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.routeMarkerNameLabel,
-                hintText: l10n.routeMarkerNamePlaceholder,
+            FieldColumn(children: [
+              DropdownButtonFormField<String>(
+                initialValue: _kind,
+                decoration: InputDecoration(labelText: l10n.routeMarkerKindLabel),
+                items: [
+                  for (final k in routeMarkerKinds)
+                    DropdownMenuItem(
+                      value: k.kind,
+                      child: Text(_kindLabel(l10n, k.kind)),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _kind = v ?? _kind),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _lat,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.routeMarkerLatLabel,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _lng,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.routeMarkerLngLabel,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_canPlaceByDistance) ...[
-              const SizedBox(height: 12),
               TextField(
-                controller: _distanceAlong,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
+                controller: _label,
+                maxLength: 120,
                 decoration: InputDecoration(
-                  labelText: l10n.routeMarkerDistanceAlongLabel,
-                  suffixText: UnitFormat.distanceLabel(activeDistanceUnit),
+                  labelText: l10n.routeMarkerNameLabel,
+                  hintText: l10n.routeMarkerNamePlaceholder,
                 ),
               ),
-            ],
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _lat,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: l10n.routeMarkerLatLabel,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _lng,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: l10n.routeMarkerLngLabel,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_canPlaceByDistance) ...[
+                TextField(
+                  controller: _distanceAlong,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true),
+                  decoration: InputDecoration(
+                    labelText: l10n.routeMarkerDistanceAlongLabel,
+                    suffixText: UnitFormat.distanceLabel(activeDistanceUnit),
+                  ),
+                ),
+              ],
+            ]),
             if (spec.hasServices) ...[
               const SizedBox(height: 4),
               Text(l10n.routeMarkerServicesLabel,
@@ -1135,48 +1151,32 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
                 _target.clear();
               }),
             ),
-            TextField(
-              controller: _target,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                _MaskedTimeFormatter(
-                    _targetClock ? formatClockDigits : formatElapsedDigits)
-              ],
-              decoration: InputDecoration(
-                labelText: l10n.routeMarkerTargetLabel,
-                hintText: _targetClock ? 'HH:MM' : 'h:mm:ss',
-                helperText:
-                    _targetClock ? null : l10n.routeMarkerTargetHelper,
-              ),
-            ),
-            if (_kind == 'note' || _kind == 'hazard') ...[
-              const SizedBox(height: 12),
+            FieldColumn(children: [
               TextField(
-                controller: _note,
-                maxLength: 280,
-                maxLines: 2,
-                decoration: InputDecoration(labelText: l10n.routeMarkerNoteLabel),
-              ),
-            ],
-            const SizedBox(height: 12),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.routeMarkerCancel),
+                controller: _target,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  _MaskedTimeFormatter(
+                      _targetClock ? formatClockDigits : formatElapsedDigits)
+                ],
+                decoration: InputDecoration(
+                  labelText: l10n.routeMarkerTargetLabel,
+                  hintText: _targetClock ? 'HH:MM' : 'h:mm:ss',
+                  helperText:
+                      _targetClock ? null : l10n.routeMarkerTargetHelper,
                 ),
-                FilledButton(
-                  onPressed: _save,
-                  child: Text(l10n.routeMarkerSave),
+              ),
+              if (_kind == 'note' || _kind == 'hazard') ...[
+                TextField(
+                  controller: _note,
+                  maxLength: 280,
+                  maxLines: 2,
+                  decoration: InputDecoration(labelText: l10n.routeMarkerNoteLabel),
                 ),
               ],
-            ),
+            ]),
           ],
         ),
-      ),
     );
   }
 }

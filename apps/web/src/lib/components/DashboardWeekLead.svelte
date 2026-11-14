@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm, formatDistance } from '#lib/format/units.svelte.ts';
@@ -63,29 +64,30 @@
 
 <section class="week-lead" aria-labelledby="week-lead-title" data-testid="dash-week-lead">
 	<div class="week-lead-week">
-		<div class="week-lead-head">
-			<h2 id="week-lead-title">{m('dash.leadTitle')}</h2>
-			{#if onopenweek}
-				<button
-					type="button"
-					class="week-lead-open"
-					onclick={onopenweek}
-					data-testid="dash-week-lead-open"
-				>
-					{m('dash.leadOpenWeek')}
-					<span class="material-symbols" aria-hidden="true">chevron_right</span>
-				</button>
-			{/if}
-		</div>
+		{#if onopenweek}
+			<SectionHeader label={m('dash.leadTitle')} id="week-lead-title" flush>
+				{#snippet trailing()}
+					<button
+						type="button"
+						class="week-lead-open"
+						onclick={onopenweek}
+						data-testid="dash-week-lead-open"
+					>
+						{m('dash.leadOpenWeek')}
+						<span class="material-symbols" aria-hidden="true">chevron_right</span>
+					</button>
+				{/snippet}
+			</SectionHeader>
+		{:else}
+			<SectionHeader label={m('dash.leadTitle')} id="week-lead-title" flush />
+		{/if}
 		{#if lead.count === 0}
 			<p class="week-lead-value week-lead-value-empty">{m('dash.weekEmptyValue')}</p>
 		{:else}
 			<p class="week-lead-value" data-testid="dash-week-lead-distance">
 				{formatDistance(lead.distanceM)}
 				<span class="week-lead-count">
-					{lead.count === 1
-						? m('dash.activityCountOne', { n: lead.count })
-						: m('dash.activityCountOther', { n: lead.count })}
+					{m('dash.activityCount', { n: lead.count })}
 				</span>
 			</p>
 		{/if}
@@ -117,18 +119,14 @@
 			</p>
 		{:else if lead.comparison?.kind === 'goalRuns'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.targetCount === 1
-					? m('dash.leadVsGoalRunsOne', { done: lead.count, target: lead.comparison.targetCount })
-					: m('dash.leadVsGoalRunsOther', { done: lead.count, target: lead.comparison.targetCount })}
+				{m('dash.leadVsGoalRuns', { done: lead.count, target: lead.comparison.targetCount })}
 			</p>
 		{:else if lead.comparison?.kind === 'average'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.weeks === 1
-					? m('dash.leadVsAverageOne', { avg: formatDistance(lead.comparison.averageM) })
-					: m('dash.leadVsAverageOther', {
-							weeks: lead.comparison.weeks,
-							avg: formatDistance(lead.comparison.averageM),
-						})}
+				{m('dash.leadVsAverage', {
+					weeks: lead.comparison.weeks,
+					avg: formatDistance(lead.comparison.averageM),
+				})}
 			</p>
 		{/if}
 	</div>
@@ -167,13 +165,6 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 	}
-	.week-lead-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-xs) var(--space-sm);
-	}
 	.week-lead-open {
 		display: inline-flex;
 		align-items: center;
@@ -190,14 +181,6 @@
 	}
 	.week-lead-open:hover {
 		text-decoration: underline;
-	}
-	.week-lead h2 {
-		margin: 0;
-		font-size: 0.8rem;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--color-text-secondary);
 	}
 	.week-lead-week,
 	.week-lead-next {

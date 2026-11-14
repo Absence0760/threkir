@@ -34,7 +34,6 @@ const _root = 'lib/screens';
 /// Screens allowed to carry more than one page-level inset, with the count of
 /// DISTINCT values each is allowed. The allowlist may only shrink.
 const _exempt = <String, int>{
-  'lib/screens/club_detail_screen.dart': 2,
   'lib/screens/guided_runs_screen.dart': 2,
   'lib/screens/onboarding_screen.dart': 2,
   // The second value is a DIALOG's content inset, not a page gutter: the
@@ -43,7 +42,6 @@ const _exempt = <String, int>{
   // ListTile insets its own content by. The guard reads it as the enclosing
   // SingleChildScrollView's because it scans forward for the next `padding:`.
   'lib/screens/plan_detail_screen.dart': 2,
-  'lib/screens/run_screen.dart': 2,
 };
 
 final _scrollPadding = RegExp(

@@ -1309,41 +1309,31 @@ void main() {
     });
   });
 
-  group('run-detail map survives ListView scroll', () {
-    test('the map card is wrapped in a keep-alive so scroll does not rebuild it',
-        () {
-      // Reason: the run-detail map is a live FlutterMap rendered as an
-      // ordinary ListView child. A bare list child is disposed once it
-      // scrolls past the cache extent, tearing down the FlutterMap +
-      // MapController; scrolling back rebuilt it from scratch — a visible
-      // tile reload plus a jank spike (GitHub #274). The fix wraps the map
-      // card in a keep-alive (AutomaticKeepAliveClientMixin, wantKeepAlive
-      // => true), which both preserves its State and pauses its pulse ticker
-      // while off-screen. Catches a regression that unwraps the map.
-      final source =
-          File('lib/screens/run_detail_screen.dart').readAsStringSync();
-      expect(
-        source,
-        contains('class _KeepAliveMap'),
-        reason: 'The run-detail map must keep a _KeepAliveMap wrapper so the '
-            'ListView does not dispose + rebuild the FlutterMap on scroll.',
-      );
-      expect(
-        source,
-        contains('AutomaticKeepAliveClientMixin'),
-        reason: '_KeepAliveMap must mix in AutomaticKeepAliveClientMixin — '
-            'that is what keeps the map State alive past the cache extent.',
-      );
-      // The map (LiveRunMap, inside the SizedBox card) must sit UNDER the
-      // wrapper: _KeepAliveMap( must appear before the map's LiveRunMap in
-      // source order. If LiveRunMap moves ahead of the wrapper, the card is
-      // a bare list child again and the reload regression is back.
-      final wrapIdx = source.indexOf('_KeepAliveMap(');
-      final mapIdx = source.indexOf('LiveRunMap(');
-      expect(wrapIdx >= 0 && wrapIdx < mapIdx, isTrue,
-          reason: '_KeepAliveMap( must wrap the map card (appear before '
-              'LiveRunMap in source order).');
-    });
+  group('detail maps survive ListView scroll', () {
+    // Reason: the run- and route-detail maps (LiveRunMap, a FlutterMap) are
+    // ordinary ListView children. A bare list child is disposed once it
+    // scrolls past the cache extent, tearing down the FlutterMap +
+    // MapController; scrolling back rebuilt it from scratch — a visible tile
+    // reload plus a jank spike (GitHub #274). Each map card is wrapped in
+    // ui_kit's KeepAliveChild, which both preserves its State and pauses its
+    // pulse ticker while off-screen; keep_alive_child_test pins that it does.
+    // Catches a regression that unwraps the map or grows a private copy.
+    for (final (file, map) in [
+      ('lib/screens/run_detail_screen.dart', 'LiveRunMap('),
+      ('lib/screens/route_detail_screen.dart', 'LiveRunMap('),
+    ]) {
+      test('$file wraps its map card in KeepAliveChild', () {
+        final source = File(file).readAsStringSync();
+        final wrapIdx = source.indexOf('KeepAliveChild(');
+        final mapIdx = source.indexOf(map);
+        expect(wrapIdx >= 0 && mapIdx > wrapIdx, isTrue,
+            reason: 'KeepAliveChild( must wrap the map card (appear before '
+                '$map in source order).');
+        expect(source, isNot(contains('AutomaticKeepAliveClientMixin')),
+            reason: 'use ui_kit\'s KeepAliveChild rather than a private '
+                'keep-alive copy.');
+      });
+    }
   });
 
   group('privacy-zone removal confirms before erasing', () {
@@ -3603,9 +3593,16 @@ void main() {
       // — a future refactor that moves the label string into a
       // GestureDetector tooltip would silently drop the
       // button-role announcement.
+      // Argument order is free: the double-read sweep put
+      // `excludeSemantics: true` (and the `onTap` it moves up) first.
+      // The arguments are read up to the block's `child:`.
       final semanticsBlocks = RegExp(
-        r'Semantics\(\s*button:\s*true[\s\S]*?label:\s*[^,)]+',
-      ).allMatches(source).toList();
+        r'Semantics\(((?:(?!\bchild:)[\s\S])*?)\bchild:',
+      ).allMatches(source).where((m) {
+        final args = m.group(1)!;
+        return RegExp(r'\bbutton:\s*true\b').hasMatch(args) &&
+            RegExp(r'\blabel:').hasMatch(args);
+      }).toList();
       expect(
         semanticsBlocks.length,
         greaterThanOrEqualTo(3),
@@ -3818,16 +3815,26 @@ void main() {
           reason: 'viewer-holds-crown banner copy missing from app_en.arb');
     });
 
-    test('Dashboard wires its streak card through computeRunStreaks()', () {
+    test('Today and Progress wire the streak through computeRunStreaks()',
+        () {
       // Reason: the streak figures must come from the pure helper in
       // lib/streaks.dart, not an inline reimplementation. The helper
       // is unit-tested and twinned with web; inline drift would silently
-      // disagree on the Strava grace rule.
-      final source =
-          File('lib/screens/dashboard_screen.dart').readAsStringSync();
-      expect(source.contains('computeRunStreaks'), isTrue,
-          reason: 'dashboard must call the pure helper');
-      expect(source.contains('_StreakRow'), isTrue,
+      // disagree on the Strava grace rule. The card moved to the Progress
+      // page and Today's summary shows the current streak (issue #1374).
+      for (final path in const [
+        'lib/screens/today_screen.dart',
+        'lib/screens/progress_screen.dart',
+      ]) {
+        expect(File(path).readAsStringSync().contains('computeRunStreaks'),
+            isTrue,
+            reason: '$path must call the pure helper');
+      }
+      expect(
+          File('lib/screens/progress_screen.dart')
+              .readAsStringSync()
+              .contains('_StreakRow'),
+          isTrue,
           reason: 'streak card widget missing');
     });
 
@@ -3986,7 +3993,7 @@ void main() {
         for (final caller in const [
           'lib/screens/run_screen.dart',
           'lib/screens/home_screen.dart',
-          'lib/screens/dashboard_screen.dart',
+          'lib/screens/today_screen.dart',
         ]) {
           expect(
             RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')
@@ -4037,11 +4044,10 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchNextRsvpedEvent',
         ];
         // The event card's club lookup moved into the shared
-        // `openUpcomingEvent` (Home and the Run tab both tap through it,
-        // decisions § 2285), so its timeout is pinned there.
+        // `openUpcomingEvent` (decisions § 2285), so its timeout is pinned
+        // there. Only Home draws the card since issue #1374.
         final eventCard =
             File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
         expect(
@@ -5633,17 +5639,15 @@ void main() {
       'screens/roadbook_screen.dart::l10n.roadbookPlanTitle': 1,
       'screens/route_builder_screen.dart::l10n.routeBuilderGenerateLoop': 1,
       'screens/route_builder_screen.dart::l10n.routeBuilderSaveDialogTitle': 1,
-      'screens/route_detail_screen.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailEditTitle': 1,
       // A race director's result correction form: the save is the edit, and
       // the same form makes the next one.
       'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)': 1,
-      'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
-      // Checkboxes that show or hide Home's trend groups; a group hidden here
-      // is ticked back in the same dialog (decisions § 2386).
-      'screens/settings_preferences_screen.dart::l10n.prefsHomeCards': 1,
+      // Checkboxes that show or hide Progress's trend groups; a group hidden
+      // here is ticked back in the same dialog (decisions § 2386, § 2492).
+      'screens/settings_preferences_screen.dart::l10n.prefsProgressCards': 1,
       'screens/settings_preferences_screen.dart::title': 3,
       'screens/settings_safety_screen.dart::l10n.safetyTitle': 1,
       'screens/workout_detail_screen.dart::l10n.workoutRelinkTitle': 1,
@@ -5656,6 +5660,8 @@ void main() {
       // leaves the caller where it was, so neither button can lose data.
       'widgets/activity_waiver_dialog.dart::l10n.clubWaiverTitle': 1,
       'widgets/nutrition_log_sheet.dart::widget.result.name': 1,
+      // Submits a rating; Cancel files nothing and a review can be re-rated.
+      'widgets/route_review_dialog.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsMealTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.
@@ -5733,6 +5739,10 @@ void main() {
       // Cancel undoes from the race card; Cancel and the blocking dialog's OK
       // leave the race unarmed. Nothing is discarded either way.
       'widgets/race_preflight_dialog.dart::blocked': 1,
+      // Asks for health-data consent before the first food is logged
+      // (decisions § 2514). Cancel logs nothing; "Review consent" only opens
+      // the consent screen. Nothing is discarded either way.
+      'health_consent_gate.dart::l10n.healthConsentFoodTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {
@@ -5809,6 +5819,7 @@ void main() {
       // Hosts that hoist a sub-screen's FAB into their own Scaffold. The
       // clearance belongs to the list, which lives in the sub-screen.
       const hoists = {
+        'lib/screens/fitness_hub_screen.dart',
         'lib/screens/home_screen.dart',
         'lib/screens/social_screen.dart',
       };
@@ -5825,6 +5836,40 @@ void main() {
       expect(offenders, isEmpty,
           reason: 'reserve fabScrollClearance(context) at the end of the '
               'scroll view, or add the screen to one of the lists above');
+    });
+
+    // A hub tab's list sits over the hub's FAB when the tab publishes a
+    // primary action, and always under the shell's docked centre button,
+    // which rises into every page above the bar. A tab body pads its list's
+    // end with fabScrollClearance (it has a primary action) or
+    // listEndClearance (it has none); padding only the system inset left
+    // the last row of Feed, Events and People behind the centre button
+    // (issue #1374). hub_scroll_clearance_test.dart measures it in the frame.
+    test('every hub tab body clears the hub FAB and the docked centre button',
+        () {
+      // Bodies whose subject is a map: MapFirstPage takes the docked button
+      // as its bottomClearance and owns the insets.
+      const mapFirst = {'lib/screens/explore_routes_screen.dart'};
+      final offenders = <String>[];
+      for (final f in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final src = f.readAsStringSync();
+        if (!src.contains('HubTabBody(') || mapFirst.contains(f.path)) continue;
+        final hasPrimary = RegExp(r'\bprimary:').hasMatch(src);
+        final fab = src.contains('fabScrollClearance(');
+        final end = src.contains('listEndClearance(');
+        if (hasPrimary ? !fab : !(fab || end)) offenders.add(f.path);
+      }
+      expect(offenders, isEmpty,
+          reason: 'pad the end of the tab\'s list with fabScrollClearance '
+              '(a tab with a primary action) or listEndClearance (one with '
+              'none), from fab_clearance.dart');
+      for (final f in mapFirst) {
+        expect(File(f).readAsStringSync(), contains('MapFirstPage('),
+            reason: '$f is exempt only while it is a MapFirstPage');
+      }
     });
 
     test('no screen hard-codes its own FAB clearance', () {
@@ -6882,10 +6927,16 @@ void main() {
           File('lib/screens/fitness_hub_screen.dart').readAsStringSync();
       final labelled = RegExp(r'label:\s*(?:Text\(\s*)?l(?:10n)?\.(\w+)');
       final tabArm = RegExp(r'FitnessTab\.\w+\s*=>\s*l(?:10n)?\.(\w+)');
+      // The hub's own name (its nav label and its title) is
+      // `fitnessHubTitle`, which the shell's `label:` calls.
+      final hubTitle = hub.substring(hub.indexOf('String fitnessHubTitle('),
+          hub.indexOf(';', hub.indexOf('String fitnessHubTitle(')));
       final keys = <String>{
         for (final src in [home, hub])
           for (final m in labelled.allMatches(src)) m.group(1)!,
         for (final m in tabArm.allMatches(hub)) m.group(1)!,
+        for (final m in RegExp(r'l10n\.(\w+)').allMatches(hubTitle))
+          m.group(1)!,
       };
       final arb = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
           as Map<String, dynamic>;

@@ -5,33 +5,34 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        AppSemanticColors,
+        AppInsets,
+        AppSpace,
+        AsyncView,
         ChoiceChipOption,
-        ChoiceChipRow,
         EmptyState,
-        ListSkeleton,
-        ProgressBar,
-        StatusPill,
-        StatusPillSize;
+        FilterBar,
+        HubTabBody,
+        ListCard,
+        ListSummary,
+        LoadingState,
+        PrimaryAction,
+        buildChoiceChip;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../l10n/number_format.dart';
 import '../local_run_store.dart';
-import '../metrics.dart';
 import '../plan_labels.dart';
-import '../plan_week.dart';
 import '../starter_plans.dart';
-import '../training.dart';
 import '../plan_calibration.dart' show PlanCalibration;
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../fab_clearance.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
-import '../widgets/next_race_card.dart';
-import '../widgets/plan_meta_item.dart';
+import '../widgets/stale_refresh_banner.dart';
+import '../widgets/plan_list_card.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -146,14 +147,7 @@ class _PlansScreenState extends State<PlansScreen> {
       if (!mounted) return;
       if (refreshing) {
         setState(() => _loading = false);
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-          context,
-          e is TimeoutException ||
-                  classifyAuthError(e) == AuthErrorKind.offline
-              ? l10n.commonStaleOffline
-              : l10n.commonStaleRefreshFailed,
-        );
+        showStaleRefreshBanner(context, e);
         return;
       }
       setState(() {
@@ -258,197 +252,163 @@ class _PlansScreenState extends State<PlansScreen> {
     }
   }
 
+  void _openLibrary() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanLibraryScreen(training: widget.training),
+        ),
+      );
+
+  Future<void> _openNewPlan() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanNewScreen(training: widget.training),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.plansTitle)),
-      body: !signedIn
-          ? SignInRequiredState(
-              api: widget.apiClient,
-              onSignedIn: () => setState(() {}),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Toolbar(
-                  onBrowseLibrary: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          PlanLibraryScreen(training: widget.training),
-                    ),
-                  ),
-                  onNewPlan: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            PlanNewScreen(training: widget.training),
-                      ),
-                    );
-                  },
-                ),
-                if (!_loading && _error == null && _plans.isNotEmpty)
-                  _FilterRow(
-                    plans: _plans,
-                    selected: _filter,
-                    onChanged: (f) => setState(() => _filter = f),
-                  ),
-                Expanded(child: _body(l10n)),
-              ],
-            ),
-    );
-  }
-
-  Widget _body(AppLocalizations l10n) {
-    if (_loading && _plans.isEmpty) {
-      return ListSkeleton(label: l10n.commonLoading, hasLeading: false);
-    }
-    if (_error != null) {
-      return ErrorState(
-          message: _error == _PlansLoadError.timeout
-              ? l10n.plansTimeoutError
-              : l10n.plansLoadError,
-          onRetry: _load);
-    }
-    if (_plans.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: EmptyState(
-          icon: Icons.calendar_month,
-          title: l10n.plansEmptyTitle,
-          body: l10n.plansEmptyBody,
-          footer: _Starters(
-            today: DateTime.now(),
-            creatingId: _creatingStarterId,
-            onPick: _createStarter,
-          ),
+    if (!signedIn) {
+      return HubTabBody(
+        title: l10n.runSurfaceTabPlans,
+        body: SignInRequiredState(
+          api: widget.apiClient,
+          onSignedIn: () => setState(() {}),
         ),
       );
     }
+    return HubTabBody(
+      title: l10n.runSurfaceTabPlans,
+      // "Browse library" is a second way to get a plan, as on web, so it is a
+      // secondary action rather than a tab or a second primary button. Over a
+      // list it is an icon at the end of the status chips' line (a labelled
+      // button took a whole row of its own, issue #1374); with no plans it is
+      // a labelled button under the starters, where a runner looking for a
+      // plan is.
+      actions: [
+        if (_plans.isNotEmpty)
+          IconButton(
+            key: const ValueKey('plans-browse-library'),
+            tooltip: l10n.plansBrowseLibrary,
+            icon: const Icon(Icons.public),
+            onPressed: _openLibrary,
+          ),
+      ],
+      primary: PrimaryAction(
+        label: l10n.plansNewPlan,
+        icon: Icons.add,
+        onPressed: _openNewPlan,
+      ),
+      filters: _plans.isEmpty ? null : _filterBar(l10n),
+      onRefresh: _load,
+      body: AsyncView<List<TrainingPlanRow>>(
+        loading: _loading,
+        error: _error,
+        data: _plans,
+        isEmpty: (p) => p.isEmpty,
+        loadingState: LoadingState.list(label: l10n.commonLoading, hasLeading: false),
+        errorBuilder: (_, _) =>
+            AppErrorState(message: _errorText(l10n), onRetry: _load),
+        empty: EmptyState(
+          icon: Icons.calendar_month,
+          title: l10n.plansEmptyTitle,
+          body: l10n.plansEmptyBody,
+          ctaLabel: l10n.plansNewPlan,
+          onCta: _openNewPlan,
+          footer: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Starters(
+                today: DateTime.now(),
+                creatingId: _creatingStarterId,
+                onPick: _createStarter,
+              ),
+              const SizedBox(height: AppSpace.sm),
+              TextButton.icon(
+                key: const ValueKey('plans-empty-browse-library'),
+                onPressed: _openLibrary,
+                icon: const Icon(Icons.public),
+                label: Text(l10n.plansBrowseLibrary),
+              ),
+            ],
+          ),
+        ),
+        builder: (_, plans) => _list(l10n, plans),
+      ),
+    );
+  }
+
+  String _errorText(AppLocalizations l10n) => _error == _PlansLoadError.timeout
+      ? l10n.plansTimeoutError
+      : l10n.plansLoadError;
+
+  /// The status chips on one line, which scrolls and fades at its end. A chip
+  /// is its status only: the count of what the filter shows is the summary
+  /// line at the head of the list ([ListSummary]), as on Runs and Routes,
+  /// rather than a count on some chips and none on a zero (issue #1374).
+  FilterBar _filterBar(AppLocalizations l10n) {
+    final options = [
+      ChoiceChipOption<String?>(value: null, label: l10n.plansFilterAll),
+      ChoiceChipOption<String?>(
+          value: 'active', label: l10n.plansFilterActive),
+      ChoiceChipOption<String?>(
+          value: 'paused', label: l10n.plansFilterPaused),
+      ChoiceChipOption<String?>(
+          value: 'completed', label: l10n.plansFilterCompleted),
+      ChoiceChipOption<String?>(
+          value: 'abandoned', label: l10n.plansFilterAbandoned),
+    ];
+    return FilterBar(
+      key: const ValueKey('plans-filter-bar'),
+      chipsLabel: l10n.plansFilterGroupLabel,
+      chips: [
+        for (final o in options)
+          buildChoiceChip<String?>(
+              context, o, _filter, (f) => setState(() => _filter = f)),
+      ],
+    );
+  }
+
+  Widget _list(AppLocalizations l10n, List<TrainingPlanRow> plans) {
     final f = _filter;
     final shown = sortPlansForList(
-        f == null ? _plans : _plans.where((p) => p.status == f).toList());
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: shown.isEmpty
-          ? EmptyState(
-              icon: Icons.filter_alt_off,
-              title: l10n.plansNoFilteredPlans(planStatusLabel(l10n, f!)),
-              ctaLabel: l10n.plansShowAllPlans,
-              ctaIcon: Icons.apps,
-              onCta: () => setState(() => _filter = null),
-            )
-          : ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-              itemCount: shown.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (ctx, i) {
-                final p = shown[i];
-                final abandonable =
-                    p.status == 'active' || p.status == 'paused';
-                return PlanListCard(
-                  plan: p,
-                  now: DateTime.now(),
-                  onTap: () => _openPlan(p.id),
-                  onAbandon: abandonable ? () => _abandon(p) : null,
-                  onDelete: abandonable ? null : () => _delete(p),
-                  actionBusy: _actingPlanId == p.id,
-                  actionsLocked: _actingPlanId != null,
-                );
-              },
-            ),
-    );
-  }
-}
-
-/// "Browse library" beside "New plan", as on web: the library is a second way
-/// to get a plan, not a sibling surface, so it is an action rather than a tab.
-class _Toolbar extends StatelessWidget {
-  final VoidCallback onBrowseLibrary;
-  final VoidCallback onNewPlan;
-
-  const _Toolbar({required this.onBrowseLibrary, required this.onNewPlan});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: onBrowseLibrary,
-            icon: const Icon(Icons.public),
-            label: Text(l10n.plansBrowseLibrary),
-          ),
-          FilledButton.icon(
-            onPressed: onNewPlan,
-            icon: const Icon(Icons.add),
-            label: Text(l10n.plansNewPlan),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterRow extends StatelessWidget {
-  final List<TrainingPlanRow> plans;
-  final _StatusFilter selected;
-  final ValueChanged<_StatusFilter> onChanged;
-
-  const _FilterRow({
-    required this.plans,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final tag = localeToTag(Localizations.localeOf(context));
-    int count(String? s) =>
-        s == null ? plans.length : plans.where((p) => p.status == s).length;
-    String label(String text, String? s) {
-      final n = count(s);
-      return n == 0 ? text : '$text · ${formatFixed(n.toDouble(), 0, tag)}';
+        f == null ? plans : plans.where((p) => p.status == f).toList());
+    if (shown.isEmpty) {
+      return EmptyState(
+        icon: Icons.filter_alt_off,
+        title: l10n.plansNoFilteredPlans(planStatusLabel(l10n, f!)),
+        ctaLabel: l10n.plansShowAllPlans,
+        ctaIcon: Icons.apps,
+        onCta: () => setState(() => _filter = null),
+      );
     }
-
-    return Semantics(
-      container: true,
-      label: l10n.plansFilterGroupLabel,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-        child: ChoiceChipRow<String?>(
-          selected: selected,
-          onChanged: onChanged,
-          options: [
-            ChoiceChipOption(
-                value: null, label: label(l10n.plansFilterAll, null)),
-            ChoiceChipOption(
-                value: 'active',
-                label: label(l10n.plansFilterActive, 'active'),
-                icon: Icons.play_circle_outline),
-            ChoiceChipOption(
-                value: 'paused',
-                label: label(l10n.plansFilterPaused, 'paused'),
-                icon: Icons.pause_circle_outline),
-            ChoiceChipOption(
-                value: 'completed',
-                label: label(l10n.plansFilterCompleted, 'completed'),
-                icon: Icons.check_circle_outline),
-            ChoiceChipOption(
-                value: 'abandoned',
-                label: label(l10n.plansFilterAbandoned, 'abandoned'),
-                icon: Icons.cancel_outlined),
-          ],
-        ),
-      ),
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppInsets.pageTop,
+          AppInsets.gutter, fabScrollClearance(context)),
+      itemCount: shown.length + 1,
+      separatorBuilder: (_, i) =>
+          SizedBox(height: i == 0 ? 0 : AppInsets.itemGap),
+      itemBuilder: (ctx, i) {
+        if (i == 0) {
+          return ListSummary(
+            key: const ValueKey('plans-summary'),
+            text: l10n.plansCountMeta(shown.length, plans.length),
+          );
+        }
+        final p = shown[i - 1];
+        final abandonable = p.status == 'active' || p.status == 'paused';
+        return PlanListCard(
+          margin: EdgeInsets.zero,
+          plan: p,
+          now: DateTime.now(),
+          onTap: () => _openPlan(p.id),
+          onAbandon: abandonable ? () => _abandon(p) : null,
+          onDelete: abandonable ? null : () => _delete(p),
+          actionBusy: _actingPlanId == p.id,
+          actionsLocked: _actingPlanId != null,
+        );
+      },
     );
   }
 }
@@ -504,11 +464,6 @@ class _Starters extends StatelessWidget {
 }
 
 
-/// One plan on the list: name and status, the goal / target / VDOT it was
-/// built for, its dates and length, and — while it is active — where today
-/// sits in it. Mirrors web `plans/+page.svelte`'s card. Exactly one action:
-/// Abandon while the plan is still live (active or paused), Delete once it is
-/// over.
 /// One built-in starter as a single tappable card. A screen reader hears the
 /// plan's name as the button and its summary as the hint, not the visual
 /// "Start this plan" prompt, which would read the same on all three.
@@ -535,347 +490,50 @@ class _StarterTile extends StatelessWidget {
     final accent = enabled || creating
         ? theme.colorScheme.primary
         : theme.disabledColor;
-    return Card(
+    return ListCard(
+      key: Key('planStarter-$id'),
       margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: Semantics(
-        button: true,
-        enabled: enabled,
-        label: name,
-        hint: summary,
-        child: InkWell(
-          key: Key('planStarter-$id'),
-          onTap: onTap,
-          child: ExcludeSemantics(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(
-                    summary,
-                    key: Key('planStarterSummary-$id'),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          creating
-                              ? l10n.planNewStarterCreating
-                              : l10n.plansStarterStart,
-                          style: theme.textTheme.labelLarge
-                              ?.copyWith(color: accent),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      if (creating)
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else
-                        Icon(Icons.arrow_forward, size: 18, color: accent),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PlanListCard extends StatelessWidget {
-  final TrainingPlanRow plan;
-  final DateTime now;
-  final VoidCallback onTap;
-  final VoidCallback? onAbandon;
-  final VoidCallback? onDelete;
-
-  /// This card's own Abandon / Delete is being written.
-  final bool actionBusy;
-
-  /// Some card's action is being written, so this one waits.
-  final bool actionsLocked;
-
-  const PlanListCard({
-    super.key,
-    required this.plan,
-    required this.now,
-    required this.onTap,
-    this.onAbandon,
-    this.onDelete,
-    this.actionBusy = false,
-    this.actionsLocked = false,
-  }) : assert((onAbandon == null) != (onDelete == null),
-            'a plan card carries exactly one action');
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final tag = localeToTag(Localizations.localeOf(context));
-    final semantic = AppSemanticColors.ofTheme(theme);
-    final todayIso = toIsoDate(now);
-    final startIso = toIsoDate(plan.startDate);
-    final endIso = toIsoDate(plan.endDate);
-    final active = plan.status == 'active';
-    // An active plan that hasn't started is queued behind the current one.
-    final upcoming = active && startIso.compareTo(todayIso) > 0;
-    final weeks = planWeekCount(plan.startDate, plan.endDate);
-
-    final statusLabel =
-        upcoming ? l10n.plansStatusUpcoming : planStatusLabel(l10n, plan.status);
-    final pill = _pill(theme, semantic, statusLabel, upcoming);
-    final goal = planGoalLabel(l10n, plan.goalEvent, plan.goalDistanceM);
-    final target = plan.goalTimeSeconds != null && plan.goalTimeSeconds! > 0
-        ? fmtHms(plan.goalTimeSeconds)
-        : l10n.plansGoalFinish;
-    final vdot = plan.vdot == null
-        ? null
-        : formatFixed(plan.vdot!.toDouble(), 1, activeLocaleTag);
-    final dates =
-        '${formatDateShort(plan.startDate, tag)} → ${formatDateShort(plan.endDate, tag)}';
-    final length = planLengthLabel(l10n, weeks, plan.daysPerWeek);
-
-    String? weekLine;
-    String? when;
-    double? progress;
-    if (active) {
-      final week = currentPlanWeekIndex(startIso, todayIso, weeks) + 1;
-      weekLine = l10n.plansWeekOf(week, weeks);
-      final countdown = planRaceCountdown(startIso, endIso, todayIso);
-      when = countdown.kind == PlanRaceCountdownKind.racePast
-          ? l10n.plansEnded
-          : NextRaceCard.relation(l10n, countdown);
-      progress = _calendarProgress(startIso, endIso, todayIso);
-    }
-
-    final label = [
-      plan.name,
-      statusLabel,
-      '${l10n.plansHeroGoal}: $goal',
-      '${l10n.plansHeroTarget}: $target',
-      if (vdot != null)
-        '${metricText(l10n, Metric.vdot)}: $vdot',
-      dates,
-      length,
-      ?weekLine,
-      if (when != null && when.isNotEmpty) when,
-    ].join(', ');
-
-    final info = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      onTap: onTap,
+      enabled: enabled,
+      semanticLabel: name,
+      semanticHint: summary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(name,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(
+            summary,
+            key: Key('planStarterSummary-$id'),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              Flexible(
                 child: Text(
-                  plan.name,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  creating
+                      ? l10n.planNewStarterCreating
+                      : l10n.plansStarterStart,
+                  style: theme.textTheme.labelLarge?.copyWith(color: accent),
                 ),
               ),
-              const SizedBox(width: 8),
-              Flexible(child: pill),
+              const SizedBox(width: 6),
+              if (creating)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(Icons.arrow_forward, size: 18, color: accent),
             ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 20,
-            runSpacing: 8,
-            children: [
-              _Hero(label: l10n.plansHeroGoal, value: goal, accent: true),
-              _Hero(label: l10n.plansHeroTarget, value: target),
-              if (vdot != null)
-                _Hero(
-                    label: metricText(l10n, Metric.vdot),
-                    value: vdot),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              PlanMetaItem(icon: Icons.date_range, text: dates),
-              PlanMetaItem(icon: Icons.view_week_outlined, text: length),
-            ],
-          ),
-          if (weekLine != null && progress != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(weekLine,
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                ),
-                if (when != null && when.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      when,
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 6),
-            ProgressBar(value: progress),
-          ],
-        ],
-      ),
-    );
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            onTap: onTap,
-            child: MergeSemantics(
-              child: Semantics(
-                button: true,
-                label: label,
-                child: ExcludeSemantics(child: info),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-            child: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: onAbandon != null
-                  ? TextButton.icon(
-                      key: const Key('planCardAbandon'),
-                      onPressed: actionsLocked ? null : onAbandon,
-                      icon: _busyIcon(),
-                      label: Text(l10n.plansAbandon),
-                    )
-                  : TextButton.icon(
-                      key: const Key('planCardDelete'),
-                      onPressed: actionsLocked ? null : onDelete,
-                      style: TextButton.styleFrom(
-                          foregroundColor: semantic.danger),
-                      icon: _busyIcon(),
-                      label: Text(l10n.plansDelete),
-                    ),
-            ),
           ),
         ],
       ),
-    );
-  }
-
-  /// A spinner on the button whose write is out, nothing otherwise.
-  Widget? _busyIcon() => actionBusy
-      ? const SizedBox.square(
-          dimension: 14,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      : null;
-
-  Widget _pill(ThemeData theme, AppSemanticColors semantic, String label,
-      bool upcoming) {
-    final scheme = theme.colorScheme;
-    final (IconData icon, Color fg, Color bg) = upcoming
-        ? (Icons.schedule, scheme.onSecondaryContainer, scheme.secondaryContainer)
-        : switch (plan.status) {
-            'active' => (
-                Icons.play_circle,
-                scheme.onPrimaryContainer,
-                scheme.primaryContainer
-              ),
-            'paused' => (
-                Icons.pause_circle,
-                scheme.onTertiaryContainer,
-                scheme.tertiaryContainer
-              ),
-            'completed' => (
-                Icons.check_circle,
-                semantic.onSuccess,
-                semantic.success
-              ),
-            _ => (
-                Icons.cancel_outlined,
-                scheme.onSurfaceVariant,
-                scheme.surfaceContainerHigh
-              ),
-          };
-    return StatusPill(
-      key: upcoming ? const Key('planTileUpcoming') : null,
-      label: label,
-      icon: icon,
-      foreground: fg,
-      fill: bg,
-      size: StatusPillSize.compact,
-    );
-  }
-
-}
-
-/// Calendar position (0..1) between a plan's start and end, counted in whole
-/// days. Calendar-based, not workout-based, like web's `calendarPct`: cheap to
-/// compute without a per-plan workouts fetch, and it answers "where am I in
-/// the plan", which is all the list card asks.
-double _calendarProgress(String startIso, String endIso, String todayIso) {
-  int day(String iso) {
-    final p = iso.split('-').map(int.parse).toList();
-    return DateTime.utc(p[0], p[1], p[2]).millisecondsSinceEpoch ~/ 86400000;
-  }
-
-  final start = day(startIso), end = day(endIso), today = day(todayIso);
-  if (today <= start) return 0;
-  if (today >= end) return 1;
-  return (today - start) / (end - start);
-}
-
-class _Hero extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool accent;
-
-  const _Hero({required this.label, required this.value, this.accent = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: accent ? theme.colorScheme.primary : null,
-          ),
-        ),
-      ],
     );
   }
 }

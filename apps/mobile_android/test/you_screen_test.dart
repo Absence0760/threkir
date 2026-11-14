@@ -4,52 +4,43 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
-import 'package:core_models/core_models.dart' show UserProfileRow;
+import 'package:core_models/core_models.dart'
+    show IncomingFollowRequest, UserProfileRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show PageHeader, SectionHeader, SettingsAnchor;
 
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
-import '../lib/dm_pending_hides.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/local_food_store.dart';
 import '../lib/local_gear_store.dart';
+import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/parkrun_barcode_cache.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/messages_screen.dart';
 import '../lib/screens/parkrun_barcode_screen.dart';
+import '../lib/screens/follow_requests_screen.dart';
 import '../lib/screens/profile_screen.dart';
+import '../lib/screens/edit_profile_screen.dart';
+import '../lib/screens/settings_preferences_screen.dart';
+import '../lib/settings_sync.dart';
 import '../lib/screens/you_screen.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart';
+import 'worst_case_layout.dart';
 
-/// Signed-in fake so the identity header renders. [displayName] and
-/// [unread] stand in for the two reads the header makes; [failProfile] makes
-/// the profile read throw, as an offline read does.
+/// Signed-in fake so the identity card renders. [displayName] stands in for
+/// the profile read the card makes; [failProfile] makes it throw, as an
+/// offline read does.
 class _FakeApi extends ApiClient {
-  _FakeApi({this.displayName = 'Ada Lovelace', this.unread = 0});
+  _FakeApi({this.displayName = 'Ada Lovelace'});
 
   final String? displayName;
-  final int unread;
   bool failProfile = false;
-  int badgeReads = 0;
-
-  /// When set, the badge read answers with these instead of [unread].
-  List<({String conversationId, int unread, bool muted, bool archived, bool request})>?
-      states;
-
-  /// Each badge read takes the first gate, while any is queued.
-  final List<
-          Completer<
-              List<
-                  ({
-                    String conversationId,
-                    int unread,
-                    bool muted,
-                    bool archived,
-                    bool request
-                  })>>> badgeGates = [];
 
   @override
   String? get userId => 'u1';
@@ -60,24 +51,25 @@ class _FakeApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async {
     if (failProfile) throw Exception('offline');
-    return UserProfileRow(profilePrivate: false, 
-        id: 'u1', displayName: displayName, shadowHidden: false);
+    return UserProfileRow(
+        profilePrivate: false,
+        id: 'u1',
+        displayName: displayName,
+        shadowHidden: false);
   }
 
   @override
-  Future<
-          List<
-              ({String conversationId, int unread, bool muted, bool archived, bool request})>>
-      fetchDmBadgeStates() async {
-    badgeReads++;
-    if (badgeGates.isNotEmpty) return badgeGates.removeAt(0).future;
-    final set = states;
-    if (set != null) return set;
-    return [
-      (conversationId: 'c-1', unread: unread, muted: false, archived: false, request: false),
-      (conversationId: 'c-2', unread: 0, muted: false, archived: false, request: false),
-    ];
-  }
+  Future<List<IncomingFollowRequest>> fetchIncomingFollowRequests() async =>
+      const [];
+}
+
+/// Signed out, but with a client to sign in through.
+class _SignedOutApi extends ApiClient {
+  @override
+  String? get userId => null;
+
+  @override
+  String? get userEmail => null;
 }
 
 /// Drives auth transitions: mutate [uid]/[email]/[name], then [emit] a tick
@@ -97,30 +89,25 @@ class _SwitchableApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async => uid == null
       ? null
-      : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
-
-  /// The next badge read waits on this (then it clears).
-  Completer<
-          List<({String conversationId, int unread, bool muted, bool archived, bool request})>>?
-      badgeGate;
-  List<({String conversationId, int unread, bool muted, bool archived, bool request})>
-      badgeStates = const [];
-
-  @override
-  Future<
-          List<
-              ({String conversationId, int unread, bool muted, bool archived, bool request})>>
-      fetchDmBadgeStates() async {
-    final gate = badgeGate;
-    badgeGate = null;
-    if (gate != null) return gate.future;
-    return badgeStates;
-  }
+      : UserProfileRow(
+          profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
   @override
   Stream<String?> get authUserChanges => _controller.stream;
 
   void emit() => _controller.add(uid);
+}
+
+/// A sync wired but with no server bag, so the Privacy zones row (which
+/// needs a sync to save into) is on the Privacy page.
+class _SyncedNoBag extends SettingsSyncService {
+  _SyncedNoBag(Preferences prefs) : super(preferences: prefs);
+
+  @override
+  bool get synced => true;
+
+  @override
+  SettingsService? get service => null;
 }
 
 void main() {
@@ -138,10 +125,19 @@ void main() {
     return d;
   }
 
+  late AppLocalizations en;
+  setUpAll(() async {
+    en = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   Future<void> pump(
     WidgetTester tester, {
     ApiClient? api,
     Map<String, Object> initialPrefs = const {},
+    Size? size,
+    double textScale = 1.0,
+    Locale locale = const Locale('en'),
+    bool navBar = false,
   }) async {
     SharedPreferences.setMockInitialValues(initialPrefs);
     final prefs = Preferences();
@@ -152,363 +148,383 @@ void main() {
     await routeStore.init(overrideDirectory: tmp('you_routes_'));
     final gearStore = LocalGearStore();
     await gearStore.init(overrideDirectory: tmp('you_gear_'));
+    if (size != null) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+    if (navBar) {
+      tester.view.viewPadding =
+          const FakeViewPadding(bottom: kThreeButtonNavBar);
+      tester.view.padding = const FakeViewPadding(bottom: kThreeButtonNavBar);
+      addTearDown(tester.view.reset);
+    }
 
     await tester.pumpWidget(MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: YouScreen(
         apiClient: api ?? _FakeApi(),
         preferences: prefs,
         runStore: runStore,
         routeStore: routeStore,
         gearStore: gearStore,
+        gymStore: LocalGymStore(),
+        foodStore: LocalFoodStore(),
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
+        settingsSync: _SyncedNoBag(prefs),
       ),
     ));
     await tester.pump();
   }
 
-  testWidgets('the header names the runner, not their email',
-      (tester) async {
-    await pump(tester);
+  /// Group eyebrows top to bottom, read off geometry on a page tall enough
+  /// to lay the whole list out.
+  List<String> groupLabels(WidgetTester tester) {
+    final found = <(double, String)>[
+      for (final e in find.byType(SectionHeader).evaluate())
+        (
+          (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy,
+          (e.widget as SectionHeader).label,
+        ),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final f in found) f.$2];
+  }
+
+  Future<void> search(WidgetTester tester, String text) async {
+    await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('settings-search')),
+          matching: find.byType(TextField),
+        ),
+        text);
+    await tester.pump();
+  }
+
+  group('the page', () {
+    testWidgets('is titled You, then the identity card, then the search',
+        (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      final title = find.descendant(
+          of: find.byType(PageHeader), matching: find.text(en.navYou));
+      final card = find.byKey(const ValueKey('you-identity-card'));
+      final field = find.byKey(const ValueKey('settings-search'));
+      expect(title, findsOneWidget);
+      expect(card, findsOneWidget);
+      expect(field, findsOneWidget);
+      expect(tester.getTopLeft(title).dy, lessThan(tester.getTopLeft(card).dy));
+      expect(tester.getTopLeft(card).dy, lessThan(tester.getTopLeft(field).dy));
+    });
+
+    testWidgets("web's groups, in web's order", (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      expect(groupLabels(tester), [
+        en.settingsSectionProfile,
+        en.prefsTitle,
+        en.settingsSectionAppsData,
+        en.settingsSectionAccountLegal,
+      ]);
+      // Preferences is its five pages, listed here rather than behind one
+      // more tap.
+      for (final page in PreferencesPage.values) {
+        expect(find.text(preferencesPageTitle(en, page)), findsOneWidget);
+      }
+    });
+
+    testWidgets('coaching, guided runs and messages are not on You',
+        (tester) async {
+      // Owner decision (issue #1374): Athletes & coaches and Guided runs
+      // live on the Coach, Messages on Social.
+      await pump(tester, size: const Size(400, 3000));
+      expect(find.text(en.coachingTitle), findsNothing);
+      expect(find.text(en.guidedRunsTitle), findsNothing);
+      expect(find.byIcon(Icons.chat_bubble_outline), findsNothing);
+      expect(find.byKey(const ValueKey('you-messages')), findsNothing);
+    });
+
+    testWidgets('fits a 320 dp phone at 2x text', (tester) async {
+      await pump(tester, size: const Size(320, 640), textScale: 2.0);
+      await pumpUntil(
+          tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+          describe: 'the display name');
+      expect(tester.takeException(), isNull);
+      for (var i = 0; i < 30; i++) {
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+        await tester.pump();
+      }
+      expect(tester.takeException(), isNull);
+      expect(find.text(en.helpTitle), findsOneWidget);
+    });
+  });
+
+  // Issue #1374 TO-6: the whole of You at the worst case, in every locale.
+  worstCaseTestWidgets('You', (tester, locale) async {
+    await pump(tester, size: kWorstCasePhone, textScale: kWorstCaseTextScale, locale: locale);
+    useWorstCasePhone(tester);
     await pumpUntil(
         tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
         describe: 'the display name');
-    expect(find.text('View profile'), findsOneWidget);
-    // The email belongs to the Account screen; the header and the Account
-    // row used to both print it.
-    expect(find.text('runner@test.com'), findsNothing);
-    // Settings section tiles fold in below.
-    expect(find.text('Account'), findsOneWidget);
-    expect(find.text('Preferences'), findsOneWidget);
+    await walkScrollable(tester, find.byType(Scrollable).first, 'You');
   });
 
-  testWidgets('a runner with no display name sees "Your profile"',
-      (tester) async {
-    await pump(tester, api: _FakeApi(displayName: null));
-    await tester.pump();
-    expect(find.text('Your profile'), findsOneWidget);
-  });
-
-  testWidgets('a failed profile read falls back to "Your profile"',
-      (tester) async {
-    await pump(tester, api: _FakeApi()..failProfile = true);
-    await tester.pump();
-    expect(find.text('Your profile'), findsOneWidget);
-    expect(find.text('Ada Lovelace'), findsNothing);
-  });
-
-  testWidgets("tapping the header pushes the runner's own ProfileScreen",
-      (tester) async {
-    await pump(tester);
-    await tester.tap(find.byKey(const ValueKey('you-profile-header')));
-    await tester.pump();
-    await tester.pump();
-    expect(
-      tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
-      'u1',
-    );
-  });
-
-  testWidgets('the header reacts to sign-out and an account switch (#223)',
-      (tester) async {
-    final api = _SwitchableApi();
-    await pump(tester, api: api);
-    await pumpUntil(
-        tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
-        describe: "A's name");
-
-    // Sign out (from anywhere — the account screen, a session expiry):
-    // the header must drop the departed runner, not render them until
-    // some unrelated rebuild.
-    api.uid = null;
-    api.email = null;
-    api.emit();
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('Ada Lovelace'), findsNothing);
-    expect(find.byKey(const ValueKey('you-profile-header')), findsNothing);
-
-    // Sign in as someone else: the header shows B and routes to B's
-    // profile, not A's (#232 instance 3 — stale viewerId).
-    api.uid = 'u2';
-    api.email = 'other@test.com';
-    api.name = 'Grace Hopper';
-    api.emit();
-    await pumpUntil(
-        tester, () => find.text('Grace Hopper').evaluate().isNotEmpty,
-        describe: "B's name");
-    await tester.tap(find.byKey(const ValueKey('you-profile-header')));
-    await tester.pump();
-    await tester.pump();
-    expect(
-      tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
-      'u2',
-    );
-  });
-
-  testWidgets('the inbox icon shows and announces the unread count',
-      (tester) async {
-    final handle = tester.ensureSemantics();
-    await pump(tester, api: _FakeApi(unread: 3));
-    final icon = find.byKey(const ValueKey('you-messages'));
-    await pumpUntil(
-      tester,
-      () => find
-          .descendant(of: icon, matching: find.text('3'))
-          .evaluate()
-          .isNotEmpty,
-      describe: 'the unread badge',
-    );
-    // One merged node: the count is read as the button's value, not as a
-    // stray "3" after it.
-    final data = tester.getSemantics(icon).getSemanticsData();
-    expect(data.tooltip, 'Messages');
-    expect(data.value, '3 unread messages');
-    expect(data.flagsCollection.isButton, isTrue);
-    handle.dispose();
-  });
-
-  testWidgets('a conversation whose delete is pending leaves the count at once, '
-      'and Undo or the commit re-reads it', (tester) async {
-    addTearDown(DmPendingHides.instance.debugClear);
-    final api = _FakeApi(unread: 3);
-    await pump(tester, api: api);
-    final icon = find.byKey(const ValueKey('you-messages'));
-    await pumpUntil(
-      tester,
-      () => find
-          .descendant(of: icon, matching: find.text('3'))
-          .evaluate()
-          .isNotEmpty,
-      describe: 'the unread badge',
-    );
-    final reads = api.badgeReads;
-
-    DmPendingHides.instance.add('c-1');
-    await tester.pump();
-    expect(find.descendant(of: icon, matching: find.text('3')), findsNothing);
-    expect(api.badgeReads, reads);
-
-    DmPendingHides.instance.remove('c-1');
-    await pumpUntil(
-      tester,
-      () => find
-          .descendant(of: icon, matching: find.text('3'))
-          .evaluate()
-          .isNotEmpty,
-      describe: 'the badge back after the re-read',
-    );
-    expect(api.badgeReads, reads + 1);
-  });
-
-  testWidgets('a read that started before a delete was committed does not '
-      'count the deleted conversation', (tester) async {
-    addTearDown(DmPendingHides.instance.debugClear);
-    final api = _FakeApi()
-      ..states = [
-        (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-      ];
-    await pump(tester, api: api);
-    final icon = find.byKey(const ValueKey('you-messages'));
-    bool badge(String n) => find
-        .descendant(of: icon, matching: find.text(n))
-        .evaluate()
-        .isNotEmpty;
-    await pumpUntil(tester, () => badge('5'), describe: 'the unread badge');
-
-    DmPendingHides.instance.add('c-1');
-    await tester.pump();
-    expect(badge('2'), isTrue);
-
-    // Any removal asks for a read; this one stands in for a poll or a
-    // sub-screen return that is still in flight when the delete commits.
-    final stale = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
-    api.badgeGates.add(stale);
-    DmPendingHides.instance
-      ..add('c-9')
-      ..remove('c-9');
-    await tester.pump();
-
-    api.states = [
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-    ];
-    DmPendingHides.instance.landed('c-1');
-    await tester.pump();
-    await tester.pump();
-    expect(badge('2'), isTrue);
-
-    stale.complete([
-      (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-    ]);
-    await tester.pump();
-    await tester.pump();
-    expect(badge('5'), isFalse);
-    expect(badge('2'), isTrue);
-  });
-
-  testWidgets('a badge read that lands after the account changed is dropped',
-      (tester) async {
-    final api = _SwitchableApi();
-    final stale = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
-    api.badgeGate = stale;
-    await pump(tester, api: api);
-    final icon = find.byKey(const ValueKey('you-messages'));
-    bool badge(String n) => find
-        .descendant(of: icon, matching: find.text(n))
-        .evaluate()
-        .isNotEmpty;
-
-    api
-      ..uid = 'u2'
-      ..badgeStates = [
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-      ];
-    api.emit();
-    await pumpUntil(tester, () => badge('2'), describe: 'the new badge');
-
-    stale.complete([
-      (conversationId: 'c-1', unread: 7, muted: false, archived: false, request: false),
-    ]);
-    await tester.pump();
-    await tester.pump();
-    expect(badge('7'), isFalse,
-        reason: 'that read was the previous account\'s count');
-    expect(badge('2'), isTrue);
-  });
-
-  testWidgets('a landed delete stays out of the count while the read after it '
-      'is in flight', (tester) async {
-    addTearDown(DmPendingHides.instance.debugClear);
-    final api = _FakeApi()
-      ..states = [
-        (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-      ];
-    await pump(tester, api: api);
-    final icon = find.byKey(const ValueKey('you-messages'));
-    bool badge(String n) => find
-        .descendant(of: icon, matching: find.text(n))
-        .evaluate()
-        .isNotEmpty;
-    await pumpUntil(tester, () => badge('5'), describe: 'the unread badge');
-
-    DmPendingHides.instance.add('c-1');
-    await tester.pump();
-    expect(badge('2'), isTrue);
-
-    final fresh = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
-    api.badgeGates.add(fresh);
-    DmPendingHides.instance.landed('c-1');
-    await tester.pump();
-    expect(badge('2'), isTrue,
-        reason: 'the count held was read before the delete landed');
-    expect(DmPendingHides.instance.debugHasMarker('c-1'), isTrue);
-
-    fresh.complete([
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
-    ]);
-    await tester.pump();
-    await tester.pump();
-    expect(badge('2'), isTrue);
-    expect(DmPendingHides.instance.debugHasMarker('c-1'), isFalse);
-  });
-
-  testWidgets('signing out lets go of a landed delete the badge was keeping',
-      (tester) async {
-    addTearDown(DmPendingHides.instance.debugClear);
-    final api = _SwitchableApi();
-    await pump(tester, api: api);
-    await tester.pump();
-
-    final pending = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
-    addTearDown(() {
-      if (!pending.isCompleted) pending.complete(const []);
+  group('the identity card', () {
+    testWidgets('names the runner, not their email', (tester) async {
+      await pump(tester);
+      await pumpUntil(
+          tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+          describe: 'the display name');
+      expect(find.text('View profile'), findsOneWidget);
+      // The email belongs to the Account screen; the card and the Account
+      // row used to both print it.
+      expect(find.text('runner@test.com'), findsNothing);
     });
-    api.badgeGate = pending;
-    DmPendingHides.instance.add('c-1');
-    DmPendingHides.instance.landed('c-1');
-    await tester.pump();
-    expect(DmPendingHides.instance.debugHasMarker('c-1'), isTrue,
-        reason: 'the count held was read before the delete landed');
 
-    api.uid = null;
-    api.email = null;
-    api.emit();
-    await tester.pump();
-    expect(DmPendingHides.instance.debugHasMarker('c-1'), isFalse);
-  });
-
-  testWidgets('no badge with nothing unread', (tester) async {
-    await pump(tester, api: _FakeApi(unread: 0));
-    await tester.pump();
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
-  });
-
-  testWidgets('a settings tile drills into its sub-screen', (tester) async {
-    await pump(tester);
-    await tester.tap(find.text('Preferences'));
-    // Let the push route transition complete.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    // The Preferences sub-screen pushed over You — its own AppBar (with a
-    // back button) is up, which a top-level tab screen never shows.
-    expect(find.byType(BackButton), findsOneWidget);
-  });
-
-  testWidgets('the Messages entry opens the inbox, and only when signed in',
-      (tester) async {
-    final api = _SwitchableApi();
-    await pump(tester, api: api);
-    final tile = find.byKey(const ValueKey('you-messages'));
-    expect(tile, findsOneWidget);
-
-    await tester.tap(tile);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byType(MessagesScreen), findsOneWidget);
-
-    Navigator.of(tester.element(find.byType(MessagesScreen))).pop();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    api.uid = null;
-    api.emit();
-    await tester.pump();
-    await tester.pump();
-    expect(tile, findsNothing);
-  });
-
-  testWidgets('no parkrun barcode shortcut until this device holds a number',
-      (tester) async {
-    await pump(tester);
-    await tester.pump();
-    expect(find.byKey(const ValueKey('you-parkrun-barcode')), findsNothing);
-  });
-
-  testWidgets('the parkrun barcode shortcut opens the barcode screen',
-      (tester) async {
-    await pump(tester, initialPrefs: {
-      ParkrunBarcodeCache.storageKey:
-          jsonEncode({'user_id': 'u1', 'number': 'A123456'}),
+    testWidgets('a runner with no display name sees "Your profile"',
+        (tester) async {
+      await pump(tester, api: _FakeApi(displayName: null));
+      await tester.pump();
+      expect(find.text('Your profile'), findsOneWidget);
     });
-    final tile = find.byKey(const ValueKey('you-parkrun-barcode'));
-    await pumpUntil(
-      tester,
-      () => tile.evaluate().isNotEmpty,
-      describe: 'the barcode shortcut',
-    );
-    expect(find.descendant(of: tile, matching: find.text('A123456')),
-        findsOneWidget);
-    await tester.tap(tile);
-    await tester.pump();
-    await tester.pump();
-    expect(find.byType(ParkrunBarcodeScreen), findsOneWidget);
+
+    testWidgets('a failed profile read falls back to "Your profile"',
+        (tester) async {
+      await pump(tester, api: _FakeApi()..failProfile = true);
+      await tester.pump();
+      expect(find.text('Your profile'), findsOneWidget);
+      expect(find.text('Ada Lovelace'), findsNothing);
+    });
+
+    testWidgets("tapping it pushes the runner's own ProfileScreen",
+        (tester) async {
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('you-profile-header')));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
+        'u1',
+      );
+    });
+
+    testWidgets('Edit profile opens the name and photo editor',
+        (tester) async {
+      // Your own profile had no edit; the name and avatar were three taps
+      // away in Account (issue #1374 finding 10).
+      await pump(tester);
+      await tester.tap(find.byKey(const ValueKey('you-edit-profile')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(EditProfileScreen), findsOneWidget);
+    });
+
+    testWidgets('reacts to sign-out and an account switch (#223)',
+        (tester) async {
+      final api = _SwitchableApi();
+      await pump(tester, api: api);
+      await pumpUntil(
+          tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+          describe: "A's name");
+
+      // Sign out (from anywhere — the account screen, a session expiry):
+      // the card must drop the departed runner, not render them until some
+      // unrelated rebuild.
+      api.uid = null;
+      api.email = null;
+      api.emit();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada Lovelace'), findsNothing);
+      expect(find.byKey(const ValueKey('you-profile-header')), findsNothing);
+      expect(find.byKey(const ValueKey('you-sign-in-card')), findsOneWidget);
+
+      // Sign in as someone else: the card shows B and routes to B's
+      // profile, not A's (#232 instance 3 — stale viewerId).
+      api.uid = 'u2';
+      api.email = 'other@test.com';
+      api.name = 'Grace Hopper';
+      api.emit();
+      await pumpUntil(
+          tester, () => find.text('Grace Hopper').evaluate().isNotEmpty,
+          describe: "B's name");
+      await tester.tap(find.byKey(const ValueKey('you-profile-header')));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
+        'u2',
+      );
+    });
+
+    testWidgets('signed out, a sign-in prompt takes its place',
+        (tester) async {
+      await pump(tester, api: _SignedOutApi());
+      expect(find.byKey(const ValueKey('you-identity-card')), findsNothing);
+      expect(find.byKey(const ValueKey('you-sign-in-card')), findsOneWidget);
+      expect(find.text(en.settingsAccountSignIn), findsOneWidget);
+    });
+  });
+
+  group('reach', () {
+    testWidgets('privacy zones are two taps from You', (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      await tester.tap(find.byKey(const ValueKey('you-prefs-privacy')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen))
+            .page,
+        PreferencesPage.privacy,
+      );
+      expect(find.byKey(const ValueKey('prefs-privacy-zones')), findsOneWidget);
+    });
+
+    testWidgets('Follow requests are a row in Profile, signed in',
+        (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      await tester.tap(find.byKey(const ValueKey('you-follow-requests')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(FollowRequestsScreen), findsOneWidget);
+    });
+
+    testWidgets('Follow requests are not offered signed out', (tester) async {
+      await pump(tester, api: _SignedOutApi(), size: const Size(400, 3000));
+      expect(find.byKey(const ValueKey('you-follow-requests')), findsNothing);
+    });
+  });
+
+  group('the settings search', () {
+    testWidgets('finds a row on a Preferences page and opens that page',
+        (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      await search(tester, 'zones');
+      final hit = find.byKey(ValueKey(
+          'settings-search-result-${PreferencesRow.privacyZones.name}'));
+      expect(hit, findsOneWidget);
+      // The result names the page it is on, and the groups give way.
+      expect(
+          find.descendant(of: hit, matching: find.text(en.prefsPagePrivacy)),
+          findsOneWidget);
+      expect(find.byType(SectionHeader), findsNothing);
+      // Case is not what the runner remembers.
+      await search(tester, en.prefsHrZones.toUpperCase());
+      expect(
+          find.byKey(ValueKey(
+              'settings-search-result-${PreferencesRow.hrZones.name}')),
+          findsOneWidget);
+
+      await search(tester, 'zones');
+      await tester.tap(hit);
+      await tester.pumpAndSettle();
+      final opened = tester.widget<SettingsPreferencesScreen>(
+          find.byType(SettingsPreferencesScreen));
+      expect(opened.page, PreferencesPage.privacy);
+      expect(opened.focus, PreferencesRow.privacyZones);
+    });
+
+    // The owner's report: "nut" found Show Nutrition, and tapping it opened
+    // Units & display at the top with the row nowhere in sight.
+    testWidgets('a result lands on its row: in view, highlighted, announced, '
+        'at 320 dp, 2x text and a 3-button bar', (tester) async {
+      await pump(tester,
+          size: kNarrowPhone, textScale: 2.0, navBar: true);
+      await search(tester, 'nut');
+      final hit = find.byKey(ValueKey(
+          'settings-search-result-${PreferencesRow.showNutrition.name}'));
+      expect(hit, findsOneWidget);
+      await tester.ensureVisible(hit);
+      await tester.pump();
+      await tester.tap(hit);
+      // The push, then the scroll to the row; the highlight is still on.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(tester.takeException(), isNull);
+      expect(
+        tester
+            .widget<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen))
+            .page,
+        PreferencesPage.display,
+      );
+      final anchor = find.byWidgetPredicate((w) =>
+          w is SettingsAnchor && w.id == PreferencesRow.showNutrition.name);
+      expect(anchor, findsOneWidget);
+      final row = find.descendant(
+          of: anchor, matching: find.text(en.prefsShowNutrition));
+      expect(row, findsOneWidget);
+      final rect = tester.getRect(row);
+      final page = tester.getRect(find.byType(SettingsPreferencesScreen));
+      expect(rect.top, greaterThanOrEqualTo(page.top));
+      expectAboveNavBar(tester, row);
+      expect(
+        find.descendant(
+            of: anchor,
+            matching:
+                find.byKey(const ValueKey('settings-anchor-highlight'))),
+        findsOneWidget,
+      );
+      expect(tester.takeAnnouncements().map((a) => a.message),
+          contains(en.prefsShowNutrition));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("finds You's own rows too", (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      await search(tester, 'devices');
+      expect(
+          find.byKey(const ValueKey('settings-search-result-you-devices')),
+          findsOneWidget);
+    });
+
+    testWidgets('says so when nothing matches, and clearing brings the '
+        'groups back', (tester) async {
+      await pump(tester, size: const Size(400, 3000));
+      await search(tester, 'qqqzzz');
+      expect(find.byKey(const ValueKey('settings-search-empty')),
+          findsOneWidget);
+      expect(find.text(en.settingsSearchNoResults('qqqzzz')), findsOneWidget);
+
+      await tester.tap(find.byTooltip(en.commonClearSearch));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('settings-search-empty')),
+          findsNothing);
+      expect(groupLabels(tester), isNotEmpty);
+    });
+  });
+
+  group('the parkrun barcode shortcut', () {
+    testWidgets('is absent until this device holds a number', (tester) async {
+      await pump(tester);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('you-parkrun-barcode')), findsNothing);
+    });
+
+    testWidgets('opens the barcode screen', (tester) async {
+      await pump(tester, initialPrefs: {
+        ParkrunBarcodeCache.storageKey:
+            jsonEncode({'user_id': 'u1', 'number': 'A123456'}),
+      });
+      final tile = find.byKey(const ValueKey('you-parkrun-barcode'));
+      await pumpUntil(
+        tester,
+        () => tile.evaluate().isNotEmpty,
+        describe: 'the barcode shortcut',
+      );
+      expect(find.descendant(of: tile, matching: find.text('A123456')),
+          findsOneWidget);
+      await tester.tap(tile);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(ParkrunBarcodeScreen), findsOneWidget);
+    });
   });
 }

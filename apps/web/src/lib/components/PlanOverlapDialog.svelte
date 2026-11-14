@@ -61,9 +61,11 @@
 		}) + (canTrim ? '' : ' ' + m('planEditor.overlapNoTrim'))
 	);
 	const trimLabel = $derived(
-		overlapping.length === 1
-			? m('planEditor.overlapTrimOne', { name: overlapping[0].name, date: trimTo ? fmtDay(trimTo) : '' })
-			: m('planEditor.overlapTrimMany', { date: trimTo ? fmtDay(trimTo) : '' })
+		m('planEditor.overlapTrim', {
+			n: overlapping.length,
+			name: overlapping[0]?.name ?? '',
+			date: trimTo ? fmtDay(trimTo) : '',
+		})
 	);
 </script>
 

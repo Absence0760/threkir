@@ -1,9 +1,13 @@
 import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
+import '../engagement_cache.dart';
+import '../fab_clearance.dart';
+import '../feed_highlights.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show ActiveFilter, AppInsets, AppSpace, AsyncView, ChoiceChipOption, EmptyState, FilterBar, HubTabBody, IdentityAvatar, ListCard, LoadingState, buildChoiceChip, showFilterSheet;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -12,6 +16,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../social_service.dart';
+import '../social_surface_requests.dart';
 import '../widgets/badge_grid.dart';
 import '../widgets/error_state.dart';
 import '../widgets/run_track_preview.dart';
@@ -23,13 +28,17 @@ import '../widgets/top_banner.dart';
 
 /// Activity feed of public runs from people you follow, capped to the
 /// last 14 days. Mirrors the web `/feed` route (decisions §31).
+///
+/// The Social hub's Feed tab: a ui_kit `HubTabBody`, so in the hub it draws
+/// no app bar and pushed on its own it gets a small titled one (issue #1374).
+/// The activity kinds are the quick chips; who the activity is from is in the
+/// Filters sheet and shows as a removable chip while it narrows the feed.
+/// Badges earned by people you follow are rows of the feed, one per person
+/// per day, placed by time (`feed_highlights.dart`); they show under the All
+/// chip only, and the author filter narrows them as it narrows the activity.
 class FeedScreen extends StatefulWidget {
   final ApiClient api;
-  /// Embedded mode skips the Scaffold/AppBar wrapping. Used by the
-  /// SocialScreen Material TabBar host so a single Scaffold owns the
-  /// tab chrome instead of nesting one per inner screen.
-  final bool embedded;
-  const FeedScreen({super.key, required this.api, this.embedded = false});
+  const FeedScreen({super.key, required this.api});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -67,7 +76,17 @@ class _FeedScreenState extends State<FeedScreen> {
   List<ActivityFeedEntry> _entries = const [];
   Map<String, EngagementSummary> _engagement = const {};
   List<UserProfileRow> _followees = const [];
+  /// The window the activity read applies (its default) and the badge read
+  /// is bounded to, so a highlight never predates the feed it sits in.
+  static const _feedWindowDays = 14;
+  static const _badgePage = 20;
+  static const _maxBadgePagesPerRead = 5;
   List<BadgeAwardEntry> _badgeAwards = const [];
+  bool _badgeAwardsExhausted = false;
+  bool _badgeAwardsFailed = false;
+  DateTime _badgeSince = DateTime.now().toUtc();
+  int _badgeGen = 0;
+  int? _badgeBusyGen;
 
   String _authorFilter = 'all';
   String _activityFilter = 'all';
@@ -78,17 +97,68 @@ class _FeedScreenState extends State<FeedScreen> {
     _loadInitial();
   }
 
-  // Recent badge awards from people you follow — an auxiliary feed adornment
-  // (L4). A failure here must never blank the core feed, so it loads on its
-  // own and degrades to no strip.
-  Future<void> _loadBadgeAwards() async {
+  bool get _showHighlights => highlightsShowFor(_activityFilter);
+
+  /// More rows can still load: older activity, or older highlights once the
+  /// activity has run out.
+  bool get _moreToLoad =>
+      !_exhausted ||
+      (_showHighlights && !_badgeAwardsExhausted && !_badgeAwardsFailed);
+
+  List<FeedRow<ActivityFeedEntry>> _rows() => _showHighlights
+      ? interleaveHighlights<ActivityFeedEntry>(_entries, (e) => e.startedAt,
+          groupHighlights(_badgeAwards), _exhausted)
+      : [for (final e in _entries) FeedEntryRow<ActivityFeedEntry>(e)];
+
+  // Badge awards from people you follow — an auxiliary feed adornment (L4).
+  // A failure here must never blank the core feed, so they read on their own
+  // cursor, only as far back as the activity has loaded, and a failure shows
+  // as its own one-line error with a retry, never as "no badges" (§ 2501).
+  // A restart (refresh, new filter) reads into a fresh list and replaces the
+  // old one only when its first page lands, so a refresh never blanks them.
+  Future<void> _topUpBadgeAwards({bool restart = false}) async {
+    if (restart) _badgeGen++;
+    final gen = _badgeGen;
+    if (_badgeBusyGen == gen) return;
+    if (!restart && _badgeAwardsFailed) return;
+    if (!_showHighlights) return;
+    _badgeBusyGen = gen;
+    var awards = restart ? const <BadgeAwardEntry>[] : _badgeAwards;
+    var exhausted = !restart && _badgeAwardsExhausted;
+    final author = _authorFilter == 'all' ? null : _authorFilter;
     try {
-      final awards = await widget.api.fetchFollowingBadgeAwards(limit: 6);
-      if (!mounted) return;
-      setState(() => _badgeAwards = awards);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _badgeAwards = const []);
+      for (var i = 0; i < _maxBadgePagesPerRead; i++) {
+        final oldest = awards.isEmpty ? null : awards.last.badge;
+        final more = needsMoreHighlights(
+          oldestAwardAt: oldest?.earnedAt,
+          awardsExhausted: exhausted,
+          oldestEntryAt: _entries.isEmpty ? null : _entries.last.startedAt,
+          feedExhausted: _exhausted,
+        );
+        if (!more) break;
+        final page = await widget.api.fetchFollowingBadgeAwards(
+          limit: _badgePage,
+          since: _badgeSince,
+          authorId: author,
+          cursor: oldest == null
+              ? null
+              : (earnedAt: oldest.earnedAt, id: oldest.id),
+        );
+        if (!mounted || gen != _badgeGen) return;
+        awards = [...awards, ...page];
+        exhausted = page.length < _badgePage;
+        setState(() {
+          _badgeAwards = awards;
+          _badgeAwardsExhausted = exhausted;
+          _badgeAwardsFailed = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('feed_screen: badge awards read failed: $e');
+      if (!mounted || gen != _badgeGen) return;
+      setState(() => _badgeAwardsFailed = true);
+    } finally {
+      if (_badgeBusyGen == gen) _badgeBusyGen = null;
     }
   }
 
@@ -97,17 +167,19 @@ class _FeedScreenState extends State<FeedScreen> {
   static List<String> _runIds(List<ActivityFeedEntry> es) =>
       es.whereType<RunFeedEntry>().map((e) => e.run.id).toList();
 
+  /// Reads the first page. Rows already on screen stay while it runs (a pull
+  /// to refresh), and stay when it fails, with a banner saying so: a failed
+  /// read never blanks a feed that had loaded.
   Future<void> _loadInitial() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
       _loadError = null;
     });
-    _loadBadgeAwards();
 
     // The activity feed is the one fetch that must succeed — a failure
-    // here is a genuine can't-show-a-feed error. The author-filter
-    // dropdown (fetchFollowing) and the per-run kudos/comment footers
+    // here is a genuine can't-show-a-feed error. The author filter
+    // (fetchAllFollowing) and the per-run kudos/comment footers
     // (fetchEngagementSummaries) are adornments on the feed; isolating
     // them means one of those failing can't blank the whole feed the way
     // a single shared try/catch over all three did (issue #506).
@@ -117,20 +189,26 @@ class _FeedScreenState extends State<FeedScreen> {
         limit: 20,
         authorId: _authorFilter == 'all' ? null : _authorFilter,
         activityType: _activityFilter,
+        feedWindowDays: _feedWindowDays,
       );
     } catch (e) {
       debugPrint('feed load failed: $e');
       if (!mounted) return;
+      final hadRows = _entries.isNotEmpty;
       setState(() {
         _loadError = e;
         _loading = false;
       });
+      if (hadRows) {
+        showTopBanner(context, AppLocalizations.of(context).feedLoadError);
+      }
       return;
     }
 
     final followees = await _loadFollowees();
     final engagement = await _loadEngagement(_runIds(entries));
     if (!mounted) return;
+    _share(engagement);
     setState(() {
       _entries = entries;
       _followees = followees;
@@ -138,16 +216,19 @@ class _FeedScreenState extends State<FeedScreen> {
       _exhausted = entries.length < 20;
       _loading = false;
     });
+    _badgeSince = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: _feedWindowDays));
+    await _topUpBadgeAwards(restart: true);
   }
 
-  // Following list — drives the author-filter dropdown. Capped at 200 to
-  // keep the payload small. A failure here degrades to no dropdown (the
-  // previously-loaded list is kept), never blanks the feed.
+  // Following list — drives the author filter, so it is read whole: a cap
+  // hid everyone past it from the filter. A failure here degrades to the
+  // previously-loaded list, never blanks the feed.
   Future<List<UserProfileRow>> _loadFollowees() async {
     if (widget.api.userId == null) return const [];
     try {
-      return (await widget.api.fetchFollowing(widget.api.userId!, limit: 200))
-          .rows;
+      return await widget.api.fetchAllFollowing(widget.api.userId!);
     } catch (e) {
       debugPrint('feed followees load failed: $e');
       return _followees;
@@ -157,6 +238,15 @@ class _FeedScreenState extends State<FeedScreen> {
   // Per-run kudos / comment counts. Runs only (lift cards carry no
   // engagement footer). A failure degrades to no counts, never blanks
   // the feed.
+  /// The server's counts as of this load, shared app-wide so a card built
+  /// later reads the newest of this and any change made elsewhere since.
+  void _share(Map<String, EngagementSummary> engagement) {
+    final viewer = widget.api.userId;
+    for (final MapEntry(key: runId, value: eng) in engagement.entries) {
+      EngagementCache.instance.put(viewer, runId, eng);
+    }
+  }
+
   Future<Map<String, EngagementSummary>> _loadEngagement(
       List<String> runIds) async {
     if (runIds.isEmpty) return const {};
@@ -177,7 +267,14 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || _exhausted || _entries.isEmpty) return;
+    if (_loadingMore) return;
+    if (_exhausted) {
+      setState(() => _loadingMore = true);
+      await _topUpBadgeAwards();
+      if (mounted) setState(() => _loadingMore = false);
+      return;
+    }
+    if (_entries.isEmpty) return;
     setState(() => _loadingMore = true);
     try {
       final last = _entries.last;
@@ -186,15 +283,18 @@ class _FeedScreenState extends State<FeedScreen> {
         cursor: (startedAt: last.startedAt, id: last.id),
         authorId: _authorFilter == 'all' ? null : _authorFilter,
         activityType: _activityFilter,
+        feedWindowDays: _feedWindowDays,
       );
       final moreEng = await _loadEngagement(_runIds(more));
       if (!mounted) return;
+      _share(moreEng);
       setState(() {
         _entries = [..._entries, ...more];
         _engagement = {..._engagement, ...moreEng};
         _exhausted = more.length < 20;
         _loadingMore = false;
       });
+      await _topUpBadgeAwards();
     } catch (e) {
       debugPrint('feed load more failed: $e');
       if (!mounted) return;
@@ -204,314 +304,363 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  void _setActivity(String value) {
-    if (value == _activityFilter) return;
-    setState(() => _activityFilter = value);
+  /// A new filter is a different feed: the rows for the old one go, so the
+  /// loading frame shows rather than the old filter's rows.
+  void _refilter(VoidCallback change) {
+    setState(() {
+      change();
+      _entries = const [];
+      _engagement = const {};
+    });
     _loadInitial();
   }
 
-  void _setAuthor(String? value) {
-    if (value == null || value == _authorFilter) return;
-    setState(() => _authorFilter = value);
-    _loadInitial();
+  void _setActivity(String value) {
+    if (value == _activityFilter) return;
+    _refilter(() => _activityFilter = value);
+  }
+
+  void _setAuthor(String value) {
+    if (value == _authorFilter) return;
+    _refilter(() => _authorFilter = value);
+  }
+
+  String _authorName(AppLocalizations l10n, String id) {
+    for (final f in _followees) {
+      if (f.id == id) return f.displayName ?? l10n.feedRunnerFallback;
+    }
+    return l10n.feedRunnerFallback;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (widget.embedded) {
-      return _buildBody(theme);
-    }
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.feedTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_search),
-            tooltip: l10n.feedFindPeople,
-            onPressed: () {
-              Navigator.of(context).push(
+    return HubTabBody(
+      title: l10n.feedTitle,
+      filters: _followees.isEmpty ? null : _filterBar(l10n),
+      banner: _badgeAwardsFailed && _showHighlights
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+              child: AppErrorState.inline(
+                message: l10n.feedBadgesLoadFailed,
+                onRetry: () => _topUpBadgeAwards(restart: true),
+              ),
+            )
+          : null,
+      onRefresh: _loadInitial,
+      body: contentColumn(
+        context,
+        AsyncView<List<FeedRow<ActivityFeedEntry>>>(
+          loading: _loading,
+          error: _loadError,
+          data: _rows(),
+          isEmpty: (rows) => rows.isEmpty,
+          loadingState: LoadingState.list(label: l10n.commonLoading, rows: 3),
+          errorBuilder: (_, _) =>
+              AppErrorState(message: l10n.feedLoadError, onRetry: _loadInitial),
+          // A signed-out viewer's following feed is empty by definition, and
+          // the "follow other runners" copy invites an action they can't
+          // take. Only the EMPTY state gates — entries still render signed
+          // out when there are any.
+          empty: widget.api.userId == null
+              ? SignInRequiredState(
+                  api: widget.api,
+                  message: l10n.feedSignedOutMessage,
+                  onSignedIn: _loadInitial,
+                )
+              : _buildEmpty(l10n),
+          builder: (_, rows) => _list(theme, l10n, rows),
+        ),
+      ),
+    );
+  }
+
+  Widget _list(ThemeData theme, AppLocalizations l10n,
+      List<FeedRow<ActivityFeedEntry>> rows) {
+    final moreToLoad = _moreToLoad;
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n.metrics.pixels >= n.metrics.maxScrollExtent - 200 &&
+            !_loadingMore &&
+            moreToLoad) {
+          _loadMore();
+        }
+        return false;
+      },
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
+            AppInsets.gutter, listEndClearance(context)),
+        // The window caption leads the list, so it scrolls away with it.
+        itemCount: 1 + rows.length + (moreToLoad ? 1 : 0),
+        separatorBuilder: (_, i) =>
+            SizedBox(height: i == 0 ? AppSpace.xs : AppSpace.sm),
+        itemBuilder: (_, index) {
+          if (index == 0) {
+            return Text(
+              l10n.feedLast14Days,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            );
+          }
+          final i = index - 1;
+          if (i >= rows.length) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.smPlus),
+                child: _loadingMore
+                    ? const CircularProgressIndicator()
+                    : TextButton(
+                        onPressed: _loadMore,
+                        child: Text(l10n.feedLoadMore),
+                      ),
+              ),
+            );
+          }
+          final row = rows[i];
+          if (row is FeedHighlightRow<ActivityFeedEntry>) {
+            final h = row.highlight;
+            return _HighlightCard(
+              key: ValueKey('feed-highlight-${h.key}'),
+              highlight: h,
+              onTap: () => Navigator.push(
+                context,
                 MaterialPageRoute<void>(
-                  builder: (_) => PeopleScreen(api: widget.api),
+                  builder: (_) => ProfileScreen(
+                    api: widget.api,
+                    userId: h.authorId,
+                    initialTab: ProfileTab.badges,
+                  ),
+                ),
+              ),
+            );
+          }
+          final entry = (row as FeedEntryRow<ActivityFeedEntry>).entry;
+          void openAuthor() => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileScreen(
+                    api: widget.api,
+                    userId: entry.author.id,
+                  ),
                 ),
               );
-            },
-          ),
-        ],
-      ),
-      body: _buildBody(theme),
-    );
-  }
-
-  Widget _buildBody(ThemeData theme) {
-    if (_loading) {
-      return ListSkeleton(
-        label: AppLocalizations.of(context).commonLoading,
-        rows: 3,
-        rowHeight: 168,
-      );
-    }
-    if (_loadError != null) {
-      return ErrorState(
-        message: AppLocalizations.of(context).feedLoadError,
-        onRetry: _loadInitial,
-      );
-    }
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_badgeAwards.isNotEmpty) _buildBadgeStrip(theme),
-        if (_followees.isNotEmpty) _buildToolbar(theme),
-        Expanded(
-          child: _entries.isEmpty
-              ? (widget.api.userId == null
-                  // A signed-out viewer's following feed is
-                  // empty by definition, and the "follow other
-                  // runners" copy invites an action they can't
-                  // take. Only the EMPTY state gates — entries
-                  // still render signed out when there are any.
-                  ? SignInRequiredState(
-                      api: widget.api,
-                      message: AppLocalizations.of(context)
-                          .feedSignedOutMessage,
-                      onSignedIn: _loadInitial,
-                    )
-                  : _buildEmpty(theme))
-              : RefreshIndicator(
-                  onRefresh: _loadInitial,
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (n) {
-                      if (n.metrics.pixels >=
-                              n.metrics.maxScrollExtent - 200 &&
-                          !_loadingMore &&
-                          !_exhausted) {
-                        _loadMore();
-                      }
-                      return false;
-                    },
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
-                      itemCount:
-                          _entries.length + (_exhausted ? 0 : 1),
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 8),
-                      itemBuilder: (_, i) {
-                        if (i >= _entries.length) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: _loadingMore
-                                  ? const CircularProgressIndicator()
-                                  : TextButton(
-                                      onPressed: _loadMore,
-                                      child: Text(
-                                          AppLocalizations.of(
-                                                  context)
-                                              .feedLoadMore),
-                                    ),
-                            ),
-                          );
-                        }
-                        final entry = _entries[i];
-                        void openAuthor() => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProfileScreen(
-                                  api: widget.api,
-                                  userId: entry.author.id,
-                                ),
-                              ),
-                            );
-                        if (entry is LiftFeedEntry) {
-                          return _LiftEntryCard(
-                            key: ValueKey(entry.id),
-                            entry: entry,
-                            onAuthorTap: openAuthor,
-                          );
-                        }
-                        final run = entry as RunFeedEntry;
-                        return _EntryCard(
-                          key: ValueKey(run.run.id),
-                          api: widget.api,
-                          entry: FeedEntry(
-                              run: run.run, author: run.author),
-                          initialEngagement: _engagement[run.run.id],
-                          onAuthorTap: openAuthor,
-                          onCardTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PublicRunScreen(
-                                api: widget.api,
-                                runId: run.run.id,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+          if (entry is LiftFeedEntry) {
+            return _LiftEntryCard(
+              key: ValueKey(entry.id),
+              entry: entry,
+              onAuthorTap: openAuthor,
+            );
+          }
+          final run = entry as RunFeedEntry;
+          return _EntryCard(
+            key: ValueKey(run.run.id),
+            api: widget.api,
+            entry: FeedEntry(run: run.run, author: run.author),
+            initialEngagement: _engagement[run.run.id],
+            onAuthorTap: openAuthor,
+            onCardTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PublicRunScreen(
+                  api: widget.api,
+                  runId: run.run.id,
                 ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// The activity kinds as the quick chips (a SegmentedButton can't fit six
+  /// icon+label segments on a phone), and who the activity is from in the
+  /// Filters sheet, shown as a removable chip while it is on.
+  FilterBar _filterBar(AppLocalizations l10n) {
+    final author = _authorFilter == 'all'
+        ? null
+        : _authorName(l10n, _authorFilter);
+    final active = [
+      if (author != null)
+        ActiveFilter(
+          label: author,
+          onRemove: () => _setAuthor('all'),
+          removeTooltip: l10n.filterBarRemoveFilter(author),
         ),
+    ];
+    return FilterBar(
+      key: const ValueKey('feed-filter-bar'),
+      chips: [
+        for (final a in _activities)
+          buildChoiceChip<String>(
+            context,
+            ChoiceChipOption(
+              value: a.value,
+              label: _activityLabel(l10n, a.value),
+              icon: a.icon,
+            ),
+            _activityFilter,
+            _setActivity,
+          ),
       ],
+      activeFilters: active,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          active.isEmpty ? null : l10n.filterBarFiltersCount(active.length),
+      activeFilterCount: active.length,
+      onOpenFilters: _openFilters,
     );
-    return contentColumn(context, content);
   }
 
-  Widget _buildBadgeStrip(ThemeData theme) {
+  Future<void> _openFilters() {
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      // A scrolling Row rather than a horizontal ListView in a fixed-height
-      // box: the strip is capped at six awards, and a literal lane height
-      // squeezed the chips out of their 48 dp tap target at 1.0x and cropped
-      // their labels outright at 2x OS text scale.
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget choice(String value, String label) => ChoiceChip(
+              label: Text(label),
+              selected: _authorFilter == value,
+              onSelected: (_) {
+                _setAuthor(value);
+                setSheet(() {});
+              },
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final (i, a) in _badgeAwards.indexed) ...[
-              if (i > 0) const SizedBox(width: 8),
-              _badgeChip(l10n, a),
-            ],
+            Text(l10n.feedFilterAuthor, style: theme.textTheme.titleSmall),
+            const SizedBox(height: AppSpace.sm),
+            // semantics-children: a group name, read once before the controls inside it
+            Semantics(
+              container: true,
+              label: l10n.feedFilterAuthor,
+              child: Wrap(
+                spacing: AppSpace.sm,
+                children: [
+                  choice('all', l10n.feedEveryoneYouFollow),
+                  for (final f in _followees)
+                    choice(f.id, f.displayName ?? l10n.feedRunnerFallback),
+                ],
+              ),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _badgeChip(AppLocalizations l10n, BadgeAwardEntry a) {
-    final name = a.authorName ?? l10n.badgesARunner;
-    final label = badgeLabelFor(l10n, a.badge.badgeKey, a.badge.tier);
-    return ActionChip(
-      avatar: Icon(
-        badgeIconData(
-            tierFor(a.badge.badgeKey, a.badge.tier)?.icon ?? 'military_tech'),
-        size: 18,
-        color: badgeTierColor(a.badge.tier),
-      ),
-      label: Text(
-        l10n.badgesFeedEarned(name, label),
-        overflow: TextOverflow.ellipsis,
-      ),
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => ProfileScreen(api: widget.api, userId: a.authorId),
-        ),
-      ),
+  Widget _buildEmpty(AppLocalizations l10n) {
+    final hasFollows = _followees.isNotEmpty;
+    final filtered = _activityFilter != 'all' || _authorFilter != 'all';
+    return EmptyState(
+      icon: Icons.groups_outlined,
+      illustration: hasFollows ? null : grisnirWaitingOrNull(),
+      title: !hasFollows
+          ? l10n.feedEmptyTitle
+          : filtered
+              ? l10n.feedNoMatchesTitle
+              : l10n.feedNoActivityTitle,
+      body: !hasFollows
+          ? l10n.feedEmptyBody
+          : filtered
+              ? l10n.feedNoMatchesBody
+              : l10n.feedNoActivityBody,
+      ctaLabel: filtered ? l10n.feedClearFilters : l10n.feedFindPeople,
+      ctaIcon: filtered ? Icons.filter_alt_off : Icons.person_search,
+      onCta: filtered
+          ? () => _refilter(() {
+                _authorFilter = 'all';
+                _activityFilter = 'all';
+              })
+          : () => openSocialSurface(
+                context,
+                SocialTab.people,
+                fallback: () => PeopleScreen(api: widget.api),
+              ),
     );
   }
+}
 
-  Widget _buildToolbar(ThemeData theme) {
+/// A highlight row: who earned what, when, and the badge. One tap target
+/// opening the person's badges.
+class _HighlightCard extends StatelessWidget {
+  final FeedHighlight highlight;
+  final VoidCallback onTap;
+
+  const _HighlightCard(
+      {super.key, required this.highlight, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          // A SegmentedButton can't fit six icon+label segments on a
-          // ~400dp phone — labels wrap letter-per-line. Scrollable
-          // chips match the run-list filter idiom instead. The rail takes
-          // its height from the chips, not a literal: a chip needs 58 px at
-          // 2x OS text scale and was being cropped to 40.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+    final lead = highlight.awards.first;
+    final name = lead.authorName ?? l10n.badgesARunner;
+    final count = highlight.awards.length;
+    String label(BadgeAwardEntry a) =>
+        badgeLabelFor(l10n, a.badge.badgeKey, a.badge.tier);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return ListCard.flush(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Row(
               children: [
-                for (final a in _activities) ...[
-                  ChoiceChip(
-                    avatar: Icon(a.icon, size: 18),
-                    label: Text(_activityLabel(l10n, a.value)),
-                    selected: _activityFilter == a.value,
-                    onSelected: (_) => _setActivity(a.value),
+                IdentityAvatar(
+                  seed: lead.authorId,
+                  name: lead.authorName,
+                  size: 32,
+                  imageUrl: lead.authorAvatarUrl,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.badgesFeedEarned(count, name, label(lead)),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (count > 1)
+                        Text(
+                          highlight.awards.map(label).join(' · '),
+                          style: muted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Text(
+                        fmtRelative(highlight.at,
+                            localeToTag(Localizations.localeOf(context))),
+                        style: muted,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                ],
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Icon(
+                  badgeIconData(
+                      tierFor(lead.badge.badgeKey, lead.badge.tier)?.icon ??
+                          'military_tech'),
+                  size: 24,
+                  color: badgeTierColor(lead.badge.tier),
+                ),
               ],
             ),
           ),
-          DropdownButton<String>(
-            value: _authorFilter,
-            onChanged: _setAuthor,
-            items: [
-              DropdownMenuItem(
-                value: 'all',
-                child: Text(l10n.feedEveryoneYouFollow),
-              ),
-              ..._followees.map(
-                (f) => DropdownMenuItem(
-                  value: f.id,
-                  child: Text(f.displayName ?? l10n.feedRunnerFallback),
-                ),
-              ),
-            ],
-          ),
-          Text(
-            l10n.feedLast14Days,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmpty(ThemeData theme) {
-    final l10n = AppLocalizations.of(context);
-    final hasFollows = _followees.isNotEmpty;
-    final filtered = _activityFilter != 'all' || _authorFilter != 'all';
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            (!hasFollows ? grisnirWaitingOrNull() : null) ??
-                Icon(
-                  Icons.groups_outlined,
-                  size: 48,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-            const SizedBox(height: 16),
-            Text(
-              !hasFollows
-                  ? l10n.feedEmptyTitle
-                  : filtered
-                      ? l10n.feedNoMatchesTitle
-                      : l10n.feedNoActivityTitle,
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              !hasFollows
-                  ? l10n.feedEmptyBody
-                  : filtered
-                      ? l10n.feedNoMatchesBody
-                      : l10n.feedNoActivityBody,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (filtered) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    _authorFilter = 'all';
-                    _activityFilter = 'all';
-                  });
-                  _loadInitial();
-                },
-                child: Text(l10n.feedClearFilters),
-              ),
-            ],
-          ],
         ),
       ),
     );
@@ -543,8 +692,7 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -563,20 +711,28 @@ class _EntryCard extends StatelessWidget {
                     imageUrl: entry.author.avatarUrl,
                   ),
                   const SizedBox(width: 10),
+                  // The time sits under the name rather than beside it: at
+                  // 2x text on a 320 dp phone the two side by side ran 71 dp
+                  // past the card (issue #1374).
                   Expanded(
-                    child: Text(
-                      entry.author.displayName ??
-                          AppLocalizations.of(context).feedRunnerFallback,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    fmtRelative(entry.run.startedAt,
-                        localeToTag(Localizations.localeOf(context))),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.author.displayName ??
+                              AppLocalizations.of(context).feedRunnerFallback,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          fmtRelative(entry.run.startedAt,
+                              localeToTag(Localizations.localeOf(context))),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -586,18 +742,26 @@ class _EntryCard extends StatelessWidget {
           const Divider(height: 1),
           // Track thumbnail — banner-style preview of the run shape so
           // the card's most distinctive signal sits above the fold.
+          // The thumbnail opens the run, as the stats row below does; the
+          // stats row is the one a screen reader stops on, named by what it
+          // reads, so this one is not a second unnamed "button" (#1374
+          // A11Y-12).
           if (entry.run.trackUrl != null && entry.run.trackUrl!.isNotEmpty)
-            InkWell(
-              onTap: onCardTap,
-              child: Container(
-                height: 120,
-                color: theme.colorScheme.surfaceContainerHighest,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: RunTrackPreview(
-                  runId: entry.run.id,
-                  trackUrl: entry.run.trackUrl,
-                  api: api,
-                  ownerUserId: entry.author.id,
+            ExcludeSemantics(
+              key: const Key('feedCardTrackThumb'),
+              child: InkWell(
+                onTap: onCardTap,
+                child: Container(
+                  height: 120,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: RunTrackPreview(
+                    runId: entry.run.id,
+                    trackUrl: entry.run.trackUrl,
+                    api: api,
+                    ownerUserId: entry.author.id,
+                  ),
                 ),
               ),
             ),
@@ -694,10 +858,35 @@ class _EngagementFooterState extends State<_EngagementFooter> {
   late EngagementSummary _eng;
   bool _busy = false;
 
+  final _cache = EngagementCache.instance;
+
+  /// Sets [_eng] and shares it, so the run's own page and this card agree.
+  set _engagement(EngagementSummary eng) {
+    _eng = eng;
+    _cache.put(widget.api.userId, widget.runId, eng);
+  }
+
   @override
   void initState() {
     super.initState();
-    _eng = widget.initialEngagement ?? _empty;
+    // A change made on the run's own page since the feed loaded is newer
+    // than the feed's copy (issue #1374 NS-9).
+    _eng = _cache.of(widget.api.userId, widget.runId) ??
+        widget.initialEngagement ??
+        _empty;
+    _cache.addListener(_onCache);
+  }
+
+  @override
+  void dispose() {
+    _cache.removeListener(_onCache);
+    super.dispose();
+  }
+
+  void _onCache() {
+    if (_busy || !mounted) return;
+    final eng = _cache.of(widget.api.userId, widget.runId);
+    if (eng != null && !identical(eng, _eng)) setState(() => _eng = eng);
   }
 
   @override
@@ -708,7 +897,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     // since, in which case our optimistic state is the truth.
     final fresh = widget.initialEngagement;
     if (!_busy && fresh != null && fresh != old.initialEngagement) {
-      _eng = fresh;
+      _engagement = fresh;
     }
   }
 
@@ -717,7 +906,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     final prev = _eng;
     setState(() {
       _busy = true;
-      _eng = EngagementSummary(
+      _engagement = EngagementSummary(
         kudosCount: prev.viewerHasKudos
             ? (prev.kudosCount - 1).clamp(0, 1 << 30)
             : prev.kudosCount + 1,
@@ -734,7 +923,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
       // optimistic +/-1 was wrong: the flag is right but the count drifted.
       // Undo the count delta while keeping the corrected flag.
       if (!changed && mounted) {
-        setState(() => _eng = EngagementSummary(
+        setState(() => _engagement = EngagementSummary(
               kudosCount: prev.kudosCount,
               viewerHasKudos: !prev.viewerHasKudos,
               commentCount: prev.commentCount,
@@ -743,7 +932,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     } catch (e) {
       debugPrint('feed kudos update failed: $e');
       if (!mounted) return;
-      setState(() => _eng = prev);
+      setState(() => _engagement = prev);
       showTopBanner(
           context, AppLocalizations.of(context).feedKudosUpdateFailed(friendlyError(AppLocalizations.of(context), e)));
     } finally {
@@ -759,6 +948,9 @@ class _EngagementFooterState extends State<_EngagementFooter> {
       child: Row(
         children: [
           Semantics(
+            excludeSemantics: true,
+            onTap: _busy ? null : _toggle,
+            value: '${_eng.kudosCount}',
             button: true,
             label: _eng.viewerHasKudos
                 ? AppLocalizations.of(context).kudosRemoveLabel
@@ -781,6 +973,9 @@ class _EngagementFooterState extends State<_EngagementFooter> {
             ),
           ),
           Semantics(
+            excludeSemantics: true,
+            onTap: widget.onCommentTap,
+            value: '${_eng.commentCount}',
             button: true,
             label: AppLocalizations.of(context).kudosViewCommentsLabel,
             child: TextButton.icon(
@@ -820,8 +1015,7 @@ class _LiftEntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final title = entry.title?.trim();
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -839,19 +1033,25 @@ class _LiftEntryCard extends StatelessWidget {
                     imageUrl: entry.author.avatarUrl,
                   ),
                   const SizedBox(width: 10),
+                  // Stacked for the same reason as the run card's header.
                   Expanded(
-                    child: Text(
-                      entry.author.displayName ?? l10n.feedRunnerFallback,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    fmtRelative(entry.startedAt,
-                        localeToTag(Localizations.localeOf(context))),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.author.displayName ?? l10n.feedRunnerFallback,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          fmtRelative(entry.startedAt,
+                              localeToTag(Localizations.localeOf(context))),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
-    show DirectMessageRow, KeysetPage, UserProfileRow;
+    show DirectMessageRow, UserProfileRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,24 +50,11 @@ class _FakeApi extends ApiClient {
   String? get userId => signedIn ? _me : null;
 
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowers(
-    String userId, {
-    int limit = 100,
-    List<Object?>? after,
-  }) async {
+  Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
+      fetchFollowGraph(String userId) async {
     followReads++;
     if (followError != null) throw followError!;
-    return KeysetPage(followers, null);
-  }
-
-  @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(
-    String userId, {
-    int limit = 100,
-    List<Object?>? after,
-  }) async {
-    if (followError != null) throw followError!;
-    return KeysetPage(following, null);
+    return (followers: followers, following: following);
   }
 
   @override

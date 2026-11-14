@@ -1,100 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import 'confirm_discard.dart';
 
+export 'package:ui_kit/ui_kit.dart' show EditorSave;
+
 /// Canonical presentation for a create / edit entity form on mobile: a
-/// full-screen modal dialog (slide-up, close affordance) hosting [builder]
-/// inside a [Scaffold] + [AppBar] + [SafeArea].
+/// full-screen modal dialog (slide-up, close affordance) whose page is
+/// ui_kit's [EditorPage], laid out by the [FullScreenFormBody] that [builder]
+/// returns.
 ///
-/// Every "add / edit X" surface routes through here — gear, club, event,
-/// goal, gym, manual run, planned-workout edit — so the presentation is
-/// identical and no form re-derives the wrapper. Replaces the earlier mix
-/// of `showModalBottomSheet` (gear / event / workout-edit) and bare
-/// `MaterialPageRoute` pages (club): the sheets fought the soft keyboard
-/// (`viewInsets` + `FractionallySizedBox` both reflow during open, the
-/// "slow and glitchy" feel) and a plain page lacked the dialog's slide-up +
-/// close affordance.
+/// Every "add / edit X" sheet routes through here (gear, club, event,
+/// challenge, goal, gym, routine, nutrition, plate photo, planned-workout
+/// edit), so the presentation is identical and no form re-derives the
+/// wrapper. A full-page editor pushed as an ordinary route builds the same
+/// [EditorPage] itself under a [DiscardGuard].
 ///
 /// [title] is read from the caller's context once (the heading lives in the
-/// AppBar, not inline in the body). Resolves to whatever the form pops.
+/// app bar, not inline in the body). Resolves to whatever the form pops.
 ///
 /// [isDirty], when set, arms a [DiscardGuard]: backing out (system back, the
-/// AppBar close button, or any `maybePop`) while it reports unsaved edits
-/// confirms via [confirmDiscard] before popping. Save paths that pop with
-/// `Navigator.pop` after persisting bypass the guard by design.
+/// close button, or any `maybePop`) while it reports unsaved edits confirms
+/// via [confirmDiscard] before popping. Save paths that pop with
+/// `Navigator.pop` after persisting bypass the guard by design. [isBusy]
+/// refuses the pop while a save is in flight.
 Future<T?> showFullScreenForm<T>(
   BuildContext context, {
   required String title,
   required WidgetBuilder builder,
   bool Function()? isDirty,
+  bool Function()? isBusy,
 }) {
   return Navigator.of(context).push<T>(
     MaterialPageRoute<T>(
       fullscreenDialog: true,
       builder: (ctx) {
-        final scaffold = Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: SafeArea(child: builder(ctx)),
+        final page = _FormTitle(
+          title: title,
+          child: Builder(builder: builder),
         );
-        if (isDirty == null) return scaffold;
-        return DiscardGuard(isDirty: isDirty, child: scaffold);
+        if (isDirty == null && isBusy == null) return page;
+        return DiscardGuard(
+          isDirty: isDirty ?? () => false,
+          isBusy: isBusy,
+          child: page,
+        );
       },
     ),
   );
 }
 
-/// Standard scrollable chrome for a [showFullScreenForm] child: a 20px
-/// inset that grows to clear whichever system UI is active — the soft
-/// keyboard (`viewInsets.bottom`, when a field is focused) or the gesture /
-/// nav bar (`viewPadding.bottom`, otherwise). They never overlap (the
-/// keyboard replaces the nav bar when up), so picking whichever is non-zero
-/// is correct; pre-fix the sheets only padded for the keyboard, leaving the
-/// Cancel / Save buttons under Samsung's translucent gesture bar. Wraps the
-/// children in a [SingleChildScrollView] + stretch [Column].
+class _FormTitle extends InheritedWidget {
+  const _FormTitle({required this.title, required super.child});
+
+  final String title;
+
+  @override
+  bool updateShouldNotify(_FormTitle old) => old.title != title;
+}
+
+/// The page of a [showFullScreenForm] form: its fields in [children], its one
+/// primary action in [save], pinned above the keyboard and the nav bar by
+/// [EditorPage]. There is no Cancel; the app bar's close button is the way
+/// out, through the discard guard.
 class FullScreenFormBody extends StatelessWidget {
-  const FullScreenFormBody({super.key, required this.children});
+  const FullScreenFormBody({
+    super.key,
+    required this.children,
+    this.save,
+    this.secondary,
+    this.status,
+  });
 
   final List<Widget> children;
 
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottomInset = mq.viewInsets.bottom > 0
-        ? mq.viewInsets.bottom
-        : mq.viewPadding.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
-        ),
-      ),
-    );
-  }
-}
+  /// See [EditorPage.save].
+  final EditorSave? save;
 
-/// Uppercase muted section label used between field groups on the
-/// full-screen forms (goal targets, gym title, …).
-class FormSectionLabel extends StatelessWidget {
-  const FormSectionLabel(this.text, {super.key});
+  /// See [EditorPage.secondary].
+  final Widget? secondary;
 
-  final String text;
+  /// See [EditorPage.status].
+  final Widget? status;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          letterSpacing: 1.1,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    // Outside showFullScreenForm (a widget test mounting the form alone)
+    // there is no title to show.
+    final scope = context.dependOnInheritedWidgetOfExactType<_FormTitle>();
+    return EditorPage(
+      title: scope?.title ?? '',
+      fields: children,
+      save: save,
+      secondary: secondary,
+      status: status,
     );
   }
 }

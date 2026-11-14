@@ -6,7 +6,7 @@ import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
- * /dashboard Goals section — full CRUD round-trip from an empty state.
+ * /dashboard/progress Goals section — full CRUD round-trip from an empty state.
  *
  * cross-cutting/cross-feature.spec.ts pins runs ↔ goals (% calc on a
  * planted goal). cross-cutting/dashboard-journey.spec.ts edits a
@@ -15,7 +15,7 @@ import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
  * count), or the explicit delete button. This spec fills that gap so
  * the dashboard Goals section's lifecycle is pinned end-to-end:
  *
- *   1. Land on /dashboard with no goals → empty-state card visible.
+ *   1. Land on /dashboard/progress with no goals → empty-state card visible.
  *   2. Click the empty-state "Add goal" button → editor modal opens.
  *   3. Fill a 30-minute Time/week target → Save → goal-card appears
  *      with 0% progress (no current-week runs).
@@ -95,7 +95,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 
 	test('create → render → edit period + target → delete', async ({ page }) => {
 		await test.step('empty state visible on first load', async () => {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const emptyCard = page.getByTestId('goals-empty');
 			await expect(emptyCard).toBeVisible({ timeout: 10_000 });
 			await expect(emptyCard.getByRole('heading', { name: /No goals set/ }))
@@ -180,7 +180,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 	test('create a multi-target goal (distance + run count) → both targets render on the card', async ({
 		page,
 	}) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await expect(page.getByTestId('goals-empty')).toBeVisible({ timeout: 10_000 });
 		await page.getByTestId('goals-empty').getByRole('button', { name: /Add goal/ }).click();
 

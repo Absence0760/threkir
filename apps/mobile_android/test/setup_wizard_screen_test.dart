@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -8,6 +9,7 @@ import '../lib/onboarding.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/setup_wizard_screen.dart';
 import '../lib/settings_sync.dart';
+import 'worst_case_layout.dart';
 
 /// Records the two onboarding writes so the flow can be asserted without a
 /// live Supabase. Every other ApiClient method is left to the base class.
@@ -125,6 +127,29 @@ final int _tapsToDone =
 
 void main() {
   group('SetupWizardScreen', () {
+    // Issue #1374: the option, modality and import rows are ListCards. Walk
+    // every step at the worst case and fail on the first that overflows.
+    worstCaseTestWidgets('Setup wizard', (tester, locale) async {
+      final api = _FakeApi();
+      final prefs = await _prefs();
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: SetupWizardScreen(
+          apiClient: api,
+          preferences: prefs,
+          importScreenBuilder: (_) => const _StubScreen('import'),
+          isIOS: false,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final l10n = l10nFor(locale);
+      for (var i = 0; i < _tapsToDone; i++) {
+        await walkScrollable(
+            tester, find.byType(Scrollable).first, 'Setup wizard step $i');
+        await _forward(tester, l10n);
+      }
+    });
+
     testWidgets('renders the first step + a Skip header action', (tester) async {
       final api = _FakeApi();
       await _pump(tester, api, await _prefs());
@@ -548,7 +573,7 @@ void main() {
 
         // Still trapped on the wizard (canPop is false) — but the
         // fail-safe exit is now offered.
-        expect(find.text(l10n.setupPageTitle), findsOneWidget);
+        expect(find.widgetWithText(PageHeading, l10n.setupPageTitle), findsOneWidget);
         expect(find.text(l10n.setupFinishLater), findsOneWidget);
 
         await tester.tap(find.text(l10n.setupFinishLater));
@@ -632,8 +657,9 @@ void main() {
 
     group('narrow-width overflow (issue #666 V7)', () {
       testWidgets(
-          'nav renders at 320 logical width with the forward actions in a '
-          'Wrap so long localized labels reflow instead of striping',
+          'nav renders at 320 logical width with Back and the forward '
+          'action in an OverflowBar, so long localized labels stack instead '
+          'of striping',
           (tester) async {
         tester.view.physicalSize = const Size(320, 1200);
         tester.view.devicePixelRatio = 1.0;
@@ -651,8 +677,14 @@ void main() {
         expect(
           find.ancestor(
               of: find.widgetWithText(FilledButton, l10n.setupContinue),
-              matching: find.byType(Wrap)),
-          findsWidgets,
+              matching: find.byType(OverflowBar)),
+          findsOneWidget,
+        );
+        expect(
+          find.ancestor(
+              of: find.widgetWithText(OutlinedButton, l10n.setupBack),
+              matching: find.byType(OverflowBar)),
+          findsOneWidget,
         );
       });
     });
@@ -791,6 +823,8 @@ void main() {
         await walkToTrack(tester, l10n);
         await toggle(tester, l10n.fitnessTabGym);
 
+        await tester.ensureVisible(find.text(l10n.setupSkip));
+        await tester.pump();
         await tester.tap(find.text(l10n.setupSkip));
         await tester.pumpAndSettle();
 

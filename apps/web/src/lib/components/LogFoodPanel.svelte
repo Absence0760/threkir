@@ -7,6 +7,8 @@
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import HealthConsentNotice from '#lib/components/HealthConsentNotice.svelte';
+	import { fetchHealthDataConsented } from '#lib/core/data.ts';
 
 	interface Props {
 		oncreated: () => void;
@@ -21,9 +23,24 @@
 	const platePhotoLive = coachEnabled() && platePhotoEnabled();
 	let showPhoto = $state(false);
 	let photoVisible = $derived(showPhoto || photoOpen);
+
+	// A food log is health data, stored only with health-data consent
+	// (decisions § 2514): without it the database refuses the write, so the
+	// composer is replaced by the notice that says why and where to consent.
+	// A failed read shows the composer; the database still refuses the save.
+	let consent = $state<'unknown' | 'given' | 'absent'>('unknown');
+	$effect(() => {
+		fetchHealthDataConsented().then(
+			(given) => (consent = given ? 'given' : 'absent'),
+			() => (consent = 'given'),
+		);
+	});
 </script>
 
 <div class="log-food">
+	{#if consent === 'absent'}
+		<HealthConsentNotice testid="food-consent-notice" message={m('healthConsent.foodNeedsConsent')} />
+	{:else if consent === 'given'}
 	{#if platePhotoLive}
 		{#if photoVisible}
 			<PlatePhotoLogger {oncreated} {diaryDate} />
@@ -36,6 +53,7 @@
 		{/if}
 	{/if}
 	<FoodLogEditor {oncreated} {diaryDate} />
+	{/if}
 </div>
 
 <style>

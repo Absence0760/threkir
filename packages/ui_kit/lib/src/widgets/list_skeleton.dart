@@ -49,6 +49,7 @@ class ListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      excludeSemantics: true,
       label: label,
       liveRegion: true,
       container: true,
@@ -129,6 +130,7 @@ class SkeletonBlock extends StatelessWidget {
     final label = this.label;
     if (label == null) return ExcludeSemantics(child: block);
     return Semantics(
+      excludeSemantics: true,
       label: label,
       liveRegion: true,
       container: true,

@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import {
 		amIAdmin,
 		approveClubVerification,
@@ -167,14 +168,10 @@
 		<p class="muted">…</p>
 	{:else if !isAdmin}
 		<div class="card-elevated not-authorized" data-testid="club-verification-not-authorized">
-			<h1>{t('admin.clubVerification.notAuthorized')}</h1>
-			<p class="muted">{t('admin.clubVerification.notAuthorizedHint')}</p>
+			<PageHeader flush title={t('admin.clubVerification.notAuthorized')} subtitle={t('admin.clubVerification.notAuthorizedHint')} />
 		</div>
 	{:else}
-		<header>
-			<h1>{t('admin.clubVerification.title')}</h1>
-			<p class="muted">{t('admin.clubVerification.subtitle')}</p>
-		</header>
+		<PageHeader flush title={t('admin.clubVerification.title')} subtitle={t('admin.clubVerification.subtitle')} />
 
 		<div class="tabs" role="group" aria-label={t('admin.clubVerification.title')}>
 			{#each views as v (v)}
@@ -350,17 +347,11 @@
 		gap: var(--space-lg);
 		max-width: 64rem;
 	}
-	header h1,
-	.not-authorized h1 {
-		margin: 0 0 0.25rem;
-		font-size: 1.4rem;
-	}
 	.muted {
 		color: var(--color-text-secondary);
 	}
 	.not-authorized {
 		padding: var(--space-xl);
-		text-align: center;
 	}
 	.tabs {
 		display: flex;

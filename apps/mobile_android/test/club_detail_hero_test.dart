@@ -12,6 +12,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -139,6 +140,24 @@ Text _heroDescription(WidgetTester tester) => tester.widget<Text>(
 
 void main() {
   setUpAll(_ensureSupabase);
+
+  worstCaseTestWidgets('Club detail', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ClubDetailScreen(
+        social: _FakeSocial(_longDescription),
+        training: _FakeTraining(),
+        apiClient: _FakeApi(),
+        slug: 'track-club',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    // The checks run before the realtime drain unmounts the page.
+    expectNoOverflow(tester, 'Club detail [$locale]');
+    expectTitlesNotCut(tester, 'Club detail [$locale]');
+    await drainRealtimeTimers(tester);
+  });
 
   group('club detail hero (issue #666 C12)', () {
     realtimeWidgetTest('a long description is clamped and offers the rest', (

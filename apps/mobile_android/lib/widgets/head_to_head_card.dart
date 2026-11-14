@@ -5,7 +5,8 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, SheetScaffold;
 
 import '../head_to_head.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -169,39 +170,25 @@ Future<void> showHeadToHeadSheet(
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       final theme = Theme.of(ctx);
-      final mq = MediaQuery.of(ctx);
-      return SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
+      return SheetScaffold.floating(
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              AppLocalizations.of(ctx).headToHeadTitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
             ),
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    AppLocalizations.of(ctx).headToHeadTitle,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  HeadToHeadPanel(
-                    load: loadOverride ??
-                        () => api.fetchHeadToHead(kind, targetId,
-                            activityType: activityType),
-                    fileName: 'threkir-head-to-head-$kind-$targetId',
-                    saveImage: saveImageOverride ?? saveShareImageToGallery,
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
+            HeadToHeadPanel(
+              load: loadOverride ??
+                  () => api.fetchHeadToHead(kind, targetId,
+                      activityType: activityType),
+              fileName: 'threkir-head-to-head-$kind-$targetId',
+              saveImage: saveImageOverride ?? saveShareImageToGallery,
             ),
-          ),
+          ],
         ),
       );
     },
@@ -327,7 +314,7 @@ class _HeadToHeadPanelState extends State<HeadToHeadPanel> {
     final muted = theme.textTheme.bodyMedium
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     if (_failed) {
-      return ErrorState(message: l10n.headToHeadLoadFailed, onRetry: _load);
+      return AppErrorState(message: l10n.headToHeadLoadFailed, onRetry: _load);
     }
     final rows = _rows;
     if (rows == null) {
@@ -377,6 +364,7 @@ class _HeadToHeadPanelState extends State<HeadToHeadPanel> {
         ),
         const SizedBox(height: 12),
         Semantics(
+          excludeSemantics: true,
           label: l10n.headToHeadPreview,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),

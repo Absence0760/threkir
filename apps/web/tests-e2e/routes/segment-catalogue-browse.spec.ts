@@ -82,33 +82,36 @@ test.describe('famous-segment catalogue browse', () => {
 			await test.step('the browse page lists the catalogue', async () => {
 				await page.goto('/segments');
 				await expect(page.getByTestId('segment-catalogue-list')).toBeVisible({ timeout: 15_000 });
-				await expect(page.locator(`a.card[href="/segments/${shortId}"]`)).toBeVisible();
-				await expect(page.locator(`a.card[href="/segments/${longId}"]`)).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${shortId}"]`)).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${longId}"]`)).toBeVisible();
 			});
 
 			await test.step('search narrows to the planted pair, newest count reported', async () => {
 				await page.getByTestId('segment-catalogue-search').fill(token);
-				await expect(page.locator('a.card')).toHaveCount(2);
+				await expect(page.getByTestId('segment-catalogue-list').getByRole('link')).toHaveCount(2);
 				await expect(page.getByTestId('segment-catalogue-count')).toHaveText('2 segments');
 			});
 
 			await test.step('the query folds accents — an ASCII spelling reaches Côte', async () => {
 				await page.getByTestId('segment-catalogue-search').fill(`Cote du ${token}`);
-				await expect(page.locator('a.card')).toHaveCount(1);
-				await expect(page.locator(`a.card[href="/segments/${shortId}"]`)).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').getByRole('link')).toHaveCount(1);
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${shortId}"]`)).toBeVisible();
 				await expect(page.getByTestId('segment-catalogue-count')).toHaveText('1 segment');
 			});
 
 			await test.step('longest-first reorders the pair', async () => {
 				await page.getByTestId('segment-catalogue-search').fill(token);
+				// Sort and the region filter live in the Filters sheet (#1374); its
+				// changes apply at once, so the list behind it is already right.
+				await page.getByTestId('segment-catalogue-filters-toggle').click();
 				await page.getByTestId('segment-catalogue-sort').selectOption('longest');
-				const hrefs = await page.locator('a.card').evaluateAll((els) =>
+				const hrefs = await page.getByTestId('segment-catalogue-list').getByRole('link').evaluateAll((els) =>
 					els.map((el) => el.getAttribute('href'))
 				);
 				expect(hrefs).toEqual([`/segments/${longId}`, `/segments/${shortId}`]);
 
 				await page.getByTestId('segment-catalogue-sort').selectOption('shortest');
-				const reversed = await page.locator('a.card').evaluateAll((els) =>
+				const reversed = await page.getByTestId('segment-catalogue-list').getByRole('link').evaluateAll((els) =>
 					els.map((el) => el.getAttribute('href'))
 				);
 				expect(reversed).toEqual([`/segments/${shortId}`, `/segments/${longId}`]);
@@ -116,8 +119,10 @@ test.describe('famous-segment catalogue browse', () => {
 
 			await test.step('the region filter narrows to one', async () => {
 				await page.getByTestId('segment-catalogue-region').selectOption(longRegion);
-				await expect(page.locator('a.card')).toHaveCount(1);
-				await expect(page.locator(`a.card[href="/segments/${longId}"]`)).toBeVisible();
+				await page.getByTestId('segment-catalogue-filters-done').click();
+				await expect(page.getByTestId('segment-catalogue-chip-region')).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').getByRole('link')).toHaveCount(1);
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${longId}"]`)).toBeVisible();
 			});
 
 			await test.step('a filter that matches nothing is not reported as an empty catalogue', async () => {
@@ -128,12 +133,12 @@ test.describe('famous-segment catalogue browse', () => {
 
 			await test.step('reset restores the full catalogue', async () => {
 				await page.getByTestId('segment-catalogue-reset').click();
-				await expect(page.locator(`a.card[href="/segments/${shortId}"]`)).toBeVisible();
-				await expect(page.locator(`a.card[href="/segments/${longId}"]`)).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${shortId}"]`)).toBeVisible();
+				await expect(page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${longId}"]`)).toBeVisible();
 			});
 
 			await test.step('a card opens the detail page, whose back-link returns here', async () => {
-				await page.locator(`a.card[href="/segments/${shortId}"]`).click();
+				await page.getByTestId('segment-catalogue-list').locator(`a[href="/segments/${shortId}"]`).click();
 				await page.waitForURL(`**/segments/${shortId}`);
 				await expect(page.locator('h1', { hasText: shortName })).toBeVisible({ timeout: 10_000 });
 

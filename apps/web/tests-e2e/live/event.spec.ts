@@ -150,7 +150,7 @@ test.describe('/live/event/[id]/[instance]', () => {
 				expect(c).toMatch(/rgb/);
 			}
 
-			await expect(page.locator('.section-head .count').first()).toContainText('3');
+			await expect(page.locator('.live-section-head .count').first()).toContainText('3');
 		} finally {
 			await deleteRaceState(eventId, startsAt);
 		}

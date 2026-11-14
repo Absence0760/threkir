@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../lib/exercise_records.dart';
@@ -12,6 +13,7 @@ import '../lib/screens/gym_exercise_screen.dart';
 import '../lib/screens/gym_records_screen.dart';
 import '../lib/screens/gym_screen.dart' show gymSetHistory;
 import '../lib/widgets/gym_compose_sheet.dart';
+import 'worst_case_layout.dart';
 
 StoredGymWorkout _w(
   String id, {
@@ -61,6 +63,25 @@ void main() {
     expect(records.map((r) => r.exerciseName), containsAll(['Bench', 'Squat']));
   });
 
+  worstCaseTestWidgets('the record cards', (tester, locale) async {
+    final dir = Directory.systemTemp.createTempSync('gym_records_wc_');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final store = LocalGymStore();
+    await tester.runAsync(() async {
+      await store.init(overrideDirectory: dir);
+      await store.createLocal(
+        startedAt: DateTime.utc(2026, 2, 1),
+        sets: const [(exerciseName: 'Barbell back squat, high bar', reps: 5, weightKg: 142.5, rpe: null, setType: null, durationS: null, exerciseId: null)],
+      );
+    });
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: GymRecordsScreen(api: _OfflineFakeApi(), store: store),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Records');
+  });
+
   testWidgets('records screen lists a weighted exercise and opens its progression',
       (tester) async {
     final dir = Directory.systemTemp.createTempSync('gym_records_');
@@ -83,7 +104,7 @@ void main() {
         home: GymRecordsScreen(api: _OfflineFakeApi(), store: store),
       ));
       await tester.pump();
-      expect(find.text('Personal records'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Personal records'), findsOneWidget);
       expect(find.text('Bench'), findsOneWidget);
       // Two distinct sessions logged.
       expect(find.text('2 sessions'), findsOneWidget);

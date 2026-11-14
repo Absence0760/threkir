@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { interpolate } from '../i18n/interpolate';
+import { en } from '../i18n/locales/en';
+import type { MessageKey } from '../i18n/messages';
+import { recapBadgeText } from '../share/recap_card_text';
 import { computeRecapBadges } from './recap';
 
 // The year-in-review trophy grid. A badge awarded one unit early, or a tier
@@ -73,14 +77,15 @@ test('All-rounder needs three activity types', () => {
 });
 
 test('single-item details are singular, and streak details quote the real count', () => {
+	const tEn = (key: MessageKey, params?: Record<string, string | number>) => interpolate(en[key], params, 'en');
 	const one = computeRecapBadges({ ...NONE, personalRecordCount: 1, photoCount: 1 });
 	assert.deepEqual(
-		one.map((b) => b.detail),
+		one.map((b) => recapBadgeText(b, tEn, 'km').detail),
 		['1 personal record', '1 run photo'],
 	);
 	const two = computeRecapBadges({ ...NONE, personalRecordCount: 2, photoCount: 2, bestStreakDays: 19 });
 	assert.deepEqual(
-		two.map((b) => b.detail),
+		two.map((b) => recapBadgeText(b, tEn, 'km').detail),
 		['19 days in a row', '2 personal records', '2 run photos'],
 	);
 });

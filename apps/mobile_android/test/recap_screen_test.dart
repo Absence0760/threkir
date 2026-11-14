@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,6 +15,7 @@ import '../lib/recap_card_layout.dart';
 import '../lib/screens/recap_screen.dart';
 import '../lib/widgets/recap_share_card.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// A year that is always safely in the past, so "next period" is enabled and
 /// the recap window never lands on a future month.
@@ -113,7 +115,7 @@ void main() {
     await _pump(tester,
         runStore: runStore, prefs: prefs, year: pastYear, month: 3);
 
-    expect(find.text('Month in running'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Month in running'), findsOneWidget);
     expect(find.text('March $pastYear'), findsOneWidget);
     // Only the March run counts — the July one belongs to another month.
     expect(find.text('across 1 run'), findsOneWidget);
@@ -139,7 +141,7 @@ void main() {
     await tester.tap(find.text('Year'));
     await tester.pump();
 
-    expect(find.text('Year in running'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Year in running'), findsOneWidget);
     expect(find.text('$pastYear'), findsOneWidget);
     expect(find.text('across 2 runs'), findsOneWidget);
   });
@@ -311,6 +313,11 @@ void main() {
 
   testWidgets('park courses run in the period show a card and the parks list',
       (tester) async {
+    // Tall enough that the park card, which sits under the stat cards, is
+    // built by the lazy list without a scroll.
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     late LocalRunStore runStore;
     late Preferences prefs;
     await tester.runAsync(() async {
@@ -351,5 +358,26 @@ void main() {
 
     expect(find.byKey(const Key('recap-park-courses')), findsNothing);
     expect(find.text('Parks you ran'), findsNothing);
+  });
+
+  // The recap's cards are ListCards (issue #1374).
+  worstCaseTestWidgets('Recap', (tester, locale) async {
+    late LocalRunStore runStore;
+    late Preferences prefs;
+    await tester.runAsync(() async {
+      final s = await _seed([
+        _run('march', DateTime(pastYear, 3, 12, 8)),
+        _run('march-2', DateTime(pastYear, 3, 20, 8), distanceMetres: 21097),
+      ]);
+      runStore = s.runStore;
+      prefs = s.prefs;
+    });
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RecapScreen(
+          runStore: runStore, preferences: prefs, year: pastYear, month: 3),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Recap');
   });
 }

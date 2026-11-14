@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitorganisator, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]].',
+					text: 'Auszahlungen gehören *dir*, nicht einem Club. Das Geld für ein Event geht an die Person, die es veranstaltet. So sieht ein Mitveranstalter, der nie einen Kurs leitet, nie Geld, das nicht ihm gehört, und du behältst deine Einnahmen, wenn du nicht mehr für einen Club organisierst. Ein Auszahlungskonto gilt für jeden Club, für den du veranstaltest, und für jede Art von Event, auch ein [[guide:set-up-a-race|Rennen]].',
 				},
 			],
 		},
@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Öffne im Web [[route:/settings/payouts|Einstellungen, Auszahlungen]].',
+						'Öffne im Web [[route:/settings/payouts|Auszahlungen]].',
 						'Drücke **Zahlungen einrichten**. Du wirst zu Stripe weitergeleitet, um deine Angaben und das Bankkonto einzugeben, auf das du ausgezahlt werden willst.',
 						'Schließ die Schritte bei Stripe ab. Wenn du zurückkommst, zeigt die Seite deinen Status.',
 						'Steht dort **Einrichtung unvollständig – abschließen, um Zahlungen zu starten** oder **Dein Auszahlungskonto benötigt Aufmerksamkeit, bevor du Zahlungen annehmen kannst**, drücke **Zahlungseinrichtung abschließen**, um zu Stripe zurückzukehren und dort weiterzumachen, wo du aufgehört hast.',
@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 		's0.b0': '94bdd45ffa45992b',
 		's0.b1': 'a2c35333af5a1b69',
 		's1.heading': '3f872765a64cbf87',
-		's1.b0.i0': 'e50bbd6128265cce',
+		's1.b0.i0': '9321b7eb6cd09720',
 		's1.b0.i1': '0f46885c40eac7c9',
 		's1.b0.i2': '5c865b5f5c133459',
 		's1.b0.i3': '8dda9f151d4fc524',

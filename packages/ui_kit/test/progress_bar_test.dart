@@ -99,18 +99,16 @@ void main() {
         });
       });
 
-      testWidgets('$name: colorScheme.error is why danger exists',
+      testWidgets('$name: colorScheme.error is the danger pair, so it fills a bar',
           (tester) async {
-        // Pins the reason the gear bar was moved: the scheme error is the one
-        // status colour that cannot be a bar fill.
+        // The scheme error used to be a coral that failed 3:1 as a bar fill,
+        // which is why the gear bar moved to `danger`. Decisions § 2481 made
+        // the scheme's error the AA-tuned danger pair, so the two must stay
+        // one colour and both clear the non-text 3:1 floor on the track.
         final painted = await _painted(tester, theme);
-        final schemeError = _contrast(theme.colorScheme.error, painted.track);
-        final danger =
-            _contrast(AppSemanticColors.ofTheme(theme).danger, painted.track);
-        expect(danger, greaterThan(schemeError));
-        if (name == 'light') {
-          expect(schemeError, lessThan(3.0));
-        }
+        final danger = AppSemanticColors.ofTheme(theme).danger;
+        expect(theme.colorScheme.error, danger);
+        expect(_contrast(danger, painted.track), greaterThanOrEqualTo(3.0));
       });
     }
   });

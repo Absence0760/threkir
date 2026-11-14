@@ -11,6 +11,7 @@ import '../lib/screens/watch_screens_editor_screen.dart';
 import '../lib/sim_watch_sync.dart';
 import '../lib/watch_screens.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 class _FakeTransport implements WatchBleTransport {
   final _chunks = StreamController<List<int>>.broadcast();
@@ -214,6 +215,27 @@ void main() {
       );
     });
 
+    // Issue #1374: a screen is a ListCard with its layout chips, slot
+    // pickers and move buttons.
+    worstCaseTestWidgets('Watch screens editor', (tester, locale) async {
+      SharedPreferences.setMockInitialValues({
+        kWatchScreensPrefsKey: _draftJson([
+          {
+            'layout': 'trio',
+            'metrics': ['elapsed', 'heart_rate', 'altitude'],
+          },
+        ]),
+      });
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: WatchScreensEditorScreen(transportFactory: () => _FakeTransport()),
+      ));
+      await pumpUntil(tester, () => !tester.any(find.byType(ListSkeleton)),
+          describe: 'the stored screen set to load');
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Watch screens editor');
+    });
+
     testWidgets('adding a screen seeds a single-slot draft', (tester) async {
       await _pumpEditor(tester);
       await tester.tap(find.text('Add screen'));
@@ -294,7 +316,7 @@ void main() {
       await tester.tap(find.text('Single'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Drop 2 metric(s)?'), findsOneWidget);
+      expect(find.text('Drop 2 metrics?'), findsOneWidget);
       expect(find.textContaining('Heart rate, Altitude'), findsOneWidget);
     });
 
@@ -388,7 +410,7 @@ void main() {
       await tester.tap(find.byTooltip('Remove screen'));
       await tester.pumpAndSettle();
       expect(find.text('Remove screen 1?'), findsOneWidget);
-      expect(find.text('Its 2 metric(s) go with it.'), findsOneWidget);
+      expect(find.text('Its 2 metrics go with it.'), findsOneWidget);
 
       // Routed through confirmDestructive: cancel first and unstyled, the
       // confirm carrying the error colour.
@@ -480,7 +502,7 @@ void main() {
         ],
       );
       expect(transport.disconnectCount, 1);
-      expect(find.text('Pushed 1 screen(s) to the watch'), findsOneWidget);
+      expect(find.text('Pushed 1 screen to the watch'), findsOneWidget);
     });
 
     testWidgets('pushing an empty set clears the watch, and says so',

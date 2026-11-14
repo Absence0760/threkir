@@ -10,6 +10,7 @@
 	} from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunEditor from '#lib/components/RunEditor.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
@@ -332,12 +333,10 @@
 </svelte:head>
 
 <div class="page">
-	<!--
-		audit/accessibility (May 2026) High — WCAG 1.3.1 + 2.4.6.
-		The timeline needs an h1; visually-hidden because the chip
-		toolbar already reads as the visual primary surface.
-	-->
-	<h1 class="visually-hidden">{m('history.timelineHeading')}</h1>
+	<!-- A root page says its name, the sidebar's label for it (issue #1374):
+	     the h1 used to be visually hidden, so nothing on the screen said
+	     which surface this was. -->
+	<PageHeader title={m('nav.history')} testid="history-page-header" />
 
 	{#snippet timelineSkeleton()}
 		<TimelineDayList groups={[]} placeholder />

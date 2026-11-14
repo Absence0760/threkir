@@ -1,3 +1,4 @@
+import { localStore } from '../core/browser_storage';
 import { browser } from '$app/env';
 import {
 	CONSENT_COOKIE_NAME,
@@ -40,7 +41,7 @@ export interface ConsentState {
 function readStored(): ConsentState {
 	if (!browser) return { choice: null, timestamp: null };
 	try {
-		const raw = localStorage.getItem(KEY);
+		const raw = localStore()?.getItem(KEY) ?? null;
 		if (!raw) return { choice: null, timestamp: null };
 		const parsed = JSON.parse(raw) as ConsentState;
 		if (parsed.choice === 'accepted' || parsed.choice === 'rejected') return parsed;
@@ -70,7 +71,7 @@ export const consent = {
 		state = next;
 		if (browser) {
 			try {
-				localStorage.setItem(KEY, JSON.stringify(next));
+				localStore()?.setItem(KEY, JSON.stringify(next));
 			} catch {}
 			writeCookie(choice);
 		}
@@ -79,7 +80,7 @@ export const consent = {
 		state = { choice: null, timestamp: null };
 		if (browser) {
 			try {
-				localStorage.removeItem(KEY);
+				localStore()?.removeItem(KEY);
 			} catch {}
 			clearCookie();
 		}
@@ -93,7 +94,7 @@ export { CONSENT_COOKIE_NAME, CONSENT_COOKIE_ACCEPTED_VALUE };
 export function hasAcceptedConsent(): boolean {
 	if (!browser) return false;
 	try {
-		const raw = localStorage.getItem(KEY);
+		const raw = localStore()?.getItem(KEY) ?? null;
 		if (!raw) return false;
 		const parsed = JSON.parse(raw) as ConsentState;
 		return parsed.choice === 'accepted';

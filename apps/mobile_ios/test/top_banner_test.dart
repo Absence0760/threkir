@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTabBar, RootPage;
 
+import '../lib/widgets/stale_refresh_banner.dart';
 import '../lib/widgets/top_banner.dart';
+import 'worst_case_layout.dart';
 
 /// Coverage of the top-banner notification primitive.
 ///
@@ -580,5 +585,61 @@ void main() {
         await tester.pump();
       },
     );
+  });
+
+  // #1374 A11Y-15: the Undo / Retry action was a shrink-wrapped TextButton
+  // about 28 dp tall, on a banner that times out.
+  testWidgets('the banner action is a 48 dp target', (tester) async {
+    await tester.pumpWidget(_BannerHost(
+      onReady: (ctx) => showTopBanner(ctx, 'Run deleted',
+          actionLabel: 'Undo', onAction: () {}),
+    ));
+    await tester.pump();
+    final action = find.byKey(const Key('topBannerAction'));
+    expect(action, findsOneWidget);
+    expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
+    await tester.pump(kTopBannerMaxDuration);
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
+  // Issue #1374: on a hub the tab strip sits under the large title, not in
+  // the app bar, so the offline banner placed under the bar alone covered the
+  // strip at 2x text.
+  worstCaseTestWidgets('Offline banner on a hub', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: DefaultTabController(
+        length: 2,
+        child: Builder(
+          builder: (context) => RootPage.tabbed(
+            title: 'Fitness',
+            controller: DefaultTabController.of(context),
+            labels: const ['Runs', 'Routes'],
+            children: [
+              Builder(
+                builder: (tab) => Center(
+                  child: TextButton(
+                    onPressed: () =>
+                        showStaleRefreshBanner(tab, TimeoutException('x')),
+                    child: const Text('refresh'),
+                  ),
+                ),
+              ),
+              const SizedBox(),
+            ],
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('refresh'));
+    await tester.pump();
+    final pill = find.text(l10nFor(locale).commonStaleOffline);
+    expect(pill, findsOneWidget);
+    expect(tester.getRect(pill).top,
+        greaterThanOrEqualTo(tester.getRect(find.byType(AppTabBar)).bottom),
+        reason: 'the banner starts below the tab strip');
+    await tester.pump(kTopBannerMaxDuration);
+    await tester.pump(const Duration(milliseconds: 500));
   });
 }

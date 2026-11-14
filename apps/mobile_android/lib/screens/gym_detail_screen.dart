@@ -1,7 +1,17 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppBarAction,
+        AppSemanticColors,
+        AppSpace,
+        DetailHero,
+        DetailMeta,
+        DetailPage,
+        ListCard,
+        SectionHeader,
+        TextLane;
 
 import '../auth_error.dart';
 import '../exercise_history.dart';
@@ -18,6 +28,7 @@ import '../metrics.dart';
 import '../next_target_hints.dart';
 import '../preferences.dart';
 import '../progression_prefill.dart';
+import '../widgets/next_target_chip.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/routine_builder_sheet.dart';
@@ -114,11 +125,20 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     }
   }
 
-  Future<void> _maybeSync() async {
+  /// Pushes the local change and answers whether row [id] reached the
+  /// server, waiting only briefly (issue #1374 FS-15).
+  Future<bool> _maybeSync([String? id]) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    var synced = true;
+    if (id == null) {
+      await widget.store.syncWithServer(api);
+    } else {
+      synced = await widget.store.syncRowBriefly(api, id);
+    }
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   static ProgressionScheme _schemeFromString(String s) {
@@ -398,8 +418,10 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     if (!ok) return;
     try {
       await widget.store.deleteLocal(w.id);
-      await _maybeSync();
-      if (mounted) Navigator.pop(context);
+      final synced = await _maybeSync(w.id);
+      if (!mounted) return;
+      if (!synced) showTopBanner(context, l10n.commonDeletedOnPhone);
+      Navigator.pop(context);
     } catch (e) {
       debugPrint('gym delete failed: $e');
       if (mounted) {
@@ -553,43 +575,44 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     final w = widget.store.byId(widget.workoutId);
     final title = w?.workout.title?.trim();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title == null || title.isEmpty ? l10n.gymTitle : title,
-        ),
-        actions: w == null
-            ? null
-            : [
-                IconButton(
-                  tooltip:
-                      w.workout.isPublic ? l10n.gymMakePrivate : l10n.gymMakePublic,
-                  icon: Icon(w.workout.isPublic ? Icons.public : Icons.public_off),
-                  onPressed: _actionBusy ? null : () => _toggleVisibility(w),
+    final busy = _actionBusy;
+    return DetailPage(
+      title: title == null || title.isEmpty ? l10n.gymTitle : title,
+      moreTooltip: l10n.commonMore,
+      actions: w == null
+          ? const []
+          : [
+              AppBarAction(
+                icon: Icon(
+                    w.workout.isPublic ? Icons.public : Icons.public_off),
+                label: w.workout.isPublic
+                    ? l10n.gymMakePrivate
+                    : l10n.gymMakePublic,
+                onPressed: busy ? null : () => _toggleVisibility(w),
+              ),
+              AppBarAction(
+                icon: const Icon(Icons.edit_outlined),
+                label: l10n.gymEdit,
+                onPressed: busy ? null : () => _edit(w),
+              ),
+              AppBarAction(
+                icon: const Icon(Icons.replay),
+                label: l10n.gymRoutineRepeatLast,
+                onPressed: busy ? null : () => _repeatLast(w),
+              ),
+              if (_routineStoreReady)
+                AppBarAction(
+                  icon: const Icon(Icons.list_alt),
+                  label: l10n.gymRoutineSaveAsRoutine,
+                  onPressed: busy ? null : () => _saveAsRoutine(w),
                 ),
-                IconButton(
-                  tooltip: l10n.gymRoutineRepeatLast,
-                  icon: const Icon(Icons.replay),
-                  onPressed: _actionBusy ? null : () => _repeatLast(w),
-                ),
-                if (_routineStoreReady)
-                  IconButton(
-                    tooltip: l10n.gymRoutineSaveAsRoutine,
-                    icon: const Icon(Icons.list_alt),
-                    onPressed: _actionBusy ? null : () => _saveAsRoutine(w),
-                  ),
-                IconButton(
-                  tooltip: l10n.gymEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: _actionBusy ? null : () => _edit(w),
-                ),
-                IconButton(
-                  tooltip: l10n.gymDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _actionBusy ? null : () => _delete(w),
-                ),
-              ],
-      ),
+              AppBarAction(
+                icon: const Icon(Icons.delete_outline),
+                label: l10n.gymDelete,
+                destructive: true,
+                onPressed: busy ? null : () => _delete(w),
+              ),
+            ],
       body: Column(
         children: [
           PendingSyncBanner(
@@ -613,6 +636,11 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     );
   }
 
+  static String _titleOf(StoredGymWorkout w, AppLocalizations l10n) {
+    final title = w.workout.title?.trim();
+    return title == null || title.isEmpty ? l10n.gymTitle : title;
+  }
+
   Widget _body(StoredGymWorkout w, ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final started = w.startedAt;
@@ -621,22 +649,19 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     final prevByExercise = _prevByExercise(w, blocks);
     final notes = w.workout.notes?.trim();
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
-        Row(
-          children: [
+        DetailHero(
+          title: _titleOf(w, l10n),
+          padding: const EdgeInsets.only(top: 16),
+          meta: [
             if (started != null)
-              Flexible(
-                child: Text(
-                  formatDateMed(started.toLocal(), tag),
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
+              DetailMeta(
+                icon: Icons.event,
+                text: formatDateMed(started.toLocal(), tag),
               ),
-            if (started != null) const SizedBox(width: 8),
-            _visibilityChip(w, theme, l10n),
           ],
+          badges: [_visibilityChip(w, theme, l10n)],
         ),
         const SizedBox(height: 16),
         for (final block in blocks)
@@ -644,14 +669,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
         if (_nextTargets.isNotEmpty) _nextTargetsSection(theme, l10n),
         if (notes != null && notes.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(
-            l10n.gymNotes.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          SectionHeader(label: l10n.gymNotes),
           const SizedBox(height: 4),
           Text(notes, style: theme.textTheme.bodyMedium),
         ],
@@ -665,14 +683,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.gymRoutineNextTarget.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          SectionHeader(label: l10n.gymRoutineNextTarget),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -684,53 +695,13 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     );
   }
 
-  // Neutral / positive treatment — never the red/amber adherence colours.
-  Widget _nextChip(NextTargetHint h, ThemeData theme, AppLocalizations l10n) {
-    final delta = _hintDelta(h, l10n);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            h.reason == ProgressionReason.deload
-                ? Icons.trending_down
-                : Icons.trending_up,
-            size: 14,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            h.exerciseName,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (delta != null) ...[
-            const SizedBox(width: 6),
-            Text(
-              delta,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-          const SizedBox(width: 6),
-          Text(
-            _hintReason(h.reason, l10n),
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _nextChip(NextTargetHint h, ThemeData theme, AppLocalizations l10n) =>
+      NextTargetChip(
+        exercise: h.exerciseName,
+        delta: _hintDelta(h, l10n),
+        reason: _hintReason(h.reason, l10n),
+        deload: h.reason == ProgressionReason.deload,
+      );
 
   String _hintReason(ProgressionReason r, AppLocalizations l10n) {
     switch (r) {
@@ -775,11 +746,10 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     final key = normaliseExerciseName(block.name);
     final prs = prByExercise[key] ?? const [];
     final lastTime = prevByExercise[key];
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
@@ -857,7 +827,6 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
               ),
           ],
         ),
-      ),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -137,4 +138,56 @@ void main() {
       );
     });
   }
+
+  // #1374 A11Y-3. A TalkBack double-tap reaches a GestureDetector as a tap at
+  // the node's origin, so heatmapWeekAnchor(dx: 0) opened the oldest week every
+  // time. The grid is one node: the selected week is its value and swipe up /
+  // down steps it.
+  testWidgets('a screen reader steps the selected week; a tap never jumps to week 1',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    final now = DateTime.now();
+    final grid = heatmapGridStart(now, 20, weekStartDay: 'monday');
+    var selected = DateTime(grid.year, grid.month, grid.day + 7 * 19);
+    final picked = <DateTime>[];
+    Future<void> pump() async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ActivityHeatmap(
+            runs: [_run('r1', now.subtract(const Duration(days: 3)))],
+            weekStartDay: 'monday',
+            selectedWeek: selected,
+            weekLabel: (w) => 'W${w.month}-${w.day}',
+            onWeekTap: (w) {
+              picked.add(w);
+              selected = w;
+            },
+          ),
+        ),
+      ));
+    }
+
+    await pump();
+    final node = find.bySemanticsLabel(RegExp(r'^Activity\. Last 20 Weeks\. 1 run$'));
+    expect(node, findsOneWidget);
+    final data = tester.getSemantics(node).getSemanticsData();
+    expect(data.value, 'W${selected.month}-${selected.day}');
+    expect(data.hasAction(SemanticsAction.decrease), isTrue);
+    expect(data.hasAction(SemanticsAction.increase), isFalse,
+        reason: 'the current week is the newest column');
+    expect(data.hasAction(SemanticsAction.tap), isFalse,
+        reason: 'a semantic tap would land on the oldest column');
+
+    tester.semantics.decrease(find.semantics.byLabel(RegExp(r'^Activity\. ')));
+    expect(picked.single, DateTime(grid.year, grid.month, grid.day + 7 * 18));
+    await pump();
+    expect(tester.getSemantics(node).getSemanticsData().value,
+        'W${selected.month}-${selected.day}');
+    expect(
+        tester.getSemantics(node).getSemanticsData().hasAction(SemanticsAction.increase),
+        isTrue);
+    semantics.dispose();
+  });
 }

@@ -986,8 +986,9 @@ class SocialService extends ChangeNotifier {
   /// (`/clubs/<club_id>`) while [ClubDetailScreen] is slug-addressed, so a
   /// tapped push resolves the slug here first. Returns null when the row is
   /// gone or RLS hides it, so the caller degrades to the clubs hub instead of
-  /// opening a screen that can never load. Never rethrows — a deep link is an
-  /// auxiliary effect.
+  /// opening a screen that can never load. A failed read throws: the push tap
+  /// says it could not open and offers Retry, rather than landing on the
+  /// clubs hub as if the club were gone (issue #1374 NS-12).
   Future<String?> fetchClubSlugById(String clubId) async {
     try {
       final row = await _c
@@ -999,13 +1000,13 @@ class SocialService extends ChangeNotifier {
       return (slug == null || slug.isEmpty) ? null : slug;
     } catch (e) {
       debugPrint('fetchClubSlugById failed: $e');
-      return null;
+      rethrow;
     }
   }
 
   /// The slug of the club owning an event — [EventDetailScreen] is addressed
   /// by `(clubSlug, eventId)` but a push only carries the event id. Same
-  /// null-on-miss contract as [fetchClubSlugById].
+  /// contract as [fetchClubSlugById]: null on a miss, a throw on a failure.
   Future<String?> fetchClubSlugForEvent(String eventId) async {
     try {
       final row = await _c
@@ -1015,12 +1016,10 @@ class SocialService extends ChangeNotifier {
           .maybeSingle();
       final clubId = row?[EventRow.colClubId] as String?;
       if (clubId == null || clubId.isEmpty) return null;
-      // Awaited so the never-rethrow contract holds on its own rather
-      // than resting on [fetchClubSlugById] keeping its internal catch.
       return await fetchClubSlugById(clubId);
     } catch (e) {
       debugPrint('fetchClubSlugForEvent failed: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -1523,7 +1522,13 @@ class SocialService extends ChangeNotifier {
       rethrow;
     }
     notifyListeners();
-    return fetchClubSlugById(clubId as String);
+    // The join has landed; a failed slug read after it is not a failed join,
+    // so it answers null (the caller's "joined, open it from Clubs" path).
+    try {
+      return await fetchClubSlugById(clubId as String);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> leaveClub(String clubId) async {

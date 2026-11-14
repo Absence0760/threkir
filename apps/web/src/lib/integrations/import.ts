@@ -10,7 +10,7 @@
  * flattened every coordinate into one combined polyline, which silently
  * merged distinct routes and showed a phantom "bridge" between them.
  */
-import JSZip from 'jszip';
+import { openZip } from '../core/zip_archive';
 import type { TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
 import { computeElevationGain } from '../routes/route_simplify';
@@ -312,15 +312,15 @@ function parseKmlCoordinates(text: string): TrackPoint[] {
 // --- KMZ ---
 
 async function parseKmz(file: File): Promise<ImportedRoute[]> {
-	const zip = await JSZip.loadAsync(file);
+	const zip = await openZip(file);
 
 	// Find the .kml file inside the archive
-	const kmlFile = Object.keys(zip.files).find((name) => name.endsWith('.kml'));
+	const kmlFile = zip.paths.find((name) => name.endsWith('.kml'));
 	if (!kmlFile) {
 		throw new AppError('importRoute.kmzNoKml', { message: 'KMZ archive does not contain a .kml file' });
 	}
 
-	const kmlText = await zip.files[kmlFile].async('text');
+	const kmlText = (await zip.text(kmlFile))!;
 	return parseKml(kmlText);
 }
 

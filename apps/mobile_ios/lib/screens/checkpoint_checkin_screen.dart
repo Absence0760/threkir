@@ -1,7 +1,16 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SkeletonBlock;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppBarAction,
+        FieldColumn,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SectionHeader,
+        SheetScaffold,
+        SkeletonBlock;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -11,6 +20,7 @@ import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../l10n/number_format.dart' show formatFixed;
 import '../preferences.dart' show WeightFormat, activeWeightUnit;
 import '../weigh_in_flag.dart';
+import '../widgets/form_sheet.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 
@@ -171,10 +181,8 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
   }
 
   Future<_WeighInResult?> _showWeighInSheet() {
-    return showModalBottomSheet<_WeighInResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    return showFormSheet<_WeighInResult>(
+      context,
       builder: (ctx) => _WeighInSheet(),
     );
   }
@@ -183,38 +191,55 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.checkpointCheckinTitle),
-        actions: [
-          if (_store.hasPending)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(
-                child: Text(
-                  l10n.checkpointPending,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ),
-          IconButton(
-            tooltip: l10n.checkpointSyncNow,
-            icon: const Icon(Icons.sync),
-            onPressed: _busy ? null : _refresh,
-          ),
-        ],
+    return PushedPage(
+      title: l10n.checkpointCheckinTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.sync),
+          label: l10n.checkpointSyncNow,
+          onPressed: _busy ? null : _refresh,
+        ),
+      ],
+      // The title heads every state (loading, failed, empty) so the bar
+      // never has to carry it, cut, on a narrow phone (TO-12); the unsynced
+      // count rides under it rather than squeezing the toolbar. It scrolls
+      // with the form: fixed above it, the heading and its subtitle took
+      // half of a 320 x 640 phone at 2x text and left the Stamp buttons
+      // under the fold.
+      body: _buildBody(
+        l10n,
+        theme,
+        PageHeader(
+          title: l10n.checkpointCheckinTitle,
+          subtitle: _store.hasPending ? l10n.checkpointPending : null,
+          padding: EdgeInsets.zero,
+        ),
       ),
-      body: _buildBody(l10n, theme),
     );
   }
 
-  Widget _buildBody(AppLocalizations l10n, ThemeData theme) {
+  /// A failed or empty read: the heading, then [child] centred in the rest.
+  Widget _state(Widget header, Widget child) => CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(child: header),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: child),
+          ),
+        ],
+      );
+
+  Widget _buildBody(AppLocalizations l10n, ThemeData theme, Widget header) {
     if (_loading) {
       return ListView(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          header,
+          const SizedBox(height: 16),
           const FractionallySizedBox(
             alignment: AlignmentDirectional.centerStart,
             widthFactor: 0.3,
@@ -235,8 +260,9 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       );
     }
     if (_loadError != null) {
-      return Center(
-        child: Padding(
+      return _state(
+        header,
+        Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -252,8 +278,9 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       );
     }
     if (_checkpoints.isEmpty) {
-      return Center(
-        child: Padding(
+      return _state(
+        header,
+        Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
             l10n.checkpointNone,
@@ -276,42 +303,43 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            l10n.checkpointPickLabel,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-            ),
-          ),
+          header,
+          const SizedBox(height: 16),
+          SectionHeader(label: l10n.checkpointPickLabel),
           const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: selected?.id,
-            items: [
-              for (final cp in _checkpoints)
-                DropdownMenuItem(
-                  value: cp.id,
-                  child: Text(cp.requiresWeighIn && weighInGate
-                      ? '${cp.name}  ⚖'
-                      : cp.name),
-                ),
-            ],
-            onChanged: (id) => setState(() {
-              _selected = _checkpoints.firstWhere((c) => c.id == id);
-            }),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _bib,
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            keyboardType: TextInputType.text,
-            decoration: InputDecoration(
-              labelText: l10n.checkpointBibLabel,
-              hintText: l10n.checkpointBibHint,
-              prefixIcon: const Icon(Icons.tag),
+          FieldColumn(children: [
+            // Expanded, so a long checkpoint name ("Rucky Chucky river
+            // crossing, far side") ellipsizes in the field rather than
+            // overflowing it; the menu still lists each name in full.
+            DropdownButtonFormField<String>(
+              initialValue: selected?.id,
+              isExpanded: true,
+              items: [
+                for (final cp in _checkpoints)
+                  DropdownMenuItem(
+                    value: cp.id,
+                    child: Text(cp.requiresWeighIn && weighInGate
+                        ? '${cp.name}  ⚖'
+                        : cp.name),
+                  ),
+              ],
+              onChanged: (id) => setState(() {
+                _selected = _checkpoints.firstWhere((c) => c.id == id);
+              }),
             ),
-            onSubmitted: (_) => _busy ? null : _stamp(isOut: false),
-          ),
+            TextField(
+              controller: _bib,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                labelText: l10n.checkpointBibLabel,
+                hintText: l10n.checkpointBibHint,
+                prefixIcon: const Icon(Icons.tag),
+              ),
+              onSubmitted: (_) => _busy ? null : _stamp(isOut: false),
+            ),
+          ]),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -333,13 +361,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          Text(
-            l10n.checkpointLoggedHere(stamped.length),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-            ),
-          ),
+          SectionHeader(label: l10n.checkpointLoggedHere(stamped.length)),
           const SizedBox(height: 6),
           if (stamped.isEmpty)
             Text(
@@ -443,13 +465,40 @@ class _WeighInSheetState extends State<_WeighInSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _weight.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final insets = MediaQuery.of(context).viewInsets;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + insets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: Text(l10n.checkpointCancel),
+          ),
+          FilledButton(
+            onPressed: _outOfRange
+                ? null
+                : () {
+                    Navigator.of(context).pop(_WeighInResult(
+                      consent: _consent,
+                      bodyWeightKg: _consent ? _typedKg : null,
+                      medicalHold: _consent ? _medicalHold : null,
+                    ));
+                  },
+            child: Text(l10n.checkpointWeighInSave),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -491,29 +540,6 @@ class _WeighInSheetState extends State<_WeighInSheet> {
               onChanged: (v) => setState(() => _medicalHold = v ?? false),
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.checkpointCancel),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _outOfRange
-                    ? null
-                    : () {
-                        Navigator.of(context).pop(_WeighInResult(
-                          consent: _consent,
-                          bodyWeightKg: _consent ? _typedKg : null,
-                          medicalHold: _consent ? _medicalHold : null,
-                        ));
-                      },
-                child: Text(l10n.checkpointWeighInSave),
-              ),
-            ],
-          ),
         ],
       ),
     );

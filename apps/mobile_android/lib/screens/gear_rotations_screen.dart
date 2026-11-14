@@ -1,12 +1,24 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSemanticColors,
+        AsyncView,
+        EmptyState,
+        AppBarAction,
+        ListCard,
+        LoadingState,
+        PageHeader,
+        PushedPage,
+        SheetScaffold;
 
 import '../auth_error.dart';
 import '../gear_rotation_pick.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
+import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/top_banner.dart';
 
 /// Settings → Gear → Rotations: named multi-pair groupings a runner cycles
@@ -46,7 +58,11 @@ class _NextUp {
 }
 
 class _GearRotationsScreenState extends State<GearRotationsScreen> {
-  List<GearRotationWithMembers> _rotations = [];
+  /// Null until the first read lands. A failed first read is [_loadError] with
+  /// Retry, never "No rotations" (issue #1374 FS-4); a failed refresh keeps
+  /// these rows and says so.
+  List<GearRotationWithMembers>? _rotations;
+  Object? _loadError;
   bool _loading = true;
   bool _busy = false;
   bool _movingStar = false;
@@ -69,19 +85,28 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
   }
 
   Future<void> _load() async {
+    if (_rotations == null) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
       final fresh = await widget.api.fetchMyGearRotations();
       if (!mounted) return;
       setState(() {
         _rotations = fresh;
+        _loadError = null;
         _loading = false;
       });
     } catch (e) {
-      debugPrint('gear rotation save failed: $e');
+      debugPrint('GearRotationsScreen._load failed: $e');
       if (!mounted) return;
-      setState(() => _loading = false);
-      showTopBanner(
-          context, AppLocalizations.of(context).gearRotationSaveFailed(friendlyError(AppLocalizations.of(context), e)));
+      setState(() {
+        _loading = false;
+        if (_rotations == null) _loadError = e;
+      });
+      if (_rotations != null) showStaleRefreshBanner(context, e);
     }
   }
 
@@ -93,13 +118,14 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
     setState(() => _busy = true);
     try {
       await widget.api.createGearRotation(name);
-      await _load();
     } catch (e) {
       debugPrint('gear rotation save failed: $e');
       if (mounted) showTopBanner(context, l10n.gearRotationSaveFailed(friendlyError(l10n, e)));
+      return;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    await _load();
   }
 
   Future<void> _rename(GearRotationWithMembers r) async {
@@ -108,11 +134,12 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
     if (name == null || name.isEmpty || name == r.name) return;
     try {
       await widget.api.renameGearRotation(r.id, name);
-      await _load();
     } catch (e) {
       debugPrint('gear rotation save failed: $e');
       if (mounted) showTopBanner(context, l10n.gearRotationSaveFailed(friendlyError(l10n, e)));
+      return;
     }
+    await _load();
   }
 
   Future<void> _delete(GearRotationWithMembers r) async {
@@ -140,11 +167,12 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
     if (!ok) return;
     try {
       await widget.api.deleteGearRotation(r.id);
-      await _load();
     } catch (e) {
-      debugPrint('gear rotation save failed: $e');
-      if (mounted) showTopBanner(context, l10n.gearRotationSaveFailed(friendlyError(l10n, e)));
+      debugPrint('gear rotation delete failed: $e');
+      if (mounted) showTopBanner(context, l10n.gearRotationDeleteFailed(friendlyError(l10n, e)));
+      return;
     }
+    await _load();
   }
 
   Future<void> _editMembers(GearRotationWithMembers r) async {
@@ -248,48 +276,55 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gearRotationsTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gearRotationNew,
-            icon: const Icon(Icons.add),
-            onPressed: _busy ? null : _create,
-          ),
-        ],
-      ),
-      body: _loading
-          ? ListSkeleton(label: l10n.commonLoading, hasLeading: false)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  l10n.gearRotationsHint,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
-                if (_rotations.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                      l10n.gearRotationsEmpty,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  )
-                else
-                  for (final r in _rotations) _rotationTile(r, theme, l10n),
-              ],
+    return PushedPage(
+      title: l10n.gearRotationsTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.add),
+          label: l10n.gearRotationNew,
+          onPressed: _busy ? null : _create,
+        ),
+      ],
+      body: AsyncView<List<GearRotationWithMembers>>(
+        loading: _loading,
+        error: _loadError,
+        data: _rotations,
+        isEmpty: (r) => r.isEmpty,
+        onRefresh: _load,
+        loadingState: LoadingState.list(
+            label: l10n.commonLoading, hasLeading: false),
+        errorBuilder: (_, _) =>
+            AppErrorState(message: l10n.gearRotationsLoadFailed, onRetry: _load),
+        empty: EmptyState(
+          icon: Icons.sync_alt,
+          title: l10n.gearRotationsEmpty,
+          body: l10n.gearRotationsHint,
+          ctaLabel: l10n.gearRotationNew,
+          onCta: _busy ? null : _create,
+          ctaIcon: Icons.add,
+        ),
+        builder: (_, rotations) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            PageHeader(
+              title: l10n.gearRotationsTitle,
+              subtitle: l10n.gearRotationsHint,
+              padding: const EdgeInsets.only(bottom: 16),
             ),
+            for (final r in rotations) _rotationTile(r, theme, l10n),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _rotationTile(
       GearRotationWithMembers r, ThemeData theme, AppLocalizations l10n) {
     final nextUps = _nextUpFor(r);
-    return Card(
+    // Flush: the rotation's own row and its next-up blocks each hold a
+    // control, so the card is a shell around them rather than one tap.
+    return ListCard.flush(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -429,12 +464,10 @@ class _RotationMembersSheetState extends State<_RotationMembersSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    final bottomInset =
-        mq.viewInsets.bottom > 0 ? mq.viewInsets.bottom : mq.viewPadding.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      scrollBody: false,
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -486,14 +519,15 @@ class _RotationMembersSheetState extends State<_RotationMembersSheet> {
               ),
             ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            overflowAlignment: OverflowBarAlignment.end,
+            spacing: 8,
             children: [
               TextButton(
                 onPressed: _saving ? null : () => Navigator.pop(context),
                 child: Text(l10n.gearCancel),
               ),
-              const SizedBox(width: 8),
               FilledButton(
                 onPressed: _saving ? null : _save,
                 child: Text(l10n.gearRotationDone),

@@ -101,6 +101,21 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   }
 }
 
+/// Records, at each `getPositionStream` call, whether the one shared stream
+/// still had a listener. geolocator hands every caller the stream the first
+/// caller opened, with that caller's settings, until its last listener goes.
+class _StreamHandoffGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  final List<bool> heldAtCall = [];
+  final List<LocationSettings?> settings = [];
+
+  @override
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
+    heldAtCall.add(_positions?.hasListener ?? false);
+    settings.add(locationSettings);
+    return super.getPositionStream(locationSettings: locationSettings);
+  }
+}
+
 /// Spy [LocalRunStore] that captures `save(run)` synchronously instead of
 /// writing to disk. The real store's `save` awaits a `File.writeAsString`,
 /// and real I/O futures don't resolve under flutter_test's fake-async
@@ -675,6 +690,30 @@ void main() {
       expect(countdownThree, isEmpty,
           reason:
               'after countdown completes the large "3" should be gone');
+    });
+
+    testWidgets(
+        'the idle GPS preview lets go of the position stream before the '
+        'recorder opens its own', (tester) async {
+      final spy = _StreamHandoffGeolocatorPlatform();
+      geolocator = spy;
+      GeolocatorPlatform.instance = spy;
+      await pumpRunScreen(tester);
+      await tester.pump();
+      expect(spy.settings, hasLength(1),
+          reason: 'the idle page listens for fixes while it shows');
+      expect((spy.settings.single as AndroidSettings).forceLocationManager,
+          isTrue);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(spy.settings.length, greaterThanOrEqualTo(2),
+          reason: 'the recorder opened its stream at the countdown');
+      expect(spy.heldAtCall.skip(1), everyElement(isFalse),
+          reason: 'had the preview still held the stream, the recorder would '
+              'have been handed it, preview settings and all');
     });
 
     testWidgets('LiveRunMap mounts once recording begins', (tester) async {
@@ -1858,14 +1897,17 @@ void main() {
     });
   });
 
-  group('RunScreen — the docked centre Stop (RunStopDock)', () {
+  group('RunScreen — the docked centre Start and Stop (RunStopDock)', () {
     // On the phone shell the docked centre button is the Stop while a run
     // records, so the panel leaves its own out; the rail layout docks nothing
     // and the panel keeps it. Driven through the real recorder: the panel is
     // what a runner sees, and `_stop` is what a completed hold reaches.
 
+    var underDock = false;
+
     Future<_CapturingRunStore> pumpUnder(WidgetTester tester,
         {required bool docked}) async {
+      underDock = docked;
       final runStore = _CapturingRunStore();
       await runStore.init(overrideDirectory: runsDir);
       final s = await makeStores();
@@ -1895,7 +1937,12 @@ void main() {
     }
 
     Future<void> reachRecording(WidgetTester tester) async {
-      await tester.tap(find.text('START'));
+      // Docked, the centre button is the Start and the panel draws none.
+      if (underDock) {
+        runStartRequests.request(RunStartRequest.start);
+      } else {
+        await tester.tap(find.text('START'));
+      }
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       for (var i = 0; i < 3; i++) {
@@ -1945,6 +1992,67 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets(
+        'under the phone dock the start screen draws no Start of its own, '
+        'and a start request runs the countdown', (tester) async {
+      await pumpUnder(tester, docked: true);
+
+      expect(find.byKey(const ValueKey('run-idle-start')), findsNothing,
+          reason: 'the docked centre button is the Start on a phone');
+      expect(find.text('START'), findsNothing);
+      expect(runIdleShowing.value, isTrue);
+
+      runStartRequests.request(RunStartRequest.start);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('3'), findsOneWidget,
+          reason: 'the request runs the same 3-2-1 the panel Start did');
+      expect(runCountdownShowing.value, isTrue);
+      expect(runIdleShowing.value, isFalse);
+
+      await unmount(tester);
+    });
+
+    testWidgets('a cancel request during the countdown returns to the start '
+        'screen without recording', (tester) async {
+      final runStore = await pumpUnder(tester, docked: true);
+
+      runStartRequests.request(RunStartRequest.start);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(runCountdownShowing.value, isTrue);
+
+      runStartRequests.request(RunStartRequest.cancel);
+      await tester.pump();
+      expect(runCountdownShowing.value, isFalse);
+      expect(runIdleShowing.value, isTrue);
+
+      // The cancelled countdown's timer must not start a run later.
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(runRecordingActive.value, isFalse);
+      expect(runStore.captured, isEmpty);
+
+      await unmount(tester);
+    });
+
+    testWidgets('a start request made before the page is built is taken on '
+        'its first frame, and is spent on arrival', (tester) async {
+      runStartRequests.request(RunStartRequest.start);
+      await pumpUnder(tester, docked: true);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('3'), findsOneWidget,
+          reason: "Home's Start fires before the lazy Run page exists");
+      expect(runStartRequests.take(), isNull);
+
+      runStartRequests.request(RunStartRequest.cancel);
+      await tester.pump();
+      expect(runIdleShowing.value, isTrue);
+
+      await unmount(tester);
+    });
+
     testWidgets('without a dock (the rail layout) the panel keeps its Stop',
         (tester) async {
       await pumpUnder(tester, docked: false);
@@ -1966,7 +2074,7 @@ void main() {
 
       runStopRequests.request();
       await tester.pump();
-      expect(find.text('START'), findsOneWidget,
+      expect(runIdleShowing.value, isTrue,
           reason: 'no run is recording, so there is nothing to stop');
       expect(runStore.captured, isEmpty);
 
@@ -1994,7 +2102,7 @@ void main() {
 
       runSummaryDismissRequests.request();
       await tester.pump();
-      expect(find.text('START'), findsOneWidget);
+      expect(runIdleShowing.value, isTrue);
       expect(runSummaryShowing.value, isFalse);
 
       await reachRecording(tester);
@@ -2012,7 +2120,7 @@ void main() {
       runSummaryDismissRequests.request();
       await tester.pump();
       expect(runSummaryShowing.value, isFalse);
-      expect(find.text('START'), findsOneWidget,
+      expect(runIdleShowing.value, isTrue,
           reason: 'a new run starts from the start screen');
       expect(runStore.captured, hasLength(1),
           reason: 'closing the summary keeps the saved run');

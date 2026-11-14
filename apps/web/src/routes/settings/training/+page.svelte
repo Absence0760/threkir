@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import ListRow from '#lib/components/ListRow.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { dbError } from '#lib/core/supabase_error.ts';
@@ -162,9 +165,9 @@
 
 <PrefsPage heading={m('prefs.trainingHeading')} tagline={m('prefs.trainingTagline')} page={prefs}>
 	<section class="card" id="weekly-distance-goal">
-		<h2>{m('prefs.weeklyGoalHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.weeklyGoalHeading')} label={m('prefs.weeklyGoalHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<label>
+			<label id={settingRowId('prefs.weeklyDistanceGoal')}>
 				<span class="label-text">{m('prefs.weeklyDistanceGoal', { unit: preferredUnit })}</span>
 				<input
 					type="number"
@@ -196,25 +199,24 @@
 	</section>
 
 	<section class="card" id="plan-recovery">
-		<h2>{m('prefs.planRecoveryHeading')}</h2>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={extraRecovery}
-				aria-describedby="extra-recovery-hint"
-				data-testid="extra-recovery-toggle"
-				onchange={() => prefs.save({ [EXTRA_RECOVERY_KEY]: extraRecovery })}
-			/>
-			<span>{m('prefs.extraRecovery')}</span>
-		</label>
+		<SectionHeader id={settingRowId('prefs.planRecoveryHeading')} label={m('prefs.planRecoveryHeading')} class="prefs-section-head" />
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.extraRecovery')}
+			title={m('prefs.extraRecovery')}
+			bind:checked={extraRecovery}
+			describedby="extra-recovery-hint"
+			testid="extra-recovery-toggle"
+			onchange={() => prefs.save({ [EXTRA_RECOVERY_KEY]: extraRecovery })}
+		/>
 		<p class="hint" id="extra-recovery-hint">{m('prefs.extraRecoveryHint')}</p>
 	</section>
 
 	<section class="card" id="heart-rate-zones">
-		<h2>{m('prefs.heartRateZonesHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.heartRateZonesHeading')} label={m('prefs.heartRateZonesHeading')} class="prefs-section-head" />
 		<p class="section-desc">{m('prefs.heartRateZonesDesc')}</p>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.restingHr')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.restingHr')}</span>
 					<input type="number" bind:value={restingHr} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} placeholder={m('prefs.restingHrPlaceholder')} aria-invalid={restingHrOutOfRange} aria-describedby="resting-hr-hint" data-testid="resting-hr" onblur={saveRestingHr} />
@@ -224,7 +226,7 @@
 				</label>
 				<p class="hint" id="resting-hr-hint">{m('prefs.restingHrHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.maxHr')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.maxHr')}</span>
 					<input type="number" bind:value={maxHr} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} placeholder={m('prefs.maxHrPlaceholder')} aria-invalid={maxHrOutOfRange} aria-describedby="max-hr-hint" data-testid="max-hr" onblur={saveMaxHr} />
@@ -245,17 +247,16 @@
 		</div>
 		{#if hrPrescription}
 			<div class="field" data-testid="hr-medication">
-				<label class="checkbox-row">
-					<input
-						type="checkbox"
-						bind:checked={hrMedicationAffected}
-						disabled={!healthConsentGranted && !hrMedicationAffected}
-						aria-describedby="hr-medication-hint"
-						data-testid="hr-medication-toggle"
-						onchange={() => prefs.save({ hr_medication_affected: hrMedicationAffected })}
-					/>
-					<span>{m('prefs.hrMedicationAffected')}</span>
-				</label>
+				<ListRow
+					kind="toggle"
+					id={settingRowId('prefs.hrMedicationAffected')}
+					title={m('prefs.hrMedicationAffected')}
+					bind:checked={hrMedicationAffected}
+					disabled={!healthConsentGranted && !hrMedicationAffected}
+					describedby="hr-medication-hint"
+					testid="hr-medication-toggle"
+					onchange={() => prefs.save({ hr_medication_affected: hrMedicationAffected })}
+				/>
 				<p class="hint" id="hr-medication-hint">
 					{#if consentCheckFailed}
 						<span data-testid="hr-medication-consent-failed">{m('prefs.hrMedicationConsentCheckFailed')}</span>
@@ -273,19 +274,20 @@
 				{/if}
 			</div>
 		{/if}
-		<label class="checkbox-row">
-			<input type="checkbox" bind:checked={excludeGymFromReadiness} onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })} />
-			<span>
-				{m('prefs.excludeGymFromReadiness')}
-				<span class="hint">{m('prefs.excludeGymFromReadinessHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.excludeGymFromReadiness')}
+			title={m('prefs.excludeGymFromReadiness')}
+			subtitle={m('prefs.excludeGymFromReadinessHint')}
+			bind:checked={excludeGymFromReadiness}
+			onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })}
+		/>
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.raceFuelingHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.raceFuelingHeading')} label={m('prefs.raceFuelingHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.carbsPerHour')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.carbsPerHour')}</span>
 					<input
@@ -301,7 +303,7 @@
 				</label>
 				<p class="hint" id="carbs-per-hour-hint">{m('prefs.carbsPerHourHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.fluidPerHour')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.fluidPerHour')}</span>
 					<input
@@ -321,9 +323,9 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.aiCoachHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.aiCoachHeading')} label={m('prefs.aiCoachHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.coachPersonality')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.coachPersonality')}</span>
 					<select bind:value={coachPersonality} onchange={() => prefs.save({ coach_personality: coachPersonality })} aria-describedby="coach-personality-hint">

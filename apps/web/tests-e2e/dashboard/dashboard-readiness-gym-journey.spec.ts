@@ -141,7 +141,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 			try {
 				// ── Phase 1: gym IS in the readiness curve ──────────────────
 				await test.step('readiness includes gym — note says "factored in", capture ATL/TSB', async () => {
-					await page.goto('/dashboard');
+					await page.goto('/dashboard/progress');
 					await expandTrainingLoad(page);
 
 					// The transparency note confirms a recent lift is moving the
@@ -162,7 +162,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				// ── Phase 2: opt out — gym drops from the readiness curve ────
 				await test.step('toggle exclude_gym_from_readiness → note flips to "excluded"', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', true);
-					await page.goto('/dashboard');
+					await page.goto('/dashboard/progress');
 					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });
@@ -193,7 +193,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				// ── Phase 4: recoverable — flip back, gym is folded in again ─
 				await test.step('revert pref → gym is folded back into the readiness curve', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', false);
-					await page.goto('/dashboard');
+					await page.goto('/dashboard/progress');
 					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });

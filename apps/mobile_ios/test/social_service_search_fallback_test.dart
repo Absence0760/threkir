@@ -90,8 +90,10 @@ class _FakePostgrest {
       enrichmentReads++;
       _write(res, failFirstEnrichment && enrichmentReads == 1 ? null : const []);
     } else if (path == '/rest/v1/clubs') {
-      if (wantsObject) {
-        _write(res, failClubLookup ? null : _clubJson('club-9'));
+      if (failClubLookup) {
+        _write(res, null);
+      } else if (wantsObject) {
+        _write(res, _clubJson('club-9'));
       } else {
         _write(res, browseRows);
       }
@@ -185,21 +187,17 @@ void main() {
     });
   });
 
-  // Contract coverage, not a discriminating regression test: the club
-  // lookup swallows its own failures, so `fetchClubSlugForEvent` returns
-  // null with or without the `await` on that call. What this pins is the
-  // never-rethrow contract itself — a deep link is an auxiliary effect
-  // and must not throw into the push-tap handler — so a later narrowing
-  // of the inner catch fails here instead of in production.
-  test('fetchClubSlugForEvent returns null rather than throwing when the '
-      'club lookup fails', () async {
+  // A failed lookup throws rather than answering null, which the push tap
+  // read as "the club is gone" and landed on the clubs hub without a word
+  // (issue #1374 NS-12). The tap's handler catches it and offers Retry.
+  test('fetchClubSlugForEvent throws when the club lookup fails', () async {
     fake
       ..eventRow = {'club_id': 'club-9'}
       ..failClubLookup = true;
 
     await expectLater(
       social.fetchClubSlugForEvent('event-1'),
-      completion(isNull),
+      throwsA(anything),
     );
   });
 }

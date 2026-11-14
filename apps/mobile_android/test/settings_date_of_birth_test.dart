@@ -44,7 +44,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+        home: SettingsPreferencesScreen(page: PreferencesPage.training, preferences: prefs, settingsSync: sync),
       ),
     );
     await tester.pumpAndSettle();

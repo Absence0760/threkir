@@ -17,6 +17,7 @@
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show TrainingPlanRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,12 @@ import '../lib/screens/routine_library_screen.dart';
 import '../lib/screens/settings_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/surface_peer_strip.dart';
+
+/// No plans, so the Plans tab shows its empty state.
+class _NoPlansTraining extends TrainingService {
+  @override
+  Future<List<TrainingPlanRow>> fetchMyPlans() async => const [];
+}
 
 class _SignedInApi extends ApiClient {
   @override
@@ -85,18 +92,26 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('plans names the library beside New plan, not as a glyph',
+  testWidgets('plans names the library where a runner with no plan looks',
       (tester) async {
     await _pump(
       tester,
-      PlansScreen(training: TrainingService(), apiClient: _SignedInApi()),
+      PlansScreen(training: _NoPlansTraining(), apiClient: _SignedInApi()),
     );
-    // A labelled action next to New plan, as on web — not a peer tab, which
-    // repeated the AppBar title as a selected chip (issue #1186).
-    expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'New plan'), findsOneWidget);
+    await tester.pump();
+    // Not a peer tab, which repeated the AppBar title as a selected chip
+    // (issue #1186). With no plans it is labelled, under the starters; over a
+    // list it is an icon with its tooltip at the end of the status chips'
+    // line, the owner's call over a labelled button alone on a row (issue
+    // #1374; plans_screen_test pins that half). New plan is the page's one
+    // primary action, its FAB.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('plans-empty-browse-library')),
+            matching: find.text('Browse library')),
+        findsOneWidget);
+    expect(find.widgetWithText(FloatingActionButton, 'New plan'), findsOneWidget);
     expect(find.byType(SurfacePeerStrip), findsNothing);
-    expect(find.widgetWithIcon(IconButton, Icons.public), findsNothing);
   });
 
   testWidgets('the routine library names the public library',
@@ -126,10 +141,12 @@ void main() {
       final prefs = await _prefs();
       await _pump(
         tester,
-        SettingsScreen(
-          preferences: prefs,
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
+        Scaffold(
+          body: SettingsScreen(
+            preferences: prefs,
+            heartRate: BleHeartRate(),
+            treadmill: BleTreadmill(),
+          ),
         ),
       );
       await tester.scrollUntilVisible(find.text('Gear'), 200,
@@ -148,11 +165,13 @@ void main() {
       final prefs = await _prefs();
       await _pump(
         tester,
-        SettingsScreen(
-          preferences: prefs,
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
-          gearStore: LocalGearStore(),
+        Scaffold(
+          body: SettingsScreen(
+            preferences: prefs,
+            heartRate: BleHeartRate(),
+            treadmill: BleTreadmill(),
+            gearStore: LocalGearStore(),
+          ),
         ),
       );
       await tester.scrollUntilVisible(find.text('Gear'), 200,
@@ -169,61 +188,60 @@ void main() {
   });
 
   group('dashboard recap entry (#666 I8)', () {
-    late String src;
+    late String today;
+    late String progress;
     setUpAll(() {
-      src = File('lib/screens/dashboard_screen.dart').readAsStringSync();
+      today = File('lib/screens/today_screen.dart').readAsStringSync();
+      progress = File('lib/screens/progress_screen.dart').readAsStringSync();
     });
 
     test('the recap is no longer a bare calendar glyph', () {
       // `calendar_today_outlined` beside four other unlabelled glyphs read as
-      // a date picker, and it was the recap's ONLY entry point in the app.
-      expect(
-        src.contains('Icons.calendar_today'),
-        isFalse,
-        reason: 'the dashboard toolbar must not name the recap with a '
-            'date-picker glyph',
-      );
+      // a date picker, and it was the recap's only entry point in the app.
+      for (final src in [today, progress]) {
+        expect(src.contains('Icons.calendar_today'), isFalse,
+            reason: 'the recap must not be named with a date-picker glyph');
+      }
     });
 
     test('the recap link carries its name, not only a tooltip', () {
-      final at = src.indexOf('RecapScreen(');
-      expect(at, greaterThan(0), reason: 'the dashboard must reach RecapScreen');
-      // The whole affordance is built in the ~24 lines around the push.
-      final block = src.substring(at - 900 < 0 ? 0 : at - 900, at);
+      // The recap moved to Progress with the totals it summarises
+      // (issue #1374, decisions § 2492).
+      final at = progress.indexOf('RecapScreen(');
+      expect(at, greaterThan(0), reason: 'Progress must reach RecapScreen');
+      final block = progress.substring(at - 900 < 0 ? 0 : at - 900, at);
       expect(block.contains('TextButton.icon('), isTrue,
           reason: 'a labelled button, not an IconButton');
-      final after = src.substring(at, at + 600);
+      final after = progress.substring(at, at + 600);
       expect(after.contains('label: Text(l10n.dashboardRecapTooltip)'), isTrue,
           reason: 'the name must render as text');
       expect(after.contains('Icons.auto_awesome'), isTrue,
           reason: 'mirrors the auto_awesome glyph web pairs with the label');
     });
 
-    test('the toolbar is down to three glyphs, none of them a duplicate', () {
-      // Five unlabelled glyphs crowded the toolbar. The recap went first;
-      // the coach followed (issue #921) because `_coachEntry()` is a labelled
-      // card 8 dp below it, which left the glyph as a second, mute route to
-      // one screen. Feed / bell / profile have no other entry point on Home.
-      final start = src.indexOf('final actions = <Widget>[');
-      final end = src.indexOf('final actionToolbar', start);
+    test('the actions are the overflow alone, no unlabelled glyphs', () {
+      // Five unlabelled glyphs once crowded the toolbar. The recap and the
+      // coach went first (#666, #921); Feed, the bell and Profile followed
+      // when Messages and notifications moved to Social (issue #1374).
+      final start = today.indexOf('final actions = <Widget>[');
+      final end = today.indexOf('return RootPage(', start);
       expect(start, greaterThan(0));
       expect(end, greaterThan(start));
-      final block = src.substring(start, end);
-      expect('IconButton('.allMatches(block).length, 2,
-          reason: 'feed + profile are IconButtons; the bell is its own '
-              'widget, so three glyphs in total');
-      expect(block.contains('NotificationBell('), isTrue);
-      expect(block.contains('Icons.psychology_outlined'), isFalse,
-          reason: 'the coach is reached by its labelled card, not a glyph');
+      final block = today.substring(start, end);
+      expect('IconButton('.allMatches(block).length, 0);
+      expect(block.contains('NotificationBell('), isFalse);
+      expect(block.contains('PopupMenuButton'), isTrue,
+          reason: 'Add run and Import stay in the overflow (decisions § 2281)');
     });
 
-    test('the toolbar names the surface it sits on', () {
-      // Home opened on glyphs and no title at all; the bottom-nav label that
-      // named it is at the far end of the phone.
-      final at = src.indexOf('final actionToolbar');
-      final block = src.substring(at, at + 600);
-      expect(block.contains('l10n.navHome'), isTrue,
-          reason: 'the inline toolbar carries the surface title');
+    test('the title row names the surface it sits on', () {
+      // RootPage draws the title and the actions on one row (decisions
+      // § 2517), so the surface name is the RootPage title.
+      final at = today.indexOf('return RootPage(');
+      expect(at, greaterThan(0));
+      final block = today.substring(at, at + 300);
+      expect(block.contains('title: l10n.todayTitle'), isTrue);
+      expect(block.contains('actions: actions'), isTrue);
     });
   });
 }

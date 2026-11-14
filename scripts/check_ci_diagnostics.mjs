@@ -438,6 +438,16 @@ export const PR_ADVISORY = new Map([
 			'carry no line region, so every alert sits at line 1 of a lockfile and merge ' +
 			'protection cannot attribute it to a PR, while a missing upload would block every PR.',
 	],
+	[
+		'store-screenshots.yml',
+		'it produces store-listing images for the owner to judge, not a verdict on the change: ' +
+			'its pull_request trigger is filtered to the pipeline\'s own files so a broken ' +
+			'capture surfaces on the change that broke it. A fold would put a second emulator ' +
+			'boot and a local Supabase stack on every PR, and make every merge wait on MapTiler ' +
+			'serving tiles to a screenshot, while catching nothing the required ' +
+			'`mobile-android-e2e` and `dart analyze` (which compiles the capture suite) do not ' +
+			'(issue #1375).',
+	],
 ]);
 
 /// The workflows and the composite actions as one list of step lists, so the

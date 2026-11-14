@@ -102,6 +102,7 @@
 				<MetricLabel metric="trimp" sentence="trainingLoad.hintTrimp" params={{ n: points.length }} />
 			{:else}
 				{t('trainingLoad.hintVolume')}
+				<a href="/settings/training#heart-rate-zones">{t('settingsLayout.tabTraining')}</a>
 			{/if}
 		</p>
 		{#if lowConfidence}

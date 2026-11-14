@@ -471,7 +471,7 @@ jobs:
       # wiring in both workflows, so a regression fails a PR instead of a
       # release (decisions.md § 2478). The Wear OS release shares the phone's
       # package, so the same suite pins its upload to the Wear internal track,
-      # its signing key and its version-code range (§ 2480).
+      # its signing key and its version-code range (§ 2529).
       - name: The Android release still goes to Play production as a staged rollout
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |

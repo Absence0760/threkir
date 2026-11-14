@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../fab_clearance.dart';
+import '../shell_back.dart';
+import '../fitness_surface_requests.dart' show FitnessHubViews;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
@@ -14,7 +17,6 @@ import '../race_service.dart';
 import '../settings_sync.dart';
 import '../social_service.dart';
 import '../training_service.dart';
-import 'global_segments_screen.dart';
 import 'gym_screen.dart';
 import 'nutrition_screen.dart';
 import 'plans_screen.dart';
@@ -29,16 +31,27 @@ import 'runs_screen.dart';
 ///     mounted WITH the gym + food stores, with its own kind chips suppressed
 ///     since the hub's strip owns that axis.
 ///   - Runs: the offline-first run list (`RunsScreen` WITHOUT a gym store).
-///   - Plans, Races & courses, Routes, Segments: the run surface's planning
-///     and discovery sections, each mounted here as a tab body rather than
-///     pushed over the hub (decisions § 2437, superseding the peer strip of
-///     § 488 on mobile). Races & courses is the race calendar plus the park
-///     courses you can run any time (issue #1352).
-///   - Gym: `GymScreen`. Nutrition: `NutritionScreen`.
+///   - Gym: `GymScreen`. Nutrition: `NutritionScreen`. Third and fourth,
+///     beside the other logs, rather than past the run surface's planning
+///     tabs, where at 360 dp they sat off screen (issue #1374, owner
+///     decision 1).
+///   - Plans, Races & courses, Routes: the run surface's planning and
+///     discovery sections, each mounted here as a tab body rather than pushed
+///     over the hub (decisions § 2437, superseding the peer strip of § 488 on
+///     mobile). Races & courses is the race calendar plus the park courses
+///     you can run any time (issue #1352). Routes is `Mine · Explore`, and
+///     the segment catalogue is Explore's Segments chip rather than a tab of
+///     its own (issue #1374, owner decision 1).
 ///
-/// Each tab body owns its own Scaffold, AppBar actions and FAB; the hub
-/// provides only the strip. One strip in every configuration: gym and food
-/// join the same row rather than stacking a second strip inside Runs.
+/// The hub is a ui_kit `RootPage.tabbed`, as the Social hub is: the hub's
+/// name ([fitnessHubTitle], the label the bottom nav shows) in a large title
+/// over the strip, which collapses into a compact bar as a tab scrolls, and
+/// the one FAB: every tab body is a ui_kit `HubTabBody`, which inside
+/// the hub's [HubTabScope] draws no app bar or title of its own, puts its
+/// secondary actions in its control row and hands its primary action to the
+/// hub, which shows the active tab's as its FAB (issue #1374). One strip in
+/// every configuration: gym and food join the same row rather than stacking a
+/// second strip inside Runs.
 ///
 /// Gym and Nutrition are only in the strip while [modalityShown] says so: off
 /// for a runner who has logged neither until they switch them on in Settings,
@@ -50,21 +63,20 @@ import 'runs_screen.dart';
 /// The Gym and Nutrition tabs are also where the shell's centre Log action
 /// lands, so these are the app's only instances of those two screens rather
 /// than review copies of capture pages held elsewhere ([`selectedTab`],
-/// decisions § 1654). A link to Plans, Races, Routes or Segments from
-/// anywhere else in the app selects the tab here too
-/// (`fitness_surface_requests.dart`) instead of pushing a second copy.
+/// decisions § 1654). A link to Plans, Races, Routes or the segment
+/// catalogue from anywhere else in the app selects the tab and its view here
+/// too (`fitness_surface_requests.dart`) instead of pushing a second copy.
 ///
 /// The Fitness hub's tabs, in strip order. Named + ordered rather than the
 /// raw int this was, for the reason § 490 records — see `SocialTab`.
 enum FitnessTab {
   history,
   runs,
+  gym,
+  nutrition,
   plans,
   races,
-  routes,
-  segments,
-  gym,
-  nutrition;
+  routes;
 
   String label(AppLocalizations l10n) => switch (this) {
         // The hub's tabs are destinations, not kind filters: web's equivalent
@@ -77,7 +89,6 @@ enum FitnessTab {
         FitnessTab.plans => l10n.runSurfaceTabPlans,
         FitnessTab.races => l10n.runSurfaceTabRacesCourses,
         FitnessTab.routes => l10n.fitnessRunsRoutes,
-        FitnessTab.segments => l10n.runSurfaceTabSegments,
         FitnessTab.gym => l10n.fitnessTabGym,
         FitnessTab.nutrition => l10n.fitnessTabNutrition,
       };
@@ -92,13 +103,23 @@ List<FitnessTab> fitnessHubTabs({
     [
       if (gymShown || nutritionShown) FitnessTab.history,
       FitnessTab.runs,
+      if (gymShown) FitnessTab.gym,
+      if (nutritionShown) FitnessTab.nutrition,
       FitnessTab.plans,
       FitnessTab.races,
       FitnessTab.routes,
-      FitnessTab.segments,
-      if (gymShown) FitnessTab.gym,
-      if (nutritionShown) FitnessTab.nutrition,
     ];
+
+/// The hub's name: its bottom-nav label and the title it says over its strip,
+/// from one place so the two never disagree. "Fitness" while gym or
+/// nutrition is shown, "Training" for a runner with neither (decisions
+/// § 139): the hub then holds runs, plans, races and routes.
+String fitnessHubTitle(
+  AppLocalizations l10n, {
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    gymShown || nutritionShown ? l10n.navFitness : l10n.navTraining;
 
 class FitnessHubScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -124,6 +145,11 @@ class FitnessHubScreen extends StatefulWidget {
   /// Null in standalone mounts and tests, where the hub owns one of its own.
   final ValueNotifier<FitnessTab>? selectedTab;
 
+  /// The views of Races & courses and Routes, held by the host beside
+  /// [selectedTab] so a link can select a tab and its view together. Null in
+  /// standalone mounts, where each tab owns its own.
+  final FitnessHubViews? views;
+
   const FitnessHubScreen({
     super.key,
     this.apiClient,
@@ -136,6 +162,7 @@ class FitnessHubScreen extends StatefulWidget {
     required this.training,
     this.settingsSync,
     this.selectedTab,
+    this.views,
   });
 
   @override
@@ -143,11 +170,17 @@ class FitnessHubScreen extends StatefulWidget {
 }
 
 class _FitnessHubScreenState extends State<FitnessHubScreen>
-    with TickerProviderStateMixin {
-  late TabController _controller;
-  late List<FitnessTab> _tabs;
-  late bool _centreStartsRun;
+    with TickerProviderStateMixin, ShellBackHandler {
+  late final TabSetController<FitnessTab> _tabSet;
+  TabController get _controller => _tabSet.controller;
+  List<FitnessTab> get _tabs => _tabSet.tabs;
+  late bool _centreOpensRecorder;
   late final RaceService _raceService = RaceService();
+  final _actions = HubPrimaryActions();
+
+  /// Back goes to the showing tab first (a Runs or Routes selection).
+  @override
+  bool handleShellBack() => _actions.consumeBack(_tab.value);
 
   late final ValueNotifier<FitnessTab> _tab = widget.selectedTab ??
       ValueNotifier(_storedTab() ?? FitnessTab.history);
@@ -173,9 +206,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = _visibleTabs();
-    _centreStartsRun = _resolveCentreStartsRun();
-    _controller = _buildController();
+    _centreOpensRecorder = _resolveCentreOpensRecorder();
+    _tabSet = TabSetController(
+      vsync: this,
+      tabs: _visibleTabs(),
+      initial: _tab.value,
+      onIndexChanged: _publishTab,
+    );
     _settleSelection();
     _tab
       ..addListener(_adoptTab)
@@ -194,46 +231,29 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   List<FitnessTab> _visibleTabs() =>
       fitnessHubTabs(gymShown: _gymShown, nutritionShown: _nutritionShown);
 
-  bool _resolveCentreStartsRun() => runIsPrimaryLogAction(
+  bool _resolveCentreOpensRecorder() => runIsPrimaryLogAction(
         keepRunPrimary: widget.preferences.keepRunPrimary,
         gymShown: _gymShown,
         nutritionShown: _nutritionShown,
       );
 
-  TabController _buildController() {
-    final index = _tabs.indexOf(_tab.value);
-    final controller = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: index < 0 ? 0 : index,
-    );
-    controller.addListener(_publishTab);
-    return controller;
-  }
-
-  /// A tab that has just been hidden can't stay selected. Run only once the
-  /// new controller is in [_controller]: the write notifies [_adoptTab],
-  /// which would otherwise drive the controller just disposed.
-  void _settleSelection() {
-    if (!_tabs.contains(_tab.value)) _tab.value = _tabs.first;
-  }
+  /// The notifier follows the controller once the set has changed: a hidden
+  /// tab falls back to the first, and a tap still animating keeps the tab it
+  /// was moving to, which the notifier had not been told yet.
+  void _settleSelection() => _tab.value = _tabSet.selected;
 
   /// Rebuilds the strip only when the set of tabs actually changes — the
   /// stores notify on every logged entry, and a fresh controller each time
   /// would reset the strip's animation for nothing.
   void _onVisibilityInputs() {
     final next = _visibleTabs();
-    final startsRun = _resolveCentreStartsRun();
+    final opensRecorder = _resolveCentreOpensRecorder();
     final tabsChanged = !listEquals(next, _tabs);
-    if (!tabsChanged && startsRun == _centreStartsRun) return;
+    if (!tabsChanged && opensRecorder == _centreOpensRecorder) return;
     setState(() {
-      _centreStartsRun = startsRun;
+      _centreOpensRecorder = opensRecorder;
       if (!tabsChanged) return;
-      _controller
-        ..removeListener(_publishTab)
-        ..dispose();
-      _tabs = next;
-      _controller = _buildController();
+      _tabSet.update(next, fallback: next.first);
       _settleSelection();
     });
   }
@@ -260,9 +280,9 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     _tab
       ..removeListener(_rememberTab)
       ..removeListener(_adoptTab);
-    _controller.removeListener(_publishTab);
-    _controller.dispose();
+    _tabSet.dispose();
     if (_ownsTab) _tab.dispose();
+    _actions.dispose();
     super.dispose();
   }
 
@@ -283,19 +303,24 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 0,
-        bottom: AppTabBar(
-          controller: _controller,
-          labels: [
-            for (final t in _tabs) t.label(l10n),
-          ],
-        ),
+    return RootPage.tabbed(
+      title: fitnessHubTitle(
+        l10n,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       ),
-      body: TabBarView(
-        controller: _controller,
-        children: [for (final t in _tabs) _body(t, l10n)],
+      controller: _controller,
+      labels: [
+        for (final t in _tabs) t.label(l10n),
+      ],
+      children: [
+        for (final t in _tabs)
+          HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
+      ],
+      floatingActionButtonLocation: pageFabLocation(context),
+      floatingActionButton: ValueListenableBuilder<FitnessTab>(
+        valueListenable: _tab,
+        builder: (_, tab, _) => HubFab(actions: _actions, tab: tab),
       ),
     );
   }
@@ -320,7 +345,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             foodStore: widget.foodStore,
             showKindChips: false,
             showSyncActions: _ownsSyncActions(tab),
-            centreStartsRun: _centreStartsRun,
+            centreOpensRecorder: _centreOpensRecorder,
             // The shell's centre Log button, one row below this tab, already
             // opens the cross-modal run / lift / meal picker this tab's own
             // FAB opened. The modality tabs keep theirs — those add into one
@@ -336,13 +361,12 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             settingsSync: widget.settingsSync,
             social: widget.social,
             showSyncActions: _ownsSyncActions(tab),
-            titleText: l10n.fitnessTabRuns,
-            centreStartsRun: _centreStartsRun,
+            centreOpensRecorder: _centreOpensRecorder,
           ),
-        // These four keep no state alive of their own, and a TabBarView page
+        // These three keep no state alive of their own, and a TabBarView page
         // is disposed once it scrolls out of view: without the wrapper a tab
         // switch would re-run each one's arrival fetch and drop its filters.
-        FitnessTab.plans => _KeepAliveTab(
+        FitnessTab.plans => KeepAliveChild(
             child: PlansScreen(
               key: const PageStorageKey('fitness-plans'),
               training: widget.training,
@@ -350,15 +374,16 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               runStore: widget.runStore,
             ),
           ),
-        FitnessTab.races => _KeepAliveTab(
+        FitnessTab.races => KeepAliveChild(
             child: RacesScreen(
               key: const PageStorageKey('fitness-races'),
               service: _raceService,
               mapTilerKey: _mapTilerKey,
               api: widget.apiClient,
+              show: widget.views?.races,
             ),
           ),
-        FitnessTab.routes => _KeepAliveTab(
+        FitnessTab.routes => KeepAliveChild(
             child: RoutesScreen(
               key: const PageStorageKey('fitness-routes'),
               apiClient: widget.apiClient,
@@ -366,12 +391,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               runStore: widget.runStore,
               preferences: widget.preferences,
               social: widget.social,
-            ),
-          ),
-        FitnessTab.segments => _KeepAliveTab(
-            child: GlobalSegmentsScreen(
-              key: const PageStorageKey('fitness-segments'),
-              api: widget.apiClient,
+              show: widget.views?.routes,
             ),
           ),
         FitnessTab.gym => GymScreen(
@@ -387,25 +407,4 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             settingsSync: widget.settingsSync,
           ),
       };
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAliveTab({required this.child});
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
 }

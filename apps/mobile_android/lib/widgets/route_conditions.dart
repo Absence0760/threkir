@@ -1,13 +1,14 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show StatusPill;
+import 'package:ui_kit/ui_kit.dart' show ListCard, SectionHeader, StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../social_service.dart';
 import '../undo_queue.dart';
+import 'error_state.dart';
 import 'top_banner.dart';
 import 'undo_bar.dart';
 
@@ -80,8 +81,9 @@ bool routeConditionIsStale(DateTime createdAt, {DateTime? now}) {
 /// Mirrors the web `RouteConditions.svelte`: a panel listing community
 /// condition reports for a route newest-first, with a report composer for a
 /// signed-in viewer who can see the route. Reads through
-/// `ApiClient.fetchRouteConditions` (the privacy-redacting RPC); failures
-/// fall back to an empty state (L4).
+/// `ApiClient.fetchRouteConditions` (the privacy-redacting RPC); a failed
+/// read shows an inline error with Retry, never the empty copy, because "no
+/// reports" over a route reported closed is the one wrong answer (L4).
 class RouteConditions extends StatefulWidget {
   final ApiClient api;
   final String routeId;
@@ -110,6 +112,7 @@ class _RouteConditionsState extends State<RouteConditions> {
   String _severity = 'caution';
   final _noteCtrl = TextEditingController();
   List<RouteConditionRow> _conditions = const [];
+  bool _loadFailed = false;
 
   bool get _signedIn => widget.api.userId != null;
   bool get _showComposer => widget.canReport && _signedIn;
@@ -127,13 +130,25 @@ class _RouteConditionsState extends State<RouteConditions> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final rows = await widget.api.fetchRouteConditions(widget.routeId);
-    if (!mounted) return;
     setState(() {
-      _conditions = rows;
-      _loading = false;
+      _loading = true;
+      _loadFailed = false;
     });
+    try {
+      final rows = await widget.api.fetchRouteConditions(widget.routeId);
+      if (!mounted) return;
+      setState(() {
+        _conditions = rows;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('route conditions load failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+    }
   }
 
   bool _canDelete(RouteConditionRow c) =>
@@ -203,24 +218,16 @@ class _RouteConditionsState extends State<RouteConditions> {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
-          child: Row(
-            children: [
-              Icon(Icons.report_outlined,
-                  size: 18, color: cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(l10n.routeConditionsTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium),
-              ),
-              if (_showComposer && !_composerOpen)
-                TextButton.icon(
-                  onPressed: () => setState(() => _composerOpen = true),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.routeConditionsReport),
-                ),
-            ],
+          child: SectionHeader.title(
+            icon: Icons.report_outlined,
+            label: l10n.routeConditionsTitle,
+            trailing: _showComposer && !_composerOpen
+                ? TextButton.icon(
+                    onPressed: () => setState(() => _composerOpen = true),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.routeConditionsReport),
+                  )
+                : null,
           ),
         ),
         if (_composerOpen) _buildComposer(theme, cs, l10n),
@@ -230,6 +237,11 @@ class _RouteConditionsState extends State<RouteConditions> {
             child: Text(l10n.routeConditionsLoading,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant)),
+          )
+        else if (_loadFailed)
+          AppErrorState.inline(
+            message: l10n.routeConditionsLoadFailed,
+            onRetry: _load,
           )
         else if (_conditions.isEmpty)
           Padding(
@@ -245,14 +257,10 @@ class _RouteConditionsState extends State<RouteConditions> {
   }
 
   Widget _buildComposer(ThemeData theme, ColorScheme cs, AppLocalizations l10n) {
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: cs.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-        color: cs.surfaceContainerHighest,
-      ),
+      dense: true,
+      color: cs.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

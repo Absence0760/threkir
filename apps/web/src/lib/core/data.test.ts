@@ -75,7 +75,7 @@ test('fetchRunsForDashboard is bounded + column-narrowed, not the unbounded sele
 		'DASHBOARD_RUN_COLUMNS must carry fastest_5k_s — the no-plan recent-5K plan suggestion reads it.',
 	);
 	// The dashboard page must call the bounded reader, not the unbounded one.
-	const page = read('src/routes/dashboard/+page.svelte');
+	const page = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		page,
 		/fetchRunsForDashboard\(\)/,
@@ -132,7 +132,7 @@ test('the period drilldown never rolls up an all-time total from the dashboard w
 		/periodNeedsFullHistory\(/,
 		'PeriodSummary must decide via periodNeedsFullHistory whether the prop set can answer the period.',
 	);
-	const page = read('src/routes/dashboard/+page.svelte');
+	const page = read('src/routes/dashboard/DashboardView.svelte');
 	const usage = page.slice(page.indexOf('<PeriodSummary'));
 	assert.match(
 		usage,
@@ -795,7 +795,7 @@ test('fetchFollowingBadgeAwards chunks the followee `.in()` (no silently-empty b
 	// Anchor past the multi-line params object so the non-greedy `\n}` lands on
 	// the function's real closing brace, not the opts type's brace.
 	const fnMatch = source.match(
-		/const authors = await resolveFollowedAuthorIds\(null\);[\s\S]*?\n}/,
+		/const authors = await resolveFollowedAuthorIds\(opts\?\.authorId \?\? null\);[\s\S]*?\n}/,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchFollowingBadgeAwards — rename?');
 	const body = fnMatch![0];
@@ -1234,7 +1234,7 @@ test('the exercise-calorie surfaces decide day membership by instant, never by s
 		'the window must come from diaryWindow, which steps the calendar (a DST day is 23 or 25 h).'
 	);
 
-	const dashboard = read('src/routes/dashboard/+page.svelte');
+	const dashboard = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		dashboard,
 		/runs\.filter\(\(r\) => isWithinWindow\(r\.started_at, today\)\)/,
@@ -2052,7 +2052,7 @@ test('every routes read hands back a normalised row, never the raw one', () => {
 	);
 
 	// The two reads that used to skip it.
-	for (const fn of ['fetchClubRoutes', 'saveRoute']) {
+	for (const fn of ['fetchClubRoutesWithError', 'saveRoute']) {
 		const at = source.indexOf(`export async function ${fn}(`);
 		assert.ok(at >= 0, `${fn} moved — re-anchor this guard`);
 		const fnBody = source.slice(at, source.indexOf('\nexport ', at + 1));
@@ -2374,7 +2374,7 @@ test('every gym / meal-template / recipe read and the row type it is read as nam
 		},
 		{ fn: 'createGymRoutine', type: 'GymRoutineSummary', table: 'gym_routines' },
 		{
-			fn: 'fetchClubGymRoutineTemplates',
+			fn: 'fetchClubGymRoutineTemplatesWithError',
 			type: 'GymRoutineSummary',
 			table: 'gym_routines',
 			extra: {

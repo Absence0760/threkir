@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/settings_destination.dart';
 import '../lib/training_load.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -64,6 +65,21 @@ void main() {
         (tester) async {
       await _pump(tester, points: const [], hasHr: false);
       expect(find.textContaining('Volume-based'), findsOneWidget);
+    });
+
+    testWidgets('volume-based load links to the Training page', (tester) async {
+      // Resting and max HR are set on Training preferences; the subtitle
+      // used to say "in preferences", a page that became five (§ 2494).
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      await _pump(tester, points: const [], hasHr: false);
+      await tester.tap(find.byKey(const Key('trainingLoadSetHeartRate')));
+      expect(pendingSettingsDestination.value, SettingsDestination.training);
+      expect(pendingSettingsRow, PreferencesRow.maxHr);
+
+      await _pump(tester, points: const [], hasHr: true);
+      expect(find.byKey(const Key('trainingLoadSetHeartRate')), findsNothing,
+          reason: 'HR load has nothing to set up');
     });
 
     testWidgets(

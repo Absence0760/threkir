@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -89,6 +90,19 @@ typedef _Shell = ({
   Preferences prefs,
 });
 
+/// The runner's session as the shell sees it here: no account calls, and
+/// health-data consent given, which logging food needs (decisions § 2514).
+class _ConsentedApi extends ApiClient {
+  @override
+  String? get userId => null;
+
+  @override
+  Stream<String?> get authUserChanges => const Stream<String?>.empty();
+
+  @override
+  Future<bool> fetchHealthDataConsented() async => true;
+}
+
 void main() {
   late _FakeGeolocatorPlatform geolocator;
   final tempDirs = <Directory>[];
@@ -161,7 +175,7 @@ void main() {
   /// [showNutrition] are the runner's own Settings choices; left null, each
   /// modality stays hidden until it has data, as on a new account.
   Future<_Shell> pumpShell(WidgetTester tester,
-      {bool? showGym, bool? showNutrition}) async {
+      {bool? showGym, bool? showNutrition, ApiClient? api}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
@@ -182,7 +196,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: HomeScreen(
-          apiClient: null,
+          apiClient: api,
           runStore: runStore,
           routeStore: LocalRouteStore(),
           gearStore: gearStore,
@@ -264,8 +278,8 @@ void main() {
   /// Gym's own add, the composer it opens, one exercise with one set, Save.
   /// Returns once the store has written the workout and the composer is gone.
   Future<void> logALift(WidgetTester tester, LocalGymStore gymStore) async {
-    final add = find.descendant(
-        of: find.byType(GymScreen), matching: find.byTooltip('Log workout'));
+    // The Gym tab's add is the hub's FAB (issue #1374), not drawn inside it.
+    final add = find.widgetWithText(FloatingActionButton, 'Log workout');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -292,8 +306,7 @@ void main() {
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
   /// written the entry and the composer is gone.
   Future<void> logAMeal(WidgetTester tester, LocalFoodStore foodStore) async {
-    final add = find.descendant(
-        of: find.byType(NutritionScreen), matching: find.byTooltip('Log food'));
+    final add = find.widgetWithText(FloatingActionButton, 'Log food');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -334,7 +347,7 @@ void main() {
       await pick(tester, 'Log lift');
       expect(shellPage(tester), 1, reason: 'Gym is a tab of the Fitness hub');
       expect(find.byType(GymScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget,
+      expect(find.byType(NavigationBar), findsOneWidget,
           reason: 'a dwell-in surface, not a modal over the shell');
 
       await logALift(tester, s.gymStore);
@@ -364,7 +377,11 @@ void main() {
 
       await pick(tester, 'Log run');
       expect(shellPage(tester), 2);
-      expect(find.text('START'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(NavigationBar), matching: find.text('Start')),
+          findsOneWidget,
+          reason: 'on the idle Run page the centre button is the Start');
       expect(find.textContaining('already on'), findsNothing);
       expect(s.gymStore.workouts, hasLength(1));
 
@@ -375,12 +392,13 @@ void main() {
   group('logging a meal from the centre button', () {
     testWidgets('Log food, the Nutrition tab, its composer, and the saved meal',
         (tester) async {
-      final s = await pumpShell(tester, showNutrition: true);
+      final s =
+          await pumpShell(tester, showNutrition: true, api: _ConsentedApi());
 
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
 
       await logAMeal(tester, s.foodStore);
 
@@ -401,7 +419,7 @@ void main() {
       expect(s.foodStore.rows.single['item_name'], 'Banana');
       expect(s.foodStore.rows.single['calories'], 105.0);
       expect(s.foodStore.hasPending, isTrue,
-          reason: 'signed out, the meal waits on this device to sync');
+          reason: 'with no session, the meal waits on this device to sync');
 
       await unmount(tester);
     });
@@ -415,8 +433,8 @@ void main() {
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1, reason: 'the same hub, another tab');
       expect(find.byType(NutritionScreen), findsOneWidget);
-      // The hub's tab label and the Nutrition screen's own title.
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      // The hub's tab label only: the tab draws no title bar of its own.
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.textContaining('already on'), findsNothing);
 
       await unmount(tester);
@@ -446,9 +464,12 @@ void main() {
       expect(s.gymStore.workouts, hasLength(1));
       expect(s.gymStore.workouts.single.syncState, SyncState.pendingCreate);
 
-      // The centre button no longer starts a run outright: there is a lift
-      // to log as well, so it fans the menu with Log lift on it.
-      expect(find.text('Start run'), findsNothing);
+      // The centre button no longer goes straight to the recorder: there is
+      // a lift to log as well, so it fans the menu with Log lift on it.
+      expect(
+          find.descendant(
+              of: find.byType(NavigationBar), matching: find.text('Run')),
+          findsNothing);
       await openFan(tester);
       expect(fanItem('Log lift'), findsOneWidget);
 

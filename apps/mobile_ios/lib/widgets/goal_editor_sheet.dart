@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChoiceChipOption, ChoiceChipRow, TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ChoiceChipOption, ChoiceChipRow, SectionHeader, TextLane;
 
 import '../auth_error.dart';
 import '../goals.dart';
@@ -37,6 +38,7 @@ Future<String?> showGoalEditorSheet(
         ? l10n.goalEditorTitleNew
         : l10n.goalEditorTitleEdit,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => _GoalEditorSheet(
       key: formKey,
       preferences: preferences,
@@ -86,6 +88,9 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
         _countCtl.text,
         _period.name,
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -138,9 +143,22 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
     final isEditing = widget.existing != null;
 
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.goalEditorSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
+      secondary: isEditing
+          ? TextButton.icon(
+              onPressed: _saving ? null : _delete,
+              icon: const Icon(Icons.delete_outline),
+              label: Text(l10n.goalEditorDelete),
+              style: TextButton.styleFrom(
+                  foregroundColor: AppSemanticColors.of(context).danger),
+            )
+          : null,
       children: [
-        // Heading comes from the host AppBar (showFullScreenForm).
-        FormSectionLabel(l10n.goalEditorNameLabel),
+        SectionHeader(label: l10n.goalEditorNameLabel),
         const SizedBox(height: 8),
             TextField(
               controller: _titleCtl,
@@ -155,7 +173,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
               ),
             ),
             const SizedBox(height: 24),
-            FormSectionLabel(l10n.goalEditorPeriod),
+            SectionHeader(label: l10n.goalEditorPeriod),
             const SizedBox(height: 8),
             ChoiceChipRow<GoalPeriod>(
               options: [
@@ -172,7 +190,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
               onChanged: (v) => setState(() => _period = v),
             ),
             const SizedBox(height: 24),
-            FormSectionLabel(l10n.goalEditorTargets),
+            SectionHeader(label: l10n.goalEditorTargets),
             const SizedBox(height: 4),
             Text(
               l10n.goalEditorTargetsHelp,
@@ -234,37 +252,6 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
                     ?.copyWith(color: theme.colorScheme.error),
               ),
             ],
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                if (isEditing)
-                  TextButton.icon(
-                    onPressed: _saving ? null : _delete,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(l10n.goalEditorDelete),
-                    style: TextButton.styleFrom(
-                        foregroundColor: AppSemanticColors.of(context).danger),
-                  ),
-                Expanded(
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      TextButton(
-                        onPressed:
-                            _saving ? null : () => Navigator.maybePop(context),
-                        child: Text(l10n.goalEditorCancel),
-                      ),
-                      FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: Text(l10n.goalEditorSave),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ],
         );
   }

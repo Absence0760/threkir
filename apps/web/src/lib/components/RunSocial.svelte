@@ -330,7 +330,7 @@
 		</button>
 		<span class="comment-count">
 			<span class="material-symbols">chat_bubble_outline</span>
-			{comments.length === 1 ? t('runSocial.commentCountOne', { n: comments.length }) : t('runSocial.commentCountMany', { n: comments.length })}
+			{t('runSocial.commentCount', { n: comments.length })}
 		</span>
 	</div>
 

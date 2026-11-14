@@ -121,8 +121,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'across $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'across $count runs',
+      one: 'across $count run',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -132,8 +138,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapBestStreakLabel => 'Best streak';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -181,9 +193,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routePickerNoRoute => 'No route';
-
-  @override
-  String get routePickerClearSearchTooltip => 'Clear search';
 
   @override
   String get routePickerSearchHint => 'Search routes by name…';
@@ -239,8 +248,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importStatusSavingLocally => 'Saving locally...';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return 'Skipped $count duplicate(s) already imported from another source';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count duplicates',
+      one: '$count duplicate',
+    );
+    return 'Skipped $_temp0 already imported from another source';
   }
 
   @override
@@ -288,11 +303,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'This backup was made by a newer version of the app. Update the app, then restore it.';
 
   @override
-  String get importStatusRestoringBackup => 'Restoring backup...';
+  String get importStatusRestoringBackup => 'Restoring backup…';
 
   @override
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
-    return 'Restored $runs runs · $tracks tracks · $routes routes';
+  String importStatusBackupRestored(int runs, int tracks, int routes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs',
+      one: '$runs run',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks tracks',
+      one: '$tracks track',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes routes',
+      one: '$routes route',
+    );
+    return 'Restored $_temp0 · $_temp1 · $_temp2';
   }
 
   @override
@@ -362,7 +395,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.';
+      'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.';
+
+  @override
+  String get importBackupMakeOne => 'Make a backup';
 
   @override
   String get importBackupButton => 'Restore backup ZIP';
@@ -518,6 +554,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activities were imported without their heart rate',
+      one: '1 activity was imported without its heart rate',
+    );
+    return '$_temp0: Threkir keeps heart rate only with your health-data consent.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Pull workouts you\'ve recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health';
 
@@ -660,10 +707,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.';
+      'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Open Preferences';
+  String get peopleNearbyEmptyAction => 'Open privacy settings';
 
   @override
   String get peopleNearbyLoadFailed => 'Could not load runners nearby.';
@@ -679,7 +726,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Show me to runners nearby';
+  String get prefsDiscoverableNearby => 'Show me in Runners nearby';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -773,7 +820,107 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessContributorRestingHr => 'Resting heart rate';
 
   @override
-  String get dashboardTrendsDivider => 'Trends';
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Connect sleep + HR data for a real readiness picture.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Looks like a good day to push the pace.';
+
+  @override
+  String get readinessNextLow => 'Consider an easy day or a rest day.';
+
+  @override
+  String get readinessNextModerate => 'A steady or moderate effort fits today.';
+
+  @override
+  String get readinessNextHigh =>
+      'You’re primed for a harder effort if planned.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Heavy fatigue — recent training stress is well above your fitness';
+
+  @override
+  String get readinessReasonFatigued => 'Fatigued from recent training';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Slight fatigue';
+
+  @override
+  String get readinessReasonFormNeutral => 'Form is neutral';
+
+  @override
+  String get readinessReasonFresh => 'Fresh and well-recovered';
+
+  @override
+  String get readinessReasonVeryFresh => 'Very fresh — borderline tapered';
+
+  @override
+  String get readinessReasonOverTapered => 'Over-tapered — edge may be blunted';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Very little sleep — recovery is compromised';
+
+  @override
+  String get readinessReasonShortSleep => 'Short on sleep';
+
+  @override
+  String get readinessReasonUnderSleep => 'A little under target sleep';
+
+  @override
+  String get readinessReasonWellRested => 'Well rested';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Extended sleep — recovery should be solid';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'Resting HR $bpm bpm above baseline — strong sign of illness or under-recovery';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'Resting HR $bpm bpm above baseline';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'Resting HR slightly elevated';
+
+  @override
+  String get readinessReasonHrBaseline => 'Resting HR at baseline';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'Resting HR below baseline — well recovered';
+
+  @override
+  String get todayTitle => 'Today';
+
+  @override
+  String get progressTitle => 'Progress';
+
+  @override
+  String get progressSummaryTitle => 'Your progress';
+
+  @override
+  String get progressSummaryOpenHint => 'Open your progress';
+
+  @override
+  String get progressSummaryWeek => 'This week';
+
+  @override
+  String get progressSummaryMonth => 'This month';
+
+  @override
+  String get todayGoalsMore => 'More goals in Progress';
 
   @override
   String get dashboardTrendGroupVolume => 'Volume';
@@ -845,12 +992,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Hide from Home';
+  String get progressHideGroup => 'Hide from Progress';
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name is hidden. You can bring it back in Settings.';
+    return '$name is hidden from Progress.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Manage cards';
 
   @override
   String get dashboardHideCardFailed => 'Couldn\'t hide that card. Try again.';
@@ -965,6 +1115,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStop => 'Stop';
 
   @override
+  String get navStart => 'Start';
+
+  @override
+  String get navStarting => 'Starting';
+
+  @override
+  String get runStartingA11yLabel => 'Starting the run';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Open the recording screen ($activity)';
+  }
+
+  @override
+  String get runCancelStartA11yLabel => 'Cancel the start';
+
+  @override
   String get logReturnToRunA11yLabel => 'Return to your run';
 
   @override
@@ -1024,6 +1191,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Advice on your runs, training and recovery';
 
   @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Guided runs, athletes and coaches';
+
+  @override
   String get youProfileTitle => 'Your profile';
 
   @override
@@ -1035,27 +1208,13 @@ class AppLocalizationsEn extends AppLocalizations {
       days,
       locale: localeName,
       other: 'Race in $days days',
-      one: 'Race in $days day',
+      one: 'Race tomorrow',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Race tomorrow';
 
   @override
   String get homeRaceDay => 'Race day';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Starts in $days days',
-      one: 'Starts in $days day',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1063,10 +1222,48 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Starts tomorrow';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Starts in $days days',
+      one: 'Starts tomorrow',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'View profile';
+
+  @override
+  String get youEditProfile => 'Edit profile';
+
+  @override
+  String get editProfileSubtitle => 'Photo, name and username';
+
+  @override
+  String get editProfileUsername => 'Username';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.';
+
+  @override
+  String get editProfileUsernameTaken => 'That username is already taken.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Use 3–30 lowercase letters, numbers, or underscores.';
+
+  @override
+  String get editProfileSaving => 'Saving…';
+
+  @override
+  String get editProfileSaved => 'Profile saved';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Couldn\'t save your profile. Please try again.';
 
   @override
   String get logSheetTitle => 'Log';
@@ -1119,7 +1316,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Height and weight are special-category health data. Turn this off to erase them.';
+      'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.';
 
   @override
   String get bodyMetricsHeight => 'Height';
@@ -1163,10 +1360,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'This permanently erases your saved height and your entire weight history. This can\'t be undone.';
+      'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Withdraw & erase';
+
+  @override
+  String get healthConsentFoodTitle => 'Your food log is health data';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.';
+
+  @override
+  String get healthConsentGiveAction => 'Review consent';
 
   @override
   String get bodyMetricsSaved => 'Saved';
@@ -1279,6 +1486,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get safetyEmpty => 'No safety contacts yet.';
+
+  @override
+  String get safetyLoadFailed =>
+      'Couldn\'t load your safety contacts. Nothing has been removed. Check your connection and try again.';
 
   @override
   String get safetyStatusPending => 'Pending — waiting for them to confirm';
@@ -1433,19 +1644,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodaysLift => 'Today\'s lift';
 
   @override
-  String get settingsSectionTraining => 'Training';
-
-  @override
-  String get settingsSectionSettings => 'Settings';
-
-  @override
   String get settingsSectionAppsData => 'Apps & data';
 
   @override
-  String get settingsSectionAccountLegal => 'Account & legal';
+  String get settingsSectionProfile => 'Profile';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Units & display';
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'No settings match “$query”.';
+  }
+
+  @override
+  String get settingsSectionAccountLegal => 'Account & legal';
 
   @override
   String get authEmailLabel => 'Email';
@@ -1668,7 +1881,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.';
+      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.';
 
   @override
   String get onboardingAccountCreate => 'Create a free account';
@@ -1836,7 +2049,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).';
+      'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.';
 
   @override
   String get setupPrivacyTitle => 'Who sees your runs?';
@@ -1920,9 +2133,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runStartA11yLabel => 'Start run';
-
-  @override
-  String get runLastRunOpenA11yLabel => 'Open last run details';
 
   @override
   String get runChooseRoute => 'Choose route';
@@ -2044,12 +2254,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runTapToCancel => 'Tap to cancel';
 
   @override
-  String get runFirstRunPrompt => 'Your first run is one tap away.';
-
-  @override
-  String get runLastActivity => 'Last activity';
-
-  @override
   String get runLastRun => 'Last run';
 
   @override
@@ -2141,6 +2345,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runSyncing => 'Syncing...';
 
   @override
+  String get runHeartRateNotSaved =>
+      'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.';
+
+  @override
   String get runDone => 'Done';
 
   @override
@@ -2228,6 +2436,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runA11yStarted => 'Run started';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Starting in $seconds seconds. Tap to cancel.',
+      one: 'Starting in $seconds second. Tap to cancel.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Run resumed';
 
   @override
@@ -2297,7 +2516,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count steps',
       one: '$count step',
     );
-    return 'Workout loaded · $_temp0 — tap GO to start';
+    return 'Workout loaded · $_temp0';
   }
 
   @override
@@ -2440,6 +2659,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runNoGpsStartTimeOnly => 'Record time only';
 
   @override
+  String get runPreRunLocationOffTitle => 'Location is off';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Turn on Location to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Turn on Location';
+
+  @override
+  String get runPreRunPermissionTitle => 'Location access needed';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Allow location access to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunAllowLocation => 'Allow location';
+
+  @override
+  String get runPreRunPermissionBlockedTitle => 'Location access is blocked';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'Location access is turned off for this app. Allow it in Settings to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunSearching => 'Searching for GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'A clear view of the sky gets a fix faster.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'Weak GPS · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'Weak GPS, accurate to within $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS ready · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS ready, accurate to within $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'The map couldn\'t load. Recording still works without it.';
+
+  @override
+  String get runPreRunMapRetry => 'Try again';
+
+  @override
+  String get runPreRunActivityOff =>
+      'Physical activity access is off, so steps, cadence and indoor distance won\'t be recorded.';
+
+  @override
+  String get runPreRunAllow => 'Allow';
+
+  @override
   String get runNoDistanceTitle => 'No distance recorded';
 
   @override
@@ -2460,55 +2747,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runGpsSensorFailed =>
       'Recording without GPS — could not start the sensor.';
-
-  @override
-  String get runAgoJustNow => 'Just now';
-
-  @override
-  String runAgoMinutes(int count) {
-    return '$count min ago';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count hours ago',
-      one: '$count hour ago',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Yesterday';
-
-  @override
-  String runAgoDays(int count) {
-    return '$count days ago';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count weeks ago',
-      one: '$count week ago',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count months ago',
-      one: '$count month ago',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get runWorkoutAbandonedBand => 'Workout abandoned · running freely';
@@ -2539,6 +2777,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runWorkoutAbandon => 'Abandon';
+
+  @override
+  String get workoutPaceOnPace => 'On pace';
+
+  @override
+  String get workoutPaceAhead => 'Ahead of pace';
+
+  @override
+  String get workoutPaceBehind => 'Behind pace';
+
+  @override
+  String get workoutPaceWayAhead => 'Well ahead of pace';
+
+  @override
+  String get workoutPaceWayBehind => 'Well behind pace';
 
   @override
   String get runWorkoutMoreActions => 'More workout actions';
@@ -2655,7 +2908,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Tap $button to start recording, or add one you have already finished';
+    return 'Tap $button to record one, or add one you have already finished';
   }
 
   @override
@@ -2867,7 +3120,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyQueuedToSync => 'Queued to sync';
 
   @override
-  String get historySignInToSync => 'Sign in from Settings to sync runs';
+  String get historySignInToSync => 'Sign in on the You tab to sync runs';
 
   @override
   String get historyRefreshFailed =>
@@ -2923,9 +3176,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addRunTitle => 'Add run';
-
-  @override
-  String get addRunSave => 'Save';
 
   @override
   String get addRunSectionWhen => 'When';
@@ -2995,23 +3245,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addRunSaved => 'Run added to history';
-
-  @override
-  String get addRunPickerSearchHint => 'Search routes';
-
-  @override
-  String get addRunPickerClear => 'Clear';
-
-  @override
-  String get addRunPickerCancel => 'Cancel';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'No routes match \"$query\"';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'No route';
 
   @override
   String get runDetailDnfBadge => 'DNF';
@@ -3123,6 +3356,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailSectionElevation => 'Elevation';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Elevation over $distance: lowest $min, highest $max, $gain climbed';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation at $distance';
+  }
+
+  @override
   String get runDetailPaceBandFaster => 'Faster';
 
   @override
@@ -3197,7 +3445,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it in Preferences for accurate zones.';
+      'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it for accurate zones.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Set max HR';
@@ -3335,6 +3583,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String runDetailParkCourseRank(String rank, String season) {
     return '#$rank in $season';
+  }
+
+  @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month, #$seasonRank in $season';
   }
 
   @override
@@ -3501,6 +3764,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runDetailDeleteQueued =>
       'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.';
+
+  @override
+  String get runDetailDeleting => 'Deleting run…';
 
   @override
   String get runDetailSuggestLink => 'Link';
@@ -3681,6 +3947,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routesDiscover => 'Discover';
+
+  @override
+  String get routesViewGroup => 'Routes section';
+
+  @override
+  String get routesViewMine => 'Mine';
+
+  @override
+  String get routesViewExplore => 'Explore';
 
   @override
   String get routesSyncFromCloud => 'Sync from cloud';
@@ -3868,6 +4143,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Pin already there — tap further apart to add another.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Point $index of $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Point $index of $total, start';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Point $index of $total, finish';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>
@@ -4272,7 +4562,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'AI descriptions are a Pro feature. Upgrade to enhance.';
+      'AI descriptions are a Pro feature.';
 
   @override
   String get routeDetailDescShapeLoop => 'loop';
@@ -4677,9 +4967,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exploreRoutesTitle => 'Explore Routes';
 
   @override
-  String get exploreRoutesModeSearch => 'Search';
-
-  @override
   String get exploreRoutesModeNearMe => 'Near Me';
 
   @override
@@ -4820,6 +5107,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heatmapNoRoutesHere => 'No routes here';
 
   @override
+  String get heatmapLoadFailed => 'Couldn\'t load routes. Tap to retry';
+
+  @override
   String get heatmapNoRoutesHint =>
       'No routes here. Pan the map or change the filters.';
 
@@ -4935,13 +5225,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Your heatmap';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n mapped run — brighter where you run most.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n mapped runs — brighter where you run most.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n mapped runs — brighter where you run most.',
+      one: '$n mapped run — brighter where you run most.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5027,6 +5318,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedEveryoneYouFollow => 'Everyone you follow';
+
+  @override
+  String get feedFilterAuthor => 'Whose activity';
 
   @override
   String get feedRunnerFallback => 'Runner';
@@ -5608,7 +5902,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get socialTabRoutes => 'Routes';
 
   @override
-  String get socialTabDiscover => 'Discover';
+  String get socialTabEvents => 'Events';
 
   @override
   String get discoverSearchPlaceholder => 'Search classes, clubs…';
@@ -5714,10 +6008,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubsTabMine => 'My clubs';
 
   @override
+  String get clubsViewGroup => 'Clubs section';
+
+  @override
   String get clubsJoinWithCode => 'Join with invite code';
 
   @override
   String get clubsSearchHint => 'Search by name or location';
+
+  @override
+  String get clubsSearchMineHint => 'Search your clubs';
+
+  @override
+  String get clubsMineNoMatch => 'None of your clubs match your search';
 
   @override
   String get clubsTimeoutError =>
@@ -5819,8 +6122,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get clubDetailNameHintAction =>
-      'You can add your name in your account settings.';
+  String get clubDetailNameHintAction => 'Add your name to your account.';
 
   @override
   String get clubRoleOwner => 'Owner';
@@ -6021,6 +6323,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubDetailRoutesEmpty => 'No routes shared with this club yet.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Couldn\'t load this club\'s routes. Check your connection and try again.';
+
+  @override
   String get clubDetailTemplateAdded => 'Template added to your plans.';
 
   @override
@@ -6034,6 +6340,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clubDetailNoTemplates => 'No plan templates yet for this club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Couldn\'t load this club\'s templates. Check your connection and try again.';
 
   @override
   String get clubDetailAdopt => 'Adopt';
@@ -6223,7 +6533,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not update attendance. Please try again.';
 
   @override
-  String get eventRsvpFailed => 'Couldn\'t update your RSVP. Please try again.';
+  String eventRsvpFailed(String error) {
+    return 'Couldn\'t update your RSVP: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'I\'m in';
@@ -6575,6 +6887,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plansFilterGroupLabel => 'Filter plans by status';
 
   @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible of $total plans',
+      one: '$visible of $total plan',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get plansFilterAll => 'All';
 
   @override
@@ -6631,10 +6954,16 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       weeks,
       locale: localeName,
-      other: '$weeks weeks · $days days/week',
-      one: '$weeks week · $days days/week',
+      other: '$weeks weeks',
+      one: '$weeks week',
     );
-    return '$_temp0';
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days/week',
+      one: '$days day/week',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -6947,9 +7276,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planLibraryLoadError => 'Couldn’t load the library. Retry.';
-
-  @override
-  String get planLibraryRetry => 'Retry';
 
   @override
   String get planLibraryEmpty => 'No published plans yet.';
@@ -7318,7 +7644,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planDetailDaysPerWeek(int count) {
-    return '$count days/wk';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days/wk',
+      one: '$count day/wk',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7937,7 +8269,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time in Settings → Account; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.';
+      'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time under Account in the You tab; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.';
 
   @override
   String get coachConsentAction =>
@@ -8052,7 +8384,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Daily limit reached. Pro gets a higher cap — upgrade in Settings.';
+      'Daily limit reached. Pro gets a higher cap.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -8186,11 +8518,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Coach is unavailable right now. Try again in a moment.';
+
+  @override
+  String get coachStaleThread =>
+      'This conversation is out of date. Reopen the Coach and try again.';
+
+  @override
   String get coachTransportError =>
       'Could not reach the Coach. Check your connection and try again.';
 
   @override
-  String get coachStreamFailed => 'stream failed';
+  String get coachStreamFailed =>
+      'The Coach\'s reply was cut off. Try sending your message again.';
 
   @override
   String get coachNewConversationFailed =>
@@ -8378,7 +8719,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Preparing backup…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run app backup';
+  String get settingsAccountBackupShareText => 'Threkir backup';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8407,7 +8748,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountRestoreIncompleteArchive(int runs) {
-    return 'That archive said it was incomplete. $runs runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs were',
+      one: '$runs run was',
+    );
+    return 'That archive said it was incomplete. $_temp0 restored and nothing was overwritten — restore from a complete backup to fill the gaps.';
   }
 
   @override
@@ -8437,12 +8784,36 @@ class AppLocalizationsEn extends AppLocalizations {
     int routes,
     String warnings,
   ) {
-    return 'Restored $runs runs · $tracks tracks · $routes routes$warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs',
+      one: '$runs run',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks tracks',
+      one: '$tracks track',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes routes',
+      one: '$routes route',
+    );
+    return 'Restored $_temp0 · $_temp1 · $_temp2$warnings';
   }
 
   @override
   String settingsAccountRestoreWarningsSuffix(int count) {
-    return ' · $count warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count warnings',
+      one: '$count warning',
+    );
+    return ' · $_temp0';
   }
 
   @override
@@ -8500,10 +8871,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guidedRunsTitle => 'Guided runs';
-
-  @override
-  String get guidedRunsSubtitle =>
-      'Coach-voice scripted workouts with TTS cues';
 
   @override
   String get privacyZonesTitle => 'Privacy zones';
@@ -8601,7 +8968,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.',
+      one:
+          '$count run hasn\'t synced yet. The account export is built on the server, so it won\'t include it — use Full backup to keep it.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9006,6 +9381,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro & support';
+
+  @override
+  String get proUpsellAction => 'See Pro';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -9469,6 +9847,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No rotations yet. Create one to group a set of shoes or bikes.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.';
+
+  @override
   String get gearRotationName => 'Rotation name';
 
   @override
@@ -9514,6 +9896,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Couldn\'t save rotation: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Couldn\'t delete rotation: $error';
   }
 
   @override
@@ -9582,6 +9969,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count zones were smaller than $meters m and now cover $meters m, the smallest a zone can be.',
+      one:
+          '$count zone was smaller than $meters m and now covers $meters m, the smallest a zone can be.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String privacyZonesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -9630,7 +10030,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discardChangesDiscard => 'Discard';
 
   @override
+  String get discardChangesBusy =>
+      'Still saving. You can leave when it finishes.';
+
+  @override
   String get prefsTitle => 'Preferences';
+
+  @override
+  String get prefsPageDisplay => 'Units & display';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Language, theme, distance and weight units, pace format, maps and the undo timer.';
+
+  @override
+  String get prefsPageRecording => 'Recording & voice';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'The activity a new recording starts as, and what your phone or watch says out loud while you run.';
+
+  @override
+  String get prefsPageTraining => 'Training';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach\'s tone.';
+
+  @override
+  String get prefsPagePrivacy => 'Privacy & sharing';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Who sees your runs, whether other runners can find you, privacy zones and error reports.';
+
+  @override
+  String get prefsPageNotifications => 'Notifications';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Which emails and push alerts you get, and the optional emails you can sign up for.';
 
   @override
   String get prefsOfflineNotice =>
@@ -9787,9 +10226,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsCoachAnalytical => 'Analytical';
 
   @override
-  String get prefsSectionNotifications => 'Notifications';
-
-  @override
   String get prefsEmailNotifications => 'Email notifications';
 
   @override
@@ -9906,13 +10342,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Activity & recording';
 
   @override
-  String get prefsSectionTrainingDemographics => 'Training & demographics';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Privacy & sharing';
-
-  @override
   String get prefsSectionAiCoach => 'AI coach';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Language & theme';
+
+  @override
+  String get prefsGroupUnits => 'Units';
+
+  @override
+  String get prefsGroupMapsPages => 'Maps & pages';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Voice feedback';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Weekly goal';
+
+  @override
+  String get prefsGroupHeartRate => 'Heart rate zones';
+
+  @override
+  String get prefsGroupPlans => 'Training plans';
+
+  @override
+  String get prefsGroupYourRuns => 'Your runs';
+
+  @override
+  String get prefsGroupBeingFound => 'Being found';
+
+  @override
+  String get prefsGroupTelemetry => 'Privacy & telemetry';
+
+  @override
+  String get prefsGroupEmailPush => 'Email and push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'Optional emails';
 
   @override
   String get prefsSignInToEdit =>
@@ -10001,13 +10467,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Activity feed';
-
-  @override
   String get dashboardRecapTooltip => 'Year in running';
-
-  @override
-  String get dashboardProfileTooltip => 'Your profile';
 
   @override
   String get dashboardWelcomeTitle => 'Welcome!';
@@ -10169,10 +10629,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardStreakHistory => 'History';
 
   @override
-  String get dashboardStreakDayUnit => 'day';
-
-  @override
-  String get dashboardStreakDaysUnit => 'days';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'days',
+      one: 'day',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10288,11 +10753,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.';
+      'Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Set heart rate';
 
   @override
   String get trainingLoadEmpty =>
       'Record a few runs to see your fitness trend.';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Fitness $ctlFrom to $ctlTo, fatigue $atlFrom to $atlTo, form $tsbFrom to $tsbTo, $from to $to';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'Fitness';
@@ -10372,6 +10854,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fitnessTitle => 'Fitness';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Not enough data yet — log a few runs with HR and try again.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'You\'re heavily loaded — easy running or a rest day today.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Fitness is still building. Focus on consistency; one quality session a week is plenty for now.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Loaded but within build territory. Easy / steady is right for today.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Sweet spot — a steady run or a tempo effort works.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Tapering / freshening up — a race or hard workout will land well in the next few days.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Very fresh — if you\'ve been tapering on purpose, race soon. Otherwise, it\'s time to build again.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ max';
 
   @override
@@ -10391,6 +10905,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Recent runs long enough to count toward your fitness estimate.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Next hard session in ~$days days of easy running.',
+      one: 'Next hard session in ~$days day of easy running.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Fitness (CTL)';
@@ -11022,6 +11547,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventFormRecurOneOff => 'One-off';
 
   @override
+  String get eventRecurrenceOneOff => 'One-off event';
+
+  @override
+  String get eventRecurrenceMonthly => 'Repeats monthly';
+
+  @override
+  String get eventRecurrenceWeekly => 'Every week';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Every other week';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
+
+  @override
   String get eventFormRecurWeekly => 'Weekly';
 
   @override
@@ -11029,9 +11574,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventFormRecurMonthly => 'Monthly';
-
-  @override
-  String get eventFormCancel => 'Cancel';
 
   @override
   String get eventFormCreate => 'Create event';
@@ -11101,9 +11643,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Invite only';
-
-  @override
-  String get clubFormCancel => 'Cancel';
 
   @override
   String get clubFormCreate => 'Create';
@@ -11203,7 +11742,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count $activity activities',
       one: '$count $activity activity',
     );
-    return 'We found $_temp0 after you bought them. Uncheck any you weren\'t wearing them for.';
+    return 'We found $_temp0 since you bought this gear. Uncheck any it wasn\'t used for.';
   }
 
   @override
@@ -11357,11 +11896,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'In 1 hour';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'In $count hours';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count hours',
+      one: 'In $count hour',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11571,8 +12113,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runGearChipsPickerTitle => 'Tag gear used on this run';
 
   @override
-  String get runGearChipsEmpty =>
-      'You haven\'t registered any gear yet. Add some in Settings → Gear.';
+  String get runGearChipsEmpty => 'You haven\'t registered any gear yet.';
 
   @override
   String get runGearChipsCancel => 'Cancel';
@@ -11628,9 +12169,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notes';
-
-  @override
-  String get gearFormCancel => 'Cancel';
 
   @override
   String get gearFormSaving => 'Saving…';
@@ -11701,6 +12239,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationBellTooltip => 'Notifications';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notifications, $count unread',
+      one: 'Notifications, $count unread',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'Waiting for GPS...';
@@ -11790,13 +12339,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kilometres',
+      one: '$count kilometre',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value metres';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value mile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miles',
+      one: '$count mile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12193,10 +12759,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign-in, profile, import and backup, delete account';
 
   @override
-  String get settingsTabPreferencesSubtitle =>
-      'Units, theme, recording, training, privacy';
-
-  @override
   String get settingsTabIntegrationsSubtitle =>
       'Strava, race calendar, heart-rate strap, treadmill, watch';
 
@@ -12207,10 +12769,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Track shoes + bikes and per-item mileage';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Coach athletes or follow your own coach';
 
   @override
   String get settingsTabProSubtitle =>
@@ -12376,7 +12934,7 @@ class AppLocalizationsEn extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count sessions',
-      one: '1 session',
+      one: '$count session',
     );
     return '$_temp0';
   }
@@ -12737,7 +13295,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymLibraryAdopting => 'Adopting…';
 
   @override
+  String get gymLibraryAdopted => 'Added to my routines';
+
+  @override
   String get gymLibraryAdoptFailed => 'Couldn\'t adopt the routine.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Added to your routines. It will show there once this phone syncs.';
 
   @override
   String get gymRoutineDelete => 'Delete';
@@ -13045,7 +13610,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.';
+      'The plate-photo logger needs the updated AI disclosure.';
 
   @override
   String get platePhotoErrorPro => 'Logging from a photo is a Pro feature.';
@@ -13135,7 +13700,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionNoTargets =>
-      'Add your height, weight, age and sex to see calorie + macro targets.';
+      'Add your height, weight, age and gender to see calorie + macro targets.';
 
   @override
   String get nutritionAddBodyMetrics => 'Add body metrics';
@@ -13199,10 +13764,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Height, weight, date of birth and sex are health data, so they\'re edited in Settings behind their consent gate.';
+      'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'Edit in Settings';
+  String get nutritionTargetsEditMetrics => 'Edit body metrics';
 
   @override
   String get nutritionTargetsUnset => 'Not set';
@@ -13212,7 +13777,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.';
+      'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.';
 
   @override
   String get nutritionTargetsAge => 'Age';
@@ -13379,6 +13944,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionSearching => 'Searching…';
+
+  @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '$kcal kcal / 100 g';
+  }
 
   @override
   String get nutritionNoResults =>
@@ -13878,6 +14448,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Every athlete at a glance — load, plan compliance, and injury risk.';
+
+  @override
+  String get coachingRosterLoadFailed => 'Couldn\'t load your athlete roster.';
 
   @override
   String get coachingRosterNeverRun => 'No runs yet';
@@ -14531,6 +15104,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get challengesTitle => 'Challenges';
 
   @override
+  String get challengesSearchHint => 'Search challenges';
+
+  @override
+  String get challengesNoMatch => 'No challenges match your search';
+
+  @override
   String get challengesMyChallenges => 'My challenges';
 
   @override
@@ -14593,11 +15172,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Ends in $n days';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Ends in $n days',
+      one: 'Ends today',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Ends today';
 
   @override
   String get challengesEnded => 'Ended';
@@ -14777,11 +15359,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'Tied with 1 other';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'Tied with $n others';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Tied with $n others',
+      one: 'Tied with $n other',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14914,6 +15499,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSectionAnyTime => 'Run any time';
 
   @override
+  String get racesShowGroup => 'Show';
+
+  @override
+  String get racesShowAll => 'All';
+
+  @override
+  String get racesShowRaces => 'Races';
+
+  @override
+  String get racesShowCourses => 'Courses';
+
+  @override
+  String get racesAnyTimeParks => 'Parks';
+
+  @override
+  String racesAnyTimeParkLink(String park) {
+    return '$park: park page';
+  }
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Fastest in $year: $time';
   }
@@ -14933,6 +15538,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String racesAnyTimeNoMatch(String query) {
+    return 'No courses match “$query”';
+  }
+
+  @override
+  String racesAnyTimeSeeAll(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'See all $n courses',
+      one: 'See all $n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get racesAnyTimeFastestFailed =>
       'Couldn\'t load this season\'s fastest times.';
 
@@ -14940,31 +15561,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSearchPlaceholder => 'Search races by name…';
 
   @override
-  String get racesFilters => 'Filters';
-
-  @override
-  String racesFiltersCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Filters, $count on',
-      one: 'Filters, 1 on',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String racesRemoveFilter(String filter) {
-    return 'Remove filter: $filter';
-  }
+  String get racesSearchAllPlaceholder => 'Search races, parks and courses…';
 
   @override
   String racesNearChip(String place) {
     return 'Near $place';
   }
-
-  @override
-  String get racesFiltersDone => 'Done';
 
   @override
   String get racesDistanceGroup => 'Distance';
@@ -15006,6 +15608,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'Tailor it with AI';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Race: $name on $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distance: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Goal time: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days ago',
+      one: '$days day ago',
+      zero: 'today',
+    );
+    return 'Recent effort: $distance in $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Course: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb ascent';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb descent';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'surface: $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Add to my season';
@@ -15430,6 +16082,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeConditionsEmpty => 'No condition reports yet.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Couldn\'t load condition reports. Check your connection and try again.';
+
+  @override
   String get routeConditionsLoading => 'Loading…';
 
   @override
@@ -15558,9 +16214,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String badgesFeedEarned(String name, String badge) {
-    return '$name earned the $badge badge';
+  String badgesFeedEarned(int count, String name, String badge) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name earned $count badges',
+      one: '$name earned the $badge badge',
+    );
+    return '$_temp0';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'Couldn\'t load the latest badges from people you follow.';
 
   @override
   String get badgesARunner => 'A runner';
@@ -15581,50 +16247,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'First 5K';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Ran 5 km in a single run';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Half marathon';
 
   @override
-  String get badgesDistanceSingleHalfDesc => 'Ran 21.1 km in a single run';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Marathon';
 
   @override
-  String get badgesDistanceSingleMarathonDesc => 'Ran 42.2 km in a single run';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Ran 50 km or more in a single run';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Ran $distance or more in a single run';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100 km club';
+  String badgesDistanceLifetime100Label(String distance) {
+    return '$distance club';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km logged all-time';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km logged all-time';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1,000 km club';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return '$distance club';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1,000 km logged all-time';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5,000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5,000 km logged all-time';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
   String get badgesStreak7Label => 'Week streak';
@@ -15749,6 +16438,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Completed a park passport in 10 states';
 
   @override
+  String get badgesParkMonths3Label => 'Park months';
+
+  @override
+  String get badgesParkMonths3Desc =>
+      'Completed a park course in 3 different months';
+
+  @override
+  String get badgesParkMonths6Label => 'Half a year of parks';
+
+  @override
+  String get badgesParkMonths6Desc =>
+      'Completed a park course in 6 different months';
+
+  @override
+  String get badgesParkMonths12Label => 'A year of parks';
+
+  @override
+  String get badgesParkMonths12Desc =>
+      'Completed a park course in 12 different months';
+
+  @override
+  String get badgesParkMonths24Label => 'Two years of parks';
+
+  @override
+  String get badgesParkMonths24Desc =>
+      'Completed a park course in 24 different months';
+
+  @override
   String get racePredictorTitle => 'Race-time predictor';
 
   @override
@@ -15797,6 +16514,190 @@ class AppLocalizationsEn extends AppLocalizations {
       'Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.';
 
   @override
+  String get lineCalibrationEntryTitle => 'Line calibration';
+
+  @override
+  String get lineCalibrationEntrySubtitle =>
+      'Debug build: timing-line error figures';
+
+  @override
+  String get lineCalibrationTitle => 'Line calibration (debug)';
+
+  @override
+  String get lineCalibrationIntro =>
+      'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Capturing: $count fixes',
+      one: 'Capturing: $count fix',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Idle: $count fixes held',
+      one: 'Idle: $count fix held',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'Start capture';
+
+  @override
+  String get lineCalibrationStop => 'Stop capture';
+
+  @override
+  String get lineCalibrationRefresh => 'Refresh';
+
+  @override
+  String get lineCalibrationLatLabel => 'Line centre latitude';
+
+  @override
+  String get lineCalibrationLngLabel => 'Line centre longitude';
+
+  @override
+  String get lineCalibrationBearingLabel => 'Bearing of travel (degrees)';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => 'Half-width (m)';
+
+  @override
+  String get lineCalibrationHere => 'Centre at my position';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Measure server clock ($count round trips)',
+      one: 'Measure server clock ($count round trip)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => 'Clock offset (ms)';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'Server minus device';
+
+  @override
+  String get lineCalibrationApproachLabel => 'Approach';
+
+  @override
+  String get lineCalibrationApproach90 => 'At 90° to the line';
+
+  @override
+  String get lineCalibrationApproach30 => 'At 30° to the line';
+
+  @override
+  String get lineCalibrationApproachParallel20 => 'Parallel, 20 m away';
+
+  @override
+  String get lineCalibrationApproachParallel40 => 'Parallel, 40 m away';
+
+  @override
+  String get lineCalibrationApproachStanding => 'Standing on the line';
+
+  @override
+  String get lineCalibrationPaceLabel => 'Pace';
+
+  @override
+  String get lineCalibrationPaceWalk => 'Walk';
+
+  @override
+  String get lineCalibrationPaceRun => 'Run';
+
+  @override
+  String get lineCalibrationPaceStill => 'Standing still';
+
+  @override
+  String get lineCalibrationCarryLabel => 'Carry';
+
+  @override
+  String get lineCalibrationCarryHand => 'Phone in hand';
+
+  @override
+  String get lineCalibrationCarryPocket => 'Phone in pocket';
+
+  @override
+  String get lineCalibrationInstantsLabel => 'True crossing instants';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time or $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      'One per line. A time of day is read in this phone\'s time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.';
+
+  @override
+  String get lineCalibrationClockFailed =>
+      'Could not reach the server clock; enter the offset by hand.';
+
+  @override
+  String get lineCalibrationNoFix => 'No position fix.';
+
+  @override
+  String get lineCalibrationLineMissing =>
+      'Enter the line: centre, bearing of travel, half-width.';
+
+  @override
+  String get lineCalibrationOffsetMissing =>
+      'Measure or enter the clock offset.';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return 'One instant per line: $time or ISO-8601.';
+  }
+
+  @override
+  String get lineCalibrationFewFixes =>
+      'The capture holds fewer than two fixes.';
+
+  @override
+  String get lineCalibrationLineUnusable => 'That line is not usable.';
+
+  @override
+  String get lineCalibrationScore => 'Score this capture';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched of $total matched, $missed missed, $falseCount false, $near near; median $median ms, |err| p50 $p50 ms, p95 $p95 ms; offset ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return 'Nothing matched, yet detections sit a median $ms ms from the truths: check the clock, the offset and the time zone.';
+  }
+
+  @override
+  String get lineCalibrationShare => 'Share CSV';
+
+  @override
+  String get lineCalibrationCopy => 'Copy CSV';
+
+  @override
   String get settingsSectionDeveloper => 'Developer';
 
   @override
@@ -15836,7 +16737,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return 'Synced $synced of $total run(s) from the watch';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total runs',
+      one: '$total run',
+    );
+    return 'Synced $synced of $_temp0 from the watch';
   }
 
   @override
@@ -16299,7 +17206,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'Its $count metric(s) go with it.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count metrics go',
+      one: '$count metric goes',
+    );
+    return 'Its $_temp0 with it.';
   }
 
   @override
@@ -16310,12 +17223,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return 'Drop $count metric(s)?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count metrics',
+      one: '$count metric',
+    );
+    return 'Drop $_temp0?';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return 'A $layout screen draws $slots slot(s), so $dropped would no longer be shown.';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots slots',
+      one: '$slots slot',
+    );
+    return 'A $layout screen draws $_temp0, so $dropped would no longer be shown.';
   }
 
   @override
@@ -16326,7 +17251,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return 'Pushed $count screen(s) to the watch';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count screens',
+      one: '$count screen',
+    );
+    return 'Pushed $_temp0 to the watch';
   }
 
   @override
@@ -16822,6 +17753,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get segmentCatalogueStatSurface => 'Surface';
 
   @override
+  String segmentCatalogueParkCourseLink(String park) {
+    return 'Park course at $park';
+  }
+
+  @override
   String get segmentCatalogueLeaderboard => 'Leaderboard';
 
   @override
@@ -17150,6 +18086,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmAgeContinue => 'Continue';
+
+  @override
+  String get confirmAgeBackHint =>
+      'Confirm both to continue, or sign out to leave.';
 
   @override
   String get confirmAgeRecordError => 'Could not record consent.';
@@ -17973,6 +18913,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open a runner\'s profile and tap Message to start a conversation.';
 
   @override
+  String get messagesNewMessage => 'New message';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Nobody to message yet. You can message people you follow or who follow you.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Couldn\'t load the people you can message.';
+
+  @override
   String get messagesLoadError => 'Couldn\'t load your conversations.';
 
   @override
@@ -18319,6 +19270,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'People asking to follow your private profile';
 
   @override
   String get followRequestsEmptyTitle => 'No pending requests';
@@ -19079,12 +20034,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNewStarterSummary(int weeks, int days) {
-    return '$weeks weeks · $days days a week';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days a week',
+      one: '$days day a week',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
-    return '$weeks weeks · $days days a week · $min–$max min a session';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days a week',
+      one: '$days day a week',
+    );
+    return '$_temp0 · $_temp1 · $min–$max min a session';
   }
 
   @override
@@ -19249,6 +20228,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Couldn\'t refresh. Showing what was last loaded.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Saved on this phone. It will sync when you\'re back online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Deleted on this phone. It will sync when you\'re back online.';
+
+  @override
+  String get pushTargetOpening => 'Opening…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Couldn\'t open that notification: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'More plan actions';
@@ -20107,11 +21102,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsDisclosureLevel => 'How much detail';
 
   @override
-  String get prefsHomeCards => 'Home cards';
+  String get prefsProgressCards => 'Progress cards';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Untick a group to take it off Home. The choice follows you to every device.';
+  String get prefsProgressCardsHint =>
+      'Untick a group to take it off the Progress page. The choice follows you to every device.';
 
   @override
   String get prefsDisclosureAuto => 'Automatic';
@@ -20135,7 +21130,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.';
+      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Change how much detail';
 
   @override
   String recapCardKicker(String period) {
@@ -20353,6 +21351,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t change the delay. Try again.';
 
   @override
+  String get streamerOverlayShowMap => 'Show a route trace';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Draws the route so far, with your privacy zones left out. No map tiles are loaded.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Show heart rate';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'Heart rate is health data. It\'s shown only while your health-data consent is on.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'Heart rate is health data. Turn on health-data consent to show it.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Review consent';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'Overlay settings saved';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Saved. The link changed: copy it into your streaming app again.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Couldn\'t save the overlay settings. Please try again.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Couldn\'t load your streamer overlay.';
 
@@ -20362,10 +21392,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'The streamer overlay isn\'t available right now.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.';
 
   @override
   String get liveSpectatorHeartRate => 'Heart rate';
@@ -20443,8 +21469,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardCourseKicker => 'Park course time';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return '#$rank in $season';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month · #$seasonRank in $season';
   }
 
   @override
@@ -20817,6 +21853,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'No park courses yet. The first ones are on their way.';
 
   @override
+  String get parksSearchPlaceholder => 'Search parks and courses…';
+
+  @override
+  String parksNoMatch(String query) {
+    return 'No parks or courses match “$query”';
+  }
+
+  @override
   String parksCourseCount(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -20826,9 +21870,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get parksBackToParks => 'All park courses';
 
   @override
   String get parksParkNotFoundTitle => 'Park not found';
@@ -20920,12 +21961,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksBoardCompletions => 'Most completions';
 
   @override
+  String get parksPeriodThisMonth => 'This month';
+
+  @override
   String parksSeasonThisYear(int year) {
     return 'This year ($year)';
   }
 
   @override
   String get parksSeasonAllTime => 'All time';
+
+  @override
+  String get parksPeriodPrevMonth => 'Previous month';
+
+  @override
+  String get parksPeriodNextMonth => 'Next month';
 
   @override
   String parksCompletionDays(int n) {
@@ -20937,6 +21987,21 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n runners this month',
+      one: '$n runner this month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed =>
+      'Couldn\'t load how many ran each course this month.';
 
   @override
   String get parksNoEfforts =>
@@ -21243,6 +22308,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get prefsNotifyParkCourseMonth => 'Park course months';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      'When a month ends at a park course you ran, a note in your inbox with your best time from it.';
 
   @override
   String get clubVerificationStatusTitle => 'Official verification';
@@ -21800,6 +22872,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNotifParkCourseReport => 'A park course was reported';
 
   @override
+  String get profileNotifParkCourseMonthClosed =>
+      'A month has closed on a park course you ran';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course: the $month board has closed. Your best: $time';
+  }
+
+  @override
   String rateLimitReaction(String wait) {
     return 'You\'re reacting too quickly — please wait $wait and try again.';
   }
@@ -21828,6 +22913,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsMessageRequestsFailed => 'Couldn\'t update message requests.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Couldn\'t load this setting. Tap to retry.';
 
   @override
   String get messagesReact => 'React';
@@ -22248,4 +23337,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String profileNotifGroupInvite(String name) {
     return '$name invited you to a group';
   }
+
+  @override
+  String get filterBarFilters => 'Filters';
+
+  @override
+  String filterBarFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filters, $count on',
+      one: 'Filters, 1 on',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String filterBarRemoveFilter(String filter) {
+    return 'Remove filter: $filter';
+  }
+
+  @override
+  String get filterBarDone => 'Done';
+
+  @override
+  String get filterBarSurface => 'Surface';
+
+  @override
+  String get filterBarDistance => 'Distance';
+
+  @override
+  String get filterBarSort => 'Sort';
+
+  @override
+  String get filterBarSource => 'Source';
+
+  @override
+  String get runsSearchHint => 'Search run names';
+
+  @override
+  String get filterBarRegion => 'Region';
 }

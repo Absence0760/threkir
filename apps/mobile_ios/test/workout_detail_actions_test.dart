@@ -8,8 +8,11 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/main.dart' show pendingStartWorkout;
 import '../lib/plan_current.dart' show PlanWorkoutStatus;
+import '../lib/run_stop_dock.dart';
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/plan_workout_status_style.dart';
@@ -73,6 +76,15 @@ class _FakeTraining extends TrainingService {
     if (markError != null) throw markError!;
     workout = _workout(manual: manual);
   }
+}
+
+/// What a Start left for the shell and the recorder: the workout it armed and
+/// the start it asked for. Spent on read, so one test's Start cannot answer
+/// for the next.
+({String? armed, RunStartRequest? start}) _takeStart() {
+  final armed = pendingStartWorkout.value?.id;
+  pendingStartWorkout.value = null;
+  return (armed: armed, start: runStartRequests.take());
 }
 
 /// Opens the screen from a host route so a pop has somewhere to land, and
@@ -221,7 +233,8 @@ void main() {
 
       await tester.tap(find.text(en.workoutStart));
       await tester.pumpAndSettle();
-      expect(((await popped)! as PlanWorkoutRow).id, 'wo-1');
+      await popped;
+      expect(_takeStart(), (armed: 'wo-1', start: RunStartRequest.start));
     });
 
     testWidgets('a fresher row from the refresh replaces it', (tester) async {
@@ -245,17 +258,20 @@ void main() {
   });
 
   group('open-workout actions', () {
-    testWidgets('Start pops with the workout so the caller can run it', (
-      tester,
-    ) async {
+    testWidgets(
+        'Start returns to the shell and starts the run with the workout '
+        'armed, whoever opened the page (#1374)', (tester) async {
+      // Progress and a notification open this page too, and neither read a
+      // popped row: their Start was a dead button. Start now asks for the
+      // start itself, through the recorder's own checks and countdown.
       final popped = await _open(tester, _FakeTraining(_workout()));
 
       await tester.tap(find.text(en.workoutStart));
       await tester.pumpAndSettle();
 
-      final result = await popped;
-      expect(result, isA<PlanWorkoutRow>());
-      expect((result! as PlanWorkoutRow).id, 'wo-1');
+      expect(await popped, isNull);
+      expect(find.byType(WorkoutDetailScreen), findsNothing);
+      expect(_takeStart(), (armed: 'wo-1', start: RunStartRequest.start));
     });
 
     testWidgets('Skip marks it skipped, and Unskip reopens it', (tester) async {
@@ -322,15 +338,11 @@ void main() {
         Theme.of(context),
         PlanWorkoutStatus.done,
       );
-      final box =
-          tester
-                  .widget<Container>(
-                    find.byKey(const Key('workoutDetailCompleted')),
-                  )
-                  .decoration!
-              as BoxDecoration;
-      expect(box.color, done.fill);
-      expect((box.border! as Border).top.color, done.outline);
+      final card = tester.widget<ListCard>(
+        find.byKey(const Key('workoutDetailCompleted')),
+      );
+      expect(card.color, done.fill);
+      expect(card.outline, done.outline);
 
       await tester.tap(find.byKey(const Key('workoutDetailMarkNotDone')));
       await pumpUntil(

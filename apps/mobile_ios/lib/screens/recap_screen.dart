@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show AppBarAction, ChoiceChipOption, ChoiceChipRow, ListCard, PageHeader, PushedPage;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -262,204 +263,193 @@ class _RecapScreenState extends State<RecapScreen> {
     final label = _periodLabel(localeTag);
     final recap = _buildRecap();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_period == RecapPeriod.year
-            ? l10n.recapTitle
-            : l10n.recapMonthTitle),
-        actions: [
-          if (widget.api != null)
-            IconButton(
-              icon: _publishing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.link),
-              tooltip: l10n.recapPublishAndShare,
-              onPressed: recap.runCount == 0 || _publishing
-                  ? null
-                  : () => _publishAndShare(recap, label),
-            ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: l10n.recapShareTooltip,
-            onPressed:
-                recap.runCount == 0 ? null : () => _openShareSheet(recap, label),
+    final title =
+        _period == RecapPeriod.year ? l10n.recapTitle : l10n.recapMonthTitle;
+    return PushedPage(
+      title: title,
+      actions: [
+        if (widget.api != null)
+          AppBarAction(
+            icon: _publishing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.link),
+            label: l10n.recapPublishAndShare,
+            onPressed: recap.runCount == 0 || _publishing
+                ? null
+                : () => _publishAndShare(recap, label),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Center(
-              child: ChoiceChipRow<RecapPeriod>(
-                alignment: WrapAlignment.center,
-                options: [
-                  ChoiceChipOption(
-                      value: RecapPeriod.year, label: l10n.recapPeriodYear),
-                  ChoiceChipOption(
-                      value: RecapPeriod.month, label: l10n.recapPeriodMonth),
-                ],
-                selected: _period,
-                onChanged: _selectPeriod,
+        AppBarAction(
+          icon: const Icon(Icons.share_outlined),
+          label: l10n.recapShareTooltip,
+          onPressed:
+              recap.runCount == 0 ? null : () => _openShareSheet(recap, label),
+        ),
+      ],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          PageHeader(
+            title: title,
+            padding: const EdgeInsets.only(top: 16, bottom: 12),
+          ),
+          Center(
+            child: ChoiceChipRow<RecapPeriod>(
+              alignment: WrapAlignment.center,
+              options: [
+                ChoiceChipOption(
+                    value: RecapPeriod.year, label: l10n.recapPeriodYear),
+                ChoiceChipOption(
+                    value: RecapPeriod.month, label: l10n.recapPeriodMonth),
+              ],
+              selected: _period,
+              onChanged: _selectPeriod,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: _period == RecapPeriod.year
+                    ? l10n.recapPrevYear
+                    : l10n.recapPrevMonth,
+                onPressed: () => _shiftPeriod(-1),
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Flexible(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineMedium),
+              ),
+              IconButton(
+                tooltip: _period == RecapPeriod.year
+                    ? l10n.recapNextYear
+                    : l10n.recapNextMonth,
+                onPressed: _atLatestPeriod ? null : () => _shiftPeriod(1),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_outOfRange) ...[
+            ListCard(
+              child: Text(
+                l10n.recapNoRunsForPeriod(label),
+                style: theme.textTheme.titleMedium,
               ),
             ),
-            const SizedBox(height: 8),
+          ] else if (recap.runCount == 0) ...[
+            ListCard(
+              child: Text(
+                l10n.recapNoRunsYetInPeriod(label),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ] else ...[
+            // Hero distance
+            ListCard(
+              child: Column(
+                children: [
+                  Text(
+                    UnitFormat.distance(recap.totalDistanceM, unit),
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.recapAcrossRuns(recap.runCount),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  tooltip: _period == RecapPeriod.year
-                      ? l10n.recapPrevYear
-                      : l10n.recapPrevMonth,
-                  onPressed: () => _shiftPeriod(-1),
-                  icon: const Icon(Icons.chevron_left),
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapLongestRunLabel,
+                    value: UnitFormat.distance(recap.longestRunM, unit),
+                  ),
                 ),
-                Flexible(
-                  child: Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.headlineMedium),
-                ),
-                IconButton(
-                  tooltip: _period == RecapPeriod.year
-                      ? l10n.recapNextYear
-                      : l10n.recapNextMonth,
-                  onPressed: _atLatestPeriod ? null : () => _shiftPeriod(1),
-                  icon: const Icon(Icons.chevron_right),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapBestStreakLabel,
+                    value: l10n.recapStreakDays(recap.bestStreakDays),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            if (_outOfRange) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    l10n.recapNoRunsForPeriod(label),
-                    style: theme.textTheme.titleMedium,
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapTopWeekLabel,
+                    value: recap.topWeek == null
+                        ? '—'
+                        : UnitFormat.distance(
+                            recap.topWeek!.distanceM, unit),
                   ),
                 ),
-              ),
-            ] else if (recap.runCount == 0) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    l10n.recapNoRunsYetInPeriod(label),
-                    style: theme.textTheme.bodyMedium,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapUniqueRoutesLabel,
+                    value: '${recap.uniqueRouteCount}',
                   ),
                 ),
-              ),
-            ] else ...[
-              // Hero distance
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        UnitFormat.distance(recap.totalDistanceM, unit),
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.recapAcrossRuns(recap.runCount,
-                            recap.runCount == 1 ? 'run' : 'runs'),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapEarliestStartLabel,
+                    value: recap.earliestStartLocal ?? '—',
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: l10n.recapLatestStartLabel,
+                    value: recap.latestStartLocal ?? '—',
+                  ),
+                ),
+              ],
+            ),
+            if (recap.parkCourseCount > 0) ...[
+              const SizedBox(height: 12),
+              _StatCard(
+                key: const Key('recap-park-courses'),
+                label: l10n.recapParkCoursesLabel,
+                value: '${recap.parkCourseCount}',
+                sub: l10n.recapParkCoursesSub(recap.parkCount),
               ),
+            ],
+            if (_parksKey == _periodKey && (_parks?.parks.isNotEmpty ?? false)) ...[
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapLongestRunLabel,
-                      value: UnitFormat.distance(recap.longestRunM, unit),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapBestStreakLabel,
-                      value: l10n.recapStreakDays(recap.bestStreakDays,
-                          recap.bestStreakDays == 1 ? 'day' : 'days'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapTopWeekLabel,
-                      value: recap.topWeek == null
-                          ? '—'
-                          : UnitFormat.distance(
-                              recap.topWeek!.distanceM, unit),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapUniqueRoutesLabel,
-                      value: '${recap.uniqueRouteCount}',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapEarliestStartLabel,
-                      value: recap.earliestStartLocal ?? '—',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      label: l10n.recapLatestStartLabel,
-                      value: recap.latestStartLocal ?? '—',
-                    ),
-                  ),
-                ],
-              ),
-              if (recap.parkCourseCount > 0) ...[
-                const SizedBox(height: 12),
-                _StatCard(
-                  key: const Key('recap-park-courses'),
-                  label: l10n.recapParkCoursesLabel,
-                  value: '${recap.parkCourseCount}',
-                  sub: l10n.recapParkCoursesSub(recap.parkCount),
+              Text(l10n.recapParksHeading, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              for (final p in _parks!.parks)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.park_outlined),
+                  title: Text(p.name),
+                  subtitle: Text(regionName(p.regionCode)),
+                  trailing: Text(l10n.recapParkCourseCount(p.courseCount)),
                 ),
-              ],
-              if (_parksKey == _periodKey && (_parks?.parks.isNotEmpty ?? false)) ...[
-                const SizedBox(height: 16),
-                Text(l10n.recapParksHeading, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 4),
-                for (final p in _parks!.parks)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.park_outlined),
-                    title: Text(p.name),
-                    subtitle: Text(regionName(p.regionCode)),
-                    trailing: Text(l10n.recapParkCourseCount(p.courseCount)),
-                  ),
-              ],
             ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -474,26 +464,23 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 4),
-            Text(value, style: theme.textTheme.titleLarge),
-            if (sub != null) ...[
-              const SizedBox(height: 2),
-              Text(sub!, style: theme.textTheme.bodySmall),
-            ],
+          ),
+          const SizedBox(height: 4),
+          Text(value, style: theme.textTheme.titleLarge),
+          if (sub != null) ...[
+            const SizedBox(height: 2),
+            Text(sub!, style: theme.textTheme.bodySmall),
           ],
-        ),
+        ],
       ),
     );
   }

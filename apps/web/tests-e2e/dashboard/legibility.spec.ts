@@ -6,7 +6,8 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * /dashboard says what its numbers mean (#902 section 1).
+ * /dashboard and /dashboard/progress say what their numbers mean (#902
+ * section 1).
  *
  * Each assertion is one defect the screenshot pass found on this page:
  *  1.1 the readiness breakdown and the TSB tile both said "Form (TSB)" over
@@ -28,7 +29,7 @@ test.describe('dashboard legibility', () => {
 	let workoutId: string | null = null;
 
 	test.beforeAll(async () => {
-		[runner] = await createSagaUsers(1, { displayNames: ['Legibility Runner'] });
+		[runner] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Legibility Runner'] });
 		await setUserSetting(runner.id, 'hr_zones', { z1: 130, z2: 145, z3: 160, z4: 175, z5: 195 });
 		await insertRun({
 			user_id: runner.id,
@@ -65,20 +66,15 @@ test.describe('dashboard legibility', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.locator('.stat-grid')).toBeVisible({ timeout: 15_000 });
 
 			// 1.6 — an empty week in words, not a zero that reads as data. The
-			// week lead is Home's one this-week view (§ 2283).
+			// week lead is Progress's one this-week view (§ 2283).
 			const lead = page.getByTestId('dash-week-lead');
 			await expect(lead.locator('.week-lead-value')).toHaveText('No runs yet');
 			await expect(lead).not.toContainText('0 m');
 			await expect(page.locator('.stat-grid')).not.toContainText('--');
-
-			// 1.1 — the readiness breakdown no longer borrows the TSB tile's name.
-			const contribs = page.locator('.readiness-contribs');
-			await expect(contribs).toContainText('Training balance');
-			await expect(contribs).not.toContainText('TSB');
 
 			// 1.3 — zones by the names Preferences gives them.
 			const zoneNames = page.locator('.zone-name');
@@ -97,6 +93,13 @@ test.describe('dashboard legibility', () => {
 			// 1.5 — 8 × 60 kg carries its unit, as it does on /gym.
 			const lifts = page.locator('section.card-elevated', { hasText: 'Recent lifts' });
 			await expect(lifts.locator('.lift-volume')).toHaveText(/^480\s?kg$/);
+
+			// 1.1 — the readiness breakdown, in Today's hero, no longer borrows
+			// the TSB tile's name.
+			await page.goto('/dashboard');
+			const contribs = page.locator('.readiness-contribs');
+			await expect(contribs).toContainText('Training balance', { timeout: 15_000 });
+			await expect(contribs).not.toContainText('TSB');
 		} finally {
 			await ctx.close();
 		}

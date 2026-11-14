@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/follow_requests_screen.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi(this.requests, {this.declineThrows = false});
@@ -101,5 +102,20 @@ void main() {
     expect(find.text('Ada'), findsOneWidget);
     expect(find.text("Couldn't update the request."), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  worstCaseTestWidgets('the request rows', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: FollowRequestsScreen(
+        api: _FakeApi([
+          _req('a', 'Alexandra Montgomery-Fitzwilliam of the Long Run Club'),
+          _req('b', 'Bo'),
+        ]),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await walkScrollable(tester, primaryScrollable(), 'Follow requests');
   });
 }

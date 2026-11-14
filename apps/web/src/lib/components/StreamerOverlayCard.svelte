@@ -253,9 +253,12 @@
 				<span>{m('streamerOverlay.showHeartRate')}</span>
 			</label>
 			<p class="section-hint" id="streamer-overlay-hr-help">
-				{overlay.heartRateConsent
-					? m('streamerOverlay.showHeartRateHelp')
-					: m('streamerOverlay.heartRateNeedsConsent')}
+				{#if overlay.heartRateConsent}
+					{m('streamerOverlay.showHeartRateHelp')}
+				{:else}
+					{m('streamerOverlay.heartRateNeedsConsent')}
+					<a href="/settings/account">{m('settingsLayout.tabAccount')}</a>
+				{/if}
 			</p>
 
 			<h3>{m('streamerOverlay.lookHeading')}</h3>

@@ -202,7 +202,7 @@ test.describe('gear lifecycle journey', () => {
 				});
 				await expect(retiredRow).toBeVisible({ timeout: 10_000 });
 				await expect(
-					page.getByRole('heading', { name: 'Retired', level: 3 })
+					page.getByRole('heading', { name: 'Retired', level: 2 })
 				).toBeVisible();
 
 				// Backend: retired_at is now set.

@@ -17,8 +17,13 @@ import { CATALOGUE_LOADERS } from './catalogues';
 const enRecord = en as Record<string, string>;
 const enKeys = Object.keys(en).sort();
 
+// The distinct placeholders of a message. A plural branch whose whole text
+// is one word (`one {day}`) is a branch, not a placeholder, and a locale
+// whose plural has fewer branches (ja: `other` only) names each one fewer
+// times.
 function placeholders(s: string): string[] {
-	return (s.match(/\{[a-zA-Z0-9_]+\}/g) ?? []).sort();
+	const re = /(?<!(?:^|[\s{}])(?:zero|one|two|few|many|other|=\d+)\s*)\{[a-zA-Z0-9_]+\}/g;
+	return [...new Set(s.match(re) ?? [])].sort();
 }
 
 for (const loc of SUPPORTED_LOCALES) {
@@ -92,6 +97,148 @@ for (const loc of SUPPORTED_LOCALES) {
 			straight,
 			[],
 			`${loc} quotes with a straight " in these messages; its glossary uses ${QUOTATION_MARKS[loc]}`,
+		);
+	});
+}
+
+// The text of every `one {…}` branch of a `{var, plural, …}` block in `s`,
+// brace-balanced so a branch may itself hold `{placeholder}` tokens.
+function oneBranches(s: string): string[] {
+	const out: string[] = [];
+	const open = /\{\w+,\s*plural,/g;
+	for (let m = open.exec(s); m; m = open.exec(s)) {
+		let i = m.index + m[0].length;
+		for (;;) {
+			const label = /^\s*([^\s{}]+)\s*\{/.exec(s.slice(i));
+			if (!label) break;
+			const start = i + label[0].length;
+			let depth = 1;
+			let j = start;
+			while (j < s.length && depth > 0) {
+				if (s[j] === '{') depth++;
+				else if (s[j] === '}') depth--;
+				j++;
+			}
+			if (label[1] === 'one') out.push(s.slice(start, j - 1));
+			i = j;
+		}
+	}
+	return out;
+}
+
+// Every `{var, plural, …}` block in `s`: its variable, its branches by
+// selector, and whether nothing but whitespace stands outside it.
+function pluralBlocks(s: string): { arg: string; whole: boolean; branches: Record<string, string> }[] {
+	const out: { arg: string; whole: boolean; branches: Record<string, string> }[] = [];
+	const open = /\{(\w+),\s*plural,/g;
+	for (let m = open.exec(s); m; m = open.exec(s)) {
+		const branches: Record<string, string> = {};
+		let i = m.index + m[0].length;
+		for (;;) {
+			const label = /^\s*([^\s{}]+)\s*\{/.exec(s.slice(i));
+			if (!label) break;
+			const start = i + label[0].length;
+			let depth = 1;
+			let j = start;
+			while (j < s.length && depth > 0) {
+				if (s[j] === '{') depth++;
+				else if (s[j] === '}') depth--;
+				j++;
+			}
+			branches[label[1]] = s.slice(start, j - 1);
+			i = j;
+		}
+		const close = s.indexOf('}', i);
+		const whole = s.slice(0, m.index).trim() === '' && close >= 0 && s.slice(close + 1).trim() === '';
+		out.push({ arg: m[1], whole, branches });
+	}
+	return out;
+}
+
+// The variable of every plural that is the whole message, whose `one` branch
+// names no count (`#` or `{var}`) and which has no `=0` / `zero` branch. That
+// `one` branch is the sentence for exactly one ("Invitation envoyée"), so
+// where `one` also takes 0 it is what 0 renders. A plural inside a longer
+// sentence is agreement ("est en" / "sont en"), and the singular for 0 is
+// what CLDR asks of fr and pt-BR, so it is not listed.
+function countlessOne(s: string): string[] {
+	return pluralBlocks(s)
+		.filter(
+			(b) =>
+				b.whole &&
+				'one' in b.branches &&
+				!b.branches.one.includes('#') &&
+				!b.branches.one.includes(`{${b.arg}}`) &&
+				!('=0' in b.branches) &&
+				!('zero' in b.branches),
+		)
+		.map((b) => b.arg);
+}
+
+// A `1` standing as a number of its own: not part of `10`, `1.5`, `1RM`.
+const LITERAL_ONE = /(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])/u;
+
+// interpolate() picks a plural branch with Intl.PluralRules for the active
+// locale, and in some locales CLDR's `one` covers counts other than 1 (fr and
+// pt-BR take 0 too). A `one` branch that copies the English "1" then renders
+// "1 …" for 0, which is how `filterBarFiltersCount` shipped "Filtres, 1 actif"
+// with no filter on. Use `#` instead. Which locales are affected is derived
+// from the rules, not listed. The mobile twin is in
+// apps/mobile_android/test/l10n_parity_test.dart.
+function oneCoversMoreThanOne(loc: string): boolean {
+	const rules = new Intl.PluralRules(loc);
+	return Array.from({ length: 101 }, (_, n) => n).some((n) => n !== 1 && rules.select(n) === 'one');
+}
+
+test('the one-branch scan reads plural one {} branches only', () => {
+	assert.deepEqual(oneBranches('{n, plural, one {1 run} other {# runs}}'), ['1 run']);
+	assert.deepEqual(oneBranches('{n, plural, =1 {x} one {{a} y} other {z}}'), ['{a} y']);
+	assert.deepEqual(oneBranches('{k, select, one {1} other {2}}'), []);
+	assert.ok(LITERAL_ONE.test('Filtres, 1 actif'));
+	for (const ok of ['10 km', '1.5 km', '1RM', '# actif']) assert.ok(!LITERAL_ONE.test(ok), ok);
+	assert.ok(oneCoversMoreThanOne('fr') && oneCoversMoreThanOne('pt-BR'));
+	assert.ok(!oneCoversMoreThanOne('en') && !oneCoversMoreThanOne('de'));
+});
+
+test('the countless-one scan reads whole-message plurals only', () => {
+	assert.deepEqual(countlessOne('{n, plural, one {Sent} other {# sent}}'), ['n']);
+	assert.deepEqual(countlessOne(' {n, plural, one {Sent} other {# sent}} '), ['n']);
+	for (const ok of [
+		'{n, plural, one {# sent} other {# sent}}',
+		'{n, plural, one {{n} sent} other {# sent}}',
+		'{n, plural, =0 {None} one {Sent} other {# sent}}',
+		'{n, plural, other {# sent}}',
+		'{list} {n, plural, one {is} other {are}} in',
+	])
+		assert.deepEqual(countlessOne(ok), [], ok);
+});
+
+for (const loc of SUPPORTED_LOCALES) {
+	if (!oneCoversMoreThanOne(loc)) continue;
+	test(`${loc}: no plural one branch spells out a literal 1`, async () => {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		const offenders = Object.keys(dict)
+			.filter((key) => oneBranches(dict[key]).some((b) => LITERAL_ONE.test(b)))
+			.sort();
+		assert.deepEqual(
+			offenders,
+			[],
+			`${loc}: \`one\` also covers counts other than 1 here, so a literal 1 in it is wrong; use #`,
+		);
+	});
+
+	// The same 0 reached without a digit: a whole-message plural whose `one`
+	// branch is the sentence for exactly one. Put `#` in it, or give 0 its own
+	// `=0 {…}` (interpolate() answers an exact match before the plural rule).
+	test(`${loc}: no whole-message plural leaves 0 to a count-free one branch`, async () => {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		const offenders = Object.keys(dict)
+			.flatMap((key) => countlessOne(dict[key]).map((arg) => `${key} (${arg})`))
+			.sort();
+		assert.deepEqual(
+			offenders,
+			[],
+			`${loc}: \`one\` also covers 0 here, so a \`one\` branch with no # is what 0 renders; use # or add =0 {…}`,
 		);
 	});
 }

@@ -15,6 +15,8 @@ function prefsBagOf(value: Json | null | undefined): JsonObject {
 import { TABLES, BUCKETS } from '../core/schema';
 import { markListsStale } from '../core/list_freshness';
 import { auth } from '../stores/auth.svelte';
+import { fetchHealthDataConsented } from '../core/data';
+import { trackBytesWithoutBpm } from '../core/heart_rate_consent';
 import { walkKeyset, type KeysetKey } from '../core/keyset_page';
 import {
 	buildBackupZip,
@@ -40,10 +42,9 @@ import {
  * **Streaming construction (May 2026):** the write side delegates to
  * `buildBackupZip` in `./backup_writer.ts`, which uses
  * `@zip.js/zip.js`'s `ZipWriter` + `BlobWriter`. Each entry's bytes
- * flush to the underlying Blob and the JS-side copy drops. Restore
- * still uses JSZip — the read path needs random access by name
- * (`zip.file('runs.json')`), which JSZip supports out of the box;
- * the write path was the heap hot-spot. Mirrors the mobile fix in
+ * flush to the underlying Blob and the JS-side copy drops; the write
+ * path was the heap hot-spot. Restore reads through the same library
+ * (`openZip` in core/zip_archive.ts), member by member by name. Mirrors the mobile fix in
  * [decisions.md § 66](../../../docs/architecture/decisions.md#66-backup-zip-writes-stream-to-disk-and-download-tracks-in-bounded-batches).
  */
 
@@ -240,7 +241,10 @@ function supabaseRestoreBackend(): RestoreBackend {
 			if (error) throw dbError(error);
 		},
 		async uploadTrack(path, bytes) {
-			const { error } = await supabase.storage.from(BUCKETS.runs).upload(path, bytes, {
+			// A restored track carries whatever bpm the archive held; without
+			// health-data consent it is uploaded without it (decisions § 2514).
+			const body = (await fetchHealthDataConsented()) ? bytes : await trackBytesWithoutBpm(bytes);
+			const { error } = await supabase.storage.from(BUCKETS.runs).upload(path, body, {
 				contentType: 'application/gzip',
 				upsert: true,
 				cacheControl: '0'

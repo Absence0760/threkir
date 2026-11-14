@@ -94,7 +94,7 @@ test('the one deliberate leniency is decompression, and it does not skip saveRun
 test('a refused row is counted and reported, not merely logged', () => {
 	const s = source();
 	const loop = s.slice(
-		s.indexOf('const { droppedPhotos } = await importOne('),
+		s.indexOf('const { droppedPhotos, heartRateDropped } = await importOne('),
 		s.indexOf('async function importOne('),
 	);
 	assert.ok(loop.length > 0, 'the per-row call site not found');

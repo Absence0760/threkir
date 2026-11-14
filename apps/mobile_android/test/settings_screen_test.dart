@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show SettingsList;
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/help_guides.dart';
@@ -44,12 +45,15 @@ Future<void> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsScreen(
-        preferences: prefs,
-        heartRate: heartRate,
-        treadmill: BleTreadmill(),
-        runStore: runStore,
-        gearStore: gearStore,
+      // The You tab supplies the scaffold; the list is its body.
+      home: Scaffold(
+        body: SettingsScreen(
+          preferences: prefs,
+          heartRate: heartRate,
+          treadmill: BleTreadmill(),
+          runStore: runStore,
+          gearStore: gearStore,
+        ),
       ),
     ),
   );
@@ -61,54 +65,52 @@ void main() {
   });
 
   group('SettingsScreen (landing)', () {
-    testWidgets('renders no AppBar (bottom-nav labels suffice)',
+    testWidgets('is a body, not a page: no AppBar and no Scaffold of its own',
         (tester) async {
+      // It used to be a second Scaffold + SafeArea nested inside You's.
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
       expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(SafeArea), findsAtLeastNWidgets(1));
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(SettingsList), findsOneWidget);
     });
 
-    testWidgets('renders the four section headers', (tester) async {
+    testWidgets("web's four groups in web's order", (tester) async {
       final s = await _makeStores();
+      tester.view.physicalSize = const Size(400, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
-      for (final label in const [
-        'Training',
-        'Settings',
-        'Apps & data',
-        'Account & legal',
-      ]) {
-        await tester.scrollUntilVisible(find.text(label.toUpperCase()), 200,
-            scrollable: find.byType(Scrollable).first);
-        expect(find.text(label.toUpperCase()), findsOneWidget,
-            reason: '$label section header must render');
-      }
-    });
-
-    testWidgets(
-        'Training holds coaching + guided runs, Settings holds account rows',
-        (tester) async {
-      final s = await _makeStores();
-      await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
+      await tester.pumpAndSettle();
       double y(String text) => tester.getTopLeft(find.text(text)).dy;
-      // Training first, then Settings: the two features sit under their own
-      // header rather than among the account rows (the old "Profile" section
-      // mixed them).
-      expect(y('TRAINING'), lessThan(y('Athletes & coaches')));
-      expect(y('Guided runs'), lessThan(y('SETTINGS')));
-      expect(y('SETTINGS'), lessThan(y('Account')));
-      expect(y('Account'), lessThan(y('Preferences')));
+      expect(y('PROFILE'), lessThan(y('Account')));
+      expect(y('Safety contacts'), lessThan(y('PREFERENCES')));
+      expect(y('PREFERENCES'), lessThan(y('Units & display')));
+      expect(y('Notifications'), lessThan(y('APPS & DATA')));
+      expect(y('APPS & DATA'), lessThan(y('Integrations')));
+      expect(y('Gear'), lessThan(y('ACCOUNT & LEGAL')));
+      expect(y('ACCOUNT & LEGAL'), lessThan(y('Pro & support')));
+      // The old Training and Settings eyebrows are gone with the groups
+      // that did not predict their rows.
+      expect(find.text('TRAINING'), findsNothing);
+      expect(find.text('SETTINGS'), findsNothing);
     });
 
     testWidgets('renders every tab tile', (tester) async {
       final s = await _makeStores();
+      tester.view.physicalSize = const Size(400, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
-      final list = find.byType(Scrollable).first;
+      await tester.pumpAndSettle();
       for (final label in const [
         'Account',
-        'Preferences',
-        'Athletes & coaches',
-        'Guided runs',
+        'Body metrics',
+        'Units & display',
+        'Recording & voice',
+        'Training',
+        'Privacy & sharing',
+        'Notifications',
         'Integrations',
         'Signed-in devices',
         'Gear',
@@ -116,8 +118,6 @@ void main() {
         'About & updates',
         'Help',
       ]) {
-        await tester.scrollUntilVisible(find.text(label), 200,
-            scrollable: list);
         expect(find.text(label), findsOneWidget,
             reason: '$label tab must render on the landing');
       }
@@ -143,6 +143,7 @@ void main() {
       );
       await tester.scrollUntilVisible(find.text('Signed-in devices'), 200,
           scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
       final devices = tester.widget<ListTile>(find.ancestor(
         of: find.text('Signed-in devices'),
         matching: find.byType(ListTile),
@@ -174,13 +175,22 @@ void main() {
       expect(find.byType(SettingsAccountScreen), findsOneWidget);
     });
 
-    testWidgets('Preferences tile pushes SettingsPreferencesScreen',
-        (tester) async {
+    testWidgets('a Preferences page row opens that page', (tester) async {
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
-      await tester.tap(find.text('Preferences'));
+      await tester.scrollUntilVisible(find.text('Privacy & sharing'), 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(find.text('Privacy & sharing'));
       await tester.pumpAndSettle();
-      expect(find.byType(SettingsPreferencesScreen), findsOneWidget);
+      await tester.tap(find.text('Privacy & sharing'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen))
+            .page,
+        PreferencesPage.privacy,
+      );
     });
 
     testWidgets('Pro & support tile pushes SettingsProScreen', (tester) async {
@@ -242,41 +252,27 @@ void main() {
     });
   });
 
-  group('SettingsAccountScreen (offline affordances)', () {
+  group('signed-out affordances', () {
     testWidgets('Sentry opt-out renders when signed-out (local data)',
         (tester) async {
+      // It moved from Account to Privacy & sharing with web's page split.
       final s = await _makeStores();
       await tester.pumpWidget(MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: SettingsAccountScreen(
+        home: SettingsPreferencesScreen(
+          page: PreferencesPage.privacy,
           apiClient: null,
           preferences: s.prefs,
           settingsSync: null,
         ),
       ));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Send error reports'), 200,
+          scrollable: find.byType(Scrollable).first);
       expect(find.text('Send error reports'), findsOneWidget,
           reason: 'Sentry opt-out is a local GDPR control — must be '
               'reachable without an account.');
-    });
-
-    testWidgets('Guided runs stays reachable signed-out from the landing',
-        (tester) async {
-      // The tile moved off the account screen to sit beside Coaching on the
-      // landing (#666 I7), but the invariant it used to pin here is
-      // unchanged: the library is local TTS scripts with no API dependency,
-      // so it must not acquire a sign-in gate on the way.
-      final s = await _makeStores();
-      await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
-      await tester.scrollUntilVisible(find.text('Guided runs'), 200,
-          scrollable: find.byType(Scrollable).first);
-      final tile = tester.widget<ListTile>(find.ancestor(
-        of: find.text('Guided runs'),
-        matching: find.byType(ListTile),
-      ));
-      expect(tile.onTap, isNotNull,
-          reason: 'Guided runs is a local screen with no API '
-              'dependency — must not require sign-in.');
     });
   });
 }

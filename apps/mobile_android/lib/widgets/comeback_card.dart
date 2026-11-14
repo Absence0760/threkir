@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, ChartCardHeader, StatTile, StatusPill, StatusPillSize;
+    show AppSemanticColors, ChartCardHeader, ListCard, StatTile, StatusPill, StatusPillSize;
 
 import '../comeback.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -57,76 +57,73 @@ class ComebackCard extends StatelessWidget {
           ..maximumFractionDigits = 0)
         .format(load.share);
 
-    return Card(
+    return ListCard(
       key: const Key('dashboardComebackCard'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(child: ChartCardHeader(title: l10n.comebackTitle)),
-                const SizedBox(width: 8),
-                StatusPill(
-                  key: const Key('dashboardComebackVerdict'),
-                  label: verdict,
-                  foreground: fg,
-                  fill: fill,
-                  size: StatusPillSize.compact,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.comebackLayoff(load.layoffWeeks),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: ChartCardHeader(title: l10n.comebackTitle)),
+              const SizedBox(width: 8),
+              StatusPill(
+                key: const Key('dashboardComebackVerdict'),
+                label: verdict,
+                foreground: fg,
+                fill: fill,
+                size: StatusPillSize.compact,
               ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.comebackLayoff(load.layoffWeeks),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 10),
-            Text(
-              share,
-              key: const Key('dashboardComebackShare'),
-              style: theme.textTheme.headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            share,
+            key: const Key('dashboardComebackShare'),
+            style: theme.textTheme.headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          Text(
+            l10n.comebackShareCaption,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            Text(
-              l10n.comebackShareCaption,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(meaning, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile.small(
-                    icon: Icons.calendar_view_week,
-                    label: l10n.comebackThisWeekLabel,
-                    value: formatDistanceForPref(load.thisWeekM),
-                  ),
+          ),
+          const SizedBox(height: 12),
+          Text(meaning, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: StatTile.small(
+                  icon: Icons.calendar_view_week,
+                  label: l10n.comebackThisWeekLabel,
+                  value: formatDistanceForPref(load.thisWeekM),
                 ),
-                Expanded(
-                  child: StatTile.small(
-                    icon: Icons.timeline,
-                    label: l10n.comebackBaseLabel,
-                    value: formatDistanceForPref(load.preLayoffWeeklyM),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.comebackFootnote,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
               ),
+              Expanded(
+                child: StatTile.small(
+                  icon: Icons.timeline,
+                  label: l10n.comebackBaseLabel,
+                  value: formatDistanceForPref(load.preLayoffWeeklyM),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.comebackFootnote,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

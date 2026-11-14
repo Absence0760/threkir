@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -170,10 +171,7 @@
 	{:else if steps.length === 0}
 		<p class="not-found">{t('gym.review.empty')}</p>
 	{:else}
-		<header class="session-head">
-			<p class="head-eyebrow section-label">{t('gym.session.title')}</p>
-			<h1>{detail.routine.title}</h1>
-		</header>
+		<PageHeader kicker={t('gym.session.title')} title={detail.routine.title} />
 		<GymSessionRunner routine={detail.routine} {steps} {draft} {onfinish} {oncancel} />
 	{/if}
 </div>
@@ -193,16 +191,6 @@
 	}
 	.back-link:hover {
 		color: var(--color-primary);
-	}
-	.session-head {
-		margin: var(--space-sm) 0 var(--space-lg);
-	}
-	.head-eyebrow {
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	.session-head h1 {
-		margin: 0;
 	}
 	.not-found {
 		color: var(--color-text-secondary);

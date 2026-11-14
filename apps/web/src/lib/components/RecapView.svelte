@@ -1,10 +1,11 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, formatDistance, formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
-	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
-	import { RECAP_SITE, recapActiveMonths } from '#lib/share/recap_card_text.ts';
+	import { FASTEST_PACE_MIN_M, type YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { RECAP_SITE, recapActiveMonths, recapBadgeText } from '#lib/share/recap_card_text.ts';
 	import { formatHoursMinutes } from '#lib/format/time.ts';
 	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
@@ -78,6 +79,8 @@
 			monthName: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'long' }),
 			monthLetter: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'narrow' }),
 			count: (n) => n.toLocaleString(locale),
+			unit: getUnit(),
+			locale,
 			url: RECAP_SITE,
 		};
 	}
@@ -150,7 +153,7 @@
 	<p class="kicker">{kicker}</p>
 	<h1 class="bignum">{fmtKm(recap.totalDistanceM)}</h1>
 	<p class="subhead">
-		{t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount })}
+		{t('recap.acrossRuns', { n: recap.runCount })}
 	</p>
 	<div class="hero-meta">
 		<span class="hero-meta-item">
@@ -160,16 +163,14 @@
 		<span class="hero-meta-divider" aria-hidden="true"></span>
 		<span class="hero-meta-item">
 			<span class="material-symbols">terrain</span>
-			{t('recap.climbed', { meters: Math.round(recap.totalElevationM).toLocaleString() })}
+			{t('recap.climbed', { elevation: formatElevation(recap.totalElevationM) })}
 		</span>
 		{#if recap.month == null}
 			<span class="hero-meta-divider" aria-hidden="true"></span>
 			<span class="hero-meta-item">
 				<span class="material-symbols">calendar_month</span>
 				{t(
-					recapActiveMonths(recap) === 1
-						? 'recap.activeInMonthsOne'
-						: 'recap.activeInMonthsMany',
+					'recap.activeInMonths',
 					{ n: recapActiveMonths(recap) }
 				)}
 			</span>
@@ -247,7 +248,7 @@
 	<div class="card">
 		<span class="card-label">{t('recap.fastestPace')}</span>
 		<span class="card-value">{fmtPace(recap.fastestPaceSecPerKm)}</span>
-		<span class="card-sub">{t('recap.fastestPaceSub')}</span>
+		<span class="card-sub">{t('recap.fastestPaceSub', { distance: formatDistance(FASTEST_PACE_MIN_M) })}</span>
 	</div>
 	<div class="card">
 		<span class="card-label">{t('recap.bestStreak')}</span>
@@ -296,9 +297,7 @@
 
 {#if parks.length > 0}
 	<section class="badges" data-testid="recap-parks">
-		<header class="badges-head">
-			<h2>{t('recap.parksHeading')}</h2>
-		</header>
+		<SectionHeader label={t('recap.parksHeading')} class="recap-section-head" />
 		<ul class="park-list">
 			{#each parks as p (p.parkId)}
 				<li>
@@ -313,18 +312,20 @@
 
 {#if recap.badges.length > 0}
 	<section class="badges">
-		<header class="badges-head">
-			<h2>{t('recap.trophies')}</h2>
-			<span class="badges-meta">
-				{t('recap.earnedInYear', { n: recap.badges.length, year: recap.year })}
-			</span>
-		</header>
+		<SectionHeader label={t('recap.trophies')} class="recap-section-head">
+			{#snippet trailing()}
+				<span class="badges-meta">
+					{t('recap.earnedInYear', { n: recap.badges.length, year: recap.year })}
+				</span>
+			{/snippet}
+		</SectionHeader>
 		<div class="badge-grid">
 			{#each recap.badges as b (b.id)}
+				{@const text = recapBadgeText(b, t, getUnit(), activeFormatLocale())}
 				<div class="badge">
 					<span class="badge-icon material-symbols" aria-hidden="true">{b.icon}</span>
-					<span class="badge-label">{b.label}</span>
-					<span class="badge-detail">{b.detail}</span>
+					<span class="badge-label">{text.label}</span>
+					{#if text.detail}<span class="badge-detail">{text.detail}</span>{/if}
 				</div>
 			{/each}
 		</div>
@@ -333,19 +334,20 @@
 
 {#if recap.month == null}
 	<section class="month-chart">
-		<header class="month-chart-head">
-			<h2>{t('recap.distanceByMonth')}</h2>
-			<span class="month-chart-meta">
-				{t('recap.peak', { distance: fmtKm(maxMonthlyDistance(recap.monthly)) })}
-			</span>
-		</header>
+		<SectionHeader label={t('recap.distanceByMonth')} class="recap-section-head">
+			{#snippet trailing()}
+				<span class="month-chart-meta">
+					{t('recap.peak', { distance: fmtKm(maxMonthlyDistance(recap.monthly)) })}
+				</span>
+			{/snippet}
+		</SectionHeader>
 		<div class="bars">
 			{#each recap.monthly as m (m.month)}
 				{@const max = maxMonthlyDistance(recap.monthly)}
 				{@const pct = (m.distanceM / max) * 100}
 				<div
 					class="bar-col"
-					title={t(m.runCount === 1 ? 'recap.barTitleOne' : 'recap.barTitleMany', {
+					title={t('recap.barTitle', {
 						distance: fmtKm(m.distanceM),
 						n: m.runCount
 					})}
@@ -558,20 +560,8 @@
 		padding: var(--space-lg);
 		margin-bottom: var(--space-xl);
 	}
-	.month-chart-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
+	:global(.recap-section-head) {
 		margin-bottom: var(--space-md);
-	}
-	.month-chart h2 {
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.month-chart-meta {
 		font-size: 0.78rem;
@@ -620,21 +610,6 @@
 
 	.badges {
 		margin-bottom: var(--space-xl);
-	}
-	.badges-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
-		margin-bottom: var(--space-md);
-	}
-	.badges h2 {
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.badges-meta {
 		font-size: 0.78rem;

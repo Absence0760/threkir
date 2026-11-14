@@ -65,7 +65,7 @@ Future<_FakeSettingsSync> _pumpPreferences(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ),
   );
   await tester.pumpAndSettle();

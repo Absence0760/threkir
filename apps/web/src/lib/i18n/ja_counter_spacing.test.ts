@@ -10,11 +10,13 @@ import { messages as ja } from './locales/ja';
 
 const COUNTER = '(?:件|回|ポイント|文字|つ|点|人|名|分|秒|時間|個|枚|本|歳|位|周|セット|か所|種類|日|週間|か月|ヶ月|年)';
 const NUMBER = '(?:\\d+(?:[.,]\\d+)?|#|\\{[a-zA-Z_]+\\})';
+// A plural that opens on a count: 「支援者 {count, plural, other {#人}}」.
+const PLURAL_COUNT = new RegExp(`[ぁ-んァ-ヶ一-龥ー々、。：（「][ \\u00a0]\\{[a-zA-Z_]+, plural, other \\{#[ \\u00a0]?${COUNTER}`, 'u');
 const SPACE_AFTER = new RegExp(`(?:\\d|#|\\})[ \\u00a0]${COUNTER}`, 'u');
 const SPACE_BEFORE = new RegExp(`[ぁ-んァ-ヶ一-龥ー々、。：（「][ \\u00a0]${NUMBER}[ \\u00a0]?${COUNTER}`, 'u');
 
 function offenders(entries: [string, string][]): string[] {
-	return entries.filter(([, v]) => SPACE_AFTER.test(v) || SPACE_BEFORE.test(v)).map(([k, v]) => `${k}: ${v}`);
+	return entries.filter(([, v]) => SPACE_AFTER.test(v) || SPACE_BEFORE.test(v) || PLURAL_COUNT.test(v)).map(([k, v]) => `${k}: ${v}`);
 }
 
 test('ja web catalogue: no space around a count with a counter or unit word', () => {
@@ -25,6 +27,7 @@ test('the guard catches the slips it exists for', () => {
 	assert.equal(offenders([['x', '{n, plural, other {# 件のキュー}}']]).length, 1);
 	assert.equal(offenders([['x', '未読 {n}件']]).length, 1);
 	assert.equal(offenders([['x', '約 {minutes} 分']]).length, 1);
+	assert.equal(offenders([['x', '支援者 {count, plural, other {#人}}']]).length, 1);
 	assert.equal(offenders([['x', '{n, plural, other {#件のキュー}}']]).length, 0);
 	assert.equal(offenders([['x', '無料プラン: 1時間に2回まで、Pro: 8回まで']]).length, 0);
 	assert.equal(offenders([['x', '5.0 km · 5:00 /km']]).length, 0);

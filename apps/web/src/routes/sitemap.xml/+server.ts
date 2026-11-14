@@ -143,7 +143,8 @@ export const GET: RequestHandler = async () => {
 							'id, slug, created_at, status_checked_at, parks!inner(slug, region_code), global_segments!inner(id)',
 						);
 					if (after) q = q.or(after);
-					return q.order('id', { ascending: true }).limit(limit);
+					for (const k of SITEMAP_COURSE_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+					return q.limit(limit);
 				}).then((walk) => ({ data: walk.rows, error: walk.complete ? null : walk.error })),
 			]);
 			if (routesRes.error) {

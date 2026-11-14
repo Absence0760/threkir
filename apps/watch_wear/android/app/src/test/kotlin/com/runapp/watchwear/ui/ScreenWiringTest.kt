@@ -47,7 +47,7 @@ class ScreenWiringTest {
         val src = readRunWatchApp()
         assertTrue(
             "PreRunScreen composable removed or renamed — watch UX architecture broken.",
-            Regex("""@Composable[^@]*private\s+fun\s+PreRunScreen\s*\(""").containsMatchIn(src),
+            Regex("""@Composable[^@]*internal\s+fun\s+PreRunScreen\s*\(""").containsMatchIn(src),
         )
     }
 
@@ -213,7 +213,7 @@ class ScreenWiringTest {
         val src = readRunWatchApp()
         assertTrue(
             "RunningScreen composable removed or renamed.",
-            Regex("""@Composable[^@]*private\s+fun\s+RunningScreen\s*\(""").containsMatchIn(src),
+            Regex("""@Composable[^@]*internal\s+fun\s+RunningScreen\s*\(""").containsMatchIn(src),
         )
     }
 
@@ -285,7 +285,7 @@ class ScreenWiringTest {
         val src = readRunWatchApp()
         assertTrue(
             "PostRunScreen composable removed or renamed.",
-            Regex("""@Composable[^@]*private\s+fun\s+PostRunScreen\s*\(""").containsMatchIn(src),
+            Regex("""@Composable[^@]*internal\s+fun\s+PostRunScreen\s*\(""").containsMatchIn(src),
         )
     }
 
@@ -381,7 +381,7 @@ class ScreenWiringTest {
         assertTrue(
             "PreRunScreen no longer takes `queueUnreadable` — a frozen count " +
                 "is indistinguishable from an empty queue without it.",
-            Regex("""private fun PreRunScreen\(\s*queuedCount: Int,\s*queueUnreadable: Boolean,""")
+            Regex("""internal fun PreRunScreen\(\s*queuedCount: Int,\s*queueUnreadable: Boolean,""")
                 .containsMatchIn(src),
         )
         assertTrue(

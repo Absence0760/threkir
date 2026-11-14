@@ -34,7 +34,7 @@ class PreRunRejectedQueueTest {
     /// The PreRunScreen body, from its signature to the next top-level
     /// declaration — so nothing below can satisfy an assertion about it.
     private fun preRun(): String {
-        val start = ui.indexOf("private fun PreRunScreen(")
+        val start = ui.indexOf("internal fun PreRunScreen(")
         assertTrue("PreRunScreen is gone or renamed — this guard reads nothing", start >= 0)
         val end = ui.indexOf("\nprivate fun ", start + 1)
         assertTrue("could not find the end of PreRunScreen", end > start)

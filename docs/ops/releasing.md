@@ -143,7 +143,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | Release tag | Runs | Signs | Publishes to | Attaches back to the Release |
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2478](../architecture/decisions.md)) | `.aab` |
-| `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
+| `watch_wear@*` | ubuntu-latest | the phone's release keystore | Play Wear OS internal track of `com.threkir.app` ([§ 2529](../architecture/decisions.md)) | `.aab` |
 | `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
@@ -246,9 +246,14 @@ a build Play already holds to production without rebuilding it, run
 waits for the same approval. The runbook is
 [`apps/mobile_android/deployment.md`](../../apps/mobile_android/deployment.md#release-workflow--mobile_android).
 
-The Wear OS release (`watch_wear@*`) still stops at Internal:
-`com.threkir.watchwear` is its own Play listing, with no production access
-yet. Promote it by hand in Play Console.
+The Wear OS release (`watch_wear@*`) goes to the Wear OS internal track of
+the same app, `com.threkir.app`: Wear OS is a form factor of the phone's
+listing (decisions § 2529). Its version code is the commit count plus
+1,000,000,000, so it never collides with the phone's. It stops there; promote
+it to Wear OS production by hand in Play Console after a real-watch check. Its
+upload commits with `ERROR_IF_IN_REVIEW`, so while a phone release is in
+review the upload fails with that reason instead of cancelling the review;
+re-run it once the review clears.
 
 ## Required GitHub Secrets
 
@@ -281,21 +286,18 @@ account in Google Cloud → download the JSON key → paste into
 
 ### Wear OS
 
-Same shape as Android, different keystore (the Wear app has its own
-`applicationId`, `com.threkir.watchwear`, so it needs its own upload
-identity).
-
-The job runs in the `production` environment, so the four keystore
-secrets and `PLAY_SERVICE_ACCOUNT_JSON` must be **environment** secrets
-there (`gh secret set NAME --env production`). A repo-level copy is not
-read.
+The Android secrets above, nothing of its own for signing or upload: the
+watch ships under the phone's package, so it signs with the phone's upload
+keystore (`ANDROID_KEYSTORE_*`) and uploads with the same
+`PLAY_SERVICE_ACCOUNT_JSON` (decisions § 2529). The job runs in the
+`production` environment, so those must be **environment** secrets there
+(`gh secret set NAME --env production`); a repo-level copy is not read. The
+`WATCH_WEAR_KEYSTORE_*` / `WATCH_WEAR_KEY_*` secrets of the retired
+`com.threkir.watchwear` listing are read by nothing and are the owner's to
+delete.
 
 | Secret | Scope | What |
 |---|---|---|
-| `WATCH_WEAR_KEYSTORE_BASE64` | `production` | base64-encoded Wear upload keystore (`base64 -i wear-upload-keystore.jks`) |
-| `WATCH_WEAR_KEYSTORE_PASSWORD` | `production` | store password |
-| `WATCH_WEAR_KEY_ALIAS` | `production` | alias inside the keystore |
-| `WATCH_WEAR_KEY_PASSWORD` | `production` | key password |
 | `WATCH_WEAR_SENTRY_DSN` | `production` | optional. Sentry watch_wear project DSN, passed as `-PSENTRY_DSN`. Unset leaves Sentry off (decisions § 1763) |
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` | repo | shared with web and Android, passed as `-P` flags |
 
@@ -556,10 +558,9 @@ and install from there.
   global through 2027) an Android app must be registered by a verified
   developer to install on certified devices. Distributing through Play
   registers a package automatically: `com.threkir.app` has been
-  registered since 2026-07-14, and `com.threkir.watchwear` registers
-  itself the first time a `watch_wear@*` release reaches the Internal
-  track — no manual step, and nothing to do before that first Wear
-  release. The gate is the other direction: **do not attach an
+  registered since 2026-07-14, and the Wear OS app ships under that
+  same package (decisions § 2529), so there is no second package to
+  register. The gate is the other direction: **do not attach an
   installable `.apk` to a GitHub Release, or ship through any non-Play
   channel, until that package is registered by hand** in the Android
   Developer Console, which needs an APK signed with the release key.

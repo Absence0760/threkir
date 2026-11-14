@@ -21,7 +21,7 @@ For the orthogonal "how a tag triggers a build" mechanics, see [releasing.md](re
 | Coach LLM | `apps/web/src/routes/api/coach/+server.ts` (deployed as a Node 24 Lambda) | Anthropic Claude (default) — `OPENAI_BASE_URL` for self-host | Plan (web) |
 | Mobile Android | `apps/mobile_android/` | **Google Play** — Internal → Beta → Production tracks | Plan |
 | Mobile iOS | `apps/mobile_ios/` | **App Store Connect** — TestFlight → App Store | Plan |
-| Wear OS | `apps/watch_wear/` | **Google Play** — separate listing (`com.threkir.watchwear`) | Plan |
+| Wear OS | `apps/watch_wear/` | **Google Play** — the Wear OS form factor of the phone listing (`com.threkir.app`), Wear OS internal track | Plan |
 | Apple Watch | `apps/watch_ios/` | Bundled inside the iOS app — no separate listing | Plan |
 | RevenueCat | (third party) | RevenueCat dashboard — webhook to `apps/backend/supabase/functions/revenuecat-webhook` | Plan |
 | MapTiler | (third party) | MapTiler Cloud — `PUBLIC_MAPTILER_KEY` shared by web + Wear OS | Plan |
@@ -256,9 +256,8 @@ The matrix of "what lives where":
 | `REVENUECAT_WEBHOOK_SECRET` | RevenueCat dashboard | Supabase EF env |
 | `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1671](../architecture/decisions.md)) |
 | `PUBLIC_MAPTILER_KEY` | MapTiler dashboard | GitHub Secrets (injected at CI build-time as `PUBLIC_*`); Mobile build configs |
-| Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
+| Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`); the Wear OS release signs with it too, since the watch ships under the phone's package ([decisions § 2529](../architecture/decisions.md)) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
-| Wear OS upload keystore | We generate once | GitHub Secrets (`WATCH_WEAR_KEYSTORE_BASE64`) |
 | Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) on `production`, and a copy on the reviewer-less `play-rollout` environment restricted to `main`, which `play-rollout.yml` reads daily to widen a staged production rollout ([decisions § 2478](../architecture/decisions.md)) |
 | App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
 | Sign-in-with-Apple `.p8` + the OAuth client secret it signs | Apple Developer | The `.p8` in the estate (`siwa_key_p8`), the Supabase EF env (`APPLE_PRIVATE_KEY`, for revocation) and the GitHub `apple-secret-rotation` environment (`APPLE_SIWA_PRIVATE_KEY`). The derived ES256 JWT lives only in the Supabase Apple provider; `rotate-apple-client-secret.yml` re-signs it on the 1st of every month, because Apple refuses one older than six months ([`apple_provisioning.md` § 9](apple_provisioning.md), [decisions § 1824](../architecture/decisions.md)) |

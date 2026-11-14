@@ -13,6 +13,7 @@ import { listGuides } from '#lib/learn/guides.ts';
 import { CATEGORIES } from '#lib/learn/categories.ts';
 import { siteOrigin } from '#lib/core/site_url.ts';
 import { TABLES } from '#lib/core/schema.ts';
+import { walkKeyset, type KeysetKey } from '#lib/core/keyset_page.ts';
 
 // Build-time sitemap. `adapter-static` runs this once during the
 // production build because of `prerender = true`; the resulting
@@ -44,6 +45,7 @@ const MAX_ENTITIES = 10_000;
 // real counts approach this is a sitemap index (multiple files), see
 // the truncation warning below.
 const SITEMAP_MAX_URLS = 50_000;
+const SITEMAP_COURSE_ORDER: readonly KeysetKey[] = [{ column: 'id', ascending: true, nullsFirst: false }];
 
 export const GET: RequestHandler = async () => {
 	const base = siteOrigin(PUBLIC_SITE_URL);
@@ -131,12 +133,19 @@ export const GET: RequestHandler = async () => {
 					.select('id, updated_at')
 					.order('race_date', { ascending: false })
 					.limit(MAX_ENTITIES),
-				supabase
-					.from(TABLES.park_courses)
-					.select(
-						'slug, created_at, status_checked_at, parks!inner(slug, region_code), global_segments!inner(id)',
-					)
-					.limit(MAX_ENTITIES),
+				// Walked rather than limited: a `.limit()` past PostgREST's
+				// `db.max-rows` is cut there with a 200, so the catalogue's
+				// courses past the first 1000 would never be listed.
+				walkKeyset(SITEMAP_COURSE_ORDER, (after, limit) => {
+					let q = supabase
+						.from(TABLES.park_courses)
+						.select(
+							'id, slug, created_at, status_checked_at, parks!inner(slug, region_code), global_segments!inner(id)',
+						);
+					if (after) q = q.or(after);
+					for (const k of SITEMAP_COURSE_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+					return q.limit(limit);
+				}).then((walk) => ({ data: walk.rows, error: walk.complete ? null : walk.error })),
 			]);
 			if (routesRes.error) {
 				console.warn('sitemap: public_routes fetch failed', routesRes.error);

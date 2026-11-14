@@ -45,7 +45,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String recapShareTotals(Object total, Object count) {
+  String recapShareTotals(Object total, int count) {
     return '$count件のランで$total';
   }
 
@@ -55,7 +55,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String recapShareBestStreak(Object days) {
+  String recapShareBestStreak(int days) {
     return '最高の連続記録: $days日';
   }
 
@@ -205,12 +205,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routePickerAllRoutesHeader => 'すべてのルート';
 
   @override
-  String importStatusImported(Object count, Object label) {
+  String importStatusImported(int count, Object label) {
     return '$labelから$count件のランをインポートしました';
   }
 
   @override
-  String importStatusImportedWithErrors(Object count, Object errors) {
+  String importStatusImportedWithErrors(int count, int errors) {
     return '$count件のランをインポートしました（$errors件失敗）';
   }
 
@@ -1943,7 +1943,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupAboutTitle => 'あなたについて少し';
 
   @override
-  String get setupAboutHint => '任意です。ペースやカロリーの推定を最適化します。健康データを共有するかはあなたが選べます。';
+  String get setupAboutHint =>
+      '任意です。ペースとカロリーの推定をあなたに合わせるのに役立ちます。健康データの利用に同意するかどうかは、ご自身で選べます。';
 
   @override
   String get setupGenderLabel => '性別';
@@ -1962,7 +1963,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      '18歳未満のアカウントを人物検索から除外するため、また健康データを共有する場合は年齢補正結果のために使用します。';
+      '18歳未満のアカウントを名前検索から除外するために使用します。健康データの利用に同意した場合は、年齢別評価の結果にも使用します。';
 
   @override
   String get setupDobPlaceholder => 'タップして選択';
@@ -4231,7 +4232,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'レーススケジュールを送信しました（$checkpoints チェックポイント）。ただし $unresolved 件の時刻制限にはスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
+    return 'レーススケジュールを送信しました（$checkpoints チェックポイント）。ただし $unresolved 件の時刻指定の関門にはレースのスタート時刻が必要です — クルーシートで設定するとウォッチに反映されます';
   }
 
   @override
@@ -7900,7 +7901,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      '「健康データの利用に同意している場合のみ」と記載された項目は健康データです。同意すると、これらの機能のためにそれらのデータが Anthropic に送信されることに明示的に同意したことになります。Anthropic は Threkir に代わって、同社のデータ処理条件に基づきデータを処理し、そのデータでモデルを学習せず、30日以内に削除します（同社の安全システムが検出したコンテンツに限り、それより長く保持されます）。この同意は、「あなた」タブのアカウントでいつでも撤回できます。撤回するとそれ以降のデータは送信されなくなりますが、すでに送信されたデータは取り消されません。移転に関する保護措置を含む詳細は、プライバシーポリシーをご覧ください。';
+      '「健康データの利用に同意している場合のみ」と記載された項目は健康データです。同意すると、これらの機能のためにそれらのデータが Anthropic に送信されることに明示的に同意したことになります。Anthropic は Threkir に代わって、同社のデータ処理条件に基づきデータを処理し、そのデータでモデルを学習せず、30日以内に削除します（同社の安全システムが検出したコンテンツに限り、それより長く保持されます）。この同意は、アカウントページでいつでも撤回できます。撤回するとそれ以降のデータは送信されなくなりますが、すでに送信されたデータは取り消されません。移転に関する保護措置を含む詳細は、プライバシーポリシーをご覧ください。';
 
   @override
   String get coachConsentAction =>
@@ -8126,7 +8127,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String coachDailyLimitError(int limit) {
-    return '1日の上限に達しました（$limitメッセージ）。明日また来てください！';
+    return '1日の上限（$limit件のメッセージ）に達しました。明日また来てください！';
   }
 
   @override
@@ -13620,7 +13621,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String sessionStepReps(Object name, Object reps) {
+  String sessionStepReps(Object name, int reps) {
     return '$name・$reps回';
   }
 
@@ -14515,7 +14516,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '体重とメディカルホールドのメモは健康データであり、ランナーの同意がある場合にのみ記録され、レース運営者のみが閲覧できます。';
 
   @override
-  String get checkpointWeighInConsent => 'ランナーは健康データの記録に同意します';
+  String get checkpointWeighInConsent => 'ランナーはこの健康データの記録に同意します';
 
   @override
   String get checkpointWeighInBodyWeight => '体重';

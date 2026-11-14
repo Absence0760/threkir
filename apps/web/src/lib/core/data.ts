@@ -775,14 +775,23 @@ export async function fetchRecapExtras(
 export async function fetchRecapParkCourses(startIso: string, endIso: string): Promise<RecapParkRow[]> {
 	const userId = auth.user?.id;
 	if (!userId) return [];
-	const { data: efforts, error } = await supabase
-		.from(TABLES.global_segment_efforts)
-		.select('global_segment_id')
-		.eq('user_id', userId)
-		.gte('started_at', startIso)
-		.lt('started_at', endIso);
-	if (error) throw dbError(error);
-	const segmentIds = Array.from(new Set((efforts ?? []).map((e) => e.global_segment_id)));
+	// A year of efforts passes PostgREST's `db.max-rows` for a runner who
+	// lives on the catalogue, and a read cut there undercounts their parks
+	// with a 200, so it is walked.
+	const walk = await walkKeyset(EFFORT_ID_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.global_segment_efforts)
+			.select('id, global_segment_id')
+			.eq('user_id', userId)
+			.gte('started_at', startIso)
+			.lt('started_at', endIso);
+		if (after) q = q.or(after);
+		for (const k of EFFORT_ID_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		return q.limit(limit);
+	});
+	if (!walk.complete) throw dbError(walk.error ?? new Error('recap effort walk ended short'));
+	const efforts = walk.rows;
+	const segmentIds = Array.from(new Set(efforts.map((e) => e.global_segment_id)));
 	if (segmentIds.length === 0) return [];
 	const { data: courses, error: courseError } = await queryChunked(segmentIds, (part) =>
 		supabase
@@ -800,11 +809,13 @@ export async function fetchRecapParkCourses(startIso: string, endIso: string): P
 			courseId: c.id,
 		});
 	}
-	return (efforts ?? []).flatMap((e) => {
+	return efforts.flatMap((e) => {
 		const row = bySegment.get(e.global_segment_id);
 		return row ? [row] : [];
 	});
 }
+
+const EFFORT_ID_ORDER: readonly KeysetKey[] = [{ column: 'id', ascending: true, nullsFirst: false }];
 
 /// The park course times one of the caller's own runs set, with the place
 /// each holds on its month's and its season's board (`run_park_course_times`),
@@ -11821,6 +11832,40 @@ export interface ParkCourse extends Omit<ParkCourseRow, 'checkpoints'> {
 
 const PARK_COLUMNS = '*, park_season, park_month';
 
+/// The park catalogue lists are read whole and then searched, ordered and
+/// counted on the client, so a read that stops short is a list that silently
+/// lost courses: PostgREST answers past `db.max-rows` (1000) with a 200 and no
+/// flag. Each one is walked by keyset cursor, and a walk that ended short fails
+/// rather than returning what it reached.
+async function walkWholeCatalogue<T extends object>(
+	keys: readonly KeysetKey[],
+	fetchPage: (after: string | null, limit: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+	const walk = await walkKeyset(keys, fetchPage);
+	if (!walk.complete) throw dbError(walk.error ?? new Error('park catalogue walk ended short'));
+	return walk.rows;
+}
+
+/// Region then name, the `/parks` index order; `id` makes it total.
+const PARK_ORDER: readonly KeysetKey[] = [
+	{ column: 'region_code', ascending: true, nullsFirst: false },
+	{ column: 'name', ascending: true, nullsFirst: false },
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
+
+/// A park's courses by slug; `id` makes it total.
+const PARK_COURSE_SLUG_ORDER: readonly KeysetKey[] = [
+	{ column: 'slug', ascending: true, nullsFirst: false },
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
+
+/// Every course across the catalogue. The page orders it itself
+/// (`orderAnyTimeCourses`), so the walk needs only a total order.
+const PARK_COURSE_ID_ORDER: readonly KeysetKey[] = [{ column: 'id', ascending: true, nullsFirst: false }];
+
+/// The per-course RPCs return one row per course.
+const COURSE_ID_ORDER: readonly KeysetKey[] = [{ column: 'course_id', ascending: true, nullsFirst: false }];
+
 function asParkCourse(
 	row: ParkCourseRow & {
 		global_segments: Database['public']['Tables']['global_segments']['Row'] | null;
@@ -11838,13 +11883,13 @@ function asParkCourse(
 /// Every active park, for the `/parks` index. Throws on a failed read so the
 /// page can tell "no parks yet" from "could not load".
 export async function fetchParks(): Promise<Park[]> {
-	const { data, error } = await supabase
-		.from(TABLES.parks)
-		.select(PARK_COLUMNS)
-		.order('region_code', { ascending: true })
-		.order('name', { ascending: true });
-	if (error) throw dbError(error);
-	return (data ?? []) as unknown as Park[];
+	const rows = await walkWholeCatalogue(PARK_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.parks).select(PARK_COLUMNS);
+		if (after) q = q.or(after);
+		for (const k of PARK_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		return q.limit(limit);
+	});
+	return rows as unknown as Park[];
 }
 
 /// One park by its region code and slug; null when there is none (or it was
@@ -11863,13 +11908,15 @@ export async function fetchPark(regionCode: string, slug: string): Promise<Park 
 /// A park's courses with their catalogue segment, by slug. A course whose
 /// segment was pulled is dropped (RLS hides the segment). Throws on a failed read.
 export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
-	const { data, error } = await supabase
-		.from(TABLES.park_courses)
-		.select('*, global_segments(*)')
-		.eq('park_id', parkId)
-		.order('slug', { ascending: true });
-	if (error) throw dbError(error);
-	return (data ?? []).flatMap((row) => {
+	const rows = await walkWholeCatalogue(PARK_COURSE_SLUG_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.park_courses).select('*, global_segments(*)').eq('park_id', parkId);
+		if (after) q = q.or(after);
+		for (const k of PARK_COURSE_SLUG_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	return rows.flatMap((row) => {
 		const course = asParkCourse(row);
 		return course ? [course] : [];
 	});
@@ -11880,25 +11927,35 @@ export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
 /// keyed by course id; a course with none has no entry. Signed-in only.
 /// Throws on a failed read.
 export async function fetchParkCourseMonthRunners(parkId: string): Promise<Map<string, number>> {
-	const { data, error } = await supabase.rpc('park_course_month_runners', { p_park_id: parkId }, { get: true });
-	if (error) throw dbError(error);
-	return new Map((data ?? []).map((r) => [r.course_id, r.runners]));
+	const rows = await walkWholeCatalogue(COURSE_ID_ORDER, (after, limit) => {
+		let q = supabase.rpc('park_course_month_runners', { p_park_id: parkId }, { get: true });
+		if (after) q = q.or(after);
+		for (const k of COURSE_ID_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		return q.limit(limit);
+	});
+	return new Map(rows.map((r) => [r.course_id, r.runners]));
 }
 
 export interface ParkCourseWithPark extends ParkCourse {
 	park: Database['public']['Tables']['parks']['Row'];
 }
 
-/// Every listed park course with its segment and park, in one read, for the
-/// "Run any time" section of `/races`. A course whose park was pulled or
-/// whose segment was pulled is dropped (RLS hides them). Unordered: the page
-/// orders by `orderAnyTimeCourses`. Throws on a failed read.
+/// Every listed park course with its segment and park, for the "Run any time"
+/// section of `/races` and the `/parks` index, which search, order and count
+/// it on the client. Walked by keyset, so the set is whole past PostgREST's
+/// `db.max-rows`. A course whose park was pulled or whose segment was pulled
+/// is dropped (RLS hides them). Unordered: the page orders by
+/// `orderAnyTimeCourses`. Throws on a failed read or a walk that ended short.
 export async function fetchAllParkCourses(): Promise<ParkCourseWithPark[]> {
-	const { data, error } = await supabase
-		.from(TABLES.park_courses)
-		.select('*, global_segments(*), parks!inner(*)');
-	if (error) throw dbError(error);
-	return (data ?? []).flatMap((row) => {
+	const rows = await walkWholeCatalogue(PARK_COURSE_ID_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.park_courses).select('*, global_segments(*), parks!inner(*)');
+		if (after) q = q.or(after);
+		for (const k of PARK_COURSE_ID_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	return rows.flatMap((row) => {
 		const { parks: park, ...rest } = row;
 		const course = asParkCourse(rest);
 		return course && park ? [{ ...course, park }] : [];
@@ -11917,10 +11974,14 @@ export interface ParkCourseRecord {
 /// (`park_course_records`, one call). A course with no visible effort this
 /// season is absent. Throws on a failed read.
 export async function fetchParkCourseRecords(): Promise<Map<string, ParkCourseRecord>> {
-	const { data, error } = await supabase.rpc('park_course_records', undefined, { get: true });
-	if (error) throw dbError(error);
+	const rows = await walkWholeCatalogue(COURSE_ID_ORDER, (after, limit) => {
+		let q = supabase.rpc('park_course_records', undefined, { get: true });
+		if (after) q = q.or(after);
+		for (const k of COURSE_ID_ORDER) q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		return q.limit(limit);
+	});
 	const out = new Map<string, ParkCourseRecord>();
-	for (const row of data ?? []) {
+	for (const row of rows) {
 		out.set(row.course_id, {
 			season: row.season,
 			userId: row.user_id,

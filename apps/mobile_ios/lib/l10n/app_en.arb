@@ -49,7 +49,7 @@
       }
     }
   },
-  "recapShareTotals": "{total} across {count} runs",
+  "recapShareTotals": "{total} across {count, plural, one{{count} run} other{{count} runs}}",
   "@recapShareTotals": {
     "description": "Distance-and-run-count line in the shared recap summary",
     "placeholders": {
@@ -57,7 +57,7 @@
         "type": "Object"
       },
       "count": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -70,12 +70,12 @@
       }
     }
   },
-  "recapShareBestStreak": "Best streak: {days} days",
+  "recapShareBestStreak": "Best streak: {days, plural, one{{days} day} other{{days} days}}",
   "@recapShareBestStreak": {
     "description": "Best-streak line in the shared recap summary",
     "placeholders": {
       "days": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -269,27 +269,27 @@
   "@routePickerAllRoutesHeader": {
     "description": "Section header above the non-starred routes block in the picker"
   },
-  "importStatusImported": "Imported {count} runs from {label}",
+  "importStatusImported": "Imported {count, plural, one{{count} run} other{{count} runs}} from {label}",
   "@importStatusImported": {
     "description": "Status line after a successful import with no errors",
     "placeholders": {
       "count": {
-        "type": "Object"
+        "type": "int"
       },
       "label": {
         "type": "Object"
       }
     }
   },
-  "importStatusImportedWithErrors": "Imported {count} runs ({errors} failed)",
+  "importStatusImportedWithErrors": "Imported {count, plural, one{{count} run} other{{count} runs}} ({errors} failed)",
   "@importStatusImportedWithErrors": {
     "description": "Status line after an import that had some failures",
     "placeholders": {
       "count": {
-        "type": "Object"
+        "type": "int"
       },
       "errors": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -2598,7 +2598,7 @@
   "@setupAboutTitle": {
     "description": "Setup wizard demographics step title"
   },
-  "setupAboutHint": "Optional. Helps tailor pace and calorie estimates. You choose whether to share health data.",
+  "setupAboutHint": "Optional. Helps tailor pace and calorie estimates. You choose whether to give health-data consent.",
   "@setupAboutHint": {
     "description": "Setup wizard demographics step hint"
   },
@@ -2622,7 +2622,7 @@
   "@setupDobLabel": {
     "description": "Setup wizard date-of-birth field label"
   },
-  "setupDobNote": "Used to keep accounts of under-18s out of people search, and for age-graded results if you share health data.",
+  "setupDobNote": "Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.",
   "@setupDobNote": {
     "description": "Setup wizard date-of-birth field note"
   },
@@ -3860,7 +3860,7 @@
   "@historyYesterday": {
     "description": "Day-group header for yesterday in the unified timeline"
   },
-  "historySetCount": "{n} sets",
+  "historySetCount": "{n, plural, one{{n} set} other{{n} sets}}",
   "@historySetCount": {
     "description": "Lift row secondary: number of sets",
     "placeholders": {
@@ -4042,7 +4042,7 @@
   "@runDetailBlockedTitle": {
     "description": "Title of the run-detail card shown when the run's push is parked"
   },
-  "runDetailBlockedTrackTooLarge": "Its GPS trace ({waypoints} points) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.",
+  "runDetailBlockedTrackTooLarge": "Its GPS trace ({waypoints, plural, one{{waypoints} point} other{{waypoints} points}}) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.",
   "@runDetailBlockedTrackTooLarge": {
     "description": "Body of the parked-push card when the run's GPS trace is larger than the cloud store allows",
     "placeholders": {
@@ -4854,7 +4854,7 @@
       }
     }
   },
-  "runDetailRouteSaved": "Saved \"{name}\" — {kept} waypoints ({smoothed} smoothed out)",
+  "runDetailRouteSaved": "Saved \"{name}\" — {kept, plural, one{{kept} waypoint} other{{kept} waypoints}} ({smoothed} smoothed out)",
   "@runDetailRouteSaved": {
     "description": "Banner shown after saving a run's track as a route, with waypoint counts",
     "placeholders": {
@@ -5789,7 +5789,7 @@
   "@routeDetailSendToWatch": {
     "description": "Share-menu option that pushes the route to the paired custom watch as a follow-along course"
   },
-  "routeDetailWatchCourseSent": "Course sent to the watch ({points} points)",
+  "routeDetailWatchCourseSent": "Course sent to the watch ({points, plural, one{{points} point} other{{points} points}})",
   "@routeDetailWatchCourseSent": {
     "placeholders": {
       "points": {
@@ -5798,7 +5798,7 @@
     },
     "description": "Banner after the route was pushed to the watch unchanged"
   },
-  "routeDetailWatchCourseSentMarkersFailed": "Course sent to the watch ({points} points), but its course markers couldn't be loaded, so no schedule went with it.",
+  "routeDetailWatchCourseSentMarkersFailed": "Course sent to the watch ({points, plural, one{{points} point} other{{points} points}}), but its course markers couldn't be loaded, so no schedule went with it.",
   "@routeDetailWatchCourseSentMarkersFailed": {
     "placeholders": {
       "points": {
@@ -5807,7 +5807,7 @@
     },
     "description": "Banner after the course reached the watch but the course-markers read failed, so no roadbook schedule was sent"
   },
-  "routeDetailWatchCourseSimplified": "Course sent to the watch — thinned from {source} points to {points} to fit",
+  "routeDetailWatchCourseSimplified": "Course sent to the watch — thinned from {source, plural, one{{source} point} other{{source} points}} to {points} to fit",
   "@routeDetailWatchCourseSimplified": {
     "placeholders": {
       "source": {
@@ -5837,7 +5837,7 @@
   "@routeDetailSendToAppleWatch": {
     "description": "Share-menu option that pushes the route to the paired Apple Watch so it can be followed during a wrist-recorded run"
   },
-  "routeDetailAppleWatchRouteSent": "Route sent to Apple Watch ({points} points)",
+  "routeDetailAppleWatchRouteSent": "Route sent to Apple Watch ({points, plural, one{{points} point} other{{points} points}})",
   "@routeDetailAppleWatchRouteSent": {
     "placeholders": {
       "points": {
@@ -5846,7 +5846,7 @@
     },
     "description": "Banner after the route was pushed to the Apple Watch unchanged"
   },
-  "routeDetailAppleWatchRouteSimplified": "Route sent to Apple Watch — thinned from {source} points to {points} to fit",
+  "routeDetailAppleWatchRouteSimplified": "Route sent to Apple Watch — thinned from {source, plural, one{{source} point} other{{source} points}} to {points} to fit",
   "@routeDetailAppleWatchRouteSimplified": {
     "placeholders": {
       "source": {
@@ -5871,7 +5871,7 @@
     },
     "description": "Banner when the Watch Connectivity route push to the Apple Watch fails"
   },
-  "routeDetailWatchCourseAndScheduleSent": "Course ({points} points) and race schedule ({checkpoints} checkpoints) sent to the watch",
+  "routeDetailWatchCourseAndScheduleSent": "Course ({points, plural, one{{points} point} other{{points} points}}) and race schedule ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}) sent to the watch",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -5883,7 +5883,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Course ({points} points) sent. Race schedule thinned from {source} to {checkpoints} checkpoints to fit the watch",
+  "routeDetailWatchScheduleThinned": "Course ({points, plural, one{{points} point} other{{points} points}}) sent. Race schedule thinned from {source} to {checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}} to fit the watch",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -5898,7 +5898,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Race schedule sent ({checkpoints} checkpoints), but {unresolved} clock cut-offs need a race start time — set one on the crew sheet so the watch gets them",
+  "routeDetailWatchScheduleClockCutoffs": "Race schedule sent ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}), but {unresolved, plural, one{{unresolved} clock cut-off needs} other{{unresolved} clock cut-offs need}} a race start time — set one on the crew sheet so the watch gets them",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -5910,7 +5910,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Course ({points} points) sent, but the race schedule has {cutoffs} cut-offs and the watch holds {max} — remove some to send it",
+  "routeDetailWatchScheduleTooManyCutoffs": "Course ({points, plural, one{{points} point} other{{points} points}}) sent, but the race schedule has {cutoffs, plural, one{{cutoffs} cut-off} other{{cutoffs} cut-offs}} and the watch holds {max} — remove some to send it",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -6022,7 +6022,7 @@
   "@routeDetailStatElevation": {
     "description": "Stat label for elevation on the route-detail screen"
   },
-  "routeDetailStatReviews": "{count} reviews",
+  "routeDetailStatReviews": "{count, plural, one{{count} review} other{{count} reviews}}",
   "@routeDetailStatReviews": {
     "description": "Stat label for the review count on the route-detail screen",
     "placeholders": {
@@ -6749,7 +6749,7 @@
   "@heatmapFilters": {
     "description": "Tooltip on the heatmap Filters button"
   },
-  "heatmapRoutesStartHere": "{count} routes start here",
+  "heatmapRoutesStartHere": "{count, plural, one{{count} route starts here} other{{count} routes start here}}",
   "@heatmapRoutesStartHere": {
     "description": "Header of the cluster sheet listing routes that share a start point",
     "placeholders": {
@@ -7388,7 +7388,7 @@
   "@profileNotifYourRun": {
     "description": "Fallback noun for a run reference in notification text when the distance is unknown. Carries NO possessive: every consuming template already supplies one (\"your {dist}\")"
   },
-  "profileNotifNameAndOthers": "{name} and {count} others",
+  "profileNotifNameAndOthers": "{name} and {count, plural, one{{count} other} other{{count} others}}",
   "@profileNotifNameAndOthers": {
     "description": "Actor name for a collapsed notification group (Alice and 4 others)",
     "placeholders": {
@@ -7400,7 +7400,7 @@
       }
     }
   },
-  "profileNotifAndOthers": "and {count} others",
+  "profileNotifAndOthers": "{count, plural, one{and {count} other} other{and {count} others}}",
   "@profileNotifAndOthers": {
     "description": "Expand toggle label for a collapsed notification group",
     "placeholders": {
@@ -8541,7 +8541,7 @@
   "@clubDetailGymRoutineAdopted": {
     "description": "Confirmation after cloning a club gym-routine template into a personal routine"
   },
-  "clubDetailRoutineExerciseCount": "{n} exercises",
+  "clubDetailRoutineExerciseCount": "{n, plural, one{{n} exercise} other{{n} exercises}}",
   "@clubDetailRoutineExerciseCount": {
     "description": "Exercise count meta on a club gym-routine-template row",
     "placeholders": {
@@ -9443,7 +9443,7 @@
   "@planNewDaysPerWeek": {
     "description": "Days-per-week dropdown label"
   },
-  "planNewDaysOption": "{count} days",
+  "planNewDaysOption": "{count, plural, one{{count} day} other{{count} days}}",
   "@planNewDaysOption": {
     "description": "Days-per-week dropdown option",
     "placeholders": {
@@ -9749,7 +9749,7 @@
   "@planNewWeekOutline": {
     "description": "Week-outline preview section label"
   },
-  "planNewSessions": "{count} sessions",
+  "planNewSessions": "{count, plural, one{{count} session} other{{count} sessions}}",
   "@planNewSessions": {
     "description": "Active-sessions count on a preview week row",
     "placeholders": {
@@ -10559,7 +10559,7 @@
   "@planNudgeUnderTitle": {
     "description": "Home plan card title: under-run trend"
   },
-  "planNudgeUnderBody": "You've run less than planned in {n} of the last {total} weeks. There's a suggested adjustment to the weeks ahead.",
+  "planNudgeUnderBody": "You've run less than planned in {n} of the last {total, plural, one{{total} week} other{{total} weeks}}. There's a suggested adjustment to the weeks ahead.",
   "@planNudgeUnderBody": {
     "description": "Home plan card body: under-run trend. n of the last total completed weeks were under plan",
     "placeholders": {
@@ -10604,7 +10604,7 @@
   "@planNudgeRestTitle": {
     "description": "Home plan card title: runs on rest days"
   },
-  "planNudgeRestBody": "You've run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.",
+  "planNudgeRestBody": "You've run on rest days in {n} of the last {total, plural, one{{total} week} other{{total} weeks}}. Those runs count toward your week, but rest days are where the training sinks in.",
   "@planNudgeRestBody": {
     "description": "Home plan card body: runs on rest days in n of the last total completed weeks",
     "placeholders": {
@@ -11156,7 +11156,7 @@
   "@coachConsentBulletPlanEdit": {
     "description": "Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)"
   },
-  "coachConsentProcessing": "The items marked “only if you've given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir's behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time under Account in the You tab; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.",
+  "coachConsentProcessing": "The items marked “only if you've given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir's behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time on your Account page; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.",
   "@coachConsentProcessing": {
     "description": "Consent gate data-processing paragraph"
   },
@@ -11470,7 +11470,7 @@
   "@coachSessionExpired": {
     "description": "Error on 401 from /api/coach"
   },
-  "coachDailyLimitError": "Daily limit reached ({limit} messages). Come back tomorrow!",
+  "coachDailyLimitError": "Daily limit reached ({limit, plural, one{{limit} message} other{{limit} messages}}). Come back tomorrow!",
   "@coachDailyLimitError": {
     "description": "Error on 429: daily limit reached",
     "placeholders": {
@@ -11764,7 +11764,7 @@
       }
     }
   },
-  "settingsAccountBackupPartial": "Export is partial — {count} of {total} runs.",
+  "settingsAccountBackupPartial": "Export is partial — {count} of {total, plural, one{{total} run} other{{total} runs}}.",
   "@settingsAccountBackupPartial": {
     "description": "Banner shown after a server-built export that came back short of the account run history",
     "placeholders": {
@@ -11776,7 +11776,7 @@
       }
     }
   },
-  "settingsAccountBackupPartialNotice": "Your last export is partial: it holds {count} of the {total} runs on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.",
+  "settingsAccountBackupPartialNotice": "Your last export is partial: it holds {count} of the {total, plural, one{{total} run} other{{total} runs}} on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.",
   "@settingsAccountBackupPartialNotice": {
     "description": "Persistent notice under the full-backup tile naming how short the last export was",
     "placeholders": {
@@ -12064,7 +12064,7 @@
   "@settingsAccountBackupOnDeviceNotice": {
     "description": "Persistent notice after a locally-built archive naming which archive the runner got"
   },
-  "settingsAccountExportRateLimited": "Export limit reached — try again in {seconds} seconds.",
+  "settingsAccountExportRateLimited": "Export limit reached — try again in {seconds, plural, one{{seconds} second} other{{seconds} seconds}}.",
   "@settingsAccountExportRateLimited": {
     "description": "Banner when the export quota refused the request",
     "placeholders": {
@@ -12091,7 +12091,7 @@
       }
     }
   },
-  "settingsAccountExportReadyBanner": "Your account export is ready — {count} runs.",
+  "settingsAccountExportReadyBanner": "Your account export is ready — {count, plural, one{{count} run} other{{count} runs}}.",
   "@settingsAccountExportReadyBanner": {
     "description": "Banner raised when a watched export job finishes while the screen is open",
     "placeholders": {
@@ -14428,7 +14428,7 @@
   "@trainingLoadTitle": {
     "description": "Title of the training-load chart card"
   },
-  "trainingLoadSubtitleHr": "Heart-rate TRIMP over the last {days} days.",
+  "trainingLoadSubtitleHr": "Heart-rate TRIMP over the last {days, plural, one{{days} day} other{{days} days}}.",
   "@trainingLoadSubtitleHr": {
     "description": "Training-load subtitle when HR-based TRIMP is available",
     "placeholders": {
@@ -14527,7 +14527,7 @@
   "@intensityTitle": {
     "description": "Title of the dashboard training-intensity card"
   },
-  "intensityWindow": "last {days} days",
+  "intensityWindow": "{days, plural, one{last {days} day} other{last {days} days}}",
   "@intensityWindow": {
     "description": "Window caption on the intensity card",
     "placeholders": {
@@ -16026,7 +16026,7 @@
   "@upcomingEventTomorrow": {
     "description": "Relative time: tomorrow"
   },
-  "upcomingEventInDays": "In {count} days",
+  "upcomingEventInDays": "{count, plural, one{In {count} day} other{In {count} days}}",
   "@upcomingEventInDays": {
     "description": "Relative time: in N days",
     "placeholders": {
@@ -16253,7 +16253,7 @@
   "@billingYesterday": {
     "description": "Relative time: yesterday"
   },
-  "billingDaysAgo": "{count} days ago",
+  "billingDaysAgo": "{count, plural, one{{count} day ago} other{{count} days ago}}",
   "@billingDaysAgo": {
     "description": "Relative time: N days ago",
     "placeholders": {
@@ -16510,7 +16510,7 @@
   "@ttsRunStarted": {
     "description": "Spoken cue when a run starts"
   },
-  "ttsRunComplete": "Run complete. {distance} in {mins} minutes.",
+  "ttsRunComplete": "Run complete. {distance} in {mins, plural, one{{mins} minute} other{{mins} minutes}}.",
   "@ttsRunComplete": {
     "description": "Spoken cue at the end of a run, with total distance and minutes",
     "placeholders": {
@@ -16554,7 +16554,7 @@
   "@ttsStepLastTenSeconds": {
     "description": "Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)"
   },
-  "ttsPaceDriftAheadKm": "Ease up — {delta} seconds per kilometre ahead of pace.",
+  "ttsPaceDriftAheadKm": "Ease up — {delta, plural, one{{delta} second} other{{delta} seconds}} per kilometre ahead of pace.",
   "@ttsPaceDriftAheadKm": {
     "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre",
     "placeholders": {
@@ -16563,7 +16563,7 @@
       }
     }
   },
-  "ttsPaceDriftAheadMi": "Ease up — {delta} seconds per mile ahead of pace.",
+  "ttsPaceDriftAheadMi": "Ease up — {delta, plural, one{{delta} second} other{{delta} seconds}} per mile ahead of pace.",
   "@ttsPaceDriftAheadMi": {
     "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile",
     "placeholders": {
@@ -16572,7 +16572,7 @@
       }
     }
   },
-  "ttsPaceDriftBehindKm": "Pick it up — {delta} seconds per kilometre behind pace.",
+  "ttsPaceDriftBehindKm": "Pick it up — {delta, plural, one{{delta} second} other{{delta} seconds}} per kilometre behind pace.",
   "@ttsPaceDriftBehindKm": {
     "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre",
     "placeholders": {
@@ -16581,7 +16581,7 @@
       }
     }
   },
-  "ttsPaceDriftBehindMi": "Pick it up — {delta} seconds per mile behind pace.",
+  "ttsPaceDriftBehindMi": "Pick it up — {delta, plural, one{{delta} second} other{{delta} seconds}} per mile behind pace.",
   "@ttsPaceDriftBehindMi": {
     "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile",
     "placeholders": {
@@ -16608,7 +16608,7 @@
       }
     }
   },
-  "ttsPaceKm": "Pace, {min} minutes {sec} seconds per kilometre",
+  "ttsPaceKm": "Pace, {min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre",
   "@ttsPaceKm": {
     "description": "Spoken pace in minutes/seconds per kilometre appended to a split cue",
     "placeholders": {
@@ -16620,7 +16620,7 @@
       }
     }
   },
-  "ttsPaceMi": "Pace, {min} minutes {sec} seconds per mile",
+  "ttsPaceMi": "Pace, {min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per mile",
   "@ttsPaceMi": {
     "description": "Spoken pace in minutes/seconds per mile appended to a split cue",
     "placeholders": {
@@ -16650,7 +16650,7 @@
       }
     }
   },
-  "ttsDistanceMetres": "{value} metres",
+  "ttsDistanceMetres": "{value, plural, one{{value} metre} other{{value} metres}}",
   "@ttsDistanceMetres": {
     "description": "Spoken distance in metres",
     "placeholders": {
@@ -16677,7 +16677,7 @@
       }
     }
   },
-  "ttsDistanceYards": "{value} yards",
+  "ttsDistanceYards": "{value, plural, one{{value} yard} other{{value} yards}}",
   "@ttsDistanceYards": {
     "description": "Spoken sub-mile distance in yards",
     "placeholders": {
@@ -16806,7 +16806,7 @@
       }
     }
   },
-  "ttsStepPaceKm": "{min} minutes {sec} seconds per kilometre",
+  "ttsStepPaceKm": "{min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre",
   "@ttsStepPaceKm": {
     "description": "Workout-step pace tail in min/sec per kilometre",
     "placeholders": {
@@ -16818,7 +16818,7 @@
       }
     }
   },
-  "ttsStepPaceKmWhole": "{min} minutes per kilometre",
+  "ttsStepPaceKmWhole": "{min, plural, one{{min} minute} other{{min} minutes}} per kilometre",
   "@ttsStepPaceKmWhole": {
     "description": "Workout-step pace tail, whole minutes per kilometre",
     "placeholders": {
@@ -16827,7 +16827,7 @@
       }
     }
   },
-  "ttsStepPaceMi": "{min} minutes {sec} seconds per mile",
+  "ttsStepPaceMi": "{min, plural, one{{min} minute} other{{min} minutes}} {sec, plural, one{{sec} second} other{{sec} seconds}} per mile",
   "@ttsStepPaceMi": {
     "description": "Workout-step pace tail in min/sec per mile",
     "placeholders": {
@@ -16839,7 +16839,7 @@
       }
     }
   },
-  "ttsStepPaceMiWhole": "{min} minutes per mile",
+  "ttsStepPaceMiWhole": "{min, plural, one{{min} minute} other{{min} minutes}} per mile",
   "@ttsStepPaceMiWhole": {
     "description": "Workout-step pace tail, whole minutes per mile",
     "placeholders": {
@@ -16848,7 +16848,7 @@
       }
     }
   },
-  "ttsDurationSeconds": "{sec} seconds",
+  "ttsDurationSeconds": "{sec, plural, one{{sec} second} other{{sec} seconds}}",
   "@ttsDurationSeconds": {
     "description": "Spoken duration: seconds only",
     "placeholders": {
@@ -16866,7 +16866,7 @@
       }
     }
   },
-  "ttsDurationMinutesSeconds": "{minutes} {sec} seconds",
+  "ttsDurationMinutesSeconds": "{minutes} {sec, plural, one{{sec} second} other{{sec} seconds}}",
   "@ttsDurationMinutesSeconds": {
     "description": "Spoken duration: a minutes phrase followed by seconds",
     "placeholders": {
@@ -18215,7 +18215,7 @@
   "@nutritionTargetsAge": {
     "description": "Body-metrics row label for age"
   },
-  "nutritionTargetsAgeYears": "{n} years",
+  "nutritionTargetsAgeYears": "{n, plural, one{{n} year} other{{n} years}}",
   "@nutritionTargetsAgeYears": {
     "description": "Age in whole years. {n} is the age.",
     "placeholders": {
@@ -18303,7 +18303,7 @@
       }
     }
   },
-  "nutritionWeekProtein": "Protein {met}/{total} days",
+  "nutritionWeekProtein": "Protein {met}/{total, plural, one{{total} day} other{{total} days}}",
   "@nutritionWeekProtein": {
     "description": "Weekly trend chip: logged days that hit the protein goal, out of total logged days",
     "placeholders": {
@@ -18467,7 +18467,7 @@
     }
   },
   "nutritionLogTemplate": "Log",
-  "nutritionTemplateLogged": "Logged {n} items from {name}.",
+  "nutritionTemplateLogged": "Logged {n, plural, one{{n} item} other{{n} items}} from {name}.",
   "@nutritionTemplateLogged": {
     "description": "Banner after logging a meal template: n items from the named template",
     "placeholders": {
@@ -18497,7 +18497,7 @@
       }
     }
   },
-  "nutritionTemplateItems": "{n} items",
+  "nutritionTemplateItems": "{n, plural, one{{n} item} other{{n} items}}",
   "@nutritionTemplateItems": {
     "description": "Subtitle on a meal-template row: number of items",
     "placeholders": {
@@ -18569,7 +18569,7 @@
       }
     }
   },
-  "nutritionRecipeMeta": "{n} ingredients · {servings} servings",
+  "nutritionRecipeMeta": "{n, plural, one{{n} ingredient} other{{n} ingredients}} · {servings, plural, one{{servings} serving} other{{servings} servings}}",
   "@nutritionRecipeMeta": {
     "description": "Subtitle on a recipe row: ingredient count + servings",
     "placeholders": {
@@ -18641,7 +18641,7 @@
       }
     }
   },
-  "sessionStepReps": "{name} · {reps} reps",
+  "sessionStepReps": "{name} · {reps, plural, one{{reps} rep} other{{reps} reps}}",
   "@sessionStepReps": {
     "description": "A counted-reps step in the sequence",
     "placeholders": {
@@ -18649,7 +18649,7 @@
         "type": "Object"
       },
       "reps": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -19353,7 +19353,7 @@
       }
     }
   },
-  "coachingAthleteAssignAfterMany": "{name} has {count} plans still ahead: {plans}. A plan you assign can't overlap any of them, so start it after {end} or in a gap between them.",
+  "coachingAthleteAssignAfterMany": "{name} has {count, plural, one{{count} plan} other{{count} plans}} still ahead: {plans}. A plan you assign can't overlap any of them, so start it after {end} or in a gap between them.",
   "@coachingAthleteAssignAfterMany": {
     "description": "Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date",
     "placeholders": {
@@ -19974,7 +19974,7 @@
   "@checkpointWeighInConsentBlurb": {
     "description": "Explanatory text on the weigh-in consent sheet"
   },
-  "checkpointWeighInConsent": "Runner consents to recording health data",
+  "checkpointWeighInConsent": "Runner consents to recording this health data",
   "@checkpointWeighInConsent": {
     "description": "Art 9 consent toggle on the weigh-in sheet"
   },
@@ -20374,7 +20374,7 @@
   "@challengesBadgeEarned": {
     "description": "Completion badge label"
   },
-  "challengesUnitDays": "{n} days",
+  "challengesUnitDays": "{n, plural, one{{n} day} other{{n} days}}",
   "@challengesUnitDays": {
     "description": "Active-days value",
     "placeholders": {
@@ -20478,7 +20478,7 @@
       }
     }
   },
-  "fundraiserDonorCount": "{count} supporters",
+  "fundraiserDonorCount": "{count, plural, one{{count} supporter} other{{count} supporters}}",
   "@fundraiserDonorCount": {
     "description": "Donor count under the thermometer",
     "placeholders": {
@@ -20811,7 +20811,7 @@
   "@racesWhenRecent": {
     "description": "Races screen: show races from the last few weeks, newest first, to import a result"
   },
-  "racesWhenHint": "Recent results lists races from the last {days} days, newest first, so you can find a race you ran and import your result.",
+  "racesWhenHint": "Recent results lists races from the last {days, plural, one{{days} day} other{{days} days}}, newest first, so you can find a race you ran and import your result.",
   "@racesWhenHint": {
     "description": "Races screen: explains the Recent results choice; {days} is the look-back window in days",
     "placeholders": {
@@ -20820,7 +20820,7 @@
       }
     }
   },
-  "racesEmptyRecent": "No races in the last {days} days match these filters.",
+  "racesEmptyRecent": "No races in the last {days, plural, one{{days} day} other{{days} days}} match these filters.",
   "@racesEmptyRecent": {
     "description": "Races screen: no recent races match; {days} is the look-back window in days",
     "placeholders": {
@@ -22274,7 +22274,7 @@
   "@simWatchPushWorkoutAction": {
     "description": "Button that pushes a structured demo workout to the custom watch over BLE"
   },
-  "simWatchWorkoutPushed": "Workout pushed to the watch ({steps} steps)",
+  "simWatchWorkoutPushed": "Workout pushed to the watch ({steps, plural, one{{steps} step} other{{steps} steps}})",
   "@simWatchWorkoutPushed": {
     "placeholders": {
       "steps": {
@@ -22294,7 +22294,7 @@
   "@simWatchPushRoadbookAction": {
     "description": "Tooltip for the dev sim-watch action that pushes the canned RBK1 roadbook schedule"
   },
-  "simWatchRoadbookPushed": "Roadbook pushed to the watch ({checkpoints} checkpoints, {cutoffs} cut-offs)",
+  "simWatchRoadbookPushed": "Roadbook pushed to the watch ({checkpoints, plural, one{{checkpoints} checkpoint} other{{checkpoints} checkpoints}}, {cutoffs, plural, one{{cutoffs} cut-off} other{{cutoffs} cut-offs}})",
   "@simWatchRoadbookPushed": {
     "placeholders": {
       "checkpoints": {
@@ -22319,7 +22319,7 @@
   "@simWatchPushCourseAction": {
     "description": "Button that pushes a demo breadcrumb course to the custom watch over BLE"
   },
-  "simWatchCoursePushed": "Course pushed to the watch ({points} points)",
+  "simWatchCoursePushed": "Course pushed to the watch ({points, plural, one{{points} point} other{{points} points}})",
   "@simWatchCoursePushed": {
     "placeholders": {
       "points": {
@@ -22411,7 +22411,7 @@
   "@feedSignedOutMessage": {
     "description": "Body of the sign-in-required state on the following feed"
   },
-  "ttsPaceAlertSpeedUpByKm": "Speed up by {sec} seconds per kilometre",
+  "ttsPaceAlertSpeedUpByKm": "Speed up by {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre",
   "@ttsPaceAlertSpeedUpByKm": {
     "description": "Voice cues / race strategy",
     "placeholders": {
@@ -22420,7 +22420,7 @@
       }
     }
   },
-  "ttsPaceAlertSpeedUpByMi": "Speed up by {sec} seconds per mile",
+  "ttsPaceAlertSpeedUpByMi": "Speed up by {sec, plural, one{{sec} second} other{{sec} seconds}} per mile",
   "@ttsPaceAlertSpeedUpByMi": {
     "description": "Voice cues / race strategy",
     "placeholders": {
@@ -22429,7 +22429,7 @@
       }
     }
   },
-  "ttsPaceAlertSlowDownByKm": "Slow down by {sec} seconds per kilometre",
+  "ttsPaceAlertSlowDownByKm": "Slow down by {sec, plural, one{{sec} second} other{{sec} seconds}} per kilometre",
   "@ttsPaceAlertSlowDownByKm": {
     "description": "Voice cues / race strategy",
     "placeholders": {
@@ -22438,7 +22438,7 @@
       }
     }
   },
-  "ttsPaceAlertSlowDownByMi": "Slow down by {sec} seconds per mile",
+  "ttsPaceAlertSlowDownByMi": "Slow down by {sec, plural, one{{sec} second} other{{sec} seconds}} per mile",
   "@ttsPaceAlertSlowDownByMi": {
     "description": "Voice cues / race strategy",
     "placeholders": {
@@ -23166,7 +23166,7 @@
   "@comebackVerdictSteep": {
     "description": "Comeback verdict chip: big first week"
   },
-  "comebackLayoff": "{weeks} weeks without a run",
+  "comebackLayoff": "{weeks, plural, one{{weeks} week without a run} other{{weeks} weeks without a run}}",
   "@comebackLayoff": {
     "description": "How long the runner was away, in whole weeks",
     "placeholders": {
@@ -23758,7 +23758,7 @@
   "@planDetailSectionWeeksTitle": {
     "description": "Plan detail: a named expander (title or its one-line hint)"
   },
-  "planDetailSectionWeeksHint": "All {n} weeks, day by day",
+  "planDetailSectionWeeksHint": "{n, plural, one{{n} week, day by day} other{All {n} weeks, day by day}}",
   "@planDetailSectionWeeksHint": {
     "description": "Plan detail: the Week by week expander hint; n is the plan length in weeks",
     "placeholders": {
@@ -26402,7 +26402,7 @@
   "@planNewReturnTitle": {
     "description": "Heading of the note for a runner coming back from a break"
   },
-  "planNewReturnBody": "You've had about {weeks} weeks off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.",
+  "planNewReturnBody": "You've had about {weeks, plural, one{{weeks} week} other{{weeks} weeks}} off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.",
   "@planNewReturnBody": {
     "description": "Body of the comeback note. {weeks} whole weeks off; {pre} and {cap} are formatted distances",
     "placeholders": {
@@ -28257,7 +28257,7 @@
   "@shareCardKindBadge": {
     "description": "Sticker kind chip: the badge the run earned"
   },
-  "shareCardSplitsHeading": "{count} splits · avg {pace}",
+  "shareCardSplitsHeading": "{count, plural, one{{count} split} other{{count} splits}} · avg {pace}",
   "@shareCardSplitsHeading": {
     "description": "Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit",
     "placeholders": {

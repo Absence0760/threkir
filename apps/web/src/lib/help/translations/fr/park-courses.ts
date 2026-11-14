@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
 						"Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps jamais réalisés.",
-						"Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet.",
+						"Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont donné leur consentement aux données de santé : le classement filtré peut donc être plus court que le classement complet.",
 					],
 				},
 			],
@@ -104,7 +104,7 @@ export const translation: GuideTranslation = {
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
 		"s3.b0.i1": "01322b98d3fa4762",
-		"s3.b0.i2": "a26ad1f8b547015d",
+		"s3.b0.i2": "1b3d5a9034e460c5",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
 		"s5.heading": "2158104d68549d3e",

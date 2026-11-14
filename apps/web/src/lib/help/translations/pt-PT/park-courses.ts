@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Aparece uma vez, com a sua melhor corrida.",
 						"Por predefinição mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Desde sempre** para ver os melhores tempos de sempre.",
-						"Filtre por género ou escalão etário. O filtro de idade só inclui quem aceitou partilhar dados de saúde, por isso pode ser mais curto do que a classificação completa.",
+						"Filtre por género ou escalão etário. O filtro de idade só inclui quem deu consentimento de dados de saúde, por isso pode ser mais curto do que a classificação completa.",
 					],
 				},
 			],
@@ -104,7 +104,7 @@ export const translation: GuideTranslation = {
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
 		"s3.b0.i1": "01322b98d3fa4762",
-		"s3.b0.i2": "a26ad1f8b547015d",
+		"s3.b0.i2": "1b3d5a9034e460c5",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
 		"s5.heading": "2158104d68549d3e",

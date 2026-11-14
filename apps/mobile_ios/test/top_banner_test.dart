@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show AppTabBar, RootPage;
+import 'package:ui_kit/ui_kit.dart'
+    show AppTabBar, KeepAliveChild, PinnedHeaderScope, RootPage;
 
 import '../lib/widgets/stale_refresh_banner.dart';
 import '../lib/widgets/top_banner.dart';
@@ -523,6 +524,266 @@ void main() {
         await tester.pump();
       },
     );
+  });
+
+  // Decisions § 2517 put each root page's title row under the status bar,
+  // with no app bar above it. A banner said from anywhere but the root
+  // page's own body — a pushed page, the navigator after a screen closed, a
+  // service, a root kept alive but hidden in the shell — found no header and
+  // sat under the status bar, over the visible page's title row; or it found
+  // a hidden root's header and sat under that one (issue #1374).
+  group('showTopBanner — under a root page', () {
+    void statusBar(WidgetTester tester) {
+      tester.view.padding = FakeViewPadding(
+        top: 24 * tester.view.devicePixelRatio,
+      );
+      addTearDown(tester.view.resetPadding);
+    }
+
+    // The bottom of [page]'s pinned header: its title row, or its tab strip.
+    double headerBottom(WidgetTester tester, Finder page) {
+      final scope = tester.widget<PinnedHeaderScope>(
+        find.descendant(of: page, matching: find.byType(PinnedHeaderScope)),
+      );
+      final box =
+          scope.headerKey.currentContext!.findRenderObject()! as RenderBox;
+      return box.localToGlobal(Offset(0, box.size.height)).dy;
+    }
+
+    double pillTop(WidgetTester tester, String message) =>
+        tester.getTopLeft(find.byKey(ValueKey('top_banner:up:$message'))).dy;
+
+    Future<void> hide(WidgetTester tester) async {
+      hideTopBanner();
+      await tester.pump();
+    }
+
+    Widget plainRoot({
+      String title = 'You',
+      void Function(BuildContext)? onBody,
+    }) => RootPage(
+      title: title,
+      body: Builder(
+        builder: (ctx) {
+          onBody?.call(ctx);
+          return ListView(children: const [Text('row')]);
+        },
+      ),
+    );
+
+    testWidgets('said from the root page, the pill sits under its title row', (
+      tester,
+    ) async {
+      statusBar(tester);
+      late BuildContext body;
+      await tester.pumpWidget(
+        MaterialApp(home: plainRoot(onBody: (ctx) => body = ctx)),
+      );
+      final edge = headerBottom(tester, find.byType(RootPage));
+      expect(edge, greaterThan(tester.getRect(find.text('You').first).bottom));
+
+      showTopBanner(body, 'root');
+      await tester.pump();
+      expect(pillTop(tester, 'root'), edge + 12);
+      await hide(tester);
+    });
+
+    testWidgets('said from the navigator with a root page on top, the pill '
+        'sits under its title row', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: plainRoot()),
+      );
+      final edge = headerBottom(tester, find.byType(RootPage));
+
+      showTopBanner(navigator.currentContext!, 'service');
+      await tester.pump();
+      expect(pillTop(tester, 'service'), edge + 12);
+      await hide(tester);
+    });
+
+    testWidgets('said from a page pushed over a root page, the pill sits under '
+        'the pushed page\'s header, not the hidden root\'s', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      // A title that wraps, so the root's header is taller than an app bar.
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: plainRoot(
+            title:
+                'A root page title long enough to wrap onto several '
+                'lines of the large heading',
+          ),
+        ),
+      );
+      final rootEdge = headerBottom(tester, find.byType(RootPage));
+      expect(
+        rootEdge,
+        greaterThan(24 + kToolbarHeight),
+        reason:
+            'the root header must reach below the pushed app bar for '
+            'this case to tell them apart',
+      );
+
+      late BuildContext pushed;
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('detail')),
+            body: Builder(
+              builder: (ctx) {
+                pushed = ctx;
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      showTopBanner(pushed, 'detail');
+      await tester.pump();
+      expect(
+        pillTop(tester, 'detail'),
+        tester.getBottomLeft(find.byType(AppBar)).dy + 12,
+      );
+      await hide(tester);
+    });
+
+    testWidgets('said from a bare page pushed over a root page, the pill sits '
+        'under the status bar, not the hidden root\'s title', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: plainRoot()),
+      );
+      late BuildContext pushed;
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            body: Builder(
+              builder: (ctx) {
+                pushed = ctx;
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byType(RootPage),
+        findsNothing,
+        reason: 'the root is under an opaque route',
+      );
+
+      showTopBanner(pushed, 'bare');
+      await tester.pump();
+      expect(pillTop(tester, 'bare'), 24 + 12);
+      await hide(tester);
+    });
+
+    testWidgets('said after the screen that started the work has closed, the '
+        'pill sits under the root page left showing', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: plainRoot()),
+      );
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('detail')),
+            body: const SizedBox.expand(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+      final edge = headerBottom(tester, find.byType(RootPage));
+
+      // What a save that finishes after its screen is popped does: it has
+      // only the navigator's context left.
+      showTopBanner(navigator.currentContext!, 'late');
+      await tester.pump();
+      expect(pillTop(tester, 'late'), edge + 12);
+      await hide(tester);
+    });
+
+    testWidgets('with several roots kept alive, only the visible one\'s header '
+        'counts, whichever root the banner is said from', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      final pages = PageController();
+      addTearDown(pages.dispose);
+      late BuildContext hiddenTab;
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: Scaffold(
+            body: PageView(
+              controller: pages,
+              children: [
+                KeepAliveChild(
+                  child: DefaultTabController(
+                    length: 2,
+                    child: Builder(
+                      builder: (context) => RootPage.tabbed(
+                        title: 'Fitness',
+                        controller: DefaultTabController.of(context),
+                        labels: const ['Runs', 'Routes'],
+                        children: [
+                          Builder(
+                            builder: (ctx) {
+                              hiddenTab = ctx;
+                              return const SizedBox.expand();
+                            },
+                          ),
+                          const SizedBox.expand(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                KeepAliveChild(child: plainRoot()),
+              ],
+            ),
+          ),
+        ),
+      );
+      final hubEdge = headerBottom(
+        tester,
+        find.widgetWithText(RootPage, 'Fitness'),
+      );
+      pages.jumpToPage(1);
+      await tester.pump();
+      expect(
+        find.byType(AppTabBar, skipOffstage: false),
+        findsOneWidget,
+        reason: 'the hub is kept alive, header and all',
+      );
+      final edge = headerBottom(tester, find.widgetWithText(RootPage, 'You'));
+      expect(
+        hubEdge,
+        greaterThan(edge),
+        reason:
+            'the hidden hub\'s strip reaches lower than the visible '
+            'root\'s title row, so measuring it would show',
+      );
+
+      showTopBanner(navigator.currentContext!, 'from the navigator');
+      await tester.pump();
+      expect(pillTop(tester, 'from the navigator'), edge + 12);
+
+      // A load in the hidden hub that fails while another root shows.
+      showTopBanner(hiddenTab, 'from the hidden hub');
+      await tester.pump();
+      expect(pillTop(tester, 'from the hidden hub'), edge + 12);
+      await hide(tester);
+    });
   });
 
   group('hideTopBanner', () {

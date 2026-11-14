@@ -308,7 +308,6 @@ void main() {
   testWidgets('the pinned header scope ends where the strip ends',
       (tester) async {
     await _phone(tester);
-    late BuildContext tabContext;
     await tester.pumpWidget(_app(DefaultTabController(
       length: 1,
       child: Builder(
@@ -316,17 +315,13 @@ void main() {
           title: _title,
           controller: DefaultTabController.of(context),
           labels: const ['One'],
-          children: [
-            Builder(builder: (context) {
-              tabContext = context;
-              return const SizedBox();
-            }),
-          ],
+          children: const [SizedBox()],
         ),
       ),
     )));
     await tester.pump();
-    final key = PinnedHeaderScope.headerKeyOf(tabContext)!;
+    final key =
+        tester.widget<PinnedHeaderScope>(find.byType(PinnedHeaderScope)).headerKey;
     final box = key.currentContext!.findRenderObject()! as RenderBox;
     expect(box.localToGlobal(Offset(0, box.size.height)).dy,
         moreOrLessEquals(tester.getRect(find.byType(TabBar)).bottom));

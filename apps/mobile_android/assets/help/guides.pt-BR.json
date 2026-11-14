@@ -3828,7 +3828,7 @@
             "items": [
               "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Você aparece uma vez, com a sua melhor corrida.",
               "Por padrão ela mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Todos os tempos** para ver os melhores tempos de todos os tempos.",
-              "Filtre por gênero ou faixa etária. O filtro de idade só inclui quem concordou em compartilhar dados de saúde, então pode ser menor que a classificação completa."
+              "Filtre por gênero ou faixa etária. O filtro de idade só inclui quem deu consentimento de dados de saúde, então pode ser menor que a classificação completa."
             ]
           }
         ]

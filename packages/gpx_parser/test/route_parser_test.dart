@@ -428,6 +428,40 @@ void main() {
     });
   });
 
+  group('RouteParser.tcxWithDistances', () {
+    String tcx(List<String?> distances, {String lap = ''}) {
+      final pts = StringBuffer();
+      for (var i = 0; i < distances.length; i++) {
+        final d = distances[i];
+        pts.write('<Trackpoint><Time>2026-04-10T10:00:${(i * 10).toString().padLeft(2, '0')}Z</Time>'
+            '<Position><LatitudeDegrees>0.0</LatitudeDegrees>'
+            '<LongitudeDegrees>${i * 0.001}</LongitudeDegrees></Position>'
+            '${d == null ? '' : '<DistanceMeters>$d</DistanceMeters>'}</Trackpoint>');
+      }
+      return '<?xml version="1.0"?><TrainingCenterDatabase><Activities>'
+          '<Activity><Lap>$lap<Track>$pts</Track></Lap></Activity>'
+          '</Activities></TrainingCenterDatabase>';
+    }
+
+    test('reads each Trackpoint\'s own <DistanceMeters>, index-aligned', () {
+      final r = RouteParser.tcxWithDistances(
+          tcx(['12.0', ' 130.5 ', '250'], lap: '<DistanceMeters>9999</DistanceMeters>'));
+      expect(r.route.waypoints, hasLength(3));
+      expect(r.distancesMetres, [12.0, 130.5, 250.0]);
+    });
+
+    test('null where a point carries none or an unreadable one', () {
+      final r = RouteParser.tcxWithDistances(tcx(['0', null, 'abc', '300']));
+      expect(r.distancesMetres, [0.0, null, null, 300.0]);
+    });
+
+    test('null list when no point carries one; fromTcx is its route', () {
+      final r = RouteParser.tcxWithDistances(tcx([null, null]));
+      expect(r.distancesMetres, isNull);
+      expect(RouteParser.fromTcx(tcx([null, null])).waypoints, hasLength(2));
+    });
+  });
+
   group('RouteParser.fromGeoJson', () {
     test('parses LineString with [lng, lat, ele] coordinate order', () {
       final geojson = {

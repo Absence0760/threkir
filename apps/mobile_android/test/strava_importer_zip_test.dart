@@ -644,6 +644,75 @@ void main() {
     });
   });
 
+  group('TCX device distance', () {
+    // A TCX whose Trackpoints carry the device's own `<DistanceMeters>`
+    // beside positions that zig-zag 3 m either side of the road for the first
+    // 600 m, at 3.0 m/s throughout. [distance] maps a point's index to the
+    // distance it carries, or null to leave the element out.
+    String tcxDoc({double? Function(int i, double d)? distance}) {
+      const mPerDeg = 111320.0;
+      final t0 = DateTime.utc(2026, 4, 9, 11, 30);
+      final pts = StringBuffer();
+      for (var i = 0; i <= 617; i++) {
+        final d = i * 6.0;
+        final latM = d < 600 ? (i.isEven ? 3.0 : -3.0) : 0.0;
+        final dist = distance == null ? d + 12 : distance(i, d + 12);
+        pts.write('<Trackpoint>'
+            '<Time>${t0.add(Duration(seconds: i * 2)).toIso8601String()}</Time>'
+            '<Position><LatitudeDegrees>${latM / mPerDeg}</LatitudeDegrees>'
+            '<LongitudeDegrees>${d / mPerDeg}</LongitudeDegrees></Position>'
+            '${dist == null ? '' : '<DistanceMeters>$dist</DistanceMeters>'}'
+            '</Trackpoint>');
+      }
+      return '<?xml version="1.0"?><TrainingCenterDatabase><Activities>'
+          '<Activity><Lap><Track>$pts</Track></Lap></Activity>'
+          '</Activities></TrainingCenterDatabase>';
+    }
+
+    Future<File> tcxZip(String doc) async {
+      final csvContent = csv([
+        _stravaHeader,
+        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', '3.75', '1234',
+            'activities/1.tcx'],
+      ]);
+      final body = utf8.encode(doc);
+      final archive = Archive()
+        ..addFile(ArchiveFile(
+            'activities.csv', csvContent.length, utf8.encode(csvContent)))
+        ..addFile(ArchiveFile('activities/1.tcx', body.length, body));
+      final zip = File('${tmpDir.path}/strava-tcx.zip');
+      await zip.writeAsBytes(ZipEncoder().encode(archive));
+      return zip;
+    }
+
+    test('every waypoint carries the device distance, so mile splits land on '
+        'it (#1387)', () async {
+      final r = await StravaImporter.importFromZip(await tcxZip(tcxDoc()));
+      final run = r.runs.single;
+      expect(run.track, hasLength(618));
+      expect(run.track.first.cumulativeDistanceMetres, 0);
+      expect(run.track.last.cumulativeDistanceMetres, closeTo(3702, 0.01));
+      expect(run.distanceMetres, closeTo(3702, 0.01));
+
+      final splits = computeSplitDurations(
+          run.track, 1609.344, run.startedAt,
+          totalDistanceMetres: run.distanceMetres);
+      expect(splits, hasLength(2));
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(536.448, 1),
+            reason: 'mile ${s.tick}');
+      }
+    });
+
+    test('a stream with a gap leaves the track on its positions', () async {
+      final r = await StravaImporter.importFromZip(await tcxZip(
+          tcxDoc(distance: (i, d) => i == 300 ? null : d)));
+      final run = r.runs.single;
+      expect(run.track.any((w) => w.cumulativeDistanceMetres != null), isFalse);
+      expect(run.distanceMetres, greaterThan(3702));
+    });
+  });
+
   group('compressed track files', () {
     test('.gpx.gz is decompressed before parsing', () async {
       final gz = GZipEncoder().encode(utf8.encode(_gpxTwoPoint));

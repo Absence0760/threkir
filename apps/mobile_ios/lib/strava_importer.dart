@@ -282,7 +282,9 @@ class StravaImporter {
       if (lower.contains('.gpx')) {
         parsedRoute = RouteParser.fromGpx(utf8.decode(content));
       } else if (lower.contains('.tcx')) {
-        parsedRoute = RouteParser.fromTcx(utf8.decode(content));
+        final tcx = RouteParser.tcxWithDistances(utf8.decode(content));
+        parsedRoute = tcx.route;
+        deviceDistances = tcx.distancesMetres;
       } else if (lower.contains('.fit')) {
         final fit = FitParser.parseWithDistances(Uint8List.fromList(content));
         parsedRoute = fit.route;
@@ -295,8 +297,8 @@ class StravaImporter {
     // Use the parsed track. Fall back to CSV-supplied numbers if the file
     // somehow has no waypoints.
     final points = parsedRoute?.waypoints ?? const <Waypoint>[];
-    // A FIT's own distance stream, when it is clean, is what the watch
-    // measured and auto-lapped on: every waypoint carries it, so the split
+    // A FIT's or TCX's own distance stream, when it is clean, is what the
+    // watch measured and auto-lapped on: every waypoint carries it, so the split
     // table measures on it (gps_distance.md § Splits and moving time) and the
     // run's distance is its total rather than the raw hop-sum of the
     // positions (#1387).

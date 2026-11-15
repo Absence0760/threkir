@@ -338,10 +338,13 @@ class _ImportScreenState extends State<ImportScreen> {
 
   /// Seed `body_weight_kg` from Health Connect when the user hasn't set
   /// one. Never overwrites an existing weight. Best-effort: a failure here
-  /// must not derail the workout import.
+  /// must not derail the workout import. Weight is health data, kept only
+  /// with health-data consent (decisions § 2541), so nothing is seeded while
+  /// consent is absent or unknown.
   Future<void> _maybeSeedBodyWeight() async {
     final prefs = widget.preferences;
     if (prefs == null || prefs.bodyWeightKg != null) return;
+    if (await healthDataConsented(widget.apiClient) != true) return;
     final kg = await HealthConnectImporter.fetchLatestWeightKg();
     if (kg == null) return;
     prefs.setBodyWeightKg(kg);

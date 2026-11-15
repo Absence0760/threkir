@@ -21,6 +21,7 @@ class _FakeApi extends ApiClient {
   bool? completedConsent;
   String? completedGender;
   DateTime? completedDob;
+  final List<double> recordedWeights = [];
 
   /// Simulates zero connectivity — both stamp writes throw, like the
   /// real client does when the server is unreachable (issue #246).
@@ -50,6 +51,11 @@ class _FakeApi extends ApiClient {
     completedDob = dateOfBirth;
     completedGender = gender;
     completedConsent = healthDataConsent;
+  }
+
+  @override
+  Future<void> recordBodyWeightKg(double weightKg) async {
+    recordedWeights.add(weightKg);
   }
 }
 
@@ -956,6 +962,64 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('stub-import'), findsOneWidget);
         expect(opened, greaterThan(0));
+      });
+    });
+
+    group('body weight is kept only with health-data consent', () {
+      // Weight is Art 9 health data (decisions § 2541): typing one alone asks
+      // for the consent, and without it nothing is stored — not the bag key
+      // the calorie estimates read, not the body_metrics series.
+      Future<(_FakeApi, _FakeSettingsService)> finishWithWeight(
+        WidgetTester tester, {
+        required bool consent,
+      }) async {
+        final api = _FakeApi();
+        final fake = _FakeSettingsService();
+        final sync = SettingsSyncService(
+          preferences: await _prefs(),
+          serviceLoader: () async => fake,
+        );
+        await _pump(tester, api, await _prefs(), settingsSync: sync);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < 3; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.byType(CheckboxListTile), findsNothing);
+        await tester.enterText(
+            find.widgetWithText(TextField, l10n.setupWeightLabel), '72.5');
+        await tester.pump();
+        expect(find.byType(CheckboxListTile), findsOneWidget,
+            reason: 'a weight alone asks for the health-data consent');
+        if (consent) {
+          await tester.ensureVisible(find.byType(CheckboxListTile));
+          await tester.pump();
+          await tester.tap(find.byType(CheckboxListTile));
+          await tester.pump();
+        }
+        for (var i = 3; i < _tapsToDone; i++) {
+          await _forward(tester, l10n);
+        }
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+        return (api, fake);
+      }
+
+      testWidgets('a weight typed without consent is not saved',
+          (tester) async {
+        final (api, fake) = await finishWithWeight(tester, consent: false);
+        expect(api.completedConsent, isFalse);
+        expect(fake.universalWrites, hasLength(1));
+        expect(fake.universalWrites.single.containsKey(SettingsKeys.bodyWeightKg),
+            isFalse);
+        expect(api.recordedWeights, isEmpty);
+      });
+
+      testWidgets('with consent the weight lands in the bag and the series',
+          (tester) async {
+        final (api, fake) = await finishWithWeight(tester, consent: true);
+        expect(api.completedConsent, isTrue);
+        expect(fake.universalWrites.single[SettingsKeys.bodyWeightKg], 72.5);
+        expect(api.recordedWeights, [72.5]);
       });
     });
 

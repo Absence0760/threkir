@@ -13,6 +13,7 @@ import 'package:ui_kit/ui_kit.dart'
         PageTitleScope;
 
 import '../auth_error.dart';
+import '../column_limits.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../locale_defaults.dart';
 import '../onboarding.dart';
@@ -305,8 +306,8 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
         healthDataConsent: _healthDataConsent.value,
       );
 
-      // 2. Universal-prefs bag (units + privacy + goal + weight + the
-      // consent-gated DOB mirror). Best-effort + locally mirrored where a
+      // 2. Universal-prefs bag (units + privacy + goal + the consent-gated
+      // weight and DOB mirror). Best-effort + locally mirrored where a
       // local pref exists, so the privacy default protects new-run
       // visibility immediately even if the bag write fails offline.
       _preferredUnit.value == 'mi'
@@ -331,8 +332,15 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       if (goal != null) bag[SettingsKeys.primaryGoal] = goal;
       final push = _pushNotifications.value;
       if (push != null) bag[SettingsKeys.pushNotifications] = push;
+      // Weight is health data: it is kept only with health-data consent, and
+      // the database refuses the bag key without it (decisions § 2541).
+      // Without it the calorie estimate uses its 70 kg default.
       final w = parseTypedDecimal(_weightCtl.value.text);
-      if (w != null && w > 0) bag[SettingsKeys.bodyWeightKg] = w;
+      final consentedWeight =
+          _healthDataConsent.value && w != null && w > 0 ? w : null;
+      if (consentedWeight != null) {
+        bag[SettingsKeys.bodyWeightKg] = consentedWeight;
+      }
       // DOB mirrors into the bag only under health consent — the bag copy
       // feeds the coach / leaderboard read paths (Art 9 surfaces). The
       // minor-exclusion floor reads the profile column written above, not
@@ -353,6 +361,17 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       } catch (e) {
         debugPrint('onboarding bag write failed: $e');
         bagError = friendlyError(l10n, e);
+      }
+      // The first point of the weight series the bag key mirrors, so the
+      // consented history starts where the runner first gave a weight.
+      if (consentedWeight != null &&
+          withinColumnLimit('body_metrics.weight_kg', consentedWeight)) {
+        try {
+          await widget.apiClient.recordBodyWeightKg(consentedWeight);
+        } catch (e) {
+          debugPrint('onboarding weight series write failed: $e');
+          bagError ??= friendlyError(l10n, e);
+        }
       }
 
       if (!mounted) return;
@@ -761,20 +780,33 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
               ),
             ),
           ]),
-          if (_gender.value.isNotEmpty || _dateOfBirth.value != null) ...[
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              value: _healthDataConsent.value,
-              onChanged: (v) =>
-                  setState(() => _healthDataConsent.value = v ?? false),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                l10n.setupHealthConsent,
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-          ],
+          // Weight is health data as much as gender is, so typing one alone
+          // asks for the consent too. The weight is a typed field, so the
+          // checkbox listens to it rather than rebuilding the step per key.
+          ListenableBuilder(
+            listenable: _weightCtl.value,
+            builder: (context, _) {
+              if (_gender.value.isEmpty &&
+                  _dateOfBirth.value == null &&
+                  _weightCtl.value.text.trim().isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: CheckboxListTile(
+                  value: _healthDataConsent.value,
+                  onChanged: (v) =>
+                      setState(() => _healthDataConsent.value = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    l10n.setupHealthConsent,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

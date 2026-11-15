@@ -19,6 +19,7 @@ import {
 	parseInfoPlist,
 	parseManifest,
 	parsePrivacyManifest,
+	stripXmlComments,
 	swiftHealthKitTypes,
 	trackedFiles,
 } from './check_store_declarations.mjs';
@@ -74,6 +75,37 @@ test('a manifest yields its shipped permissions and service types, ignoring comm
 	const { permissions, services } = parseManifest(xml);
 	assert.deepEqual(permissions, ['android.permission.CAMERA', 'android.permission.BLUETOOTH_SCAN']);
 	assert.deepEqual(services, [{ name: '.Rec', types: ['location', 'health'] }]);
+});
+
+test('comments are read the way an XML parser reads them, and a malformed one is refused rather than half-stripped', () => {
+	assert.equal(stripXmlComments('a<!-- x -->b<!---->c<!-- y\n z -->d'), 'abcd');
+	assert.equal(stripXmlComments('<a/> --> <b/>'), '<a/> --> <b/>');
+
+	// A nested comment: a regex replace stopped at the inner close and left the
+	// outer tail, with the permission inside it, as live markup.
+	const nested = '<manifest><!-- outer <!-- inner --> <uses-permission android:name="android.permission.HIDDEN" /> --></manifest>';
+	assert.throws(() => parseManifest(nested, 'm.xml'), /m\.xml: the comment opened at offset 10 holds "--"/);
+
+	// An unterminated comment: the replace matched nothing and parsed what it
+	// commented out as declared.
+	assert.throws(
+		() => parseHealthPermissions('<resources><!-- <permission name="android.permission.health.READ_STEPS" /></resources>', 'h.xml'),
+		/h\.xml: a comment opened at offset 11 never closes/,
+	);
+
+	// Fragments split around a comment that join into a new opener once it goes.
+	assert.throws(() => stripXmlComments('<!<!---->-- <uses-permission android:name="x" /> -->'), /joined two fragments into a new "<!--"/);
+	assert.throws(() => stripXmlComments('<!-- a --->'), /holds "--"/);
+});
+
+test('a manifest with a malformed comment is a named problem, not a crash or a silent pass', () => {
+	const broken = '<manifest><!-- <uses-permission android:name="android.permission.CAMERA" /></manifest>';
+	const manifest = ANDROID_SOURCES[0].manifest;
+	const { problems } = derive({ read: (p) => (p === manifest ? broken : read(p)), files: trackedFiles(root) });
+	assert.ok(
+		problems.some((p) => p.startsWith(`${manifest}: a comment opened at offset 10 never closes`)),
+		problems.join('\n'),
+	);
 });
 
 test('health_permissions.xml, Info.plist and PrivacyInfo.xcprivacy are read for what the consoles care about', () => {

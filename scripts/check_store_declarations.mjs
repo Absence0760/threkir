@@ -149,9 +149,36 @@ export function note(d, category, key, target, file) {
 
 // --- Android -----------------------------------------------------------------------
 
-/** @param {string} xml */
-export function stripXmlComments(xml) {
-	return xml.replace(/<!--[\s\S]*?-->/g, '');
+/**
+ * The document with its comments removed, read the way an XML parser reads
+ * them: a comment runs from `<!--` to the first `-->`, its body may not hold
+ * `--`, and it must close. A manifest that breaks any of those is one aapt2
+ * refuses, so it is reported rather than guessed at - a regex replace leaves
+ * an unterminated comment's commented-out permissions in place, and a nested
+ * one's tail outside it.
+ * @param {string} xml
+ * @param {string} [file]
+ */
+export function stripXmlComments(xml, file = 'the document') {
+	let out = '';
+	let at = 0;
+	for (;;) {
+		const open = xml.indexOf('<!--', at);
+		if (open === -1) break;
+		out += xml.slice(at, open);
+		const close = xml.indexOf('-->', open + 4);
+		if (close === -1) throw new Error(`${file}: a comment opened at offset ${open} never closes, so what follows it is not markup the build reads.`);
+		const inner = xml.indexOf('--', open + 4);
+		if (inner !== close) {
+			throw new Error(
+				`${file}: the comment opened at offset ${open} holds "--" before its close. XML forbids it, and it is how a nested comment leaves its tail outside the outer one.`,
+			);
+		}
+		at = close + 3;
+	}
+	out += xml.slice(at);
+	if (out.includes('<!--')) throw new Error(`${file}: removing the comments joined two fragments into a new "<!--", which no well-formed document can produce.`);
+	return out;
 }
 
 /**
@@ -169,10 +196,11 @@ function attribute(tag, attr) {
  * `tools:node="remove"` permission is one the merge deletes, so it does not
  * ship.
  * @param {string} xml
+ * @param {string} [file]
  * @returns {{ permissions: string[], services: Array<{ name: string, types: string[] }> }}
  */
-export function parseManifest(xml) {
-	const src = stripXmlComments(xml);
+export function parseManifest(xml, file) {
+	const src = stripXmlComments(xml, file);
 	const permissions = [];
 	for (const [tag] of src.matchAll(/<uses-permission(?:-sdk-23)?\b[^>]*>/g)) {
 		const name = attribute(tag, 'android:name');
@@ -188,9 +216,12 @@ export function parseManifest(xml) {
 	return { permissions, services };
 }
 
-/** @param {string} xml */
-export function parseHealthPermissions(xml) {
-	return [...stripXmlComments(xml).matchAll(/<permission\b[^>]*\bname\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+/**
+ * @param {string} xml
+ * @param {string} [file]
+ */
+export function parseHealthPermissions(xml, file) {
+	return [...stripXmlComments(xml, file).matchAll(/<permission\b[^>]*\bname\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
 }
 
 export const HEALTH_PREFIX = 'android.permission.health.';
@@ -310,7 +341,14 @@ export function derive({ read, files }) {
 	}
 
 	for (const src of ANDROID_SOURCES) {
-		const { permissions, services } = parseManifest(read(src.manifest));
+		let parsed;
+		try {
+			parsed = parseManifest(read(src.manifest), src.manifest);
+		} catch (e) {
+			problems.push(e instanceof Error ? e.message : String(e));
+			continue;
+		}
+		const { permissions, services } = parsed;
 		const health = [];
 		for (const p of permissions) {
 			if (p.startsWith(HEALTH_PREFIX)) {
@@ -320,7 +358,13 @@ export function derive({ read, files }) {
 		}
 		for (const s of services) for (const t of s.types) note(d, 'foreground_service_types', t, src.target, src.manifest);
 		if (src.healthPermissions) {
-			const listed = parseHealthPermissions(read(src.healthPermissions));
+			let listed;
+			try {
+				listed = parseHealthPermissions(read(src.healthPermissions), src.healthPermissions);
+			} catch (e) {
+				problems.push(e instanceof Error ? e.message : String(e));
+				continue;
+			}
 			const a = [...new Set(health)].sort().join(',');
 			const b = [...new Set(listed)].sort().join(',');
 			if (a !== b) {

@@ -27,6 +27,7 @@ import {
 import { thrownMessage } from '../core/supabase_error';
 import { loggableMessage } from '../util/loggable_message';
 import { isEntityId } from '../core/entity_id';
+import { withoutHealthConsentPrefs } from '../settings/settings_write';
 
 export interface RestoreProgress {
 	stage: 'reading' | 'profile' | 'tracks' | 'runs' | 'routes' | 'done';
@@ -120,6 +121,8 @@ export function noteIncompleteArchive(
 export interface RestoreBackend {
 	upsertProfile(row: JsonObject): Promise<void>;
 	upsertSettings(prefs: JsonObject): Promise<void>;
+	/** Whether the destination account has health-data consent on record. */
+	healthDataConsented(): Promise<boolean>;
 	uploadTrack(path: string, bytes: Uint8Array): Promise<void>;
 	upsertRun(row: JsonObject): Promise<void>;
 	upsertRoute(row: JsonObject): Promise<void>;
@@ -227,7 +230,15 @@ export async function restoreOrchestrate(
 	}
 	if (Object.keys(parsed.settingsPrefs).length > 0) {
 		try {
-			await backend.upsertSettings(parsed.settingsPrefs);
+			// The consent-gated values are restored only into an account that
+			// has consent (decisions § 2542): the database refuses a weight
+			// without it, and that one key used to fail the whole bag. An
+			// unreadable consent state is treated as none.
+			const consented = await backend.healthDataConsented().catch(() => false);
+			const prefs = consented
+				? parsed.settingsPrefs
+				: (withoutHealthConsentPrefs(parsed.settingsPrefs) ?? parsed.settingsPrefs);
+			if (Object.keys(prefs).length > 0) await backend.upsertSettings(prefs);
 		} catch (e) {
 			warn(result, { kind: 'settings', error: e });
 		}

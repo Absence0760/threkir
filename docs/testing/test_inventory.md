@@ -220,11 +220,11 @@ HTTP-level coverage for the four `SupabaseClient` methods added in the May 2026 
 
 **Cross-cutting (5 tests):** `FetchExportRoutes` with every optional pointer field set decodes to non-nil pointers (DistanceM, ElevationM, Surface, IsPublic, Slug, Featured, RunCount, IsStarred, Description, ClubID, CreatedAt, UpdatedAt); context cancellation propagates; all 4 new methods carry both apikey + Authorization headers via the shared `do()` helper (defensive guard against a future refactor that bypasses it).
 
-### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 39 tests
+### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 43 tests
 
 Pure-logic coverage of the restore orchestrator extracted from `backup.ts`. The Supabase upserts live behind a small `RestoreBackend` interface; tests substitute a counter-tracking fake so the loop is observable without booting supabase-js. Production wires a thin supabase-js adapter (`supabaseRestoreBackend()` in `backup.ts`); tests wire the fake (`makeFakeBackend()`).
 
-**profile + settings (5 tests):** profile present → `upsertProfile` fires with stripped fields + user id; null profile → no call; `upsertProfile` error becomes a warning, downstream stages still process; non-empty `settingsPrefs` triggers `upsertSettings`; empty prefs is a no-op; settings error → warning + downstream continues.
+**profile + settings (9 tests):** profile present → `upsertProfile` fires with stripped fields + user id; null profile → no call; `upsertProfile` error becomes a warning, downstream stages still process; non-empty `settingsPrefs` triggers `upsertSettings`; empty prefs is a no-op; settings error → warning + downstream continues. Into an account without health-data consent the consent-gated keys are left out and the rest restores (decisions § 2542); with consent they restore; an unreadable consent state counts as none; a bag of only gated keys writes nothing.
 
 **runs + tracks (10 tests):** happy-path single run uploads track BEFORE upserting row (order pin); run with no track in archive still upserts the row with `track_url=null`; uploadTrack failure → warning, row still upserts; upsertRun failure → warning, other rows continue (partial-success contract); `generateNewIds` replaces every run id; with `generateNewIds`, the track upload path uses the NEW id even though the archive is keyed by ORIGINAL id; event_id resolution — unknown ids nulled, known ids preserved; `fetchValidEventIds` is only called when ids are present; resolver error bubbles (current contract pinned); `coalesceActivityType` inserts `'run'` when metadata missing the key, and preserves explicit values.
 

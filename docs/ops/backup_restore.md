@@ -143,6 +143,12 @@ the archive, so its projection is guarded column by column against the
 migrations — see `personal_data_export_profile_guard_test.go` and
 `docs/compliance/data-subject-rights.md`.
 
+`settings_prefs` restores whole into an account with health-data consent.
+Into one without it (or when the consent state cannot be read) the keys in
+`private.health_consent_pref_keys()` are left out and the rest restores: the
+database refuses a weight without consent, and that one key used to fail the
+whole bag (decisions § 2542).
+
 ## Round-trip guarantees
 
 - Run count is preserved (counts.runs == imported runs).

@@ -21,6 +21,29 @@ import 'restore_warning.dart';
 
 export 'restore_warning.dart' show RestoreWarning, RestoreWarningKind;
 
+/// The archived settings bag as it may be restored: without its
+/// consent-gated values unless the account has health-data consent (decisions
+/// § 2542). The database refuses a weight without consent, and that one key
+/// used to fail the whole bag. Mirrors web's `restoreOrchestrate`.
+@visibleForTesting
+Map<String, dynamic> restorablePrefs(
+  Map<String, dynamic> prefs, {
+  required bool consented,
+}) =>
+    consented ? prefs : (withoutHealthConsentPrefs(prefs) ?? prefs);
+
+/// Whether the account a restore writes into has health-data consent. An
+/// unreadable answer is treated as none, so the gated values are left out
+/// rather than failing the bag.
+Future<bool> _restoreTargetConsented(ApiClient api) async {
+  try {
+    return await api.fetchHealthDataConsented();
+  } catch (e) {
+    debugPrint('restore: health consent read failed: ${loggableMessage('$e')}');
+    return false;
+  }
+}
+
 /// Full round-trip backup and restore for the signed-in user's data.
 /// See [docs/ops/backup_restore.md](../../../docs/ops/backup_restore.md) for the
 /// archive layout. Format is identical to the web side — a backup made
@@ -499,8 +522,14 @@ class BackupService {
           await client.from('user_profiles').upsert(known.row);
           result.profileRestored = true;
         }
-        final prefs = profile['settings_prefs'];
-        if (prefs is Map && prefs.isNotEmpty) {
+        final archived = profile['settings_prefs'];
+        final prefs = archived is Map
+            ? restorablePrefs(
+                Map<String, dynamic>.from(archived),
+                consented: await _restoreTargetConsented(apiNonNull),
+              )
+            : null;
+        if (prefs != null && prefs.isNotEmpty) {
           await client.from('user_settings').upsert({
             'user_id': uid,
             'prefs': prefs,

@@ -36,8 +36,10 @@ interface FakeBackend extends RestoreBackend {
 		upsertRun: Error;
 		upsertRoute: Error;
 		fetchValidEventIds: Error;
+		healthDataConsented: Error;
 	}>;
 	validEventIds: Set<string>;
+	consented: boolean;
 	uploadTrackSelectiveFailure?: (path: string) => Error | null;
 	upsertRunSelectiveFailure?: (row: Record<string, unknown>) => Error | null;
 	upsertRouteSelectiveFailure?: (row: Record<string, unknown>) => Error | null;
@@ -52,6 +54,11 @@ function makeFakeBackend(): FakeBackend {
 		uploadBytes,
 		failures,
 		validEventIds: new Set<string>(),
+		consented: true,
+		async healthDataConsented() {
+			if (failures.healthDataConsented) throw failures.healthDataConsented;
+			return fake.consented;
+		},
 		async upsertProfile(row) {
 			calls.push({ method: 'upsertProfile', arg: row });
 			if (failures.upsertProfile) throw failures.upsertProfile;
@@ -198,6 +205,57 @@ test('non-empty settingsPrefs → upsertSettings fires', async () => {
 	const call = backend.calls.find((c) => c.method === 'upsertSettings');
 	assert.ok(call);
 	assert.deepEqual(call.arg, { unit: 'km', split_audio: true });
+});
+
+// Decisions § 2542: the database refuses a weight without health-data
+// consent, and that one key used to fail the whole settings bag.
+test('into an account without health-data consent, the gated values are left out and the rest restores', async () => {
+	const backend = makeFakeBackend();
+	backend.consented = false;
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			settingsPrefs: { unit: 'km', body_weight_kg: 70, hr_medication_affected: true, cycle_length_days: 28 }
+		}),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertSettings');
+	assert.deepEqual(call?.arg, { unit: 'km' });
+	assert.equal(result.warnings.filter((w) => w.kind === 'settings').length, 0);
+});
+
+test('with health-data consent, the gated values restore too', async () => {
+	const backend = makeFakeBackend();
+	await restoreOrchestrate(
+		makeParsedBackup({ settingsPrefs: { unit: 'km', body_weight_kg: 70 } }),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertSettings');
+	assert.deepEqual(call?.arg, { unit: 'km', body_weight_kg: 70 });
+});
+
+test('an unreadable consent state restores without the gated values', async () => {
+	const backend = makeFakeBackend();
+	backend.failures.healthDataConsented = new Error('offline');
+	await restoreOrchestrate(
+		makeParsedBackup({ settingsPrefs: { unit: 'km', body_weight_kg: 70 } }),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertSettings');
+	assert.deepEqual(call?.arg, { unit: 'km' });
+});
+
+test('a bag of only gated values into an account without consent writes nothing', async () => {
+	const backend = makeFakeBackend();
+	backend.consented = false;
+	await restoreOrchestrate(
+		makeParsedBackup({ settingsPrefs: { body_weight_kg: 70 } }),
+		'uid',
+		backend
+	);
+	assert.equal(backend.calls.filter((c) => c.method === 'upsertSettings').length, 0);
 });
 
 test('empty settingsPrefs → upsertSettings does not fire', async () => {

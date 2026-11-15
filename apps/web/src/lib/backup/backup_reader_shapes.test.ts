@@ -65,6 +65,9 @@ function recordingBackend() {
 	const backend: RestoreBackend = {
 		async upsertProfile() {},
 		async upsertSettings() {},
+		async healthDataConsented() {
+			return true;
+		},
 		async uploadTrack() {},
 		async upsertRun(row) {
 			runs.push(row);

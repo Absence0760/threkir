@@ -240,6 +240,7 @@ function supabaseRestoreBackend(): RestoreBackend {
 			});
 			if (error) throw dbError(error);
 		},
+		healthDataConsented: fetchHealthDataConsented,
 		async uploadTrack(path, bytes) {
 			// A restored track carries whatever bpm the archive held; without
 			// health-data consent it is uploaded without it (decisions § 2514).

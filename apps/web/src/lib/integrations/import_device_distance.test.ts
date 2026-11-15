@@ -10,8 +10,9 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { trackpointDistance } from './import';
-import { withDeviceDistances } from './garmin-fit';
-import { computeRealSplits } from '../runs/run_stats';
+import { importedDistanceMetres, withDeviceDistances } from './garmin-fit';
+import { compositeKey, isCrossProviderDuplicate, isImportDuplicate } from './garmin_dedupe';
+import { computeRealSplits, haversineMetres } from '../runs/run_stats';
 import type { TrackPoint } from '../types';
 
 const METRES_PER_MILE = 1609.344;
@@ -65,4 +66,45 @@ test('a TCX with a gap in its distance stream keeps splitting on positions', () 
 	const { track, distances } = tcxShapedRun();
 	distances[300] = Number.NaN;
 	assert.equal(withDeviceDistances(track, distances), track);
+});
+
+/// The hop-sum of [track]'s positions: what a TCX import stored before #1387.
+function positionsMetres(track: readonly TrackPoint[]): number {
+	let sum = 0;
+	for (let i = 1; i < track.length; i++) {
+		sum += haversineMetres(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+	}
+	return sum;
+}
+
+test('importedDistanceMetres — the device total, before-the-first-fix distance included', () => {
+	// The stream starts at 12 m: the device measured 12 m before its first
+	// positioned record. Rebasing it (the split axis) and storing the last value
+	// read 3702 m here, where the FIT path stores the session total.
+	const { track, distances } = tcxShapedRun();
+	const positions = positionsMetres(track);
+	assert.equal(importedDistanceMetres(null, distances, track.length, positions), 3714);
+	assert.equal(importedDistanceMetres(3750, distances, track.length, positions), 3750, 'a provider total wins');
+	assert.equal(importedDistanceMetres(0, distances, track.length, positions), 3714, 'a zero total is none');
+	const broken = distances.map((d, i) => (i === 300 ? Number.NaN : d));
+	assert.equal(importedDistanceMetres(null, broken, track.length, positions), positions);
+	assert.equal(importedDistanceMetres(null, null, track.length, null), 0);
+});
+
+test('isImportDuplicate — a TCX stored at its positions before #1387 is still the same run', () => {
+	const { track, distances } = tcxShapedRun();
+	const startedAt = track[0].ts!;
+	const old = Math.round(positionsMetres(track));
+	const now = importedDistanceMetres(null, distances, track.length, old);
+	// The zig-zag start puts the old figure more than the 5 % guard away.
+	assert.equal(old, 3944);
+	assert.ok((old - now) / old > 0.05, `gap ${(old - now) / old}`);
+	const existing = [{ startedAtMs: Date.parse(startedAt), distanceM: old }];
+	assert.equal(isCrossProviderDuplicate({ startedAtMs: Date.parse(startedAt), distanceM: now }, existing), false);
+
+	assert.equal(isImportDuplicate(startedAt, [now, old], new Set(), existing), true, 'cross-provider');
+	assert.equal(isImportDuplicate(startedAt, [now, old], new Set([compositeKey(startedAt, old)]), []), true, 'composite');
+	assert.equal(isImportDuplicate(startedAt, [now], new Set(), existing), false);
+	const later = new Date(Date.parse(startedAt) + 3_600_000).toISOString();
+	assert.equal(isImportDuplicate(later, [now, old], new Set([compositeKey(startedAt, old)]), existing), false);
 });

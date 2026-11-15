@@ -118,6 +118,33 @@ List<double>? deviceCumulativeMetres(List<double?>? stream, int pointCount) {
   return out;
 }
 
+/// An imported run's distance, metres, by one rule for every importer and
+/// platform: the device's or provider's own total when the file or row carries
+/// one ([totalMetres]: the Strava CSV's `Distance`), else the last value of a
+/// device distance stream that passes [deviceCumulativeMetres] (a FIT's or a
+/// TCX's), else [fallbackMetres] (the hop-sum of the positions). The stream is
+/// read as the device wrote it, not rebased, so what the device measured
+/// before its first positioned record stays in the run:
+/// [deviceCumulativeMetres] rebases it only to give the split axis the split
+/// clock's start (#1387). Lockstep with `importedDistanceMetres` in
+/// `apps/web/src/lib/integrations/garmin-fit.ts`.
+double importedDistanceMetres({
+  double? totalMetres,
+  List<double?>? stream,
+  required int pointCount,
+  double? fallbackMetres,
+}) {
+  if (totalMetres != null && totalMetres.isFinite && totalMetres > 0) {
+    return totalMetres;
+  }
+  if (deviceCumulativeMetres(stream, pointCount) != null) {
+    return stream![pointCount - 1]!;
+  }
+  return fallbackMetres != null && fallbackMetres.isFinite && fallbackMetres > 0
+      ? fallbackMetres
+      : 0;
+}
+
 /// Median of the positive intervals (seconds) between consecutive
 /// timestamped waypoints; 1.0 when there are none. An even count takes the
 /// mean of the two middle values.

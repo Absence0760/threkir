@@ -14,7 +14,12 @@
 
 import { openZip, type ZipArchive } from '../core/zip_archive';
 import { parseRouteFile, type ImportedRoute } from './import';
-import { parseFitBuffer, computeEmbeddedBests, withDeviceDistances } from './garmin-fit';
+import {
+	parseFitBuffer,
+	computeEmbeddedBests,
+	importedDistanceMetres,
+	withDeviceDistances,
+} from './garmin-fit';
 import { saveRun, addRunPhoto } from '../core/data';
 import type { JsonObject } from '../types';
 import { TABLES, METADATA_KEYS } from '../core/schema';
@@ -219,6 +224,7 @@ async function importOne(
 	// audit/strava May 2026 Medium #2.
 	let track: ImportedRoute['waypoints'] | null = null;
 	let deviceDistance: number[] | null = null;
+	let fileDistanceM: number | null = null;
 	// Throws when the row names a member the archive does not hold, or one
 	// in a format neither parser reads — the caller's per-row catch turns
 	// that into an `ImportFailureReport` entry instead of a summary-only
@@ -254,6 +260,7 @@ async function importOne(
 				if (parsed && parsed.track.length > 0) {
 					track = parsed.track;
 					deviceDistance = parsed.distance_stream;
+					fileDistanceM = parsed.distance_m;
 				}
 			} else {
 				const synthetic = new File([blob], innerName);
@@ -264,6 +271,7 @@ async function importOne(
 					// on the watch's laps (#1387).
 					track = withDeviceDistances(routes[0].waypoints, routes[0].distance_stream);
 					deviceDistance = routes[0].distance_stream;
+					fileDistanceM = routes[0].distance_m;
 				}
 			}
 		}
@@ -278,9 +286,18 @@ async function importOne(
 	if (idx.stravaType >= 0 && row[idx.stravaType])
 		metadata[METADATA_KEYS.strava_activity_type] = row[idx.stravaType];
 
+	// Strava's own figure for the activity, as the mobile importer and the
+	// Strava API ingest store it; the file's only when the CSV has none.
+	const runDistanceM = importedDistanceMetres(
+		distanceM,
+		deviceDistance,
+		track?.length ?? 0,
+		fileDistanceM,
+	);
+
 	const { id: runId, heartRateDropped } = await saveRun({
 		started_at: startedAt,
-		distance_m: Math.max(0, Math.round(distanceM)),
+		distance_m: Math.max(0, Math.round(runDistanceM)),
 		duration_s: Math.max(0, Math.round(durationS)),
 		elevation_m: elevationM > 0 ? Math.round(elevationM) : null,
 		source: 'strava',

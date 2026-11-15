@@ -415,7 +415,8 @@ class _ImportScreenState extends State<ImportScreen> {
 
     for (var i = 0; i < runs.length; i++) {
       final run = runs[i];
-      if (isCrossSourceDuplicate(run, existing)) {
+      if (isCrossSourceDuplicate(run, existing,
+          alsoDistanceMetres: positionsMetres(run.track))) {
         skippedCrossSource++;
         if (mounted) {
           setState(() {

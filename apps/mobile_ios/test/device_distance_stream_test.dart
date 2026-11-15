@@ -25,6 +25,26 @@ void main() {
     expect(deviceCumulativeMetres([12, 12, 40.5, 100], 4), [0, 0, 28.5, 88]);
   });
 
+  test('importedDistanceMetres: a total, else the stream as written, else '
+      'the fallback', () {
+    final stream = <double?>[12, 12, 40.5, 100];
+    expect(importedDistanceMetres(stream: stream, pointCount: 4), 100,
+        reason: 'not rebased: the 12 m before the first point stays in');
+    expect(
+        importedDistanceMetres(
+            totalMetres: 120, stream: stream, pointCount: 4, fallbackMetres: 90),
+        120);
+    expect(
+        importedDistanceMetres(
+            totalMetres: 0, stream: stream, pointCount: 4, fallbackMetres: 90),
+        100);
+    expect(
+        importedDistanceMetres(
+            stream: [12, null, 40.5, 100], pointCount: 4, fallbackMetres: 90),
+        90);
+    expect(importedDistanceMetres(pointCount: 4), 0);
+  });
+
   test('deviceCumulativeMetres refuses a stream that cannot stand in', () {
     expect(deviceCumulativeMetres(null, 3), isNull);
     expect(deviceCumulativeMetres([0, 10], 3), isNull);

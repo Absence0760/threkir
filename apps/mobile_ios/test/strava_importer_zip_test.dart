@@ -589,10 +589,10 @@ void main() {
       return bytes;
     }
 
-    Future<File> fitZip(Uint8List fit) async {
+    Future<File> fitZip(Uint8List fit, {String csvKm = '3.75'}) async {
       final csvContent = csv([
         _stravaHeader,
-        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', '3.75', '1234',
+        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', csvKm, '1234',
             'activities/1.fit'],
       ]);
       final archive = Archive()
@@ -612,11 +612,13 @@ void main() {
       expect(run.track, hasLength(618));
       expect(run.track.first.cumulativeDistanceMetres, 0);
       expect(run.track.last.cumulativeDistanceMetres, closeTo(3702, 0.01));
-      expect(run.distanceMetres, closeTo(3702, 0.01));
+      // Strava's own figure, as web and the Strava API ingest store it.
+      expect(run.distanceMetres, 3750);
 
       final splits = computeSplitDurations(
           run.track, 1609.344, run.startedAt,
-          totalDistanceMetres: run.distanceMetres);
+          totalDistanceMetres:
+              splitAxisTotalMetres(run.source, run.distanceMetres));
       expect(splits, hasLength(2));
       for (final s in splits) {
         expect(s.duration.inMilliseconds / 1000, closeTo(536.448, 1),
@@ -637,10 +639,17 @@ void main() {
 
     test('a stream with a gap leaves the track on its positions', () async {
       final r = await StravaImporter.importFromZip(await fitZip(
-          fitBytes(distance: (i, d) => i == 300 ? null : d)));
+          fitBytes(distance: (i, d) => i == 300 ? null : d),
+          csvKm: ''));
       final run = r.runs.single;
       expect(run.track.any((w) => w.cumulativeDistanceMetres != null), isFalse);
       expect(run.distanceMetres, greaterThan(3702));
+    });
+
+    test('without a CSV distance the run is the stream total', () async {
+      final r = await StravaImporter.importFromZip(
+          await fitZip(fitBytes(), csvKm: ''));
+      expect(r.runs.single.distanceMetres, closeTo(3702, 0.01));
     });
   });
 
@@ -669,10 +678,10 @@ void main() {
           '</Activities></TrainingCenterDatabase>';
     }
 
-    Future<File> tcxZip(String doc) async {
+    Future<File> tcxZip(String doc, {String csvKm = '3.75'}) async {
       final csvContent = csv([
         _stravaHeader,
-        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', '3.75', '1234',
+        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', csvKm, '1234',
             'activities/1.tcx'],
       ]);
       final body = utf8.encode(doc);
@@ -692,11 +701,12 @@ void main() {
       expect(run.track, hasLength(618));
       expect(run.track.first.cumulativeDistanceMetres, 0);
       expect(run.track.last.cumulativeDistanceMetres, closeTo(3702, 0.01));
-      expect(run.distanceMetres, closeTo(3702, 0.01));
+      expect(run.distanceMetres, 3750);
 
       final splits = computeSplitDurations(
           run.track, 1609.344, run.startedAt,
-          totalDistanceMetres: run.distanceMetres);
+          totalDistanceMetres:
+              splitAxisTotalMetres(run.source, run.distanceMetres));
       expect(splits, hasLength(2));
       for (final s in splits) {
         expect(s.duration.inMilliseconds / 1000, closeTo(536.448, 1),
@@ -704,9 +714,21 @@ void main() {
       }
     });
 
+    test('without a CSV distance the run is the device total, the 12 m before '
+        'the first fix included', () async {
+      // Rebased, the stream ends at 3702 m; the web Garmin ZIP importer stores
+      // the same file at 3714 m.
+      final r = await StravaImporter.importFromZip(
+          await tcxZip(tcxDoc(), csvKm: ''));
+      final run = r.runs.single;
+      expect(run.track.last.cumulativeDistanceMetres, closeTo(3702, 0.01));
+      expect(run.distanceMetres, closeTo(3714, 0.01));
+    });
+
     test('a stream with a gap leaves the track on its positions', () async {
       final r = await StravaImporter.importFromZip(await tcxZip(
-          tcxDoc(distance: (i, d) => i == 300 ? null : d)));
+          tcxDoc(distance: (i, d) => i == 300 ? null : d),
+          csvKm: ''));
       final run = r.runs.single;
       expect(run.track.any((w) => w.cumulativeDistanceMetres != null), isFalse);
       expect(run.distanceMetres, greaterThan(3702));

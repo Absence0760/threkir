@@ -225,7 +225,7 @@ class StravaImporter {
           name: name,
           stravaType: typeStr,
           startedAtRaw: dateStr,
-          fallbackDistanceMetres: stravaCsvDistanceMetres(header, row),
+          csvDistanceMetres: stravaCsvDistanceMetres(header, row),
           fallbackDurationSeconds: csvElapsed,
         );
         runs.add(run);
@@ -249,7 +249,7 @@ class StravaImporter {
     required String name,
     required String stravaType,
     required String startedAtRaw,
-    required double fallbackDistanceMetres,
+    required double csvDistanceMetres,
     required int fallbackDurationSeconds,
   }) {
     // An empty path is not a broken export: the row simply has no track file.
@@ -294,14 +294,14 @@ class StravaImporter {
       }
     }
 
-    // Use the parsed track. Fall back to CSV-supplied numbers if the file
-    // somehow has no waypoints.
+    // Use the parsed track; a file with no waypoints imports trackless.
     final points = parsedRoute?.waypoints ?? const <Waypoint>[];
     // A FIT's or TCX's own distance stream, when it is clean, is what the
     // watch measured and auto-lapped on: every waypoint carries it, so the split
-    // table measures on it (gps_distance.md § Splits and moving time) and the
-    // run's distance is its total rather than the raw hop-sum of the
-    // positions (#1387).
+    // table measures on it (gps_distance.md § Splits and moving time). The
+    // run's distance is Strava's own figure from the CSV, as the web importer
+    // and the Strava API ingest store it, else the stream's total, else the
+    // raw hop-sum of the positions (#1387).
     final deviceCum = deviceCumulativeMetres(deviceDistances, points.length);
     final track = [
       for (var i = 0; i < points.length; i++)
@@ -314,11 +314,12 @@ class StravaImporter {
         ),
     ];
 
-    final distance = deviceCum != null
-        ? deviceCum.last
-        : (parsedRoute?.distanceMetres ?? 0) > 0
-            ? parsedRoute!.distanceMetres
-            : fallbackDistanceMetres;
+    final distance = importedDistanceMetres(
+      totalMetres: csvDistanceMetres,
+      stream: deviceDistances,
+      pointCount: points.length,
+      fallbackMetres: parsedRoute?.distanceMetres,
+    );
 
     // Strava CSV date format: "Apr 9, 2026, 7:30:00 AM"
     // audit/strava May 2026 Low #5 — a malformed date row used to

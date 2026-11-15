@@ -365,6 +365,29 @@ export function deviceCumulativeMetres(
 	return out;
 }
 
+/// An imported run's distance, metres, by one rule for every importer and
+/// platform: the device's or provider's own total when the file or row carries
+/// one ([totalM]: a FIT session's `total_distance`, the Strava CSV's
+/// `Distance`, the Strava API's `distance`), else the last value of a device
+/// distance stream that passes `deviceCumulativeMetres` (a TCX's), else
+/// [fallbackM] (the hop-sum of the positions). The stream is read as the device
+/// wrote it, not rebased, so what the device measured before its first
+/// positioned record stays in the run: `deviceCumulativeMetres` rebases it only
+/// to give the split axis the split clock's start (#1387). Lockstep with
+/// `importedDistanceMetres` in apps/mobile_android/lib/embedded_bests.dart.
+export function importedDistanceMetres(
+	totalM: number | null | undefined,
+	stream: readonly unknown[] | null | undefined,
+	pointCount: number,
+	fallbackM: number | null | undefined,
+): number {
+	if (typeof totalM === 'number' && Number.isFinite(totalM) && totalM > 0) return totalM;
+	if (deviceCumulativeMetres(stream, pointCount) != null) {
+		return (stream as readonly number[])[pointCount - 1];
+	}
+	return typeof fallbackM === 'number' && Number.isFinite(fallbackM) && fallbackM > 0 ? fallbackM : 0;
+}
+
 /// Embedded best-effort seconds for every canonical distance the track is
 /// long enough to cover. Measured on the file's own distance stream when
 /// `deviceDistance` passes `deviceCumulativeMetres`, otherwise on the
@@ -654,7 +677,14 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 
 	return {
 		startedAt: new Date(session.start_time).toISOString(),
-		distance_m: Math.max(0, Math.round(session.total_distance ?? 0)),
+		distance_m: Math.round(
+			importedDistanceMetres(
+				session.total_distance,
+				anyDistance ? distanceStream : null,
+				track.length,
+				null,
+			),
+		),
 		duration_s: Math.max(
 			0,
 			Math.round(session.total_timer_time ?? session.total_elapsed_time ?? 0),

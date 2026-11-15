@@ -20,6 +20,8 @@
 
 import 'package:core_models/core_models.dart';
 
+import 'run_stats.dart' show haversineMetres;
+
 /// ±180 seconds — the canonical cross-provider start tolerance, in lockstep
 /// with `CROSS_PROVIDER_START_TOLERANCE_S` in the web twin
 /// (`apps/web/src/lib/integrations/garmin_dedupe.ts`), the Deno twin
@@ -59,7 +61,18 @@ const Set<RunSource> kAggregatorSources = {
   RunSource.healthkit,
 };
 
-bool isCrossSourceDuplicate(Run candidate, List<Run> existing) {
+/// [alsoDistanceMetres] is a second distance the candidate may match on, as
+/// `isImportDuplicate` on web takes: an importer whose distance rule changed
+/// passes the figure the old rule stored ([positionsMetres]).
+bool isCrossSourceDuplicate(
+  Run candidate,
+  List<Run> existing, {
+  double? alsoDistanceMetres,
+}) {
+  final distances = [
+    candidate.distanceMetres,
+    ?alsoDistanceMetres,
+  ];
   for (final r in existing) {
     // Same-source pairs are normally left to the external_id index — except
     // for an aggregator, where "same source" says nothing about which app
@@ -72,14 +85,32 @@ bool isCrossSourceDuplicate(Run candidate, List<Run> existing) {
     }
     final dt = r.startedAt.difference(candidate.startedAt).abs();
     if (dt > kCrossSourceTimeWindow) continue;
-    final candidateDist = candidate.distanceMetres;
     final existingDist = r.distanceMetres;
-    if (existingDist <= 0 || candidateDist <= 0) continue;
-    final larger =
-        candidateDist.abs() > existingDist.abs() ? candidateDist.abs() : existingDist.abs();
-    final diff = (candidateDist - existingDist).abs();
-    if (diff > larger * kCrossSourceDistanceFraction) continue;
-    return true;
+    if (existingDist <= 0) continue;
+    for (final candidateDist in distances) {
+      if (candidateDist <= 0) continue;
+      final larger = candidateDist.abs() > existingDist.abs()
+          ? candidateDist.abs()
+          : existingDist.abs();
+      final diff = (candidateDist - existingDist).abs();
+      if (diff <= larger * kCrossSourceDistanceFraction) return true;
+    }
   }
   return false;
+}
+
+/// The hop-sum of [track]'s raw positions, metres: what the Strava ZIP
+/// importer stored as a run's distance before #1387, and what a Garmin TCX
+/// import on web stored. An importer passes it to [isCrossSourceDuplicate] as
+/// `alsoDistanceMetres`, so a run already stored under the old rule is still
+/// the same run: on a city start the old and new figures differ by more than
+/// the 5 % the guard allows. Mirrors `isImportDuplicate` in
+/// `apps/web/src/lib/integrations/garmin_dedupe.ts`.
+double positionsMetres(List<Waypoint> track) {
+  var sum = 0.0;
+  for (var i = 1; i < track.length; i++) {
+    sum += haversineMetres(
+        track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+  }
+  return sum;
 }

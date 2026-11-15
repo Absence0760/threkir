@@ -59,9 +59,17 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 	// the user pristine regardless of which fields the wizard touched.
 	let savedProfile: { display_name: string | null; preferred_unit: string | null; onboarded_at: string | null; date_of_birth: string | null; health_data_consent_at: string | null; gender: string | null } | null = null;
 	let savedPrefs: Record<string, unknown> | null = null;
+	// A consented weight starts USER_A's body_metrics series; the rows a test
+	// adds are removed again so the seed's series stays as other specs expect.
+	let savedWeightIds: string[] = [];
 
 	test.beforeEach(async () => {
 		const admin = getAdminClient();
+		const { data: weights } = await admin
+			.from('body_metrics')
+			.select('id')
+			.eq('user_id', USER_A.id);
+		savedWeightIds = (weights ?? []).map((w) => String(w.id));
 		const { data: prof } = await admin
 			.from('user_profiles')
 			.select('display_name, preferred_unit, onboarded_at, date_of_birth, health_data_consent_at, gender')
@@ -101,6 +109,12 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		if (savedPrefs) {
 			await admin.from('user_settings').update({ prefs: savedPrefs }).eq('user_id', USER_A.id);
 		}
+		const { data: weights } = await admin
+			.from('body_metrics')
+			.select('id')
+			.eq('user_id', USER_A.id);
+		const added = (weights ?? []).map((w) => String(w.id)).filter((id) => !savedWeightIds.includes(id));
+		if (added.length) await admin.from('body_metrics').delete().in('id', added);
 	});
 
 	test('protected route redirects to /onboarding when onboarded_at is null', async ({
@@ -367,8 +381,10 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			page.getByRole('heading', { name: /A bit about you/i })
 		).toBeVisible();
 		await expect(page.getByText(/Body weight in lbs/i)).toBeVisible();
-		// Enter 154 lbs → 154 / 2.2046226218 = 69.85 kg canonical.
+		// Enter 154 lbs → 154 / 2.2046226218 = 69.85 kg canonical. A weight is
+		// kept only with health-data consent (decisions § 2541).
 		await page.getByLabel(/Body weight in lbs/i).fill('154');
+		await page.getByRole('checkbox', { name: /consent/i }).check();
 		await page.getByRole('button', { name: 'Continue' }).click();
 
 		// Step 5 — privacy
@@ -396,6 +412,14 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(p.weight_unit).toBe('lbs');
 		// …and the typed lbs value was stored as canonical kg, NOT verbatim.
 		expect(p.body_weight_kg as number).toBeCloseTo(69.9, 1);
+		// The consented weight also starts the body_metrics series.
+		const { data: weights } = await admin
+			.from('body_metrics')
+			.select('id, weight_kg')
+			.eq('user_id', USER_A.id);
+		const added = (weights ?? []).filter((w) => !savedWeightIds.includes(String(w.id)));
+		expect(added).toHaveLength(1);
+		expect(Number(added[0].weight_kg)).toBeCloseTo(69.9, 1);
 	});
 
 	test('DOB entered without the health-data consent still writes user_profiles.date_of_birth (family-club minor-exclusion floor)', async ({
@@ -453,6 +477,64 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Art 9 fields stay null without the consent tick.
 		expect(data?.health_data_consent_at).toBeNull();
 		expect(data?.gender).toBeNull();
+	});
+
+	test('a weight typed without health-data consent is not saved, and a weight alone asks for the consent (§ 2541)', async ({
+		page,
+	}) => {
+		// Weight is Art 9 health data. The step used to show the consent box
+		// only for gender or a date of birth, and stored the weight in the
+		// settings bag whether or not it was ticked. Now a weight alone shows
+		// the box, and unticked, neither the bag key every calorie estimate
+		// reads nor the body_metrics series receives it.
+		test.setTimeout(45_000);
+		const admin = getAdminClient();
+		const settingsBefore = await readMaybeRow(
+			'user_settings by user_id',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+		);
+		const prefsBefore = (settingsBefore?.prefs ?? {}) as Record<string, unknown>;
+		await page.goto('/onboarding');
+
+		await page.getByLabel('Display name').fill('E2E Weight No Consent');
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+
+		await expect(
+			page.getByRole('heading', { name: /A bit about you/i })
+		).toBeVisible();
+		const consent = page.getByRole('checkbox', { name: /consent/i });
+		await expect(consent).toHaveCount(0);
+		await page.getByLabel(/Body weight in kg/i).fill('72');
+		await expect(consent).toBeVisible();
+		await expect(consent).not.toBeChecked();
+		await page.getByRole('button', { name: 'Continue' }).click();
+
+		await page.getByRole('radio', { name: /Private/i }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await page.getByRole('button', { name: 'Skip for now' }).click();
+		await page.getByRole('button', { name: 'Open dashboard' }).click();
+		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+
+		const settings = await readMaybeRow(
+			'user_settings by user_id',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+		);
+		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
+		expect(p.privacy_default).toBe('private');
+		expect(p.body_weight_kg).toEqual(prefsBefore.body_weight_kg);
+		const { data: weights } = await admin
+			.from('body_metrics')
+			.select('id')
+			.eq('user_id', USER_A.id);
+		expect((weights ?? []).map((w) => String(w.id)).sort()).toEqual([...savedWeightIds].sort());
+		const profile = await readMaybeRow(
+			'user_profiles by id',
+			admin.from('user_profiles').select('health_data_consent_at').eq('id', USER_A.id).maybeSingle()
+		);
+		expect(profile?.health_data_consent_at ?? null).toBeNull();
 	});
 
 	test('the track step stores the switches the runner turned on, and nothing for the others', async ({
@@ -648,6 +730,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(continueBtn).toBeEnabled();
 		await expect(skipBtn).toBeEnabled();
 		await expect(page.getByRole('alert')).toHaveCount(0);
+		// A weight is kept only with health-data consent (decisions § 2541).
+		await page.getByRole('checkbox', { name: /consent/i }).check();
 		await continueBtn.click();
 
 		// Step 5 — privacy

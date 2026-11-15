@@ -21,6 +21,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { updateUniversal } from '#lib/settings/settings.ts';
+	import { recordWeightKg } from '#lib/core/data.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import {
@@ -375,6 +376,9 @@
 			if (trackNutrition !== null) bagChanges.show_nutrition = trackNutrition;
 			// The typed value is in the display unit (kg or lbs); store canonical
 			// kg. parseWeightToKg rejects empty / non-numeric / negative input.
+			// Weight is health data: it is kept only with health-data consent,
+			// and the database refuses the bag key without it (decisions § 2541).
+			// Without it the calorie estimate uses its 70 kg default.
 			// `bind:value` on a type=number input coerces bodyWeight to a
 			// number (or null when empty); parseWeightToKg takes the raw typed
 			// string (it trims + tolerates a comma decimal), so stringify first.
@@ -383,9 +387,11 @@
 			// disabled state checks — kept here too so an out-of-bounds value
 			// can never reach the TDEE/hydration math even via a path that
 			// bypasses the about step (e.g. the done step's CTA reached after Skip).
-			if (weightKg != null && weightKg > 0 && isBodyWeightInRangeKg(weightKg)) {
-				bagChanges.body_weight_kg = roundWeight(weightKg);
-			}
+			const consentedWeightKg =
+				healthDataConsent && weightKg != null && weightKg > 0 && isBodyWeightInRangeKg(weightKg)
+					? roundWeight(weightKg)
+					: null;
+			if (consentedWeightKg != null) bagChanges.body_weight_kg = consentedWeightKg;
 			// DOB mirrors into the prefs bag only under health consent —
 			// the bag copy feeds the coach/leaderboard read paths, which
 			// are Art 9 surfaces. The minor-exclusion floor reads the
@@ -434,9 +440,12 @@
 			// depend on the profile write and vice versa. stampProfile
 			// throws on error AND on a 0-row update (issue #227), so a
 			// stamp that never landed can't navigate.
+			// The consented weight also starts the body_metrics series the bag
+			// key mirrors, after the consent stamp above.
 			await Promise.all([
 				updateUniversal(auth.user!.id, bagChanges),
 				stampProfile(profileUpdate),
+				consentedWeightKg != null ? recordWeightKg(consentedWeightKg) : null,
 			]);
 
 			showToast(m('onboarding.welcomeToast'), 'success');
@@ -631,7 +640,9 @@
 						</span>
 					{/if}
 				</label>
-				{#if gender || dateOfBirth}
+				<!-- Weight is health data as much as gender is, so a weight alone asks
+				     for the consent too. -->
+				{#if gender || dateOfBirth || bodyWeight}
 					<label class="consent-row">
 						<input
 							type="checkbox"

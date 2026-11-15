@@ -22594,6 +22594,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksLegendStartFinish => 'Start and finish';
 
   @override
+  String get parksEndsTitle => 'Start and finish points';
+
+  @override
+  String get parksEndsCopy => 'Copy';
+
+  @override
+  String get parksEndsCopyStart => 'Copy start coordinates';
+
+  @override
+  String get parksEndsCopyFinish => 'Copy finish coordinates';
+
+  @override
+  String get parksEndsCopyStartFinish => 'Copy start and finish coordinates';
+
+  @override
+  String get parksEndsCopied => 'Coordinates copied';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'Couldn\'t copy the coordinates. Select them and copy them yourself.';
+
+  @override
+  String get parksEndsDirections => 'Directions';
+
+  @override
+  String get parksEndsDirectionsStart => 'Directions to the start';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Directions to the finish';
+
+  @override
+  String get parksEndsDirectionsStartFinish =>
+      'Directions to the start and finish';
+
+  @override
   String get parksLegendCheckpoints => 'Checkpoint: your run must pass it';
 
   @override

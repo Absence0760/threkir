@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -688,6 +689,119 @@ void main() {
   });
 
   group('ParkCourseScreen', () {
+    testWidgets(
+        'a loop gives one start-and-finish point to copy, read by its name', (
+      tester,
+    ) async {
+      tallView(tester);
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+            course: _course(),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const Key('course-ends')), findsOneWidget);
+      expect(find.byKey(const Key('course-ends-start')), findsNothing);
+      expect(find.byKey(const Key('course-ends-finish')), findsNothing);
+      expect(
+        tester
+            .widget<SelectableText>(
+                find.byKey(const Key('course-ends-start-finish-coords')))
+            .data,
+        '37.00000, -77.00000',
+      );
+      final copy = find.byKey(const Key('course-ends-start-finish-copy'));
+      expect(
+        tester.getSemantics(copy),
+        matchesSemantics(
+          label: 'Copy start and finish coordinates',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      await tester.ensureVisible(copy);
+      await tester.tap(copy);
+      await _settle(tester);
+      expect(copied, '37.00000, -77.00000');
+      expect(find.text('Coordinates copied'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'a course that ends elsewhere gives a start and a finish, each with '
+        'directions in the maps app', (tester) async {
+      tallView(tester);
+      final opened = <Uri>[];
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+            course: _course(
+              shape: 'point_to_point',
+              waypoints: [
+                {'lat': 37.0, 'lng': -77.0, 'ele': 100},
+                {'lat': 37.005, 'lng': -77.0, 'ele': 101},
+                {'lat': 37.01, 'lng': -77.001, 'ele': 102},
+              ],
+            ),
+            launch: (uri) async {
+              opened.add(uri);
+              return true;
+            },
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(
+        tester
+            .widget<SelectableText>(
+                find.byKey(const Key('course-ends-start-coords')))
+            .data,
+        '37.00000, -77.00000',
+      );
+      expect(
+        tester
+            .widget<SelectableText>(
+                find.byKey(const Key('course-ends-finish-coords')))
+            .data,
+        '37.01000, -77.00100',
+      );
+      final directions =
+          find.byKey(const Key('course-ends-finish-directions'));
+      expect(
+        tester.getSemantics(directions),
+        matchesSemantics(
+          label: 'Directions to the finish',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      await tester.ensureVisible(directions);
+      await tester.tap(directions);
+      await _settle(tester);
+      expect(opened, hasLength(1));
+      expect(opened.single.toString(), contains('37.01000%2C-77.00100'));
+      await _unmount(tester);
+    });
+
     testWidgets('the park name is a link to the park screen', (tester) async {
       tallView(tester);
       await tester.pumpWidget(

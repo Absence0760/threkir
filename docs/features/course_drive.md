@@ -64,6 +64,10 @@ distances are along the line the client was **served**.
   the course. See gotcha 4.
 - **`googleMapsLegUrl` / `appleMapsUrl` / `wazeUrl` / `mapsLegUrl` /
   `mapsStartUrl`** build the links (coordinates to 5 decimals, about 1 m).
+  `mapsStartUrl` also backs the Directions action of a course's start and
+  finish points ([park_courses.md](park_courses.md), decisions § 2550). That
+  is a plain link to a point, not the drive, so it is not behind this
+  feature's flag.
 
 The live tracker (`apps/mobile_android/lib/course_drive_tracker.dart`) is
 mobile-only, because web never follows a moving position, so it is not a pair.

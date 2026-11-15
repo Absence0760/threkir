@@ -22885,6 +22885,42 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksLegendStartFinish => 'Départ et arrivée';
 
   @override
+  String get parksEndsTitle => 'Points de départ et d\'arrivée';
+
+  @override
+  String get parksEndsCopy => 'Copier';
+
+  @override
+  String get parksEndsCopyStart => 'Copier les coordonnées du départ';
+
+  @override
+  String get parksEndsCopyFinish => 'Copier les coordonnées de l\'arrivée';
+
+  @override
+  String get parksEndsCopyStartFinish =>
+      'Copier les coordonnées du départ et de l\'arrivée';
+
+  @override
+  String get parksEndsCopied => 'Coordonnées copiées';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'Impossible de copier les coordonnées. Sélectionnez-les et copiez-les vous-même.';
+
+  @override
+  String get parksEndsDirections => 'Itinéraire';
+
+  @override
+  String get parksEndsDirectionsStart => 'Itinéraire vers le départ';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Itinéraire vers l\'arrivée';
+
+  @override
+  String get parksEndsDirectionsStartFinish =>
+      'Itinéraire vers le départ et l\'arrivée';
+
+  @override
   String get parksLegendCheckpoints =>
       'Point de contrôle : votre course doit y passer';
 

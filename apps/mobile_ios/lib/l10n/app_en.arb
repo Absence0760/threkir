@@ -29165,6 +29165,50 @@
   "@parksLegendStartFinish": {
     "description": "Map key item: one marker for a course that starts and finishes in the same place (#1352)."
   },
+  "parksEndsTitle": "Start and finish points",
+  "@parksEndsTitle": {
+    "description": "Heading of the block on a course page that gives the start and finish as coordinates to copy or open in a maps app."
+  },
+  "parksEndsCopy": "Copy",
+  "@parksEndsCopy": {
+    "description": "Visible label of the button that copies a point's coordinates; its screen-reader name says which point."
+  },
+  "parksEndsCopyStart": "Copy start coordinates",
+  "@parksEndsCopyStart": {
+    "description": "Screen-reader name of the button that copies the start's coordinates."
+  },
+  "parksEndsCopyFinish": "Copy finish coordinates",
+  "@parksEndsCopyFinish": {
+    "description": "Screen-reader name of the button that copies the finish's coordinates."
+  },
+  "parksEndsCopyStartFinish": "Copy start and finish coordinates",
+  "@parksEndsCopyStartFinish": {
+    "description": "Screen-reader name of the button that copies the coordinates of a course that starts and finishes in the same place."
+  },
+  "parksEndsCopied": "Coordinates copied",
+  "@parksEndsCopied": {
+    "description": "Confirmation after the coordinates were copied to the clipboard."
+  },
+  "parksEndsCopyFailed": "Couldn't copy the coordinates. Select them and copy them yourself.",
+  "@parksEndsCopyFailed": {
+    "description": "Shown when the browser or phone refused the copy; the coordinates stay on screen to select by hand."
+  },
+  "parksEndsDirections": "Directions",
+  "@parksEndsDirections": {
+    "description": "Visible label of the link that opens a maps app with directions to the point; its screen-reader name says which point."
+  },
+  "parksEndsDirectionsStart": "Directions to the start",
+  "@parksEndsDirectionsStart": {
+    "description": "Screen-reader name of the directions link for the start."
+  },
+  "parksEndsDirectionsFinish": "Directions to the finish",
+  "@parksEndsDirectionsFinish": {
+    "description": "Screen-reader name of the directions link for the finish."
+  },
+  "parksEndsDirectionsStartFinish": "Directions to the start and finish",
+  "@parksEndsDirectionsStartFinish": {
+    "description": "Screen-reader name of the directions link for a course that starts and finishes in the same place."
+  },
   "parksLegendCheckpoints": "Checkpoint: your run must pass it",
   "@parksLegendCheckpoints": {
     "description": "Map key item: the numbered checkpoint markers (#1352)."

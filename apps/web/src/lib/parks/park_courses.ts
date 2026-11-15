@@ -9,6 +9,7 @@
  */
 
 import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.ts';
+import { haversineMetres } from '../geo/haversine.ts';
 import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
@@ -450,4 +451,62 @@ export function stepBoardMonth(period: BoardPeriod, delta: number, now: ParkNow)
 	if (season < BOARD_FIRST_SEASON) return null;
 	if (season > now.season || (season === now.season && month > now.month)) return null;
 	return { kind: 'month', season, month };
+}
+
+type Point = { lat: number; lng: number };
+
+/**
+ * A start and finish this close are one place, as on a loop: the distance the
+ * web course map draws one start-and-finish pin at (`SAME_PLACE_M`).
+ */
+export const SAME_COURSE_END_M = 30;
+
+export interface CourseEnds {
+	start: Point;
+	/** Null when the course starts and finishes in the same place. */
+	finish: Point | null;
+}
+
+function gatePoint(g: { lat: number | null; lng: number | null } | null | undefined): Point | null {
+	return g && g.lat !== null && g.lng !== null && Number.isFinite(g.lat) && Number.isFinite(g.lng)
+		? { lat: g.lat, lng: g.lng }
+		: null;
+}
+
+/**
+ * Where a course starts and finishes: the centre of its start and end timing
+ * lines when it has them (the points the matcher times from), else the first
+ * and last point of the line drawn on the page. A loop, or a course whose two
+ * ends are within `SAME_COURSE_END_M` of each other, has one place for both.
+ * Null when there is no point to give.
+ */
+export function courseEnds(input: {
+	line: readonly Point[];
+	startGate?: { lat: number | null; lng: number | null } | null;
+	endGate?: { lat: number | null; lng: number | null } | null;
+	shape?: string | null;
+}): CourseEnds | null {
+	const start = gatePoint(input.startGate) ?? input.line[0] ?? null;
+	const finish = gatePoint(input.endGate) ?? input.line[input.line.length - 1] ?? null;
+	if (!start || !finish) return null;
+	const same =
+		input.shape === 'loop' ||
+		haversineMetres(start.lat, start.lng, finish.lat, finish.lng) <= SAME_COURSE_END_M;
+	return {
+		start: { lat: start.lat, lng: start.lng },
+		finish: same ? null : { lat: finish.lat, lng: finish.lng },
+	};
+}
+
+function fixed5(v: number): string {
+	const s = v.toFixed(5);
+	return s === '-0.00000' ? '0.00000' : s;
+}
+
+/**
+ * A point as "lat, lng" to five decimals (about 1 m), the order Google Maps
+ * and Apple Maps both read when it is pasted into their search.
+ */
+export function formatLatLng(p: Point): string {
+	return `${fixed5(p.lat)}, ${fixed5(p.lng)}`;
 }

@@ -35601,6 +35601,72 @@ abstract class AppLocalizations {
   /// **'Start and finish'**
   String get parksLegendStartFinish;
 
+  /// Heading of the block on a course page that gives the start and finish as coordinates to copy or open in a maps app.
+  ///
+  /// In en, this message translates to:
+  /// **'Start and finish points'**
+  String get parksEndsTitle;
+
+  /// Visible label of the button that copies a point's coordinates; its screen-reader name says which point.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get parksEndsCopy;
+
+  /// Screen-reader name of the button that copies the start's coordinates.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy start coordinates'**
+  String get parksEndsCopyStart;
+
+  /// Screen-reader name of the button that copies the finish's coordinates.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy finish coordinates'**
+  String get parksEndsCopyFinish;
+
+  /// Screen-reader name of the button that copies the coordinates of a course that starts and finishes in the same place.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy start and finish coordinates'**
+  String get parksEndsCopyStartFinish;
+
+  /// Confirmation after the coordinates were copied to the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Coordinates copied'**
+  String get parksEndsCopied;
+
+  /// Shown when the browser or phone refused the copy; the coordinates stay on screen to select by hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the coordinates. Select them and copy them yourself.'**
+  String get parksEndsCopyFailed;
+
+  /// Visible label of the link that opens a maps app with directions to the point; its screen-reader name says which point.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get parksEndsDirections;
+
+  /// Screen-reader name of the directions link for the start.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions to the start'**
+  String get parksEndsDirectionsStart;
+
+  /// Screen-reader name of the directions link for the finish.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions to the finish'**
+  String get parksEndsDirectionsFinish;
+
+  /// Screen-reader name of the directions link for a course that starts and finishes in the same place.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions to the start and finish'**
+  String get parksEndsDirectionsStartFinish;
+
   /// Map key item: the numbered checkpoint markers (#1352).
   ///
   /// In en, this message translates to:

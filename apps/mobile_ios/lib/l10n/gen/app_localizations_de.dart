@@ -22830,6 +22830,40 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksLegendStartFinish => 'Start und Ziel';
 
   @override
+  String get parksEndsTitle => 'Start- und Zielpunkt';
+
+  @override
+  String get parksEndsCopy => 'Kopieren';
+
+  @override
+  String get parksEndsCopyStart => 'Startkoordinaten kopieren';
+
+  @override
+  String get parksEndsCopyFinish => 'Zielkoordinaten kopieren';
+
+  @override
+  String get parksEndsCopyStartFinish => 'Start- und Zielkoordinaten kopieren';
+
+  @override
+  String get parksEndsCopied => 'Koordinaten kopiert';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'Die Koordinaten konnten nicht kopiert werden. Markiere sie und kopiere sie selbst.';
+
+  @override
+  String get parksEndsDirections => 'Route';
+
+  @override
+  String get parksEndsDirectionsStart => 'Route zum Start';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Route zum Ziel';
+
+  @override
+  String get parksEndsDirectionsStartFinish => 'Route zu Start und Ziel';
+
+  @override
   String get parksLegendCheckpoints =>
       'Kontrollpunkt: dein Lauf muss ihn passieren';
 

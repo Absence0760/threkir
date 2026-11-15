@@ -39,6 +39,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2460). See *Loading courses* | Shipped |
 | Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2460. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
+| Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2550). See *The pages* | Shipped |
 | **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 
 ## Model
@@ -417,6 +418,26 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   outline one (primary when there is no route). From 72rem the map, profile
   and boards take the wide column and the stats, actions and notices the
   narrow one, so each column's blocks share its width.
+- **Start and finish points** (decisions § 2550): a block on the course page
+  (web `CourseEndsBlock`, at the top of the notices column; mobile
+  `CourseEndsCard`, under the map) gives the start and the finish as
+  "lat, lng" to five decimals (about 1 m), the order Google and Apple Maps
+  read when it is pasted, e.g. `37.39124, -77.57620`. Each row has a copy
+  button named for its point ("Copy start coordinates"; web shows "Coordinates
+  copied" under the row, or a failure message when the browser refuses, and
+  the coordinates stay selectable; mobile copies with `Clipboard.setData` and
+  says so in a top banner) and a Directions action that opens the maps app at
+  the point through the Drive this course hand-off's `mapsStartUrl` (Google
+  Maps on web and Android, Apple Maps on iOS). A loop, or a course whose two
+  ends are within 30 m (the map key's start-and-finish distance), has one
+  "Start and finish" row. The points come from `courseEnds` in the
+  `park_courses` parity pair: the centre of the segment's start and end lines
+  when it has them, the points the matcher times from, else the first and
+  last point of the drawn line. A web race page with a linked course shows
+  the same block from the line it already draws (`fetchPublicRoute`, the
+  privacy-clipped line for anyone but the route's owner), so it gives no point
+  the map does not show. The mobile race page draws no course line, so it
+  has no block; its Drive this course screen remains the way to the start.
 - **Empty board:** the page asks the all-time completions board for one row
   first (it throws on a failed read, so a failure is not read as empty).
   With no time at all, the board kinds, seasons, Compare and the filters are
@@ -960,6 +981,15 @@ These gate going live, not the code:
   problem with this course* (placement, a filed land-manager request, a
   rights-holder request held until it has an address, worded refusals).
 
+- Start and finish points: `apps/web/src/lib/parks/park_courses.test.ts`
+  (`courseEnds`: line ends, line centres one by one, a loop or ends within
+  30 m as one place, nothing to give; `formatLatLng`'s order, decimals and
+  no negative zero) and its Dart twin; Playwright
+  `apps/web/tests-e2e/parks/park-course-pages.spec.ts` (the block, a copy and
+  its confirmation, the directions link, a loop's one row, a refused copy);
+  Flutter `apps/mobile_android/test/park_courses_screen_test.dart` (a loop's
+  one row copied to the clipboard with its banner and named copy button, a
+  point-to-point course's two rows and its directions hand-off).
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after
   measured ones, closed courses last, the parks' order by their nearest

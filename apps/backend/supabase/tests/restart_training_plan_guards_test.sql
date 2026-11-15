@@ -3,7 +3,7 @@
 -- prescription gate on the copied bpm targets, and the hourly rate limit.
 
 begin;
-select plan(19);
+select plan(20);
 
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = true;
@@ -70,6 +70,11 @@ select is(
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
    where pw.plan_id = (select id from copies where label = 'shut')),
   '(,)', 'and the gate-shut copy holds no bpm target');
+select is(
+  (select row(pwo.target_hr_min_bpm, pwo.target_hr_max_bpm)::text
+   from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
+   where pw.plan_id = 'b8b8b8b8-0000-0000-0000-0000000f0001'),
+  '(120,145)', 'neither restart touches the source plan''s bpm targets');
 
 reset role;
 update private.feature_flags set enabled = true where name = 'hr_prescription';
@@ -83,11 +88,13 @@ select is(
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
    where pw.plan_id = (select id from copies where label = 'unconsented')),
   '(,)', 'and the unconsented copy holds no bpm target');
+-- Nulling the stamp is a withdrawal, and a withdrawal erases the heart-rate
+-- targets on every plan the runner owns (20271230001390), the source included.
 select is(
   (select row(pwo.target_hr_min_bpm, pwo.target_hr_max_bpm)::text
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
    where pw.plan_id = 'b8b8b8b8-0000-0000-0000-0000000f0001'),
-  '(120,145)', 'the source keeps its bpm targets throughout');
+  '(,)', 'withdrawing consent cleared the source plan''s bpm targets');
 
 -- "Today" with no stored time zone: the UTC date less one day.
 select lives_ok(

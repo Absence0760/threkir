@@ -9,12 +9,12 @@
 --   * a runner with consent can store and change it;
 --   * a settings write that leaves an existing weight as it was is not
 --     refused, so an unrelated save never trips over a stored value;
---   * nulling the consent stamp closes the gate again;
---   * withdraw_health_data_consent() strips the weight.
+--   * nulling the consent stamp erases the weight and closes the gate again;
+--   * withdraw_health_data_consent() nulls the stamp and strips the weight.
 
 begin;
 
-select plan(12);
+select plan(15);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -81,15 +81,21 @@ select is(
   'the consented weight is stored'
 );
 
--- 6. A direct null of the stamp (a withdrawal the lock trigger allows) closes
---    the gate for a new value, while a write that leaves the stored weight
---    untouched still lands.
+-- 6. A direct null of the stamp (a withdrawal the lock trigger allows) erases
+--    the stored weight (20271230001390) and closes the gate for a new value,
+--    while a write of the keys that are not health data still lands.
 update user_profiles set health_data_consent_at = null
  where id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391';
+select is(
+  (select prefs ? 'body_weight_kg' from user_settings
+    where user_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391'),
+  false,
+  'a direct null of the consent stamp erases the stored weight'
+);
 select lives_ok(
   $$ update user_settings set prefs = prefs || '{"locale": "en"}'::jsonb
       where user_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391' $$,
-  'an unrelated settings write never trips over a weight already stored'
+  'after a direct null an unrelated settings write still lands'
 );
 select throws_ok(
   $$ update user_settings set prefs = prefs || '{"body_weight_kg": 90}'::jsonb
@@ -98,15 +104,30 @@ select throws_ok(
   'changing the weight after consent is gone is refused'
 );
 
--- 7. withdraw_health_data_consent() strips the weight, whether or not consent
---    was on record when it was called.
+-- 7. withdraw_health_data_consent() nulls the stamp and strips the weight.
+--    Consent is granted again and a weight stored first, so the RPC has both
+--    to clear rather than finding them already gone.
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"eeeeeeee-eeee-eeee-eeee-eeeeeeee1391","role":"authenticated"}';
+select grant_health_data_consent();
+select merge_my_settings('{"body_weight_kg": 72}'::jsonb);
+select is(
+  (select (prefs ->> 'body_weight_kg')::numeric from user_settings
+    where user_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391'),
+  72::numeric,
+  'with consent granted again the weight is stored again'
+);
 select lives_ok(
   $$ select withdraw_health_data_consent() $$,
   'withdraw_health_data_consent() succeeds'
 );
 reset role;
+select is(
+  (select health_data_consent_at from user_profiles
+    where id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391'),
+  null::timestamptz,
+  'withdrawal nulled the consent stamp'
+);
 select is(
   (select prefs ? 'body_weight_kg' from user_settings
     where user_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeee1391'),

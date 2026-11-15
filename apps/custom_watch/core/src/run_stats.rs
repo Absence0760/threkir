@@ -32,6 +32,17 @@ use crate::grade_adjusted_pace::haversine_metres;
 /// the noise floor when the runner is standing still.
 pub const DEFAULT_MIN_SPEED_MPS: f64 = 0.5;
 
+/// How long the track must stay inside [`STILL_RADIUS_M`] of a fix for the
+/// runner to count as stopped there, ms. With the radius it is the moving
+/// floor over a window rather than over one hop: GPS jitter while standing
+/// moves a fix 4 m in 5 s (0.8 m/s, above the floor) but goes nowhere. Web
+/// `STILL_WINDOW_S`.
+pub const STILL_WINDOW_MS: f64 = 30_000.0;
+
+/// [`DEFAULT_MIN_SPEED_MPS`] over [`STILL_WINDOW_MS`]: 15 m. Web
+/// `STILL_RADIUS_M`.
+pub const STILL_RADIUS_M: f64 = DEFAULT_MIN_SPEED_MPS * STILL_WINDOW_MS / 1000.0;
+
 /// The km split-boundary length; the caller passes 1609.344 for mile splits.
 pub const KM_TICK_METRES: f64 = 1000.0;
 
@@ -130,11 +141,61 @@ struct SplitStart {
     ele: Option<f64>,
 }
 
+/// Whether the runner stood still from fix `j`: every later fix up to and
+/// including the first one [`STILL_WINDOW_MS`] or more after it is closer to it
+/// than [`STILL_RADIUS_M`], or than the moving floor times its elapsed time
+/// once that is the larger, so a fix after a long signal gap that is far away
+/// still reads as moving. A fix without a timestamp cannot be shown to be a
+/// stop; an untimed fix after it is held to the radius. Port of web
+/// `stoppedFrom`.
+fn stopped_from(track: &[TrackPoint], j: usize) -> bool {
+    let p = track[j];
+    let Some(t0) = p.ts.filter(|t| t.is_finite()) else {
+        return false;
+    };
+    for q in &track[j + 1..] {
+        let dt_ms = q.ts.filter(|t| t.is_finite()).map_or(0.0, |t| t - t0);
+        let reach = libm::fmax(STILL_RADIUS_M, DEFAULT_MIN_SPEED_MPS * dt_ms / 1000.0);
+        if haversine_metres(p.lat, p.lng, q.lat, q.lng) >= reach {
+            return false;
+        }
+        if dt_ms >= STILL_WINDOW_MS {
+            break;
+        }
+    }
+    true
+}
+
+/// The index of the last fix the runner was still moving into, where the split
+/// table ends: the fix after the last one the runner was not stopped from
+/// ([`stopped_from`]) when the still stretch from there lasts
+/// [`STILL_WINDOW_MS`] or more, else the last index: a finish run to the last
+/// fix also ends within the radius of it for under the window. The watch's
+/// track carries positions only, so this is web `lastMovingIndex`'s positions
+/// branch.
+fn last_moving_index(track: &[TrackPoint]) -> usize {
+    let last = track.len() - 1;
+    let end = (0..last)
+        .rev()
+        .find(|&j| !stopped_from(track, j))
+        .map_or(0, |j| j + 1);
+    // A still stretch shorter than the window is also how a finish run to the
+    // last fix looks (its last 15 m), so only a longer one is trimmed.
+    match (track[end].ts, track[last].ts) {
+        (Some(a), Some(b)) if b - a >= STILL_WINDOW_MS => end,
+        _ => last,
+    }
+}
+
 /// Per-unit splits from a GPS track. Requires timestamps; returns empty when the
 /// track has fewer than two points or none carry a timestamp. `tick_metres` is
 /// the split-boundary length ([`KM_TICK_METRES`] for km, 1609.344 for miles).
 /// Elevation per split is the net gain/loss over the segment, `None` when the
 /// track has no elevation data.
+///
+/// The table ends where the runner stopped ([`last_moving_index`]), not at the
+/// last fix: the minutes recorded after the finish add time, and their GPS
+/// jitter adds distance, which made a race-pace tail read at a walk (#1388).
 pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split, MAX_SPLITS> {
     let mut splits: Vec<Split, MAX_SPLITS> = Vec::new();
     // A non-positive tick puts every boundary at or behind 0 m, so each
@@ -154,6 +215,7 @@ pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split,
         .iter()
         .find_map(|p| p.ts.filter(|t| t.is_finite()))
         .unwrap_or(f64::NAN);
+    let end = last_moving_index(track);
     let mut cum_dist = 0.0_f64;
     let mut split_start = SplitStart {
         dist: 0.0,
@@ -161,7 +223,7 @@ pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split,
         ele: track[0].ele,
     };
 
-    for w in track.windows(2) {
+    for w in track[..=end].windows(2) {
         let a = w[0];
         let b = w[1];
         cum_dist += haversine_metres(a.lat, a.lng, b.lat, b.lng);
@@ -206,7 +268,7 @@ pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split,
     }
 
     if !splits.is_empty() || cum_dist > 0.0 {
-        let last_point = track[track.len() - 1];
+        let last_point = track[end];
         let end_time_ms = last_point.ts.unwrap_or(f64::NAN);
         let duration_s = if end_time_ms.is_finite() {
             (end_time_ms - split_start.time_ms) / 1000.0
@@ -570,6 +632,97 @@ mod tests {
         let splits = compute_real_splits(&pts, KM_TICK_METRES);
         assert_eq!(splits.len(), 1);
         assert_eq!(splits[0].km, 1);
+    }
+
+    /// 3.0 m/s with a fix every 5 s for `run_hops` hops, then `still` fixes 5 s
+    /// apart while the fix wanders 4 m (0.8 m/s, over the hop floor). Mirror of
+    /// the web `standing jitter on a track without distM` case.
+    fn run_then_jitter(run_hops: usize, still: usize) -> Vec<TrackPoint, 512> {
+        let mut out: Vec<TrackPoint, 512> = Vec::new();
+        for i in 0..=run_hops {
+            let _ = out.push(TrackPoint {
+                lat: 0.0,
+                lng: (i as f64 * 15.0) / METRES_PER_DEG_LNG,
+                ts: Some(i as f64 * 5000.0),
+                ele: None,
+            });
+        }
+        let end_m = run_hops as f64 * 15.0;
+        for k in 1..=still {
+            let _ = out.push(TrackPoint {
+                lat: 0.0,
+                lng: (end_m + if k % 2 == 0 { 0.0 } else { 4.0 }) / METRES_PER_DEG_LNG,
+                ts: Some((run_hops * 5 + k * 5) as f64 * 1000.0),
+                ele: None,
+            });
+        }
+        out
+    }
+
+    #[test]
+    fn splits_standing_jitter_after_the_finish_is_not_running() {
+        let true_pace =
+            js_round(5000.0 / haversine_metres(0.0, 0.0, 0.0, 15.0 / METRES_PER_DEG_LNG));
+        assert_eq!(true_pace, 334);
+        let splits = compute_real_splits(&run_then_jitter(140, 60), 1609.344);
+        let dists: std::vec::Vec<i32> = splits.iter().map(|s| s.distance_m).collect();
+        // The watch closes a whole split at the fix past the boundary.
+        assert_eq!(dists, [1618, 479]);
+        for s in &splits {
+            assert!(
+                (s.pace_s - true_pace).abs() <= 1,
+                "split {} pace {}",
+                s.km,
+                s.pace_s
+            );
+        }
+
+        // 60 m short of the second mile: the jitter's hop-sum (240 m) would
+        // cross it and close it at a walk.
+        let short = compute_real_splits(&run_then_jitter(210, 60), 1609.344);
+        let dists: std::vec::Vec<i32> = short.iter().map(|s| s.distance_m).collect();
+        assert_eq!(dists, [1618, 1528]);
+        for s in &short {
+            assert!(
+                (s.pace_s - true_pace).abs() <= 1,
+                "split {} pace {}",
+                s.km,
+                s.pace_s
+            );
+        }
+
+        // Running to the last fix ends at it, and a stop shorter than the
+        // window is not trimmed.
+        assert_eq!(STILL_RADIUS_M, 15.0);
+        assert_eq!(
+            compute_real_splits(&run_then_jitter(140, 0), 1609.344),
+            splits
+        );
+        let brief = compute_real_splits(&run_then_jitter(140, 4), 1609.344);
+        assert_eq!(brief[1].distance_m, 495);
+    }
+
+    #[test]
+    fn splits_a_far_fix_after_a_long_gap_still_reads_as_moving() {
+        // 300 s/km across a 750 s gap: the fix after it is 2.5 km away, far
+        // beyond the radius, so the runner was moving into it.
+        let pts = [
+            (0.0, 0.0),
+            (500.0, 150.0),
+            (3000.0, 900.0),
+            (4000.0, 1200.0),
+        ]
+        .map(|(m, s)| TrackPoint {
+            lat: 0.0,
+            lng: m / METRES_PER_DEG_LNG,
+            ts: Some(s * 1000.0),
+            ele: None,
+        });
+        let splits = compute_real_splits(&pts, KM_TICK_METRES);
+        let km: std::vec::Vec<i32> = splits.iter().map(|s| s.km).collect();
+        assert_eq!(km.last(), Some(&(splits.len() as i32)));
+        let total: i32 = splits.iter().map(|s| s.distance_m).sum();
+        assert!((total - 3996).abs() <= 2, "total {total}");
     }
 
     #[test]

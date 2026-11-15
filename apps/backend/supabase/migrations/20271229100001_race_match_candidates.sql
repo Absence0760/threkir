@@ -9,11 +9,20 @@
 --
 -- This returns what the scorer needs to decide properly: listings dated
 -- within a day either side of the run's UTC start (the scorer applies the
--- exact window, the race's calendar day in any time zone), nearest first to
--- the run's start when one is given, each with its location, its course
--- distance and, when it has a public course, the course's start and finish
--- lines as course_timing_lines derives them (decisions § 2390): the route
--- owner's privacy-clipped ends, facing along the route, half-width 15 m.
+-- exact window, the race's calendar day in any time zone) and within 50 km
+-- of the run's start, nearest first and then nearest in date, each with its
+-- location, its course distance and, when it has a public course, the
+-- course's start and finish lines as course_timing_lines derives them
+-- (decisions § 2390): the route owner's privacy-clipped ends, facing along
+-- the route, half-width 15 m.
+--
+-- A run with no start point gets no candidates. Without one the window is
+-- every race in the country across three days: nothing can rank the 50 rows
+-- kept, so a busy weekend cuts the right race arbitrarily, and the scorer would
+-- have only the date and a distance to agree on, which is the Turkey Trot
+-- failure again. The 50 rows are taken after ordering by distance from the
+-- start, then by days from the run's UTC date, so the cap drops the farthest
+-- listings first rather than whichever the calendar happened to list last.
 --
 -- SECURITY DEFINER because private.event_course_endpoints is revoked from
 -- every client role. It reads public_race_listings, whose course_route_id is
@@ -64,19 +73,20 @@ as $$
   picked as (
     select
       l.*,
-      case when s.pt is not null and l.location_point is not null
+      case when l.location_point is not null
         then ST_Distance(l.location_point, s.pt)
-      end as away
+      end as away,
+      abs(l.race_date - s.day) as days_off
     from public_race_listings l
     cross join run_start s
     where p_started_at is not null
+      and s.pt is not null
       and l.race_date between s.day - 1 and s.day + 1
       and (
-        s.pt is null
-        or l.location_point is null
+        l.location_point is null
         or ST_DWithin(l.location_point, s.pt, 50000)
       )
-    order by away asc nulls last, l.race_date asc, l.created_at desc
+    order by away asc nulls last, days_off asc, l.created_at desc
     limit 50
   )
   select
@@ -109,7 +119,7 @@ as $$
     select * from private.event_course_endpoints(p.course_route_id)
     where p.course_route_id is not null
   ) e on true
-  order by p.away asc nulls last, p.race_date asc, p.created_at desc;
+  order by p.away asc nulls last, p.days_off asc, p.created_at desc;
 $$;
 
 revoke execute on function public.race_match_candidates(timestamptz, double precision, double precision)

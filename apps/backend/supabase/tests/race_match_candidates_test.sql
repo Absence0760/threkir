@@ -11,10 +11,15 @@
 --         and finish lines, facing along the route, at the 15 m reach; a
 --         listing on a private route carries none.
 --   9.    The listing's location and course distance come back for the scorer.
---   10.   anon cannot call it.
+--   10.   A run with no start point gets no candidates.
+--   11.   The 50-row cap is taken after ordering by distance and then days
+--         from the run's date: sixty listings the day before, at the same
+--         spot as a race on the run's day, do not push that race out (the old
+--         date-ascending order kept the sixty and cut it).
+--   12.   anon cannot call it.
 
 begin;
-select plan(10);
+select plan(12);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -89,19 +94,19 @@ select ok(
   (select start_gate_lat = 37.548 and start_gate_lng = -77.46
           and finish_gate_lat = 37.5365 and finish_gate_lng = -77.444
           and gate_half_width_m = 15
-   from race_match_candidates('2026-11-14 12:00+00', null, null)
+   from race_match_candidates('2026-11-14 12:00+00', 37.5481, -77.4610)
    where id = 'a1389000-0000-0000-0000-0000000000c1'),
   'a public course carries its start and finish lines at the 15 m reach'
 );
 select ok(
   (select start_gate_bearing_deg between 89 and 91 and finish_gate_bearing_deg between 179 and 181
-   from race_match_candidates('2026-11-14 12:00+00', null, null)
+   from race_match_candidates('2026-11-14 12:00+00', 37.5481, -77.4610)
    where id = 'a1389000-0000-0000-0000-0000000000c1'),
   'the lines face along the route: east at the start, south at the finish'
 );
 select ok(
   (select start_gate_lat is null and finish_gate_lat is null and gate_half_width_m is null
-   from race_match_candidates('2026-11-14 12:00+00', null, null)
+   from race_match_candidates('2026-11-14 12:00+00', 37.5481, -77.4610)
    where id = 'a1389000-0000-0000-0000-0000000000c3'),
   'a listing on a private route carries no lines'
 );
@@ -110,12 +115,38 @@ select ok(
 select ok(
   (select round(location_lat::numeric, 4) = 37.5407 and round(location_lng::numeric, 4) = -77.4360
           and course_distance_m = 42195
-   from race_match_candidates('2026-11-14 12:00+00', null, null)
+   from race_match_candidates('2026-11-14 12:00+00', 37.5481, -77.4610)
    where id = 'a1389000-0000-0000-0000-0000000000c1'),
   'the listing''s location and course distance come back'
 );
 
 -- 10
+select is(
+  (select count(*)::int from race_match_candidates('2026-11-14 12:00+00', null, null)),
+  0,
+  'a run with no start point gets no candidates'
+);
+
+-- 11
+reset role;
+set local role service_role;
+insert into race_listings (provider, provider_race_id, name, race_date, distance_m, is_verified, location_point)
+select 'runsignup', 'rmc-busy-' || g, 'Friday fun run ' || g, '2026-11-13', 5000, true,
+       ST_SetSRID(ST_MakePoint(-77.4500, 37.5500), 4326)::geography
+  from generate_series(1, 60) g;
+insert into race_listings (id, provider, provider_race_id, name, race_date, distance_m, is_verified, location_point)
+values ('a1389000-0000-0000-0000-0000000000c6', 'runsignup', 'rmc-6', 'Saturday 5K', '2026-11-14', 5000, true,
+        ST_SetSRID(ST_MakePoint(-77.4500, 37.5500), 4326)::geography);
+reset role;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"a1389000-0000-0000-0000-000000000002","role":"authenticated"}';
+select ok(
+  exists (select 1 from race_match_candidates('2026-11-14 12:00+00', 37.5500, -77.4500)
+          where id = 'a1389000-0000-0000-0000-0000000000c6'),
+  'a busy day before does not cut the run''s own day out of the 50'
+);
+
+-- 12
 set local role anon;
 set local "request.jwt.claims" = '';
 select throws_ok(

@@ -136,7 +136,7 @@ Web-first (`decisions.md §24`). Paths under `apps/web/src/`.
 - `submitRaceListing(input)` / `updateRaceListing` — crowd-submitted calendar entry.
 - `importRaceResult({ provider, listingId, ... })` → invokes `race-results-import`.
 - `fetchRaceResultForRun(runId)` → reads the run's race metadata + linked listing (for run-detail render).
-- `findRaceMatchCandidates(startedAt, start)` → the auto-match seam (below): calls `race_match_candidates`, which returns the listings dated a day either side of the run's UTC start, within 50 km of its first fix when it has one, nearest first, each with its location, its course distance and its public course's start and finish lines. The caller gates and ranks them with `bestRaceMatch` and the run's track.
+- `findRaceMatchCandidates(startedAt, start)` → the auto-match seam (below): calls `race_match_candidates`, which returns the listings dated a day either side of the run's UTC start and within 50 km of its first fix, nearest first and then nearest in date (a run with no fix gets none), each with its location, its course distance and its public course's start and finish lines. The caller gates and ranks them with `bestRaceMatch` and the run's track.
 
 **types.ts overlays:**
 - `RaceProvider` union; `RaceListing = Omit<RaceListingRow, 'provider'> & { provider: RaceProvider }`; `RaceListingResult` (RPC projection with `distance_m_away`).

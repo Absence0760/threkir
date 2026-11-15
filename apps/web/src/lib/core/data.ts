@@ -3810,7 +3810,7 @@ function candidateGate(
 
 /// The auto-match seam: the listings a run started at `startedAt` from
 /// `start` could be, from `race_match_candidates` (a day either side, within
-/// 50 km of the start when one is known, nearest first). Gating and ranking
+/// 50 km of the start, nearest first; none without a start). Gating and ranking
 /// are the pure `bestRaceMatch` (integrations/race_match.ts), applied by the
 /// caller with the run's track.
 export async function findRaceMatchCandidates(

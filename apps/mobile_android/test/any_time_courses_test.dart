@@ -126,4 +126,139 @@ void main() {
     expect(matches(parkSearchTerms('virginia')), isTrue);
     expect(matches(parkSearchTerms('beaver')), isFalse);
   });
+
+  group('parks', () {
+    AnyTimeParkKey park(
+      String slug, {
+      String regionCode = 'US-VA',
+      String? parkName,
+      bool allClosed = false,
+      List<({double lat, double lng})> starts = const [],
+      ({double lat, double lng})? location,
+    }) =>
+        AnyTimeParkKey(
+          regionCode: regionCode,
+          parkName: parkName ?? slug,
+          slug: slug,
+          allClosed: allClosed,
+          starts: starts,
+          location: location,
+        );
+    List<String> parkSlugs(List<OrderedPark<AnyTimeParkKey>> rows) =>
+        [for (final r in rows) r.park.slug];
+    AnyTimeParkKey pid(AnyTimeParkKey p) => p;
+
+    test('without an origin, region then name', () {
+      final rows = orderAnyTimeParks(
+        [
+          park('wv', regionCode: 'US-WV', parkName: 'A'),
+          park('swift', parkName: 'Swift Creek'),
+          park('poca', parkName: 'Pocahontas'),
+        ],
+        pid,
+        null,
+      );
+      expect(parkSlugs(rows), ['poca', 'swift', 'wv']);
+      expect(rows.every((r) => r.awayM == null), isTrue);
+    });
+
+    test(
+        'with an origin, by the nearest course start, falling back to the '
+        'park location', () {
+      final rows = orderAnyTimeParks(
+        [
+          park('far-starts',
+              starts: [(lat: 38.5, lng: -77.5), (lat: 39.0, lng: -77.5)]),
+          park('one-near-start',
+              starts: [(lat: 40.0, lng: -77.5), (lat: 37.51, lng: -77.5)]),
+          park('located', location: (lat: 37.6, lng: -77.5)),
+          park('nowhere'),
+        ],
+        pid,
+        (lat: 37.5, lng: -77.5),
+      );
+      expect(parkSlugs(rows),
+          ['one-near-start', 'located', 'far-starts', 'nowhere']);
+      expect(rows[0].awayM, closeTo(1112, 5));
+      expect(rows[3].awayM, isNull);
+    });
+
+    test('a course start outranks the park location', () {
+      final rows = orderAnyTimeParks(
+        [
+          park('p',
+              location: (lat: 37.5, lng: -77.5),
+              starts: [(lat: 38.5, lng: -77.5)]),
+        ],
+        pid,
+        (lat: 37.5, lng: -77.5),
+      );
+      expect(rows[0].awayM, greaterThan(100000));
+    });
+
+    test('a park with every course closed sinks, with or without an origin',
+        () {
+      final parks = [
+        park('closed-near',
+            parkName: 'A', allClosed: true, starts: [(lat: 37.5, lng: -77.5)]),
+        park('open-far', parkName: 'B', starts: [(lat: 40.0, lng: -77.5)]),
+      ];
+      expect(parkSlugs(orderAnyTimeParks(parks, pid, (lat: 37.5, lng: -77.5))),
+          ['open-far', 'closed-near']);
+      expect(parkSlugs(orderAnyTimeParks(parks, pid, null)),
+          ['open-far', 'closed-near']);
+    });
+  });
+
+  group('search hits', () {
+    const courses = [
+      AnyTimeSearchView(
+          parkId: 'poca',
+          courseName: 'Beaver Lake Trail',
+          parkName: 'Pocahontas',
+          regionCode: 'US-VA'),
+      AnyTimeSearchView(
+          parkId: 'poca',
+          courseName: 'Lake Trail 5k',
+          parkName: 'Pocahontas',
+          regionCode: 'US-VA'),
+      AnyTimeSearchView(
+          parkId: 'swift',
+          courseName: 'Creekside Loop',
+          parkName: 'Swift Creek',
+          regionCode: 'US-VA'),
+    ];
+    AnyTimeSearchView view(AnyTimeSearchView c) => c;
+    List<String> names(AnyTimeHits<AnyTimeSearchView> h) =>
+        [for (final c in h.courses) c.courseName];
+
+    test('no words lists every park once and no course on its own', () {
+      final hits = anyTimeSearchHits(courses, view, const []);
+      expect(hits.parkIds, ['poca', 'swift']);
+      expect(hits.courses, isEmpty);
+    });
+
+    test('a park matched by name or place lists the park, not its courses',
+        () {
+      final poca = anyTimeSearchHits(courses, view, parkSearchTerms('pocahontas'));
+      expect(poca.parkIds, ['poca']);
+      expect(poca.courses, isEmpty);
+      final va = anyTimeSearchHits(courses, view, parkSearchTerms('virginia'));
+      expect(va.parkIds, ['poca', 'swift']);
+      expect(va.courses, isEmpty);
+    });
+
+    test('a course matched by its own name is listed on its own', () {
+      final hits = anyTimeSearchHits(courses, view, parkSearchTerms('beaver'));
+      expect(hits.parkIds, isEmpty);
+      expect(names(hits), ['Beaver Lake Trail']);
+      final lake =
+          anyTimeSearchHits(courses, view, parkSearchTerms('pocahontas lake'));
+      expect(names(lake), ['Beaver Lake Trail', 'Lake Trail 5k']);
+      // "creek" names the Swift Creek park, so its loop is not listed again.
+      final creek = anyTimeSearchHits(courses, view, parkSearchTerms('creek'));
+      expect(creek.parkIds, ['swift']);
+      expect(creek.courses, isEmpty);
+    });
+  });
 }

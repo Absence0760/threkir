@@ -16,38 +16,37 @@ import '../preferences.dart' show compactDistanceForPref, formatEffortTime;
 import '../quiet_location.dart';
 import '../screens/park_courses_screen.dart';
 
-/// How many courses the section lists before "All park courses". Mirrors
-/// `ANY_TIME_LIMIT` on web `/races`.
+/// How many parks (and searched courses) the section lists before "See all".
+/// Mirrors `ANY_TIME_LIMIT` on web `/races`.
 const int kRunAnyTimeLimit = 8;
 
-/// The "Run any time" half of Races & courses (issue #1352): the park courses
-/// a runner can go and do on any day, nearest first once the phone already
-/// knows where it is, each opening its course page. When [limit] cuts the
-/// list short, the heading offers "See all N courses", which opens
-/// `ParksScreen` (the full index) on the same search; a list that is already
-/// whole (the Courses view) has no such link.
+/// The "Run any time" half of Races & courses (issue #1352): the parks whose
+/// courses a runner can go and do on any day, nearest first once the phone
+/// already knows where it is, each opening its park page of courses. A course
+/// is listed on its own only when the search finds it by its own name
+/// (decisions § 2549). When [limit] cuts the list short, the heading offers
+/// "See all N courses", which opens `ParksScreen` (the full index) on the
+/// same search; a list that is already whole (the Courses view) has no such
+/// link.
 ///
 /// It loads on its own, so a failed race search never hides it and a failed
-/// course read never hides the races above it. This season's records are a
-/// second, auxiliary read that only a signed-in runner can make: when it
-/// fails the courses still list, without records.
+/// course read never hides the races above it. This season's records, shown
+/// on a searched course, are a second, auxiliary read that only a signed-in
+/// runner can make: when it fails the courses still list, without records.
 class RunAnyTimeSection extends StatefulWidget {
   final ApiClient api;
 
   /// Test seam; production reads the quiet browse fix, which never prompts.
   final Stream<Position> Function()? positions;
 
-  /// How many courses to list; null lists every one, as Races & courses
-  /// does when the courses are all it shows.
+  /// How many parks, and searched courses, to list; null lists every one, as
+  /// Races & courses does when the courses are all it shows.
   final int? limit;
-
-  /// Lead with a row of the parks the courses are in, for the Courses view;
-  /// the section under the race calendar stays a short list.
-  final bool showParks;
 
   /// The tab's search, already debounced. Every course is loaded, so it is
   /// matched here on the list rather than asked of the server
-  /// ([parkSearchMatches]: the course, its park and its place).
+  /// ([anyTimeSearchHits]: parks by name and place, courses by their own
+  /// name).
   final String query;
 
   /// Empties the search, offered when nothing matches it. Null offers no
@@ -59,7 +58,6 @@ class RunAnyTimeSection extends StatefulWidget {
     required this.api,
     this.positions,
     this.limit = kRunAnyTimeLimit,
-    this.showParks = false,
     this.query = '',
     this.onClearQuery,
   });
@@ -69,6 +67,16 @@ class RunAnyTimeSection extends StatefulWidget {
 }
 
 typedef _Entry = ({ParkListing park, ParkCourseListing course});
+typedef _Park = ({ParkListing park, List<ParkCourseListing> courses});
+
+/// What the section lists: the parks and searched courses after [limit],
+/// whether it cut either, and how many courses the whole list stands for.
+typedef _Listing = ({
+  List<OrderedPark<_Park>> parks,
+  List<OrderedCourse<_Entry>> courses,
+  bool truncated,
+  int courseTotal,
+});
 
 class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
   List<_Entry> _courses = const [];
@@ -196,9 +204,8 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final matching = _loading || _failed ? const <_Entry>[] : _matching();
-    final limit = widget.limit;
-    final truncated = limit != null && matching.length > limit;
+    final listing = _loading || _failed ? null : _listing();
+    final truncated = listing?.truncated ?? false;
     return Column(
       key: const Key('races-any-time'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -211,34 +218,80 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
                 ? TextButton(
                     key: const Key('races-any-time-all'),
                     onPressed: _openAll,
-                    child: Text(l10n.racesAnyTimeSeeAll(matching.length)),
+                    child: Text(l10n.racesAnyTimeSeeAll(listing!.courseTotal)),
                   )
                 : null,
           ),
         ),
-        ..._body(l10n, theme, matching),
+        ..._body(l10n, theme, listing),
       ],
     );
   }
 
-  /// The loaded courses the search keeps, every one when there is none.
-  List<_Entry> _matching() {
-    final terms = parkSearchTerms(widget.query);
-    if (terms.isEmpty) return _courses;
-    return [
-      for (final e in _courses)
-        if (parkSearchMatches(
-          terms,
-          courseName: e.course.segment.name,
-          parkName: e.park.park.name,
-          regionCode: e.park.park.regionCode,
-        ))
-          e,
-    ];
+  static ({double lat, double lng})? _start(ParkCourseListing c) {
+    final waypoints = c.segment.waypoints;
+    final first = waypoints.isEmpty ? null : waypoints.first;
+    final lat = first?['lat'];
+    final lng = first?['lng'];
+    return lat is num && lng is num
+        ? (lat: lat.toDouble(), lng: lng.toDouble())
+        : null;
+  }
+
+  static AnyTimeParkKey _parkKey(_Park p) {
+    final park = p.park.park;
+    final lat = park.centroidLat;
+    final lng = park.centroidLng;
+    return AnyTimeParkKey(
+      regionCode: park.regionCode,
+      parkName: park.name,
+      slug: park.slug,
+      allClosed: p.courses.every((c) => c.course.status == 'closed'),
+      starts: [for (final c in p.courses) ?_start(c)],
+      location: lat != null && lng != null ? (lat: lat, lng: lng) : null,
+    );
+  }
+
+  /// The parks the search keeps (every one when there is none) and the
+  /// courses it finds by their own name, each in order and cut to [limit].
+  _Listing _listing() {
+    final hits = anyTimeSearchHits(
+      _courses,
+      (e) => AnyTimeSearchView(
+        parkId: e.park.park.id,
+        courseName: e.course.segment.name,
+        parkName: e.park.park.name,
+        regionCode: e.park.park.regionCode,
+      ),
+      parkSearchTerms(widget.query),
+    );
+    final byPark = <String, _Park>{};
+    for (final e in _courses) {
+      byPark
+          .putIfAbsent(e.park.park.id, () => (park: e.park, courses: []))
+          .courses
+          .add(e.course);
+    }
+    final parks = orderAnyTimeParks(
+      [for (final id in hits.parkIds) ?byPark[id]],
+      _parkKey,
+      _origin,
+    );
+    final courses = orderAnyTimeCourses(hits.courses, _key, _origin);
+    final limit = widget.limit;
+    return (
+      parks: limit == null ? parks : parks.take(limit).toList(),
+      courses: limit == null ? courses : courses.take(limit).toList(),
+      truncated:
+          limit != null && (parks.length > limit || courses.length > limit),
+      courseTotal:
+          parks.fold<int>(0, (n, p) => n + p.park.courses.length) +
+              courses.length,
+    );
   }
 
   List<Widget> _body(
-      AppLocalizations l10n, ThemeData theme, List<_Entry> matching) {
+      AppLocalizations l10n, ThemeData theme, _Listing? listing) {
     if (_loading) {
       return [
         Padding(
@@ -257,23 +310,10 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       ];
     }
-    final all = orderAnyTimeCourses(matching, _key, _origin);
-    final limit = widget.limit;
-    final ordered = limit == null ? all : all.take(limit);
-    // In the order their first course lists, so a fix brings the nearest
-    // park first too.
-    final parks =
-        <String, ({ParkListing park, List<ParkCourseListing> courses})>{};
-    if (widget.showParks) {
-      for (final row in all) {
-        final e = row.course;
-        parks
-            .putIfAbsent(e.park.park.id, () => (park: e.park, courses: []))
-            .courses
-            .add(e.course);
-      }
-    }
-    if (ordered.isEmpty && widget.query.trim().isNotEmpty) {
+    final parks = listing!.parks;
+    final ordered = listing.courses;
+    final empty = parks.isEmpty && ordered.isEmpty;
+    if (empty && widget.query.trim().isNotEmpty) {
       return [
         EmptyState(
           key: const Key('races-any-time-no-match'),
@@ -285,7 +325,7 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       ];
     }
-    if (ordered.isEmpty) {
+    if (empty) {
       return [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -295,39 +335,37 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
     }
     final signedIn = widget.api.userId != null;
     return [
-      if (parks.isNotEmpty) ...[
+      // A sub-heading only when a search lists courses beside the parks.
+      if (parks.isNotEmpty && ordered.isNotEmpty)
+        _SubHeading(l10n.racesAnyTimeParks),
+      for (final row in parks)
         Padding(
+          key: ValueKey('races-any-time-park-${row.park.park.park.id}'),
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Semantics(
-            header: true,
-            child: Text(l10n.racesAnyTimeParks,
-                style: theme.textTheme.titleSmall),
-          ),
-        ),
-        // A scrolling Row rather than a fixed-height lane, so the row takes
-        // its height from the cards at any OS text scale.
-        SingleChildScrollView(
-          key: const Key('races-any-time-parks'),
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final p in parks.values)
-                SizedBox(
-                  width: 260,
-                  child: ParkCard(
-                    key: ValueKey('races-any-time-park-${p.park.park.id}'),
-                    listing: p.park,
-                    courses: p.courses,
-                    onTap: () => _openPark(p.park),
+              ParkCard(
+                listing: row.park.park,
+                courses: row.park.courses,
+                onTap: () => _openPark(row.park.park),
+              ),
+              if (row.awayM case final away?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, left: 4),
+                  child: Text(
+                    l10n.racesAnyTimeAway(compactDistanceForPref(away)),
+                    key: ValueKey(
+                        'races-any-time-park-away-${row.park.park.park.id}'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
             ],
           ),
         ),
-      ],
-      if (_recordsFailed)
+      if (ordered.isNotEmpty) _SubHeading(l10n.racesShowCourses),
+      if (_recordsFailed && ordered.isNotEmpty)
         _InlineFailure(
           key: const Key('races-any-time-records-failed'),
           message: l10n.racesAnyTimeFastestFailed,
@@ -448,6 +486,21 @@ class _CourseCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SubHeading extends StatelessWidget {
+  final String label;
+
+  const _SubHeading(this.label);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Semantics(
+          header: true,
+          child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+        ),
+      );
 }
 
 class _InlineFailure extends StatelessWidget {

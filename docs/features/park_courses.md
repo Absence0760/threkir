@@ -18,10 +18,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Official monthly passport "Run 3 Virginia park courses in {period}" (official catalogue, issue #1343) | Shipped; published by the release's official catalogue stage |
 | `park_months` badge (distinct local months with a completion, 3 / 6 / 12 / 24; migration `20271227001343`) | Shipped: `achievement_tiers_met`, `badges.ts`, `badges.dart` and labels in every locale. See *Months* |
 | Runners this month per course on the park page (`park_course_month_runners`, migration `20271227011343`) | Shipped, web and mobile, signed in |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races` (the Courses view's park cards, each course card's park link and "All park courses") and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
-| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every course with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races` (its park cards, a searched course card and its park link, and "See all N courses") and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
+| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight parks, each a park card (course lines, agency, course count and distance range) opening its park page of courses, nearest first once the page has a place or the runner's location (the park's nearest course start), otherwise region then name; a park whose courses are all closed last (`orderAnyTimeParks` in `lib/parks/any_time_courses.ts`). A course is listed on its own, with distance, shape, its park and this season's record, only when the search finds it by its own name (`anyTimeSearchHits`, `orderAnyTimeCourses`; decisions § 2549). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every park with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
-| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the Courses view's park cards, each course card's park link and "All park courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
+| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
@@ -182,7 +182,7 @@ Every run is scored on the server (decisions § 2392):
 - Both boards need an account (42501 for anon). Signed-out readers see the
   course, its safety notice and attribution, and a sign-in prompt.
 - **This season's record on every course at once:** `park_course_records()`,
-  for the Run any time list on `/races`. It calls the fastest board per course
+  for the park page and a searched course on Run any time. It calls the fastest board per course
   with `p_limit` 1 and that park's `park_season`, so it applies exactly the
   board's rules; a course with nothing this season has no row, and the card
   says no time yet. A failed read leaves the courses listed without records.
@@ -287,15 +287,21 @@ Owner decision on #1352 (decisions § 2436): park courses live with races,
 because a course is something you go and do, not a stretch you happen to run.
 
 - **Races & courses** (`/races`, the run-surface tab): two sections. *Upcoming
-  races* is the race calendar, unchanged. *Run any time* lists park courses,
-  nearest first once the runner sets a place or uses their location under
-  Filters (the same point the race search uses), otherwise in region, park,
-  distance and name order, closed courses last. Each card shows distance,
-  shape, the park and this season's record, and opens the course page. When
-  the list is cut short (All shows eight), the section heading carries
-  "See all N courses" to `/parks` (mobile: `ParksScreen`) with the search
-  carried over (`/parks?q=`); a list that is already whole, the Courses view
-  or eight or fewer courses, has no such link (issue #1374). A distance away
+  races* is the race calendar, unchanged. *Run any time* lists parks, not
+  their courses (owner decision, decisions § 2549, superseding the flat
+  course list of § 2436): each park card shows its course lines, agency,
+  course count and distance range and opens the park page, which lists the
+  courses with their maps, climb, difficulty and this season's records.
+  Parks are ordered nearest first once the runner sets a place or uses their
+  location under Filters (the same point the race search uses), measured to
+  the park's nearest course start (its centroid when no course has one),
+  otherwise by region then name; a park whose courses are all closed comes
+  last. When the list is cut short (All shows eight), the section heading
+  carries "See all N courses" to `/parks` (mobile: `ParksScreen`) with the
+  search carried over (`/parks?q=`); a list that is already whole, the
+  Courses view or eight or fewer parks, has no such link (issue #1374).
+  Every `park_courses` row has a park (`park_id not null`), so no course is
+  ever left without one to list it under. A distance away
   reads through the compact formatter (`fmtCompactDistance` /
   `compactDistanceForPref`: one decimal under 10, whole and grouped from 10,
   in the runner's unit, so "3,901 km away", never "3901.14 km"); the race
@@ -303,11 +309,15 @@ because a course is something you go and do, not a stretch you happen to run.
   loads and fails on its own.
 - **Search** (issue #1374): one field on the tab's FilterBar, in every view,
   with the help and overflow actions on its row (mobile). It finds races by
-  name (the `search_race_listings` RPC, as before) and park courses by
-  course name, park name and place (the region's name or code), every word
+  name (the `search_race_listings` RPC, as before), parks by name and place
+  (the region's name or code), and courses by their own name, every word
   of the query matching somewhere, case and accents ignored
-  (`parkSearchTerms` / `parkSearchMatches` in the `any_time_courses` parity
-  pair, on the catalogue's `fold`). Courses are matched on the client: the
+  (`parkSearchTerms` / `parkSearchMatches` / `anyTimeSearchHits` in the
+  `any_time_courses` parity pair, on the catalogue's `fold`). A park whose
+  name or place matches is listed as its park card; a course that matches
+  only with its own name is listed on its own, under a Courses sub-heading,
+  with its park, distance and this season's record, so "pocahontas" finds the
+  park and "beaver" finds Beaver Lake Trail. Courses are matched on the client: the
   section already holds every course (`fetchAllParkCourses`), so a server
   query per keystroke would buy nothing at thousands of courses. That read
   is a keyset walk (`walkKeyset`, by `id`), not one select: PostgREST stops
@@ -952,26 +962,33 @@ These gate going live, not the code:
 
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after
-  measured ones, closed courses last, the search's folded words and its
-  every-word match over course, park and place) and its Dart twin;
+  measured ones, closed courses last, the parks' order by their nearest
+  course start or centroid with all-closed parks last, the search's folded
+  words, its every-word match over course, park and place, and which parks
+  and courses a search lists) and its Dart twin;
   Flutter `apps/mobile_android/test/races_courses_screen_test.dart` groups
   *the search* (the field and both actions on one FilterBar row in every
-  view, the debounced match by name, park and place, the Courses view and
-  its park row following it, no match with Clear search) and *All park
+  view, the debounced match of parks by name and place and of courses by
+  their own name, the Courses view following it, no match with Clear
+  search) and *All park
   courses* (the index's search and the query "See all" carries), and
-  *RunAnyTimeSection* (See all only when the list is cut short, in the
-  heading, with the count; a far course in whole grouped kilometres); pgTAP
+  *RunAnyTimeSection* (the parks in stable and nearest-first order, a park
+  opening its page, See all only when the list is cut short, in the heading,
+  with the count; a far park in whole grouped kilometres), and the parks
+  listed without their courses; pgTAP
   `apps/backend/supabase/tests/park_course_records_test.sql` (this season's
   fastest visible effort, the park's season, no row for a quiet course, a
   pulled park hidden, the caller's own private effort, anon refused);
   Playwright `apps/web/tests-e2e/races/races-and-courses.spec.ts` (the five-tab
-  strip, both sections, a course card with its record and its link, no time
-  yet, each section's error leaving the other standing, the empty state, failed
-  records, nearest first from the granted location, `/parks` from Run any
-  time, Segments and directly, the Show switch and its `?show=` links, every
-  course in the Courses view against eight in All, back from a course to the
-  Courses view, Use my location inside it, the park row and each card's park
-  link, Segments' Park courses opening the Courses view);
+  strip, both sections, the park listed without its courses and its page
+  holding the season record, no time yet on the park page, each section's
+  error leaving the other standing, the empty state, failed records on a
+  searched course, the nearest park first from the granted location, `/parks`
+  from Run any time, Segments and directly, the Show switch and its `?show=`
+  links, every park in the Courses view against eight in All, back from a park
+  to the Courses view, Use my location inside it, a searched course's park
+  link, the search finding parks and courses, Segments' Park courses opening
+  the Courses view);
   `apps/web/src/lib/races/races_show.test.ts`
   (parsing, the query string, the course limit per view); Flutter
   `apps/mobile_android/test/races_courses_screen_test.dart` (the switch hides

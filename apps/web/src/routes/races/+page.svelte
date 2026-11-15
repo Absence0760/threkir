@@ -31,7 +31,7 @@
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
-	import { orderAnyTimeCourses, parkSearchMatches, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
+	import { anyTimeSearchHits, orderAnyTimeCourses, orderAnyTimeParks, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
 	import { anyTimeCourseLimit, parseRacesShow, racesShowSearch, type RacesShow } from '#lib/races/races_show.ts';
 	import { regionName, regionSlug } from '#lib/parks/park_courses.ts';
 	import ParkCard from '#lib/components/parks/ParkCard.svelte';
@@ -206,64 +206,84 @@
 	let records = $state<Map<string, ParkCourseRecord>>(new Map());
 	let recordsFailed = $state(false);
 
-	const matchingCourses = $derived(
-		courseTerms.length === 0
-			? courses
-			: courses.filter((c) =>
-					parkSearchMatches(courseTerms, {
-						courseName: c.segment.name,
-						parkName: c.park.name,
-						regionCode: c.park.region_code,
-					}),
-				),
-	);
-
-	const orderedCourses = $derived(
-		orderAnyTimeCourses(
-			matchingCourses,
-			(c) => {
-				const first = c.segment.waypoints[0];
-				return {
-					regionCode: c.park.region_code,
-					parkName: c.park.name,
-					courseName: c.segment.name,
-					slug: c.slug,
-					distanceM: Number(c.segment.distance_m),
-					status: c.status,
-					start: first ? { lat: Number(first.lat), lng: Number(first.lng) } : null,
-				};
-			},
-			center,
-		).slice(0, anyTimeCourseLimit(show) ?? undefined),
-	);
-
-	// The way to the full index, only when the list above is cut short; the
-	// Courses view lists every course and has none (issue #1374).
-	const anyTimeTruncated = $derived.by(() => {
-		const limit = anyTimeCourseLimit(show);
-		return limit !== null && matchingCourses.length > limit;
-	});
-	const seeAllHref = $derived(courseQuery.trim() ? `/parks?q=${encodeURIComponent(courseQuery.trim())}` : '/parks');
-
-	// The Courses view leads with the parks, in the order their first course
-	// lists, so a set place brings the nearest park first too.
-	const anyTimeParks = $derived.by(() => {
-		if (show !== 'courses') return [];
+	// The section lists parks, each opening its page of courses; a course is
+	// listed on its own only when a search finds it by its own name
+	// (decisions § 2549).
+	const coursesByPark = $derived.by(() => {
 		const byPark = new Map<string, ParkCourseWithPark[]>();
 		for (const c of courses) {
 			const list = byPark.get(c.park_id);
 			if (list) list.push(c);
 			else byPark.set(c.park_id, [c]);
 		}
-		const seen = new Set<string>();
-		const out: { park: ParkCourseWithPark['park']; courses: ParkCourseWithPark[] }[] = [];
-		for (const { course } of orderedCourses) {
-			if (seen.has(course.park_id)) continue;
-			seen.add(course.park_id);
-			out.push({ park: course.park, courses: byPark.get(course.park_id) ?? [] });
-		}
-		return out;
+		return byPark;
 	});
+
+	const anyTimeHits = $derived(
+		anyTimeSearchHits(
+			courses,
+			(c) => ({ parkId: c.park_id, courseName: c.segment.name, parkName: c.park.name, regionCode: c.park.region_code }),
+			courseTerms,
+		),
+	);
+
+	function courseStart(c: ParkCourseWithPark): { lat: number; lng: number } | null {
+		const first = c.segment.waypoints[0];
+		return first ? { lat: Number(first.lat), lng: Number(first.lng) } : null;
+	}
+
+	const allParks = $derived(
+		orderAnyTimeParks(
+			anyTimeHits.parkIds.map((id) => coursesByPark.get(id) ?? []).filter((list) => list.length > 0),
+			(list) => {
+				const park = list[0].park;
+				return {
+					regionCode: park.region_code,
+					parkName: park.name,
+					slug: park.slug,
+					allClosed: list.every((c) => c.status === 'closed'),
+					starts: list.map(courseStart).filter((p) => p !== null),
+					location:
+						park.centroid_lat !== null && park.centroid_lng !== null
+							? { lat: park.centroid_lat, lng: park.centroid_lng }
+							: null,
+				};
+			},
+			center,
+		),
+	);
+
+	const allHitCourses = $derived(
+		orderAnyTimeCourses(
+			anyTimeHits.courses,
+			(c) => ({
+				regionCode: c.park.region_code,
+				parkName: c.park.name,
+				courseName: c.segment.name,
+				slug: c.slug,
+				distanceM: Number(c.segment.distance_m),
+				status: c.status,
+				start: courseStart(c),
+			}),
+			center,
+		),
+	);
+
+	const anyTimeLimit = $derived(anyTimeCourseLimit(show) ?? undefined);
+	const anyTimeParks = $derived(allParks.slice(0, anyTimeLimit));
+	const orderedCourses = $derived(allHitCourses.slice(0, anyTimeLimit));
+	const anyTimeCount = $derived(anyTimeParks.length + orderedCourses.length);
+
+	// The way to the full index, only when the list above is cut short; the
+	// Courses view lists everything and has none (issue #1374). It counts the
+	// courses the cut list stands for.
+	const anyTimeTruncated = $derived(
+		allParks.length > anyTimeParks.length || allHitCourses.length > orderedCourses.length,
+	);
+	const anyTimeCourseTotal = $derived(
+		allParks.reduce((n, p) => n + p.park.length, 0) + allHitCourses.length,
+	);
+	const seeAllHref = $derived(courseQuery.trim() ? `/parks?q=${encodeURIComponent(courseQuery.trim())}` : '/parks');
 
 	async function loadCourses() {
 		coursesLoading = true;
@@ -592,7 +612,7 @@
 					<h2 id="races-any-time-heading">{m('races.sectionAnyTime')}</h2>
 					{#if anyTimeTruncated && !coursesLoading && !coursesFailed}
 						<a class="see-all" href={seeAllHref} data-testid="races-any-time-all">
-							{m('races.anyTimeSeeAll', { n: matchingCourses.length })}
+							{m('races.anyTimeSeeAll', { n: anyTimeCourseTotal })}
 							<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 						</a>
 					{/if}
@@ -625,7 +645,7 @@
 					<span>{m('parks.loadFailed')}</span>
 					<button type="button" class="btn btn-outline" onclick={loadCourses}>{m('parks.retry')}</button>
 				</div>
-			{:else if orderedCourses.length === 0 && courseTerms.length > 0}
+			{:else if anyTimeCount === 0 && courseTerms.length > 0}
 				<EmptyState
 					icon="search_off"
 					title={m('races.anyTimeNoMatch', { query: courseQuery.trim() })}
@@ -637,26 +657,43 @@
 						</button>
 					{/snippet}
 				</EmptyState>
-			{:else if orderedCourses.length === 0}
+			{:else if anyTimeCount === 0}
 				<EmptyState icon="park" title={m('parks.empty')} data-testid="races-any-time-empty" />
 			{:else}
 				{#if anyTimeParks.length > 0}
 					<div class="any-time-parks">
-						<SectionHeader label={m('races.anyTimeParks')} id="races-any-time-parks-heading" level={3} class="races-any-time-head" />
-						<ul class="park-row" aria-labelledby="races-any-time-parks-heading" data-testid="races-any-time-parks">
-							{#each anyTimeParks as p (p.park.id)}
-								<li><ParkCard park={p.park} courses={p.courses} /></li>
+						{#if orderedCourses.length > 0}
+							<SectionHeader label={m('races.anyTimeParks')} id="races-any-time-parks-heading" level={3} class="races-any-time-head" />
+						{/if}
+						<ul
+							class="park-list"
+							aria-labelledby={orderedCourses.length > 0 ? 'races-any-time-parks-heading' : 'races-any-time-heading'}
+							data-testid="races-any-time-parks"
+						>
+							{#each anyTimeParks as { park: list, awayM } (list[0].park.id)}
+								<li data-testid="races-any-time-park">
+									<ParkCard park={list[0].park} courses={list} />
+									{#if awayM !== null}
+										<span class="park-away" data-testid="races-any-time-park-away">
+											{m('races.anyTimeAway', { distance: fmtCompactDistance(awayM) })}
+										</span>
+									{/if}
+								</li>
 							{/each}
 						</ul>
 					</div>
 				{/if}
-				{#if recordsFailed}
+				{#if orderedCourses.length > 0}
+					<SectionHeader label={m('races.showCourses')} id="races-any-time-courses-heading" level={3} class="races-any-time-head" />
+				{/if}
+				{#if recordsFailed && orderedCourses.length > 0}
 					<p class="records-failed" role="status" data-testid="races-any-time-records-failed">
 						{m('races.anyTimeFastestFailed')}
 						<button type="button" class="btn btn-outline btn-sm" onclick={loadRecords}>{m('parks.retry')}</button>
 					</p>
 				{/if}
-				<ul class="course-list" data-testid="races-any-time-list">
+				{#if orderedCourses.length > 0}
+				<ul class="course-list" aria-labelledby="races-any-time-courses-heading" data-testid="races-any-time-list">
 					{#each orderedCourses as { course, awayM } (course.id)}
 						{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
 						{@const laps = courseLapsChip(course.laps)}
@@ -696,6 +733,7 @@
 						</li>
 					{/each}
 				</ul>
+				{/if}
 			{/if}
 		</section>
 	{/if}
@@ -753,18 +791,22 @@
 	:global(.races-any-time-head) {
 		margin-bottom: var(--space-xs);
 	}
-	/* One row that scrolls inside itself, so the parks lead the courses
-	   without pushing them a screen down. */
-	.park-row {
+	.park-list {
 		list-style: none;
 		margin: 0;
-		padding: 0 0 2px;
+		padding: 0;
 		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: min(16rem, 80%);
+		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
 		gap: var(--space-sm);
-		overflow-x: auto;
-		scrollbar-width: thin;
+	}
+	.park-list > li {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.park-away {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
 	}
 	.course-card {
 		position: relative;

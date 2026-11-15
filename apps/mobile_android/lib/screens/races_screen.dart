@@ -312,7 +312,6 @@ class _RacesScreenState extends State<RacesScreen> {
                 limit: _show.value == RacesShow.courses
                     ? null
                     : kRunAnyTimeLimit,
-                showParks: _show.value == RacesShow.courses,
                 query: _settledQuery,
                 onClearQuery: _clearSearch,
               ),

@@ -294,18 +294,29 @@ class StravaImporter {
 
     // Use the parsed track. Fall back to CSV-supplied numbers if the file
     // somehow has no waypoints.
-    final track = (parsedRoute?.waypoints ?? const [])
-        .map((w) => Waypoint(
-              lat: w.lat,
-              lng: w.lng,
-              elevationMetres: w.elevationMetres,
-              timestamp: w.timestamp,
-            ))
-        .toList();
+    final points = parsedRoute?.waypoints ?? const <Waypoint>[];
+    // A FIT's own distance stream, when it is clean, is what the watch
+    // measured and auto-lapped on: every waypoint carries it, so the split
+    // table measures on it (gps_distance.md § Splits and moving time) and the
+    // run's distance is its total rather than the raw hop-sum of the
+    // positions (#1387).
+    final deviceCum = deviceCumulativeMetres(deviceDistances, points.length);
+    final track = [
+      for (var i = 0; i < points.length; i++)
+        Waypoint(
+          lat: points[i].lat,
+          lng: points[i].lng,
+          elevationMetres: points[i].elevationMetres,
+          timestamp: points[i].timestamp,
+          cumulativeDistanceMetres: deviceCum?[i],
+        ),
+    ];
 
-    final distance = (parsedRoute?.distanceMetres ?? 0) > 0
-        ? parsedRoute!.distanceMetres
-        : fallbackDistanceMetres;
+    final distance = deviceCum != null
+        ? deviceCum.last
+        : (parsedRoute?.distanceMetres ?? 0) > 0
+            ? parsedRoute!.distanceMetres
+            : fallbackDistanceMetres;
 
     // Strava CSV date format: "Apr 9, 2026, 7:30:00 AM"
     // audit/strava May 2026 Low #5 — a malformed date row used to

@@ -389,6 +389,27 @@ export function computeEmbeddedBests(
 	return out;
 }
 
+/// [track] with each point's `distM` set from the device's own distance
+/// stream, rebased to 0 at the first point, when the stream passes
+/// `deviceCumulativeMetres`; [track] unchanged otherwise. Splits and moving
+/// time measure on `distM` when every point carries it
+/// (docs/features/gps_distance.md § Splits and moving time), so an imported
+/// run's mile splits land where the watch's own distance auto-laps did. On
+/// the raw hop-sum of the positions instead, GPS error at a city start put
+/// the first mile ~2.5 min ahead of the watch's lap and the gap unwound over
+/// the rest of a marathon (#1387). Rebased so the axis starts where the
+/// split clock does, at the first positioned record. The mobile Strava ZIP
+/// importer stamps `cumulativeDistanceMetres` the same way
+/// (`_parseTrackFile` in apps/mobile_android/lib/strava_importer.dart).
+export function withDeviceDistances<T extends TrackPoint>(
+	track: T[],
+	stream: readonly unknown[] | null | undefined,
+): T[] {
+	const cum = deviceCumulativeMetres(stream, track.length);
+	if (cum == null) return track;
+	return track.map((p, i) => ({ ...p, distM: cum[i] }));
+}
+
 export interface ParsedFitRun {
 	/// ISO timestamp of the session start.
 	startedAt: string;
@@ -432,8 +453,9 @@ export interface ParsedFitRun {
 	track: TrackPoint[];
 	/// The device's cumulative distance (metres) at each `track` point, one
 	/// entry per point, from FIT `record.distance`; NaN where a record carried
-	/// none. `null` when no positioned record carried a distance. Not stored —
-	/// it only feeds `computeEmbeddedBests`, which validates it.
+	/// none. `null` when no positioned record carried a distance. Feeds
+	/// `computeEmbeddedBests`, which validates it; when it validates it is also
+	/// on the track itself as `distM` (`withDeviceDistances`).
 	distance_stream: number[] | null;
 	/// Per-point HR for records that carried no GPS fix (indoor / treadmill).
 	/// On an outdoor run every record has a fix and its HR rides on the
@@ -659,7 +681,7 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 		hr_zones: buildHrZonesFromFit(
 			(data as { hr_zone?: { high_bpm?: unknown }[] }).hr_zone,
 		),
-		track,
+		track: withDeviceDistances(track, anyDistance ? distanceStream : null),
 		distance_stream: anyDistance ? distanceStream : null,
 		hr_series: hrSeries,
 	};

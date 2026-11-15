@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/import_failures.dart';
+import '../lib/run_stats.dart';
 import '../lib/strava_importer.dart';
 
 const _gpxOnePoint = '''<?xml version="1.0"?>
@@ -544,6 +547,100 @@ void main() {
       final m = r.runs.single.metadata!;
       expect(m.containsKey('fastest_5k_s'), isFalse);
       expect(m.containsKey('fastest_10k_s'), isFalse);
+    });
+  });
+
+  group('FIT device distance', () {
+    // A FIT whose records carry the watch's own distance beside positions
+    // that disagree with it: the line zig-zags 3 m either side of the road
+    // for the first 600 m (a start among tall buildings), then runs true, at
+    // 3.0 m/s throughout (333 s/km). [distance] maps a record's index to the
+    // distance it carries, or null to leave the field out.
+    Uint8List fitBytes({double? Function(int i, double d)? distance}) {
+      List<int> u32(int v) =>
+          [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+      const semi = (1 << 31) / 180.0;
+      const mPerDeg = 111320.0;
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 4, //
+        253, 4, 0x86, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        5, 4, 0x86, //
+      ];
+      for (var i = 0; i <= 617; i++) {
+        final d = i * 6.0;
+        final latM = d < 600 ? (i.isEven ? 3.0 : -3.0) : 0.0;
+        final dist = distance == null ? d : distance(i, d);
+        body.addAll([
+          0x00,
+          ...u32(1000000000 + i * 2),
+          ...u32((latM / mPerDeg * semi).round()),
+          ...u32((d / mPerDeg * semi).round()),
+          ...u32(dist == null ? 0xFFFFFFFF : (dist * 100).round()),
+        ]);
+      }
+      final bytes = Uint8List(14 + body.length);
+      bytes[0] = 14;
+      bytes[1] = 0x10;
+      bytes.setRange(4, 8, u32(body.length));
+      bytes.setRange(8, 12, '.FIT'.codeUnits);
+      bytes.setRange(14, bytes.length, body);
+      return bytes;
+    }
+
+    Future<File> fitZip(Uint8List fit) async {
+      final csvContent = csv([
+        _stravaHeader,
+        ['1', 'Apr 9, 2026, 7:30:00 AM', 'Race', 'Run', '3.75', '1234',
+            'activities/1.fit'],
+      ]);
+      final archive = Archive()
+        ..addFile(ArchiveFile(
+            'activities.csv', csvContent.length, utf8.encode(csvContent)))
+        ..addFile(ArchiveFile('activities/1.fit', fit.length, fit));
+      final zip = File('${tmpDir.path}/strava.zip');
+      await zip.writeAsBytes(ZipEncoder().encode(archive));
+      return zip;
+    }
+
+    test(
+        'every waypoint carries the watch distance, so mile splits match its '
+        'auto-laps (#1387)', () async {
+      final r = await StravaImporter.importFromZip(await fitZip(fitBytes()));
+      final run = r.runs.single;
+      expect(run.track, hasLength(618));
+      expect(run.track.first.cumulativeDistanceMetres, 0);
+      expect(run.track.last.cumulativeDistanceMetres, closeTo(3702, 0.01));
+      expect(run.distanceMetres, closeTo(3702, 0.01));
+
+      final splits = computeSplitDurations(
+          run.track, 1609.344, run.startedAt,
+          totalDistanceMetres: run.distanceMetres);
+      expect(splits, hasLength(2));
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(536.448, 1),
+            reason: 'mile ${s.tick}');
+      }
+
+      // On the positions alone the zig-zag at the start reaches the first
+      // mile early and reads it far faster than the watch's lap.
+      final onPositions = computeSplitDurations(
+          [
+            for (final w in run.track)
+              Waypoint(lat: w.lat, lng: w.lng, timestamp: w.timestamp),
+          ],
+          1609.344,
+          run.startedAt);
+      expect(onPositions.first.duration.inSeconds, lessThan(536 - 45));
+    });
+
+    test('a stream with a gap leaves the track on its positions', () async {
+      final r = await StravaImporter.importFromZip(await fitZip(
+          fitBytes(distance: (i, d) => i == 300 ? null : d)));
+      final run = r.runs.single;
+      expect(run.track.any((w) => w.cumulativeDistanceMetres != null), isFalse);
+      expect(run.distanceMetres, greaterThan(3702));
     });
   });
 

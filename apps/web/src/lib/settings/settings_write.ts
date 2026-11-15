@@ -100,3 +100,54 @@ export async function drainQueue<T>(
 	}
 	return [];
 }
+
+/// The settings-bag keys held only with health-data consent: the client copy
+/// of `private.health_consent_pref_keys()` (migration 20271230001390, decisions
+/// § 2542). The database refuses a new `body_weight_kg` or
+/// `hr_medication_affected` without consent (42501) and every writer stores
+/// the rest only under it. `health_consent_pref_keys.test.ts` fails when this
+/// list, the Dart one in `packages/api_client` and the SQL one disagree.
+export const HEALTH_CONSENT_PREF_KEYS: readonly string[] = [
+	'hr_medication_affected',
+	'date_of_birth',
+	'body_weight_kg',
+	'cycle_tracking_mode',
+	'cycle_length_days',
+	'cycle_last_period_start',
+	'pregnancy_due_date',
+];
+
+/// `changes` without a consent-gated key that sets a value, or null when there
+/// is none to remove. A gated key set to null is kept: removing a value is
+/// never refused, and dropping it would keep a value the runner deleted.
+export function withoutHealthConsentPrefs<T extends Record<string, unknown>>(changes: T): T | null {
+	let stripped = false;
+	const out: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(changes)) {
+		if (v != null && HEALTH_CONSENT_PREF_KEYS.includes(k)) {
+			stripped = true;
+			continue;
+		}
+		out[k] = v;
+	}
+	return stripped ? (out as T) : null;
+}
+
+/// Push a queued universal change, and when the server refuses it for want of
+/// consent (42501) push it again without its consent-gated values. A change
+/// queued offline can replay after consent was withdrawn on another device;
+/// refusing it whole would also drop the keys queued beside the weight (a
+/// unit, a locale). Any other failure is rethrown for `drainQueue` to sort.
+export async function pushWithoutRefusedHealthPrefs<T extends Record<string, unknown>>(
+	changes: T,
+	push: (changes: T) => Promise<void>,
+): Promise<void> {
+	try {
+		await push(changes);
+	} catch (err) {
+		if (!(err instanceof SettingsWriteError) || err.code !== '42501') throw err;
+		const rest = withoutHealthConsentPrefs(changes);
+		if (rest === null) throw err;
+		await push(rest);
+	}
+}

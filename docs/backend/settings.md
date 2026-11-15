@@ -255,6 +255,10 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   replayed on the next successful `SettingsService.load()` — the queue
   drain runs the same `applyPrefsChanges` merge on top of the live
   server bag so a concurrent write from another device isn't clobbered.
+  A replayed change the server refuses is dropped rather than left to block
+  the queue, except that one refused for want of health-data consent (42501)
+  is first pushed again without its consent-gated values, on both clients
+  (`pushWithoutRefusedHealthPrefs`, decisions § 2542).
   Cache keys are user-scoped (and device-scoped for the device bag)
   so a sign-out + sign-in as a different user can't read another
   user's rows. Both mobile

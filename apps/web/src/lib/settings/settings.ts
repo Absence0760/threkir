@@ -17,7 +17,12 @@ import {
 	type PendingChange,
 	type PrefsCache,
 } from './settings_cache';
-import { SettingsWriteError, drainQueue, pushOrQueue } from './settings_write';
+import {
+	SettingsWriteError,
+	drainQueue,
+	pushOrQueue,
+	pushWithoutRefusedHealthPrefs,
+} from './settings_write';
 import type { JsonObject } from '../types';
 
 /// Typed accessor for `user_settings` + `user_device_settings`.
@@ -303,7 +308,7 @@ async function drainPending(cache: PrefsCache, userId: string, deviceId: string)
 	const unsent = await drainQueue(queue, (change) =>
 		change.isDevice
 			? pushDevice(cache, userId, deviceId, change.changes)
-			: pushUniversal(cache, userId, change.changes),
+			: pushWithoutRefusedHealthPrefs(change.changes, (c) => pushUniversal(cache, userId, c)),
 	);
 	if (unsent.length === queue.length) return;
 	cache.clearPending(userId, deviceId);

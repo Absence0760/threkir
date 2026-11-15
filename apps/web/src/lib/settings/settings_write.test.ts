@@ -6,6 +6,8 @@ import {
 	drainQueue,
 	failureOf,
 	pushOrQueue,
+	pushWithoutRefusedHealthPrefs,
+	withoutHealthConsentPrefs,
 } from './settings_write';
 
 // postgrest-js's fetch catch: no code, status 0, the message prefixed
@@ -130,4 +132,61 @@ test('a rejected entry is dropped so it cannot block the queue behind it forever
 	});
 	assert.deepEqual(sent, ['a', 'c']);
 	assert.deepEqual(unsent, []);
+});
+
+// Decisions § 2542: a weight queued offline can replay after consent was
+// withdrawn on another device, and the database refuses it (42501).
+test('a queued change refused for want of consent lands again without its gated values', async () => {
+	const pushed: Record<string, unknown>[] = [];
+	await pushWithoutRefusedHealthPrefs({ body_weight_kg: 81.5, weight_unit: 'kg' }, async (c) => {
+		pushed.push(c);
+		if ('body_weight_kg' in c) throw new SettingsWriteError(RLS_DENIED);
+	});
+	assert.deepEqual(pushed, [{ body_weight_kg: 81.5, weight_unit: 'kg' }, { weight_unit: 'kg' }]);
+});
+
+test('the consent retry drains through, so the change behind it is not blocked', async () => {
+	const sent: Record<string, unknown>[] = [];
+	const push = async (c: Record<string, unknown>) => {
+		if (c.body_weight_kg != null) throw new SettingsWriteError(RLS_DENIED);
+		sent.push(c);
+	};
+	const unsent = await drainQueue(
+		[{ body_weight_kg: 81.5 }, { locale: 'de' }],
+		(c) => pushWithoutRefusedHealthPrefs(c, push),
+	);
+	assert.deepEqual(sent, [{}, { locale: 'de' }]);
+	assert.deepEqual(unsent, []);
+});
+
+test('a 42501 with no gated value to remove is rethrown, not retried', async () => {
+	let calls = 0;
+	await assert.rejects(
+		pushWithoutRefusedHealthPrefs({ privacy_default: 'public' }, async () => {
+			calls++;
+			throw new SettingsWriteError(RLS_DENIED);
+		}),
+		SettingsWriteError,
+	);
+	assert.equal(calls, 1);
+});
+
+test('a refusal other than 42501, or a transport failure, is not retried without the gated values', async () => {
+	for (const failure of [CHECK_VIOLATION, OFFLINE]) {
+		let calls = 0;
+		await assert.rejects(
+			pushWithoutRefusedHealthPrefs({ body_weight_kg: 81.5 }, async () => {
+				calls++;
+				throw new SettingsWriteError(failure);
+			}),
+		);
+		assert.equal(calls, 1);
+	}
+});
+
+test('a gated key set to null is kept: removing a value is never refused', () => {
+	assert.equal(withoutHealthConsentPrefs({ body_weight_kg: null, locale: 'de' }), null);
+	assert.deepEqual(withoutHealthConsentPrefs({ body_weight_kg: 70, hr_medication_affected: null }), {
+		hr_medication_affected: null,
+	});
 });

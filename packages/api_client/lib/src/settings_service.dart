@@ -329,6 +329,86 @@ class PendingSettingsChange {
       );
 }
 
+/// The settings-bag keys held only with health-data consent: the client copy
+/// of `private.health_consent_pref_keys()` (migration 20271230001390,
+/// decisions § 2542). The database refuses a new `body_weight_kg` or
+/// `hr_medication_affected` without consent (42501) and every writer stores
+/// the rest only under it. `apps/web/src/lib/settings/
+/// health_consent_pref_keys.test.ts` fails when this set, the web one and the
+/// SQL one disagree.
+const Set<String> healthConsentPrefKeys = {
+  'hr_medication_affected',
+  'date_of_birth',
+  'body_weight_kg',
+  'cycle_tracking_mode',
+  'cycle_length_days',
+  'cycle_last_period_start',
+  'pregnancy_due_date',
+};
+
+/// [changes] without a consent-gated key that sets a value, or null when there
+/// is none to remove. A gated key set to null is kept: removing a value is
+/// never refused, and dropping it would keep a value the runner deleted.
+/// Mirrors web's `withoutHealthConsentPrefs`.
+Map<String, dynamic>? withoutHealthConsentPrefs(Map<String, dynamic> changes) {
+  var stripped = false;
+  final out = <String, dynamic>{};
+  changes.forEach((k, v) {
+    if (v != null && healthConsentPrefKeys.contains(k)) {
+      stripped = true;
+    } else {
+      out[k] = v;
+    }
+  });
+  return stripped ? out : null;
+}
+
+/// Whether [error] is the server refusing a settings write (RLS, CHECK, a
+/// consent gate) rather than the network failing. PostgREST answers a refusal
+/// with a SQLSTATE or `PGRST*` code, and an unparseable error body with its
+/// HTTP status as the code; a transport failure is not a
+/// [PostgrestException] at all. Mirrors web's `classifyWriteFailure`.
+bool settingsWriteRejected(Object error) =>
+    error is PostgrestException && (error.code ?? '').trim().isNotEmpty;
+
+/// Push a universal change, and when the server refuses it for want of consent
+/// (42501) push it again without its consent-gated values. A change queued
+/// offline can replay after consent was withdrawn on another device; refusing
+/// it whole would also drop the keys queued beside the weight. Any other
+/// failure is rethrown. Mirrors web's `pushWithoutRefusedHealthPrefs`.
+Future<void> pushWithoutRefusedHealthPrefs(
+  Map<String, dynamic> changes,
+  Future<void> Function(Map<String, dynamic> changes) push,
+) async {
+  try {
+    await push(changes);
+  } on PostgrestException catch (e) {
+    if (e.code != '42501') rethrow;
+    final rest = withoutHealthConsentPrefs(changes);
+    if (rest == null) rethrow;
+    await push(rest);
+  }
+}
+
+/// Replay a pending queue in order, returning what is still unsent. A refused
+/// entry is dropped: it can never succeed, and left at the head it blocks
+/// every change behind it forever. A transport failure stops the drain and
+/// keeps that entry and the rest, in order. Mirrors web's `drainQueue`.
+Future<List<T>> drainSettingsQueue<T>(
+  List<T> queue,
+  Future<void> Function(T change) push,
+) async {
+  for (var i = 0; i < queue.length; i++) {
+    try {
+      await push(queue[i]);
+    } catch (e) {
+      if (settingsWriteRejected(e)) continue;
+      return queue.sublist(i);
+    }
+  }
+  return const [];
+}
+
 class _NoOpSettingsCache implements SettingsCache {
   const _NoOpSettingsCache();
   @override
@@ -525,18 +605,18 @@ class SettingsService {
   Future<void> _drainPending(String userId) async {
     final queue = _cache.readPending(userId, _deviceId);
     if (queue.isEmpty) return;
-    for (final change in queue) {
-      try {
-        if (change.isDevice) {
-          await _pushDevice(userId, change.changes);
-        } else {
-          await _pushUniversal(userId, change.changes);
-        }
-      } catch (_) {
-        return;
-      }
-    }
+    final unsent = await drainSettingsQueue(
+      queue,
+      (PendingSettingsChange change) => change.isDevice
+          ? _pushDevice(userId, change.changes)
+          : pushWithoutRefusedHealthPrefs(
+              change.changes, (c) => _pushUniversal(userId, c)),
+    );
+    if (unsent.length == queue.length) return;
     await _cache.clearPending(userId, _deviceId);
+    for (final change in unsent) {
+      await _cache.appendPending(userId, _deviceId, change);
+    }
   }
 
   /// Effective value for [key], falling back through device → universal →
@@ -562,7 +642,11 @@ class SettingsService {
   /// in-memory map + cache so [effective] reflects the user's edit
   /// immediately. The server push is best-effort — on failure (network
   /// down, server returns 5xx, etc.) the change is queued to a pending
-  /// list and replayed on the next successful [load].
+  /// list and replayed on the next successful [load]. A refusal for want of
+  /// health-data consent is pushed again without the consent-gated values
+  /// ([pushWithoutRefusedHealthPrefs]), here and on the replay, and a replayed
+  /// change the server still refuses is dropped rather than left to block the
+  /// queue.
   ///
   /// **Concurrency note:** the server push merges the delta in one
   /// statement (`merge_my_settings`), so a concurrent writer — another
@@ -573,7 +657,8 @@ class SettingsService {
     _universal = applyPrefsChanges(_universal, changes);
     await _cache.writeUniversal(userId, _universal);
     try {
-      await _pushUniversal(userId, changes);
+      await pushWithoutRefusedHealthPrefs(
+          changes, (c) => _pushUniversal(userId, c));
     } catch (_) {
       await _cache.appendPending(
         userId,

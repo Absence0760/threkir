@@ -3,7 +3,7 @@ import { expect, test as base } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
-import { readMaybeRow, readRow } from '../fixtures/db-read';
+import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
 
 // A fresh saga user per test, minted without health-data consent and with
@@ -365,12 +365,12 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// …and the typed lbs value was stored as canonical kg, NOT verbatim.
 		expect(p.body_weight_kg as number).toBeCloseTo(69.9, 1);
 		// The consented weight also starts the body_metrics series.
-		const { data: weights } = await admin
-			.from('body_metrics')
-			.select('id, weight_kg')
-			.eq('user_id', wizardUser.id);
-		expect(weights ?? []).toHaveLength(1);
-		expect(Number(weights![0].weight_kg)).toBeCloseTo(69.9, 1);
+		const weights = await readRows(
+			'body_metrics by user_id',
+			admin.from('body_metrics').select('id, weight_kg').eq('user_id', wizardUser.id)
+		);
+		expect(weights).toHaveLength(1);
+		expect(Number(weights[0].weight_kg)).toBeCloseTo(69.9, 1);
 	});
 
 	test('DOB entered without the health-data consent still writes user_profiles.date_of_birth (family-club minor-exclusion floor)', async ({
@@ -478,11 +478,11 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 		expect(p.privacy_default).toBe('private');
 		expect(p.body_weight_kg).toEqual(prefsBefore.body_weight_kg);
-		const { data: weights } = await admin
-			.from('body_metrics')
-			.select('id')
-			.eq('user_id', wizardUser.id);
-		expect(weights ?? []).toHaveLength(0);
+		const weights = await readRows(
+			'body_metrics by user_id',
+			admin.from('body_metrics').select('id').eq('user_id', wizardUser.id)
+		);
+		expect(weights).toHaveLength(0);
 		const profile = await readMaybeRow(
 			'user_profiles by id',
 			admin.from('user_profiles').select('health_data_consent_at').eq('id', wizardUser.id).maybeSingle()

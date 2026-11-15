@@ -1,6 +1,9 @@
 import type { TrackPoint } from '../types';
 import { lineLat, lineLng } from './track_line';
 import { runAltitudeSeries } from './run_altitude';
+import { haversineMetres } from '../geo/haversine';
+
+export { haversineMetres };
 
 /**
  * Whether every point of [track] carries the recorder's cumulative credited
@@ -383,40 +386,4 @@ function splitElevationReader(
 	};
 	return (start, end) =>
 		end <= at[0] || start >= at[at.length - 1] ? null : Math.round(altitudeAt(end) - altitudeAt(start));
-}
-
-/**
- * Great-circle distance between two lat/lng points, in metres.
- */
-/**
- * Great-circle metres between two points. Exported so the twin contract with
- * `run_stats.dart`'s `haversineMetres` can be pinned on both sides — it was
- * private, which is why a divergence in it went unnoticed.
- */
-export function haversineMetres(
-	lat1: number,
-	lng1: number,
-	lat2: number,
-	lng2: number
-): number {
-	const r = 6371000;
-	const dLat = ((lat2 - lat1) * Math.PI) / 180;
-	const dLng = ((lng2 - lng1) * Math.PI) / 180;
-	const sinLat = Math.sin(dLat / 2);
-	const sinLng = Math.sin(dLng / 2);
-	const a =
-		sinLat * sinLat +
-		Math.cos((lat1 * Math.PI) / 180) *
-			Math.cos((lat2 * Math.PI) / 180) *
-			sinLng *
-			sinLng;
-	// Clamp before the arc. Rounding can push `a` a hair above 1 for a
-	// near-antipodal pair, and then `Math.sqrt(1 - a)` is NaN — which propagates
-	// silently through every consumer (moving time, splits, segment distances)
-	// rather than throwing. The Dart twin clamps identically; an earlier pass
-	// fixed only that side on the false belief that this one already did, which
-	// left the pair divergent with the NaN moved here. Measured on
-	// (-87.5, 0, 87.5, 180): unclamped NaN, clamped 20015086.796.
-	const clamped = a > 1 ? 1 : a < 0 ? 0 : a;
-	return r * 2 * Math.asin(Math.sqrt(clamped));
 }

@@ -160,8 +160,6 @@
 			);
 			return;
 		}
-		// Read before the try: the withdrawal arm nulls `healthDataConsentAt`.
-		const withdrawing = !healthDataConsent && healthDataConsentAt != null;
 		savingDemographics = true;
 		demographicsSaved = false;
 		try {
@@ -220,11 +218,10 @@
 			// special-category data feeding those reads.
 			// `body_weight_kg` is the same kind of mirror — of the weight series
 			// — and every calorie estimate (web, phone, Wear OS) reads it, so it
-			// goes with the series on a real withdrawal. Only a real one: a
-			// runner who never consented may hold a weight typed at onboarding.
+			// goes with the series whenever consent is off (decisions § 2541).
 			await updateUniversal(auth.user.id, {
 				date_of_birth: healthDataConsent && dateOfBirth ? dateOfBirth : null,
-				...(withdrawing ? { body_weight_kg: null } : {}),
+				...(healthDataConsent ? {} : { body_weight_kg: null }),
 			});
 			if (healthDataConsent && weightDisplay != null && weightDisplay > 0) {
 				// Append a new measurement only when the value changed, so

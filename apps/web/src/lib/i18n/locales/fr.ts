@@ -5891,7 +5891,7 @@ export const messages = {
 	"prefs.genderMale": "Homme",
 	"prefs.genderFemale": "Femme",
 	"prefs.dateOfBirth": "Date de naissance",
-	"prefs.dateOfBirthPurpose": "Utilisée pour les résultats avec indice d'âge et, si vous donnez votre consentement ci-dessous, pour les zones de fréquence cardiaque. Votre âge exclut aussi les comptes des moins de 18 ans de la recherche par nom.",
+	"prefs.dateOfBirthPurpose": "Avec votre consentement ci-dessous, utilisée pour les résultats avec indice d'âge et les zones de fréquence cardiaque. Votre âge exclut aussi les comptes des moins de 18 ans de la recherche par nom.",
 	"prefs.dobMonth": "Mois",
 	"prefs.dobDay": "Jour",
 	"prefs.dobYear": "Année",

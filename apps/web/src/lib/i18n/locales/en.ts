@@ -5906,7 +5906,7 @@ export const en = {
 	"prefs.genderMale": "Male",
 	"prefs.genderFemale": "Female",
 	"prefs.dateOfBirth": "Date of birth",
-	"prefs.dateOfBirthPurpose": "Used for age-graded results and, when you consent below, heart-rate zones. Your age also keeps under-18 accounts out of name search.",
+	"prefs.dateOfBirthPurpose": "With your consent below, used for age-graded results and heart-rate zones. Your age also keeps under-18 accounts out of name search.",
 	"prefs.dobMonth": "Month",
 	"prefs.dobDay": "Day",
 	"prefs.dobYear": "Year",

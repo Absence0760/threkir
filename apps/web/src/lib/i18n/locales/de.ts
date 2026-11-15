@@ -5891,7 +5891,7 @@ export const messages = {
 	"prefs.genderMale": "Männlich",
 	"prefs.genderFemale": "Weiblich",
 	"prefs.dateOfBirth": "Geburtsdatum",
-	"prefs.dateOfBirthPurpose": "Wird für altersbewertete Ergebnisse und – bei erteilter Einwilligung unten – für Herzfrequenzzonen genutzt. Dein Alter hält außerdem Konten unter 18 aus der Namenssuche heraus.",
+	"prefs.dateOfBirthPurpose": "Mit deiner Einwilligung unten wird es für altersbewertete Ergebnisse und Herzfrequenzzonen genutzt. Dein Alter hält außerdem Konten von unter 18-Jährigen aus der Namenssuche heraus.",
 	"prefs.dobMonth": "Monat",
 	"prefs.dobDay": "Tag",
 	"prefs.dobYear": "Jahr",

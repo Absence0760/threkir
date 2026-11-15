@@ -1,9 +1,37 @@
-import { expect, test } from '../fixtures/test';
+import { expect, test as base } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { readMaybeRow, readRow } from '../fixtures/db-read';
 import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
+
+// A fresh saga user per test, minted without health-data consent and with
+// `onboarded_at` cleared. The wizard used to borrow the seeded USER_A and null
+// its consent stamp before every test; since decisions § 2514 and § 2542 a
+// null of the stamp erases the runner's heart rate, food log, body_metrics,
+// height and plan heart-rate targets, so every later spec on the shard met a
+// seeded user stripped of them. A throwaway user needs no snapshot and no
+// restore. The first describe overrides `storageState` with USER_A's, so it
+// mints none.
+const test = base.extend<{ wizardUser: SagaUser }>({
+	wizardUser: async ({}, use) => {
+		const [user] = await createSagaUsers(1, { displayNames: ['Wizard Saga'] });
+		try {
+			const { error } = await getAdminClient()
+				.from('user_profiles')
+				.update({ onboarded_at: null })
+				.eq('id', user.id);
+			if (error) throw error;
+			await use(user);
+		} finally {
+			await deleteSagaUsers([user]);
+		}
+	},
+	storageState: async ({ wizardUser }, use) => {
+		await use(wizardUser.storageStatePath);
+	},
+});
 
 /**
  * /onboarding — post-signup wizard.
@@ -20,8 +48,8 @@ import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
  * This spec covers:
  *   1. Existing seeded users (USER_A's `onboarded_at` is backfilled)
  *      are NOT redirected to /onboarding when they visit /dashboard.
- *   2. A user whose `onboarded_at` is reset to null IS redirected
- *      to /onboarding from any protected route.
+ *   2. A user whose `onboarded_at` is null (a fresh saga user per test)
+ *      IS redirected to /onboarding from any protected route.
  *   3. The wizard's Skip-onboarding header stamps `onboarded_at`
  *      and exits to /dashboard.
  *   4. The wizard's step-by-step Continue flow stamps
@@ -45,80 +73,9 @@ test.describe('/onboarding gate — existing user', () => {
 });
 
 test.describe('/onboarding gate — user whose onboarded_at is null', () => {
-	// We borrow USER_A but flip `onboarded_at` to null in beforeEach
-	// + restore in afterEach. Avoids minting a saga user (which the
-	// fixture admin-creates with onboarded_at = now() so it skips
-	// the wizard by design).
-	test.use({ storageState: USER_A.storageStatePath });
-
-	// USER_A is the shared seed user. The Continue-flow test completes the
-	// wizard, which writes preferred_unit ('mi'), display_name, primary_goal
-	// + privacy_default to the profile + settings. Other specs on this shard
-	// assume the seed baseline (notably the km-based plans tests), so snapshot
-	// the mutated rows in beforeEach and restore them in afterEach — leaving
-	// the user pristine regardless of which fields the wizard touched.
-	let savedProfile: { display_name: string | null; preferred_unit: string | null; onboarded_at: string | null; date_of_birth: string | null; health_data_consent_at: string | null; gender: string | null } | null = null;
-	let savedPrefs: Record<string, unknown> | null = null;
-	// A consented weight starts USER_A's body_metrics series; the rows a test
-	// adds are removed again so the seed's series stays as other specs expect.
-	let savedWeightIds: string[] = [];
-
-	test.beforeEach(async () => {
-		const admin = getAdminClient();
-		const { data: weights } = await admin
-			.from('body_metrics')
-			.select('id')
-			.eq('user_id', USER_A.id);
-		savedWeightIds = (weights ?? []).map((w) => String(w.id));
-		const { data: prof } = await admin
-			.from('user_profiles')
-			.select('display_name, preferred_unit, onboarded_at, date_of_birth, health_data_consent_at, gender')
-			.eq('id', USER_A.id)
-			.single();
-		savedProfile = prof ?? null;
-		const { data: settings } = await admin
-			.from('user_settings')
-			.select('prefs')
-			.eq('user_id', USER_A.id)
-			.maybeSingle();
-		savedPrefs = (settings?.prefs as Record<string, unknown> | null) ?? null;
-
-		// Reset the Art 9 fields too: USER_A is shared, and sibling specs (or
-		// the seed) may have stamped consent/gender. The DOB-without-consent
-		// test asserts these stay null, so it must START from null. The lock
-		// trigger (20261118) permits a direct null write.
-		await admin
-			.from('user_profiles')
-			.update({ onboarded_at: null, health_data_consent_at: null, gender: null })
-			.eq('id', USER_A.id);
-	});
-
-	test.afterEach(async () => {
-		const admin = getAdminClient();
-		await admin
-			.from('user_profiles')
-			.update({
-				onboarded_at: savedProfile?.onboarded_at ?? new Date().toISOString(),
-				display_name: savedProfile?.display_name ?? null,
-				preferred_unit: savedProfile?.preferred_unit ?? 'km',
-				date_of_birth: savedProfile?.date_of_birth ?? null,
-				health_data_consent_at: savedProfile?.health_data_consent_at ?? null,
-				gender: savedProfile?.gender ?? null,
-			})
-			.eq('id', USER_A.id);
-		if (savedPrefs) {
-			await admin.from('user_settings').update({ prefs: savedPrefs }).eq('user_id', USER_A.id);
-		}
-		const { data: weights } = await admin
-			.from('body_metrics')
-			.select('id')
-			.eq('user_id', USER_A.id);
-		const added = (weights ?? []).map((w) => String(w.id)).filter((id) => !savedWeightIds.includes(id));
-		if (added.length) await admin.from('body_metrics').delete().in('id', added);
-	});
-
 	test('protected route redirects to /onboarding when onboarded_at is null', async ({
 		page,
+		wizardUser,
 	}) => {
 		await page.goto('/dashboard');
 		await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
@@ -129,6 +86,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('Skip-onboarding header link stamps onboarded_at and exits to /dashboard', async ({
 		page,
+		wizardUser,
 	}) => {
 		// 45s test-level budget — exceeds the 30s default to leave
 		// room for the 20s waitForURL plus the parallelised supabase
@@ -162,7 +120,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('onboarded_at')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		expect(data.onboarded_at).not.toBeNull();
@@ -170,13 +128,14 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('the name step shows the stored name, and clearing it writes null', async ({
 		page,
+		wizardUser,
 	}) => {
 		// The profile may arrive named from the sign-in provider
 		// (decisions § 2365); the step shows that name and a cleared field
 		// must reach the row as null rather than leave the provider name.
 		test.setTimeout(45_000);
 		const admin = getAdminClient();
-		await admin.from('user_profiles').update({ display_name: 'Grace Provider' }).eq('id', USER_A.id);
+		await admin.from('user_profiles').update({ display_name: 'Grace Provider' }).eq('id', wizardUser.id);
 		await page.goto('/onboarding');
 		const name = page.getByLabel('Display name');
 		await expect(name).toHaveValue('Grace Provider');
@@ -200,7 +159,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 		const row = await readRow(
 			'user_profiles by id',
-			admin.from('user_profiles').select('display_name, onboarded_at').eq('id', USER_A.id).maybeSingle(),
+			admin.from('user_profiles').select('display_name, onboarded_at').eq('id', wizardUser.id).maybeSingle(),
 		);
 		expect(row.onboarded_at).not.toBeNull();
 		expect(row.display_name).toBeNull();
@@ -208,6 +167,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('step-by-step Continue flow writes the answers and exits to /dashboard', async ({
 		page,
+		wizardUser,
 	}) => {
 		// 45s test-level budget — same reason as the sibling Skip
 		// test above (full-page nav after parallelised writes under
@@ -315,7 +275,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('display_name, preferred_unit, onboarded_at')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		expect(profile.display_name).toBe('E2E Onboarded');
@@ -327,7 +287,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_settings')
 				.select('prefs')
-				.eq('user_id', USER_A.id)
+				.eq('user_id', wizardUser.id)
 				.maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
@@ -337,19 +297,11 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(p.show_gym).toBeUndefined();
 		expect(p.show_nutrition).toBeUndefined();
 
-		// Clean up the writes so other specs in the suite see USER_A
-		// in its seeded state (display_name = Jared Howard, etc).
-		await admin
-			.from('user_profiles')
-			.update({
-				display_name: 'Jared Howard',
-				preferred_unit: 'mi',
-			})
-			.eq('id', USER_A.id);
 	});
 
 	test('the body-weight step honours the chosen distance unit — miles asks for lbs and stores canonical kg', async ({
 		page,
+		wizardUser,
 	}) => {
 		// Regression: step 4 used to ask for weight in kg unconditionally,
 		// while step 2 auto-selects miles for US/GB/LR/MM runners. An
@@ -404,7 +356,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_settings')
 				.select('prefs')
-				.eq('user_id', USER_A.id)
+				.eq('user_id', wizardUser.id)
 				.maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
@@ -416,14 +368,14 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const { data: weights } = await admin
 			.from('body_metrics')
 			.select('id, weight_kg')
-			.eq('user_id', USER_A.id);
-		const added = (weights ?? []).filter((w) => !savedWeightIds.includes(String(w.id)));
-		expect(added).toHaveLength(1);
-		expect(Number(added[0].weight_kg)).toBeCloseTo(69.9, 1);
+			.eq('user_id', wizardUser.id);
+		expect(weights ?? []).toHaveLength(1);
+		expect(Number(weights![0].weight_kg)).toBeCloseTo(69.9, 1);
 	});
 
 	test('DOB entered without the health-data consent still writes user_profiles.date_of_birth (family-club minor-exclusion floor)', async ({
 		page,
+		wizardUser,
 	}) => {
 		// persona round-5 family-club: the under-18 minor-exclusion in
 		// search_user_profiles keys off user_profiles.date_of_birth. The
@@ -469,7 +421,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('date_of_birth, health_data_consent_at, gender')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		// DOB persisted despite no consent — the safety floor has its input.
@@ -481,6 +433,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('a weight typed without health-data consent is not saved, and a weight alone asks for the consent (§ 2542)', async ({
 		page,
+		wizardUser,
 	}) => {
 		// Weight is Art 9 health data. The step used to show the consent box
 		// only for gender or a date of birth, and stored the weight in the
@@ -491,7 +444,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const admin = getAdminClient();
 		const settingsBefore = await readMaybeRow(
 			'user_settings by user_id',
-			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+			admin.from('user_settings').select('prefs').eq('user_id', wizardUser.id).maybeSingle()
 		);
 		const prefsBefore = (settingsBefore?.prefs ?? {}) as Record<string, unknown>;
 		await page.goto('/onboarding');
@@ -520,7 +473,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 		const settings = await readMaybeRow(
 			'user_settings by user_id',
-			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+			admin.from('user_settings').select('prefs').eq('user_id', wizardUser.id).maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 		expect(p.privacy_default).toBe('private');
@@ -528,17 +481,18 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const { data: weights } = await admin
 			.from('body_metrics')
 			.select('id')
-			.eq('user_id', USER_A.id);
-		expect((weights ?? []).map((w) => String(w.id)).sort()).toEqual([...savedWeightIds].sort());
+			.eq('user_id', wizardUser.id);
+		expect(weights ?? []).toHaveLength(0);
 		const profile = await readMaybeRow(
 			'user_profiles by id',
-			admin.from('user_profiles').select('health_data_consent_at').eq('id', USER_A.id).maybeSingle()
+			admin.from('user_profiles').select('health_data_consent_at').eq('id', wizardUser.id).maybeSingle()
 		);
 		expect(profile?.health_data_consent_at ?? null).toBeNull();
 	});
 
 	test('the track step stores the switches the runner turned on, and nothing for the others', async ({
 		page,
+		wizardUser,
 	}) => {
 		test.setTimeout(45_000);
 		await page.goto('/onboarding');
@@ -562,7 +516,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 		const settings = await readMaybeRow(
 			'user_settings by user_id',
-			getAdminClient().from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+			getAdminClient().from('user_settings').select('prefs').eq('user_id', wizardUser.id).maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 		expect(p.show_gym).toBe(true);
@@ -571,6 +525,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('per-step Skip discards the step answer instead of carrying it forward (#921)', async ({
 		page,
+		wizardUser,
 	}) => {
 		// Regression: Skip and Continue were one handler, so Skip on a step
 		// the runner had already answered persisted that answer exactly as
@@ -583,12 +538,12 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('date_of_birth')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		const settingsBefore = await readMaybeRow(
 			'user_settings by user_id',
-			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+			admin.from('user_settings').select('prefs').eq('user_id', wizardUser.id).maybeSingle()
 		);
 		const prefsBefore = (settingsBefore?.prefs ?? {}) as Record<string, unknown>;
 
@@ -671,13 +626,13 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('date_of_birth')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		expect(profile?.date_of_birth ?? null).toEqual(profileBefore?.date_of_birth ?? null);
 		const settings = await readMaybeRow(
 			'user_settings by user_id',
-			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+			admin.from('user_settings').select('prefs').eq('user_id', wizardUser.id).maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 		expect(p.primary_goal).toEqual(prefsBefore.primary_goal);
@@ -689,6 +644,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('step 4 body weight rejects an out-of-bounds value — Continue stays disabled until it is fixed (#677)', async ({
 		page,
+		wizardUser,
 	}) => {
 		// Regression: weightMin/weightMax were HTML min/max attributes only.
 		// The wizard advances via onclick handlers, not a native form submit,
@@ -751,7 +707,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_settings')
 				.select('prefs')
-				.eq('user_id', USER_A.id)
+				.eq('user_id', wizardUser.id)
 				.maybeSingle()
 		);
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
@@ -760,6 +716,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 	test('finishing with every optional section blank exits to /dashboard and a revisit does not bounce back to step 1 (#227)', async ({
 		page,
+		wizardUser,
 	}) => {
 		// Regression pin for issue #227: skipping every optional section
 		// must never block the onboarded_at stamp — "Open dashboard" means
@@ -794,7 +751,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			admin
 				.from('user_profiles')
 				.select('onboarded_at')
-				.eq('id', USER_A.id)
+				.eq('id', wizardUser.id)
 				.maybeSingle()
 		);
 		expect(data.onboarded_at).not.toBeNull();

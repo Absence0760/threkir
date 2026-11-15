@@ -2229,6 +2229,51 @@ jobs:
             exit 1
           fi
 
+  store-declarations:
+    name: Store-console declarations vs the manifests, plists and HealthKit requests that ship
+    if: github.event.pull_request.draft != true
+    # docs/compliance/store_declarations.md — watch_wear@1.1.0 was refused by
+    # Google Play with a 403 because the watch's RunRecordingService declares
+    # foregroundServiceType="location|health" and the console of the record it
+    # ships in (com.threkir.app, since #1380) had only ever declared location.
+    # Nothing in the repo knew what the consoles hold. The registry
+    # docs/compliance/store_declarations.json now records it, and the script
+    # derives the code side from every shipped manifest, Info.plist, privacy
+    # manifest and HealthKit request, failing both ways with the console form
+    # to update.
+    #
+    # UNGATED on purpose: the registry lives under docs/, so a registry-only
+    # edit sets `code=false`, and a job gated on it would let a broken
+    # registry merge as a skip the gate counts as a pass (the reason
+    # `watch-ios-locale-parity` is ungated). Bare node against a checkout, no
+    # install, seconds on a Linux runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+        id: checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
+        with:
+          node-version: 24.20.0
+      # Drift first, then the tool's own suite: the suite's last cases read the
+      # committed tree, so running it first would report "the guard is broken"
+      # over an ordinary undeclared permission.
+      - name: Registry vs the shipped manifests, plists and HealthKit requests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node scripts/check_store_declarations.mjs; then
+            echo "::error::The code requests a permission, foreground service type, Health Connect or HealthKit type, usage description, background mode, required-reason API or collected-data type that docs/compliance/store_declarations.json does not list, or the registry lists one nothing requests any more. Each [FAIL] line above names the source file and the store-console form."
+            echo "Update the store console FIRST, then the registry: a declaration the console lacks is what made Play refuse watch_wear@1.1.0. docs/compliance/store_declarations.md has the steps, including the hand upload Play needs before it offers a new type."
+            exit 1
+          fi
+          if ! node --test scripts/check_store_declarations.test.mjs; then
+            echo "::error::The store-declarations guard's own unit tests failed. The registry is fine (the check above just passed), so this is a defect in scripts/check_store_declarations.mjs, not a missing declaration."
+            echo "Reproduce with: node --test scripts/check_store_declarations.test.mjs (stdlib plus git, no install needed)."
+            exit 1
+          fi
+
   watch-ios-locale-parity:
     name: watchOS source-level guards (catalog, declarations, duplicated sources)
     if: github.event.pull_request.draft != true
@@ -5248,6 +5293,7 @@ jobs:
       - watch-ble-uuids
       - watch-wire-vectors
       - ios-native-declarations
+      - store-declarations
       - watch-ios-locale-parity
       - watch-garmin-source
       - lambda-alias-coverage

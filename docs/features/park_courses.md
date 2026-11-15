@@ -19,7 +19,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | `park_months` badge (distinct local months with a completion, 3 / 6 / 12 / 24; migration `20271227001343`) | Shipped: `achievement_tiers_met`, `badges.ts`, `badges.dart` and labels in every locale. See *Months* |
 | Runners this month per course on the park page (`park_course_month_runners`, migration `20271227011343`) | Shipped, web and mobile, signed in |
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races` (its park cards, a searched course card and its park link, and "See all N courses") and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
-| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight parks, each a park card (course lines, agency, course count and distance range) opening its park page of courses, nearest first once the page has a place or the runner's location (the park's nearest course start), otherwise region then name; a park whose courses are all closed last (`orderAnyTimeParks` in `lib/parks/any_time_courses.ts`). A course is listed on its own, with distance, shape, its park and this season's record, only when the search finds it by its own name (`anyTimeSearchHits`, `orderAnyTimeCourses`; decisions § 2549). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every park with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
+| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight parks, each a park card (course lines, agency, course count and distance range) opening its park page of courses, nearest first once the page has a place or the runner's location (the park's nearest course start), otherwise region then name; a park whose courses are all closed last (`orderAnyTimeParks` in `lib/parks/any_time_courses.ts`). A course is listed on its own, with distance, shape, its park and this season's record, only when the search finds it by its own name (`anyTimeSearchHits`, `orderAnyTimeCourses`; decisions § 2550). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every park with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
@@ -39,7 +39,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2460). See *Loading courses* | Shipped |
 | Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2460. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
-| Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2550). See *The pages* | Shipped |
+| Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2551). See *The pages* | Shipped |
 | **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 
 ## Model
@@ -289,7 +289,7 @@ because a course is something you go and do, not a stretch you happen to run.
 
 - **Races & courses** (`/races`, the run-surface tab): two sections. *Upcoming
   races* is the race calendar, unchanged. *Run any time* lists parks, not
-  their courses (owner decision, decisions § 2549, superseding the flat
+  their courses (owner decision, decisions § 2550, superseding the flat
   course list of § 2436): each park card shows its course lines, agency,
   course count and distance range and opens the park page, which lists the
   courses with their maps, climb, difficulty and this season's records.
@@ -418,7 +418,7 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   outline one (primary when there is no route). From 72rem the map, profile
   and boards take the wide column and the stats, actions and notices the
   narrow one, so each column's blocks share its width.
-- **Start and finish points** (decisions § 2550): a block on the course page
+- **Start and finish points** (decisions § 2551): a block on the course page
   (web `CourseEndsBlock`, at the top of the notices column; mobile
   `CourseEndsCard`, under the map) gives the start and the finish as
   "lat, lng" to five decimals (about 1 m), the order Google and Apple Maps

@@ -24,7 +24,7 @@ import 'worst_case_layout.dart';
 /// Races & courses (issue #1352): the race calendar and the parks whose
 /// courses can be run any day, as two sections that load and fail on their
 /// own. Run any time lists parks; a course is listed on its own only when the
-/// search finds it by its own name (decisions § 2549).
+/// search finds it by its own name (decisions § 2550).
 
 class _Races extends RaceService {
   final List<RaceListingView> results;

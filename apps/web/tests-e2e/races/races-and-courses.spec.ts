@@ -12,7 +12,7 @@ import { USER_A, USER_B } from '../fixtures/users';
  * from the section's "See all N courses" heading link, which shows only when
  * the list is cut short (issue #1374). Run any time lists parks, each opening
  * its page of courses; a course is listed on its own only when the search
- * finds it by its own name (decisions § 2549). One search finds races by name
+ * finds it by its own name (decisions § 2550). One search finds races by name
  * and parks and courses by name, park and place, in every view.
  *
  * The park is planted in region US-AK so it sorts first in the stable order

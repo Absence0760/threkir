@@ -24,7 +24,7 @@ const int kRunAnyTimeLimit = 8;
 /// courses a runner can go and do on any day, nearest first once the phone
 /// already knows where it is, each opening its park page of courses. A course
 /// is listed on its own only when the search finds it by its own name
-/// (decisions § 2549). When [limit] cuts the list short, the heading offers
+/// (decisions § 2550). When [limit] cuts the list short, the heading offers
 /// "See all N courses", which opens `ParksScreen` (the full index) on the
 /// same search; a list that is already whole (the Courses view) has no such
 /// link.

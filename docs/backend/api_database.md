@@ -34,7 +34,7 @@ create table runs (
   fastest_10k_s integer,                    -- same, rolling 10 km window (20270325_001)
   fastest_half_marathon_s integer,          -- same, rolling 21.0975 km window (20270325_001)
   fastest_marathon_s integer,               -- same, rolling 42.195 km window (20270325_001); null or > 0 (CHECK, 20270705000004)
-  external_id   text unique,                -- deduplication key
+  external_id   text,                       -- deduplication key, unique per runner (index below)
   metadata      jsonb,                      -- source-specific extra fields (avg_bpm, steps, elevation_m, provider ids, …)
   track_url     text,                       -- Storage path: {user_id}/{run_id}.json.gz
   hr_series_url text,                        -- Storage path: {user_id}/{run_id}.hr.json.gz (indoor/trackless HR series)
@@ -52,8 +52,11 @@ create table runs (
 -- Index for timeline queries
 create index runs_user_started_at on runs (user_id, started_at desc);
 
--- Index for deduplication upserts
-create unique index runs_external_id on runs (external_id) where external_id is not null;
+-- Index for deduplication upserts: one run per runner per upstream id.
+-- Non-partial on purpose (20271231002548, decisions § 2548): the client
+-- upsert sends `on_conflict=user_id,external_id`, which cannot infer a
+-- partial index (42P10). NULL external_ids never collide.
+create unique index runs_user_external_id_arbiter on runs (user_id, external_id);
 
 -- Index for public share pages
 create index runs_public on runs (is_public, started_at desc) where is_public = true;
@@ -2612,7 +2615,7 @@ Add `authenticated` to the revoke list when no client role should hold it at all
 trigger calls). 250 migrations write a function-level `from public, anon` revoke
 today (227 as `revoke execute`, 35 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 795 migrations in version order and fails the PR on
+keeps it — it replays all 797 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

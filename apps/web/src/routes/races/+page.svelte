@@ -208,7 +208,7 @@
 
 	// The section lists parks, each opening its page of courses; a course is
 	// listed on its own only when a search finds it by its own name
-	// (decisions § 2549).
+	// (decisions § 2550).
 	const coursesByPark = $derived.by(() => {
 		const byPark = new Map<string, ParkCourseWithPark[]>();
 		for (const c of courses) {

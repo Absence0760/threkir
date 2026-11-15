@@ -3,7 +3,7 @@
 /// otherwise a stable order that does not depend on where the reader is.
 /// Either way what cannot be run sinks below what can. The section lists
 /// parks; a course is listed on its own only when a search finds it by its
-/// own name (decisions § 2549).
+/// own name (decisions § 2550).
 ///
 /// Parity pair with `apps/web/src/lib/parks/any_time_courses.ts`
 /// (docs/architecture/parity_pairs.md).

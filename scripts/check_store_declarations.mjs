@@ -187,7 +187,8 @@ export function stripXmlComments(xml, file = 'the document') {
  * @returns {string | undefined}
  */
 function attribute(tag, attr) {
-	const m = tag.match(new RegExp(`\\b${attr.replace(':', '\\:')}\\s*=\\s*"([^"]*)"`));
+	const name = attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`));
 	return m?.[1];
 }
 

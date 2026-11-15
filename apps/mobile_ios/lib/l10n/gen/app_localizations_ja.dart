@@ -1464,6 +1464,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get prefsSettingSaveFailed => '設定を保存できませんでした。';
+
+  @override
   String get safetyInvalidEmail => '有効なメールアドレスを入力してください。';
 
   @override

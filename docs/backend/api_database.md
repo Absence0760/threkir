@@ -1259,13 +1259,23 @@ create table user_profiles (
 -- strips the Art 9 copies in user_settings.prefs in the same call:
 -- the date_of_birth mirror, cycle_tracking_mode, cycle_length_days,
 -- cycle_last_period_start, pregnancy_due_date, hr_medication_affected,
--- and body_weight_kg when consent had been given (an onboarding weight
--- from a runner who never consented stays). Before, each client
--- cleared its own subset, and only web Account cleared the cycle keys.
--- (A direct NULL write of
--- health_data_consent_at remains trigger-permitted, but clients use
--- the RPC.) Pinned by withdraw_coach_consent_test.sql +
--- withdraw_health_data_consent_test.sql.
+-- and (since 20271229001390, on every withdrawal) body_weight_kg. Before,
+-- each client cleared its own subset, and only web Account cleared the
+-- cycle keys. The settings-bag weight itself needs consent: the
+-- user_settings_check_body_weight trigger refuses a new or changed
+-- body_weight_kg without health_data_consent_at (42501), pinned by
+-- body_weight_consent_test.sql (decisions § 2542).
+-- A direct NULL write of health_data_consent_at remains
+-- trigger-permitted (clients use the RPC), and since 20271230001390 it
+-- clears the same set: private.erase_consent_gated_values(uid) nulls
+-- height_cm + gender, deletes body_metrics, nulls the heart-rate
+-- targets on the runner's plans and strips the settings keys
+-- private.health_consent_pref_keys() names. The AFTER trigger
+-- user_profiles_health_consent_transition runs it on every non-null
+-- to null transition, and the RPC calls it too, so the two cannot
+-- drift (decisions § 2542). Pinned by withdraw_coach_consent_test.sql,
+-- withdraw_health_data_consent_test.sql and
+-- consent_null_clears_gated_values_test.sql.
 --
 -- date_of_birth is NOT among them (20270605_001, decisions § 721).
 -- The column is the child-safety age record the under-18 exclusions
@@ -2590,10 +2600,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 246 migrations write a function-level `from public, anon` revoke
-today (223 as `revoke execute`, 33 as `revoke all`); it is the house form for
+trigger calls). 249 migrations write a function-level `from public, anon` revoke
+today (226 as `revoke execute`, 35 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 791 migrations in version order and fails the PR on
+keeps it — it replays all 794 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2805,6 +2815,10 @@ All SECURITY DEFINER. EXECUTE is revoked from `public, anon` and granted to `aut
 - **`invoke_club_verification_recheck() → bigint`**: service_role only; the hourly `club-verification-recheck` pg_cron entry. Returns null and calls nothing unless the Vault secrets `club_verification_recheck_url` and `cron_secret` both exist.
 
 Triggers: `clubs_verification_lock` (BEFORE UPDATE on `clubs`, SECURITY DEFINER, runs after `clubs_freeze_managed_columns`) clears `is_verified` when a verified club's `name` or `slug` changes or its website host stops matching the approved domain, lapses the approval with the reason, audits and notifies. `clubs_protect_is_verified_trg` (20260909_001) is dropped. Pinned by `club_verification_test.sql`.
+
+### `race_match_candidates(p_started_at timestamptz, p_start_lat double precision, p_start_lng double precision)`
+
+The "Is this your race?" read for one run (migration `20271229100001`, issue #1389, decisions § 2544). Returns up to 50 `public_race_listings` rows dated within a day either side of `p_started_at`'s UTC date and within 50 km of the start (a listing with no `location_point` is kept, last), nearest first and then nearest in date, the cap taken after that ordering. A call with no start point returns no rows: across the whole country three days of races cannot be ranked, and date plus distance alone is the Turkey Trot failure. Each row carries the calendar projection plus `course_distance_m`, `location_lat` / `location_lng`, and, when the listing's course is a public route, its start and finish lines from `private.event_course_endpoints` (`start_gate_*` / `finish_gate_*`, the owner's privacy-clipped ends facing along the route; an end the clip removed has none) at `gate_half_width_m` 15. The exact day window and the distance, proximity and course gates are the pure `race_match` pair's, applied by the client with the run's track. `stable`, SECURITY DEFINER (the endpoint helper is revoked from client roles; the view only names a course route while it is public); EXECUTE for `authenticated` only. Pinned by `race_match_candidates_test.sql`.
 
 ### `search_race_listings(p_query text, p_distance text, p_from date, p_to date, p_center_lng double precision, p_center_lat double precision, p_radius_m double precision, p_limit int, p_newest_first boolean)`
 

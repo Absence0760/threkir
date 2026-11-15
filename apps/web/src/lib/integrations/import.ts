@@ -21,6 +21,14 @@ export interface ImportedRoute {
 	waypoints: TrackPoint[];
 	distance_m: number;
 	elevation_m: number | null;
+	/// The file's own cumulative distance (metres) at each waypoint, one entry
+	/// per waypoint, NaN where a point carried none; `null` when no point did.
+	/// Only TCX carries one (`<DistanceMeters>` on a `<Trackpoint>`): neither
+	/// GPX 1.1 nor the trackpoint extensions Garmin and Strava write define a
+	/// per-point distance. Not on `waypoints`: a run importer stamps it as
+	/// `distM` through `withDeviceDistances`, which validates it; a saved
+	/// route never carries it.
+	distance_stream: number[] | null;
 }
 
 /**
@@ -88,6 +96,8 @@ function parseTcx(xml: string): ImportedRoute[] {
 
 		const tps = Array.from(scope.querySelectorAll('Trackpoint'));
 		const waypoints: TrackPoint[] = [];
+		const distances: number[] = [];
+		let anyDistance = false;
 		for (const tp of tps) {
 			const pos = tp.querySelector('Position');
 			if (!pos) continue;
@@ -110,9 +120,12 @@ function parseTcx(xml: string): ImportedRoute[] {
 				ts: tsStr || undefined,
 				bpm: Number.isFinite(bpm) && bpm >= 30 && bpm <= 230 ? bpm : undefined,
 			});
+			const dist = trackpointDistance(tp);
+			if (Number.isFinite(dist)) anyDistance = true;
+			distances.push(dist);
 		}
 
-		if (waypoints.length > 0) routes.push(buildRoute(name, waypoints));
+		if (waypoints.length > 0) routes.push(buildRoute(name, waypoints, anyDistance ? distances : null));
 	}
 
 	if (routes.length === 0) {
@@ -120,6 +133,20 @@ function parseTcx(xml: string): ImportedRoute[] {
 	}
 
 	return routes;
+}
+
+/**
+ * The device's own cumulative distance (metres) on a TCX `<Trackpoint>`, NaN
+ * when it carries none or an unreadable one. Read off the Trackpoint's direct
+ * `<DistanceMeters>` child only: a Lap's `<DistanceMeters>` is the lap total,
+ * not a point's. Mirrors `RouteParser.tcxWithDistances` in packages/gpx_parser.
+ */
+export function trackpointDistance(tp: {
+	children?: ArrayLike<{ localName: string; textContent: string | null }>;
+}): number {
+	const child = Array.from(tp.children ?? []).find((c) => c.localName === 'DistanceMeters');
+	const text = child?.textContent?.trim();
+	return text ? Number(text) : NaN;
 }
 
 // --- GPX ---
@@ -430,7 +457,11 @@ export function geoJsonName(value: unknown, fallback: string): string {
 // 139 m (issue #1297). A finite pair can still overflow (`-1e308` then `1e308`
 // climbs by Infinity), so an infinite total reads as no climb known. The Dart
 // twin is `importedElevationGain` in packages/gpx_parser.
-function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
+function buildRoute(
+	name: string,
+	waypoints: TrackPoint[],
+	distanceStream: number[] | null = null,
+): ImportedRoute {
 	let distance = 0;
 	for (let i = 1; i < waypoints.length; i++) {
 		distance += haversineMetres(
@@ -447,5 +478,6 @@ function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
 		waypoints,
 		distance_m: Math.round(distance * 100) / 100,
 		elevation_m: Number.isFinite(gain) && gain > 0 ? Math.round(gain) : null,
+		distance_stream: distanceStream,
 	};
 }

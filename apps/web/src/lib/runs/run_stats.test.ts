@@ -9,6 +9,8 @@ import {
 	SPLIT_TAIL_MIN_M,
 	hasRecordedDistances,
 	trackCumulativeMetres,
+	splitAxisTotalMetres,
+	STILL_RADIUS_M,
 } from './run_stats';
 import { runAltitude } from './run_altitude';
 import { stripComments } from '../core/strip_comments';
@@ -430,6 +432,89 @@ test('computeRealSplits — mile splits on distM land on the mile boundaries', (
 	for (const sp of splits) assert.equal(sp.pace_s, 400, `split ${sp.km} pace ${sp.pace_s}`);
 	const summed = splits.reduce((a, sp) => a + sp.distance_m, 0);
 	assert.ok(Math.abs(summed - 5300) <= splits.length, `splits sum to ${summed}`);
+});
+
+test('computeRealSplits — the tail closes where the runner stopped, not where the watch did (#1388)', () => {
+	// 3.0 m/s for 700 s on distM, then 300 s standing after the finish: the
+	// raw fixes wander 4 m, distM holds still. One mile and a 491 m tail.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 140; i++) pts.push(at(i * 15, i * 5, i * 15));
+	for (let k = 1; k <= 60; k++) pts.push(at(2100 + (k % 2 === 0 ? 0 : 4), 700 + k * 5, 2100));
+	const splits = computeRealSplits(pts, 1609.344, 2100);
+	assert.deepEqual(splits.map((sp) => sp.distance_m), [1609, 491]);
+	for (const sp of splits) assert.equal(sp.pace_s, 333, `split ${sp.km} pace ${sp.pace_s}`);
+
+	// A track without distM whose fixes repeat while the runner stands.
+	const still = pts.map(({ distM: _d, ...p }, i) => (i > 140 ? { ...p, lng: 2100 / 111_320 } : p));
+	assert.ok(Math.abs(computeRealSplits(still, 1609.344).at(-1)!.pace_s - 333) <= 1);
+
+	// A stop mid-run is elapsed time, as a watch's distance auto-lap counts it.
+	const paused = [...pts.slice(0, 51), ...pts.slice(51).map((p) => ({
+		...p,
+		ts: new Date(Date.parse(p.ts!) + 60_000).toISOString(),
+	}))];
+	const first = computeRealSplits(paused, 1609.344, 2100)[0];
+	assert.ok(Math.abs(first.pace_s - (1609.344 / 3 + 60) / 1.609344) <= 1, `paused mile ${first.pace_s}`);
+});
+
+test('computeRealSplits — standing jitter on a track without distM is not running (#1388)', () => {
+	// The #1388 track without distM: 3.0 m/s (333 s/km) for 700 s, then 300 s
+	// standing while the fix wanders 4 m every 5 s (0.8 m/s, over the hop floor).
+	// On positions a 15 m step reads 14.98 m, so the true pace is 334 s/km;
+	// the hop floor alone left the 300 s in the tail at 634 s/km.
+	const truePace = Math.round(5000 / haversineMetres(0, 0, 0, 15 / 111_320));
+	assert.equal(truePace, 334);
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 140; i++) pts.push(at(i * 15, i * 5));
+	for (let k = 1; k <= 60; k++) pts.push(at(2100 + (k % 2 === 0 ? 0 : 4), 700 + k * 5));
+	const splits = computeRealSplits(pts, 1609.344);
+	assert.deepEqual(splits.map((sp) => sp.distance_m), [1609, 488]);
+	for (const sp of splits) assert.equal(sp.pace_s, truePace, `split ${sp.km} pace ${sp.pace_s}`);
+
+	// A run that ends 60 m short of the second mile: the jitter's hop-sum
+	// (240 m) would cross it and print a mile of standing.
+	const short: TrackPoint[] = [];
+	for (let i = 0; i <= 210; i++) short.push(at(i * 15, i * 5));
+	for (let k = 1; k <= 60; k++) short.push(at(3150 + (k % 2 === 0 ? 0 : 4), 1050 + k * 5));
+	const shortSplits = computeRealSplits(short, 1609.344);
+	assert.deepEqual(shortSplits.map((sp) => sp.distance_m), [1609, 1537]);
+	for (const sp of shortSplits) assert.equal(sp.pace_s, truePace, `split ${sp.km} pace ${sp.pace_s}`);
+
+	// Running to the last fix ends at it: its last STILL_RADIUS_M is real
+	// running, and a still stretch shorter than the window is not trimmed.
+	assert.equal(STILL_RADIUS_M, 15);
+	assert.deepEqual(computeRealSplits(pts.slice(0, 141), 1609.344), splits);
+	const briefStop = [...pts.slice(0, 141), ...pts.slice(141, 145)];
+	assert.equal(computeRealSplits(briefStop, 1609.344)[1].distance_m, 504);
+});
+
+test('splitAxisTotalMetres — scales a recorder axis, never an import', () => {
+	assert.equal(splitAxisTotalMetres('app', 5000), 5000);
+	assert.equal(splitAxisTotalMetres('watch', 5000), 5000);
+	for (const source of ['garmin', 'strava', 'healthconnect', 'healthkit', 'parkrun', 'race', null]) {
+		assert.equal(splitAxisTotalMetres(source, 5000), null, String(source));
+	}
+});
+
+test('computeRealSplits — distance before the first fix does not stretch an import', () => {
+	// A marathon at 8:00/mi whose watch measured 200 m before its first fix:
+	// distM is the device stream rebased to that fix (41,995 m) and distance_m
+	// the device total (42,195 m). Scaled one to the other, every mile read
+	// 2.3 s fast.
+	const v = 1609.344 / 480;
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i * 5 * v <= 41_995; i++) pts.push(at(i * 5 * v, i * 5, i * 5 * v));
+	const distanceM = 42_195;
+	const splits = computeRealSplits(pts, 1609.344, splitAxisTotalMetres('garmin', distanceM));
+	assert.equal(splits.length, 27);
+	for (const sp of splits.slice(0, 26)) {
+		assert.equal(sp.distance_m, 1609);
+		assert.ok(Math.abs(sp.pace_s / 1.609344 * 1.609344 - 298) <= 1, `mile ${sp.km} ${sp.pace_s}`);
+	}
+	const stretched = computeRealSplits(pts, 1609.344, distanceM);
+	const mileS = (sp: { pace_s: number; distance_m: number }) => (sp.pace_s * 1609.344) / 1000;
+	assert.ok(Math.abs(mileS(splits[0]) - 480) <= 1, `mile ${mileS(splits[0])}`);
+	assert.ok(Math.abs(480 - mileS(stretched[0]) - 2.3) <= 0.6, `stretched mile ${mileS(stretched[0])}`);
 });
 
 // A barometer run whose GPS altitude disagrees with it in shape and level:

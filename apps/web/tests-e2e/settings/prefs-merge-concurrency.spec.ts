@@ -25,7 +25,9 @@ test.describe('prefs bag — concurrent merges', () => {
 	let user: SagaUser;
 
 	test.beforeEach(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Prefs Merge Saga'] });
+		// The weight is held only with health-data consent (decisions § 2542),
+		// as it is for the /settings/body save this pins.
+		[user] = await createSagaUsers(1, { displayNames: ['Prefs Merge Saga'], healthConsent: true });
 		const { error } = await admin
 			.from('user_settings')
 			.upsert({ user_id: user.id, prefs: { body_weight_kg: 60, privacy_default: 'followers' } });

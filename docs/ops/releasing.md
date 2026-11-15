@@ -153,6 +153,10 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | `graph-cycle@*` | ubuntu-latest | — | Fly.io `graph-cycle` app (image only — OSM PBF stays on the `graph_cycle_data` volume; reparsed on boot) | — |
 | `graphhopper@*` | ubuntu-latest | — | Fly.io `graphhopper` app (image only — the PBF + built `graph-cache/` stay on the `graphhopper_data` volume) | — |
 
+**Why a Play upload was refused with a 403 naming a declaration.** Play answers a missing App content declaration (a foreground service type, Data safety, Health Connect) with the same `403 PERMISSION_DENIED` as a service account without access; `scripts/play_release.mjs` tells them apart by Play's message. Play only offers the declaration for a new type once a bundle carrying it has been uploaded, and the workflow's upload is the thing it refuses, so: upload the `.aab` attached to the GitHub Release by hand (Play Console → Test and release → the track → Create release, and save), complete the declaration under Policy and programs → App content, then re-run the job. Record the result in [`store_declarations.json`](../compliance/store_declarations.md).
+
+<a id="plays-symbol-warnings"></a>**Play's symbol warnings.** Play Console can flag an Android bundle with "There is no deobfuscation file associated with this App Bundle" and "This App Bundle contains native code, and you've not uploaded debug symbols". Nothing is uploaded beside the AAB for either: since AGP 4.1 Play reads the R8 mapping (`BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map`) and the native symbol tables (`BUNDLE-METADATA/com.android.tools.build.debugsymbols/<abi>/*.so.sym`, from `ndk.debugSymbolLevel = "SYMBOL_TABLE"` on the release build type) out of the bundle itself ([Google's guide](https://support.google.com/googleplay/android-developer/answer/9848633), [AGP's](https://developer.android.com/build/include-native-symbols)). `mobile_android@*` carries both (R8 is on through the Flutter Gradle plugin; `libapp`, `libflutter`, `libdartjni` symbols), and its release job fails if either goes missing. `watch_wear@*` carries neither, and both warnings on it are expected: R8 is off for the watch (`isMinifyEnabled = false`), so there is no mapping to give, and its native libraries (Sentry, DataStore, `androidx.graphics`) arrive prebuilt and already stripped, so AGP has no symbols to extract. The release run's "What the bundle carries" step says which applies. Clearing the first means turning R8 on for the watch, a behaviour change of its own; the second cannot be cleared from this repo.
+
 **Why an iOS upload failed.** The upload runs through `altool`, so Apple's validation errors (ITMS codes) are in the Release iOS run's "Upload to TestFlight" step, not only in an email. The default `appstore-api` backend validated out of band: `mobile_ios@1.0.0` uploaded, never appeared in App Store Connect and sent no email, leaving no reason anywhere.
 
 **What the iOS submission does, and when it stops.** After the upload,
@@ -458,6 +462,16 @@ and install from there.
 
 - `main` is green in CI.
 - The app compiles locally — don't rely on CI to catch build breakage.
+- **The store consoles declare what the build requests.** The
+  `store-declarations` CI job compares
+  [`docs/compliance/store_declarations.json`](../compliance/store_declarations.md)
+  with every shipped manifest, plist and HealthKit request. When it fires,
+  update the console first (the failing line names the form), then the
+  registry. Before tagging a `mobile_android@*`, `watch_wear@*` or
+  `mobile_ios@*` release, run `node scripts/check_store_declarations.mjs` and
+  clear every `[OWNER TO CONFIRM]` line that touches what this release adds.
+  Play refused `watch_wear@1.1.0` for an undeclared foreground service type
+  ([decisions § 2543](../architecture/decisions.md)).
 - Schema changes: if you deployed `backend@X`, apps that depend on the
   new schema should tag after (or at least not ahead of) `backend@X`.
 - **The job_worker that reads `distance_step_over_chord_m` ships before the

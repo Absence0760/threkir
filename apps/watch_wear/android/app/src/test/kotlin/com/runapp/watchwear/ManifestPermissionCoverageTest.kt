@@ -1,10 +1,12 @@
 package com.runapp.watchwear
 
+import android.Manifest
 import android.content.pm.ServiceInfo
 import android.os.Build
 import com.runapp.watchwear.recording.RunRecordingService
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -39,6 +41,10 @@ class ManifestPermissionCoverageTest {
 
     private val requestSite: String by lazy {
         File("src/main/kotlin/com/runapp/watchwear/ui/RunWatchApp.kt").readText()
+    }
+
+    private val buildScript: String by lazy {
+        File("build.gradle.kts").readText()
     }
 
     private val serviceSource: String by lazy {
@@ -117,17 +123,30 @@ class ManifestPermissionCoverageTest {
         )
     }
 
+    /// Short names, with the Android 16 granular health permissions kept
+    /// under their `health.` prefix (`health.READ_HEART_RATE`). Without the
+    /// optional group a declared health permission would not parse at all,
+    /// and every check in this class would pass it by never seeing it.
     private fun declaredPermissions(): Set<String> =
-        Regex("""<uses-permission\s+android:name="android\.permission\.([A-Z_0-9]+)"""")
+        Regex("""<uses-permission\s+android:name="android\.permission\.((?:health\.)?[A-Z_0-9]+)"""")
             .findAll(manifest)
             .map { it.groupValues[1] }
             .toSet()
 
-    private fun requestedPermissions(): Set<String> =
-        Regex("""Manifest\.permission\.([A-Z_0-9]+)""")
-            .findAll(requestSite)
-            .map { it.groupValues[1] }
-            .toSet()
+    /// The health permissions are not on `Manifest.permission`: the SDK
+    /// constant is `android.health.connect.HealthPermissions.X`, and a call
+    /// site may also name the string itself.
+    private fun permissionReferences(source: String): Set<String> =
+        (
+            Regex("""Manifest\.permission\.([A-Z_0-9]+)""").findAll(source)
+                .map { it.groupValues[1] } +
+                Regex("""HealthPermissions\.([A-Z_0-9]+)""").findAll(source)
+                    .map { "health." + it.groupValues[1] } +
+                Regex(""""android\.permission\.((?:health\.)?[A-Z_0-9]+)"""").findAll(source)
+                    .map { it.groupValues[1] }
+            ).toSet()
+
+    private fun requestedPermissions(): Set<String> = permissionReferences(requestSite)
 
     @Test
     fun `the manifest declares a permission set this guard can read`() {
@@ -318,5 +337,109 @@ class ManifestPermissionCoverageTest {
                 m and location == location
             },
         )
+    }
+
+    private fun targetSdk(): Int =
+        Regex("""\btargetSdk\s*=\s*(\d+)""").find(buildScript)?.groupValues?.get(1)?.toInt()
+            ?: error("no `targetSdk = N` in app/build.gradle.kts — the split guard reads nothing")
+
+    /// The permission list `startForegroundCompat` hands `hasAnyPermission`
+    /// to decide whether the health service type may be passed.
+    private fun healthTypePrerequisites(): Set<String> {
+        val start = serviceSource.indexOf("private fun startForegroundCompat")
+        assertTrue("startForegroundCompat not found in RunRecordingService.kt", start >= 0)
+        val call = Regex("""hasAnyPermission\(([^)]*)\)""")
+            .find(serviceSource, start)?.groupValues?.get(1)
+            ?: error("startForegroundCompat no longer calls hasAnyPermission(...)")
+        return permissionReferences(call)
+    }
+
+    /// Every place one heart-rate permission has to be wired, as the list of
+    /// places it is NOT. Used for BODY_SENSORS (must be empty, which proves
+    /// each probe still reads something) and for READ_HEART_RATE.
+    private fun heartRateWiringGaps(permission: String, fullName: String): List<String> =
+        buildList {
+            if (permission !in declaredPermissions()) {
+                add("AndroidManifest.xml does not declare $fullName")
+            }
+            if (permission !in requestedPermissions()) {
+                add("RunWatchApp.kt's permissionLauncher array does not request it")
+            }
+            val graded = permissionOutcome(
+                mapOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION to true,
+                    fullName to false,
+                ),
+            )
+            if (PermissionCost.HeartRate !in graded.costs) {
+                add("permissionOutcome does not grade its denial as PermissionCost.HeartRate")
+            }
+            if (permission !in healthTypePrerequisites()) {
+                add(
+                    "startForegroundCompat's hasAnyPermission(...) does not count it " +
+                        "toward the health foreground-service type",
+                )
+            }
+        }
+
+    @Test
+    fun `heart rate is wired through READ_HEART_RATE before targetSdk reaches 36`() {
+        // Measured 2026-11-15 on a Wear OS 6 (API 36) emulator, release
+        // build: Health Services' MeasureClient refuses HEART_RATE_BPM with
+        // "doesn't have permission to access
+        // android.permission.health.READ_HEART_RATE". At targetSdk 35 the
+        // platform treats that permission as a split of BODY_SENSORS, so the
+        // BODY_SENSORS dialog grants both and heart rate works. From
+        // targetSdk 36 the split stops applying: an app that still only
+        // asks for BODY_SENSORS gets "No HR" on every Wear OS 6 watch, with
+        // nothing failing anywhere. decisions § 2546.
+        val sdk = targetSdk()
+        assertTrue("targetSdk parsed as $sdk, which cannot be right", sdk in 30..99)
+
+        val probe = heartRateWiringGaps("BODY_SENSORS", Manifest.permission.BODY_SENSORS)
+        assertEquals(
+            "BODY_SENSORS, which IS wired today, reads as unwired — a probe in " +
+                "heartRateWiringGaps has gone stale and the READ_HEART_RATE " +
+                "check below would fail or pass for the wrong reason",
+            emptyList<String>(),
+            probe,
+        )
+
+        val gaps = heartRateWiringGaps("health.READ_HEART_RATE", READ_HEART_RATE)
+        if (sdk < 36) return
+        assertEquals(
+            "targetSdk is $sdk. From targetSdk 36 Android 16 no longer treats " +
+                "$READ_HEART_RATE as a split of BODY_SENSORS, and Health " +
+                "Services' MeasureClient refuses heart rate without it, so a " +
+                "BODY_SENSORS-only app records \"No HR\" on Wear OS 6. Wire it " +
+                "everywhere BODY_SENSORS is (declare BODY_SENSORS with " +
+                "maxSdkVersion=\"35\", request READ_HEART_RATE on API 36+ " +
+                "only, add it to docs/compliance/store_declarations.json). " +
+                "See decisions § 2546. Missing",
+            emptyList<String>(),
+            gaps,
+        )
+    }
+
+    @Test
+    fun `the heart-rate split guard can tell a wired permission from an unwired one`() {
+        // Below targetSdk 36 the guard above returns before asserting, so
+        // nothing would notice if heartRateWiringGaps stopped finding gaps.
+        // Until the wiring lands READ_HEART_RATE must read as missing
+        // everywhere; once it is wired this collapses to the empty list and
+        // the probe above is what keeps the guard honest.
+        val gaps = heartRateWiringGaps("health.READ_HEART_RATE", READ_HEART_RATE)
+        assertFalse(
+            "READ_HEART_RATE is partly wired ($gaps still missing) — finish it " +
+                "in the same change, a half-wired permission is the state the " +
+                "split guard exists to refuse",
+            gaps.isNotEmpty() && gaps.size < 4,
+        )
+    }
+
+    private companion object {
+        /// `android.health.connect.HealthPermissions.READ_HEART_RATE` (API 36);
+        /// spelled out so the JVM test needs no API-36 stub.
+        const val READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
     }
 }

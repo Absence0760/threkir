@@ -291,14 +291,13 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         // column is the child-safety age record and this screen never
         // touches it: since § 721 the RPC leaves it standing, so there is
         // nothing to put back.
-        // The weight series' mirror goes with the series — but only on a real
-        // withdrawal: a runner who never consented may hold a weight typed in
-        // the setup wizard.
+        // The weight series' mirror goes with the series: it is kept only
+        // with consent, and the database refuses it without (§ 2542).
         await widget.settingsSync?.updateUniversal(<String, dynamic>{
           SettingsKeys.dateOfBirth: null,
-          if (withdrawing) SettingsKeys.bodyWeightKg: null,
+          SettingsKeys.bodyWeightKg: null,
         });
-        if (withdrawing) await widget.preferences.setBodyWeightKg(null);
+        await widget.preferences.setBodyWeightKg(null);
       }
       _rebaseline();
       _snack(l10n.bodyMetricsSaved);

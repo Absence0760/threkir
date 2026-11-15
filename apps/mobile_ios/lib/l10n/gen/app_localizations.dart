@@ -2477,6 +2477,12 @@ abstract class AppLocalizations {
   /// **'Could not save setting: {error}'**
   String safetySettingSaveFailed(String error);
 
+  /// Banner when the server refuses a change made on the Preferences screen (a permission or validation refusal, not being offline); the control shows its previous value again
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that setting.'**
+  String get prefsSettingSaveFailed;
+
   /// Inline error when the entered email is not valid
   ///
   /// In en, this message translates to:
@@ -13187,7 +13193,7 @@ abstract class AppLocalizations {
   /// Consent gate data-processing paragraph
   ///
   /// In en, this message translates to:
-  /// **'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time on your Account page; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
+  /// **'The items marked “only if you\'ve given health-data consent” are health data: by tapping “I consent”, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time on your Account page; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
   String get coachConsentProcessing;
 
   /// Consent gate action paragraph

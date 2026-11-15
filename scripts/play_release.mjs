@@ -194,6 +194,35 @@ export class PlayError extends Error {
 }
 
 /**
+ * A policy declaration Play names in a refusal. Play answers a missing App
+ * content declaration with the same 403 PERMISSION_DENIED it uses for a
+ * service account without access, so the status alone cannot tell them apart;
+ * the message can. watch_wear@1.1.0 was refused with "You must let us know
+ * whether your app uses any Foreground Service permissions" and the old
+ * service-account hint sent the operator to the wrong screen.
+ */
+export const DECLARATION_REFUSAL = /foreground service|data safety|health connect|background location|sensitive permission|permissions declaration|app content|let us know whether your app/i;
+
+/**
+ * The operator's next step for a refused Play call, or '' when there is none
+ * to add.
+ * @param {number} status
+ * @param {string} detail
+ */
+export function refusalHint(status, detail) {
+	if (status !== 401 && status !== 403) return '';
+	if (DECLARATION_REFUSAL.test(detail)) {
+		return (
+			' This is a policy declaration, not the service account: complete it in Play Console → Policy and programs → App content, then re-run.' +
+			' Play only offers a declaration for a permission (a new foreground service type, for one) once a bundle carrying it has been uploaded,' +
+			' so first upload the signed AAB attached to the GitHub Release by hand (Play Console → Test and release → the track → Create release),' +
+			' save the declaration, then re-run. docs/compliance/store_declarations.md.'
+		);
+	}
+	return ' A 401 or 403 is the service account: it needs "Release to production, exclude devices, and use Play App Signing" on this app in Play Console → Users and permissions.';
+}
+
+/**
  * @param {{ fetcher: Fetcher, assertion: () => string, base?: string, uploadBase?: string, tokenUri?: string }} input
  */
 export function makeApi({ fetcher, assertion, base = API, uploadBase = UPLOAD_API, tokenUri = TOKEN_URI }) {
@@ -241,10 +270,7 @@ export function makeApi({ fetcher, assertion, base = API, uploadBase = UPLOAD_AP
 		const text = await res.text();
 		if (!res.ok) {
 			const detail = describeError(text);
-			const hint =
-				res.status === 401 || res.status === 403
-					? ' A 401 or 403 is the service account: it needs "Release to production, exclude devices, and use Play App Signing" on this app in Play Console → Users and permissions.'
-					: '';
+			const hint = refusalHint(res.status, detail);
 			throw new PlayError(`Google Play answered ${method} ${path.split('?')[0]} with HTTP ${res.status}: ${detail}.${hint}`, res.status, detail);
 		}
 		return text.trim() === '' ? null : JSON.parse(text);

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'geocoding.dart';
+import 'gate_crossing.dart' show Gate;
 import 'race_match.dart';
 
 /// A discoverable race calendar entry (the `search_race_listings` projection:
@@ -96,6 +97,49 @@ class RaceListingView {
         organiserClubName: organiserClubName,
         organiserIsOfficial: organiserIsOfficial,
       );
+}
+
+/// A race listing as the auto-match seam reads it: the calendar projection
+/// plus what [raceMatch] gates and ranks on (issue #1389). Web's
+/// `RaceMatchCandidate`.
+class RaceMatchCandidate {
+  final RaceListingView listing;
+  final ListingMatchInput match;
+
+  const RaceMatchCandidate({required this.listing, required this.match});
+
+  factory RaceMatchCandidate.fromJson(Map<String, dynamic> j) {
+    final halfWidth = (j['gate_half_width_m'] as num?)?.toDouble();
+    Gate? gate(String prefix) {
+      final lat = (j['${prefix}_gate_lat'] as num?)?.toDouble();
+      final lng = (j['${prefix}_gate_lng'] as num?)?.toDouble();
+      final bearing = (j['${prefix}_gate_bearing_deg'] as num?)?.toDouble();
+      if (lat == null || lng == null || bearing == null || halfWidth == null) {
+        return null;
+      }
+      return Gate(lat: lat, lng: lng, bearingDeg: bearing, halfWidthM: halfWidth);
+    }
+
+    final start = gate('start');
+    final finish = gate('finish');
+    final lat = (j['location_lat'] as num?)?.toDouble();
+    final lng = (j['location_lng'] as num?)?.toDouble();
+    final listing = RaceListingView.fromJson(j);
+    return RaceMatchCandidate(
+      listing: listing,
+      match: ListingMatchInput(
+        raceDate: listing.raceDate,
+        distanceM: listing.distanceM,
+        courseDistanceM: (j['course_distance_m'] as num?)?.toDouble(),
+        location: lat != null && lng != null
+            ? RaceMatchLocation(lat: lat, lng: lng)
+            : null,
+        lines: start != null || finish != null
+            ? RaceCourseLines(start: start, finish: finish)
+            : null,
+      ),
+    );
+  }
 }
 
 /// The CHECK'd vocabulary of `race_listings.course_source` (decisions § 2381);
@@ -834,18 +878,26 @@ class RaceService extends ChangeNotifier {
     );
   }
 
-  /// The auto-match seam: same-day listings to offer "Is this your race?".
-  /// The caller scores them by proximity + distance band via [raceMatchScore].
-  Future<List<RaceListingView>> findRaceMatchCandidates(String runId) async {
-    final run = await _c
-        .from('runs')
-        .select('started_at')
-        .eq('id', runId)
-        .maybeSingle();
-    final startedAt = run?['started_at'] as String?;
-    if (startedAt == null) return const [];
-    final day = startedAt.substring(0, 10);
-    return searchRaceListings(from: day, to: day, limit: 20);
+  /// The auto-match seam: the listings a run started at [startedAt] from
+  /// [start] could be, from `race_match_candidates` (a day either side,
+  /// within 50 km of the start, nearest first; none without a start). Gating and
+  /// ranking are the pure [bestRaceMatch], applied by the caller with the
+  /// run's track. Mirrors web's `findRaceMatchCandidates`.
+  Future<List<RaceMatchCandidate>> findRaceMatchCandidates(
+    String startedAt, {
+    RaceMatchFix? start,
+  }) async {
+    final params = <String, dynamic>{'p_started_at': startedAt};
+    if (start != null) {
+      params['p_start_lat'] = start.lat;
+      params['p_start_lng'] = start.lng;
+    }
+    final raw =
+        await _c.rpc('race_match_candidates', params: params, get: true);
+    return ((raw ?? <dynamic>[]) as List)
+        .whereType<Map<String, dynamic>>()
+        .map(RaceMatchCandidate.fromJson)
+        .toList();
   }
 
   /// Invoke `race-results-import`. Throws the provider's own

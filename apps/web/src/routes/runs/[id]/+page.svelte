@@ -81,7 +81,7 @@
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
-	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
+	import { movingTimeSeconds, computeRealSplits, splitAxisTotalMetres } from '#lib/runs/run_stats.ts';
 	import { computeRunStreaks } from '#lib/runs/streaks.ts';
 	import { pickShareCourse, shareCoursePlaces } from '#lib/parks/park_courses.ts';
 	import type { AchievementTier } from '#lib/types.ts';
@@ -1628,7 +1628,11 @@
 	let splitsAreMiles = $derived(getUnit() === 'mi');
 	let splits = $derived(
 		run?.track
-			? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000, run.distance_m)
+			? computeRealSplits(
+					run.track,
+					splitsAreMiles ? METRES_PER_MILE : 1000,
+					splitAxisTotalMetres(run.source, run.distance_m)
+				)
 			: []
 	);
 
@@ -2423,6 +2427,7 @@
 			runOwnerId={run.user_id}
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
+			track={run.track}
 			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 

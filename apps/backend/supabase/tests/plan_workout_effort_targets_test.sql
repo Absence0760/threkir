@@ -2,7 +2,7 @@
 -- targets on plan_workouts, the Art 9 consent rule on the bpm range, what the
 -- withdrawal clears, and which copy paths carry which range.
 begin;
-select plan(21);
+select plan(22);
 
 -- The server gate (20270915000004) open, as seed.sql opens it locally.
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
@@ -144,6 +144,10 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"2085aaaa-0000-0000-0000-0000000000a1","role":"authenticated"}';
 select lives_ok($$ select withdraw_health_data_consent() $$, 'the consented athlete withdraws');
 reset role;
+select is(
+  (select health_data_consent_at from user_profiles where id = '2085aaaa-0000-0000-0000-0000000000a1'),
+  null::timestamptz,
+  'the withdrawal nulls the athlete''s consent stamp');
 select is(
   (select count(*)::int from plan_workouts pw join plan_weeks wk on wk.id = pw.week_id
      join training_plans tp on tp.id = wk.plan_id

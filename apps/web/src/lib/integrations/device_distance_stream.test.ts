@@ -8,7 +8,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { TrackPoint } from '../types';
-import { computeEmbeddedBests, deviceCumulativeMetres, parseFitBuffer } from './garmin-fit';
+import {
+	computeEmbeddedBests,
+	deviceCumulativeMetres,
+	importedDistanceMetres,
+	parseFitBuffer,
+} from './garmin-fit';
 
 const M_PER_DEG = 6371000 * (Math.PI / 180);
 const SEMI = 2 ** 31 / 180;
@@ -24,6 +29,15 @@ function evenTrack(segments: number, stepM: number, stepS: number): TrackPoint[]
 
 test('deviceCumulativeMetres — a monotonic stream is rebased to the first point', () => {
 	assert.deepEqual(deviceCumulativeMetres([12, 12, 40.5, 100], 4), [0, 0, 28.5, 88]);
+});
+
+test('importedDistanceMetres — a total, else the stream as written, else the fallback', () => {
+	const stream = [12, 12, 40.5, 100];
+	assert.equal(importedDistanceMetres(null, stream, 4, null), 100, 'not rebased');
+	assert.equal(importedDistanceMetres(120, stream, 4, 90), 120);
+	assert.equal(importedDistanceMetres(0, stream, 4, 90), 100);
+	assert.equal(importedDistanceMetres(null, [12, null, 40.5, 100], 4, 90), 90);
+	assert.equal(importedDistanceMetres(null, null, 4, null), 0);
 });
 
 test('deviceCumulativeMetres — refuses every stream that cannot stand in for the estimator', () => {

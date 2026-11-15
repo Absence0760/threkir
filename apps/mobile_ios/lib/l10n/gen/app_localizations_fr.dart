@@ -1472,7 +1472,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get safetySmsBadge => 'SMS activé';
 
   @override
-  String get safetySmsPending => 'SMS désactivé — pas encore accepté';
+  String get safetySmsPending =>
+      'SMS désactivé — le contact n\'a pas encore accepté';
 
   @override
   String get safetyConfirmSmsLabel => 'M\'alerter aussi par SMS';
@@ -1567,6 +1568,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String safetySettingSaveFailed(String error) {
     return 'Impossible d\'enregistrer le réglage : $error';
   }
+
+  @override
+  String get prefsSettingSaveFailed => 'Impossible d\'enregistrer le réglage.';
 
   @override
   String get safetyInvalidEmail => 'Saisissez une adresse e-mail valide.';

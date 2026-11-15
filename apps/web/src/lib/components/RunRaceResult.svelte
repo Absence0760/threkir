@@ -10,10 +10,11 @@
 		findRaceMatchCandidates,
 		importRaceResult,
 		type RaceResultForRun,
-		type RaceListingResult,
+		type RaceMatchCandidate,
 		RACE_IMPORT_UNAVAILABLE
 	} from '#lib/core/data.ts';
-	import { raceMatchScore, isRaceMatchCandidate } from '#lib/integrations/race_match.ts';
+	import { bestRaceMatch, raceMatchFixes } from '#lib/integrations/race_match.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 	import {
 		RACE_IMPORT_LEGS,
 		type RaceImportLeg,
@@ -25,16 +26,19 @@
 		runOwnerId: string;
 		startedAt: string;
 		distanceM: number | null;
+		/// The run's stored track, read for its start point and for whether it
+		/// crossed a candidate course's timing lines.
+		track?: readonly TrackPoint[] | null;
 		/// The publicly readable listing the run is linked to, reported after
 		/// every load so a just-confirmed match reaches the photo toggle.
 		onlisting?: (listingId: string | null) => void;
 	}
-	let { runId, runOwnerId, startedAt, distanceM, onlisting }: Props = $props();
+	let { runId, runOwnerId, startedAt, distanceM, track = null, onlisting }: Props = $props();
 
 	const isOwner = $derived(auth.user?.id === runOwnerId);
 
 	let result = $state<RaceResultForRun | null>(null);
-	let candidate = $state<RaceListingResult | null>(null);
+	let candidate = $state<RaceMatchCandidate | null>(null);
 	let loading = $state(true);
 
 	// RunSignUp requires a bib to scope the pull to this runner's own result
@@ -70,35 +74,19 @@
 		// already stamped. Best-effort — a failure here must never break the page.
 		if (!hasResult && isOwner) {
 			try {
-				const listings = await findRaceMatchCandidates(runId);
-				candidate = bestCandidate(listings);
+				const fixes = raceMatchFixes(track);
+				const start = fixes.length > 0 ? { lat: fixes[0].lat, lng: fixes[0].lng } : null;
+				const listings = await findRaceMatchCandidates(startedAt, start);
+				candidate = bestRaceMatch(
+					{ startedAt, distanceM, track: fixes },
+					listings,
+					(l) => l
+				);
 			} catch {
 				candidate = null;
 			}
 		}
 		loading = false;
-	}
-
-	function bestCandidate(listings: RaceListingResult[]): RaceListingResult | null {
-		const run = {
-			runDate: startedAt,
-			runDistanceM: distanceM
-		};
-		let best: RaceListingResult | null = null;
-		let bestScore = 0;
-		for (const l of listings) {
-			const listing = {
-				race_date: l.race_date,
-				distance_m: l.distance_m,
-				distance_m_away: l.distance_m_away
-			};
-			const score = raceMatchScore(run, listing);
-			if (isRaceMatchCandidate(run, listing) && score > bestScore) {
-				best = l;
-				bestScore = score;
-			}
-		}
-		return best;
 	}
 
 	async function confirmMatch(provider: RaceImportProvider) {

@@ -93,6 +93,10 @@ android {
 
     buildTypes {
         release {
+            // AGP's documented default is "none", yet the bundle has carried
+            // libflutter/libapp symbol tables without this line; name the level
+            // so Play's native crash symbolication doesn't rest on that.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             signingConfig = if (keystoreFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

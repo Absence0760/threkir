@@ -88,6 +88,18 @@ var GateCrossingDetector = class {
   }
 };
 
+// apps/web/src/lib/geo/haversine.ts
+function haversineMetres(lat1, lng1, lat2, lng2) {
+  const r = 6371e3;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const a = sinLat * sinLat + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * sinLng * sinLng;
+  const clamped = a > 1 ? 1 : a < 0 ? 0 : a;
+  return r * 2 * Math.asin(Math.sqrt(clamped));
+}
+
 // apps/web/src/lib/routes/geo.ts
 function unwrapLonDeg(referenceDeg, lonDeg) {
   return lonDeg - 360 * Math.floor((lonDeg - referenceDeg + 180) / 360);
@@ -112,18 +124,6 @@ function isOffTrack(p) {
 }
 function trackLine(track) {
   return track.some(isOffTrack) ? track.filter((p) => !isOffTrack(p)) : track;
-}
-
-// apps/web/src/lib/runs/run_stats.ts
-function haversineMetres(lat1, lng1, lat2, lng2) {
-  const r = 6371e3;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const sinLat = Math.sin(dLat / 2);
-  const sinLng = Math.sin(dLng / 2);
-  const a = sinLat * sinLat + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * sinLng * sinLng;
-  const clamped = a > 1 ? 1 : a < 0 ? 0 : a;
-  return r * 2 * Math.asin(Math.sqrt(clamped));
 }
 
 // apps/web/src/lib/segments/segments.ts

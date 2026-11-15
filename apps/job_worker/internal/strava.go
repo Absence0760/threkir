@@ -145,7 +145,7 @@ func (c *StravaClient) FetchActivity(ctx context.Context, accessToken string, ac
 	return StravaActivityResult{Status: StravaFetchOK, Activity: &act}, nil
 }
 
-// FetchStreams pulls the latlng/altitude/time/heartrate streams for
+// FetchStreams pulls the latlng/altitude/time/heartrate/distance streams for
 // an activity. Returns the raw map keyed by stream type — the caller
 // (handler_strava_event) walks it into a TrackPoint slice via
 // `BuildTrackFromStreams`. Returns nil + no error when Strava has no
@@ -156,7 +156,7 @@ func (c *StravaClient) FetchStreams(ctx context.Context, accessToken string, act
 	if base == "" {
 		base = "https://www.strava.com"
 	}
-	url := fmt.Sprintf("%s/api/v3/activities/%d/streams?keys=latlng,altitude,time,heartrate&key_by_type=true", base, activityID)
+	url := fmt.Sprintf("%s/api/v3/activities/%d/streams?keys=latlng,altitude,time,heartrate,distance&key_by_type=true", base, activityID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (c *StravaClient) FetchStreams(ctx context.Context, accessToken string, act
 // StravaStream is the per-stream payload Strava returns — `data` is
 // always present but its element type depends on the stream key
 // (latlng → [lat, lng] pairs, altitude → numbers, time → ints,
-// heartrate → ints). The handler unmarshals each branch into its
+// heartrate → ints, distance → numbers). The handler unmarshals each branch into its
 // concrete type via `BuildTrackFromStreams`.
 type StravaStream struct {
 	Data []json.RawMessage `json:"data"`

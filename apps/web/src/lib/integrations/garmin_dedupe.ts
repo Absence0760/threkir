@@ -65,6 +65,34 @@ export function isCrossProviderDuplicate(
 	return false;
 }
 
+/// Whether an import is already present under any of [distancesM]: its
+/// normalised `compositeKey` is in [seenComposite], or it is a
+/// `isCrossProviderDuplicate` of [existing]. An importer whose distance rule
+/// changed passes what it stores now and what it stored before, so a run
+/// imported under the old rule is still the same run: a Garmin TCX was stored
+/// at the hop-sum of its positions until #1387 and at its device distance
+/// since, and on a city start the two differ by more than the 5 % the
+/// cross-provider guard allows.
+export function isImportDuplicate(
+	startedAt: string,
+	distancesM: readonly number[],
+	seenComposite: ReadonlySet<string>,
+	existing: readonly RunIdentity[],
+): boolean {
+	const startedAtMs = Date.parse(startedAt);
+	for (const distanceM of distancesM) {
+		if (!Number.isFinite(distanceM)) continue;
+		if (seenComposite.has(compositeKey(startedAt, distanceM))) return true;
+		if (
+			Number.isFinite(startedAtMs) &&
+			isCrossProviderDuplicate({ startedAtMs, distanceM: Math.round(distanceM) }, existing)
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /// A raw `{ id, started_at, distance_m }` row as PostgREST returns it; `id`
 /// and `started_at` are the walk's cursor.
 export interface RawRunRow {

@@ -19,8 +19,8 @@
 
 import type { GlobalSegmentMatchedBy, TrackPoint } from '../types';
 import { GateCrossingDetector, gateUsable, type Gate, type GateCrossing } from '../geo/gate_crossing';
+import { haversineMetres } from '../geo/haversine';
 import { unwrapLonDeg } from '../routes/geo';
-import { haversineMetres } from '../runs/run_stats';
 import { lineLat, lineLng, trackLine } from '../runs/track_line';
 
 export interface SegmentSlice {

@@ -29,6 +29,8 @@ import {
 	parseFitBuffer,
 	garminExternalId,
 	computeEmbeddedBests,
+	importedDistanceMetres,
+	withDeviceDistances,
 	type ParsedFitRun,
 	type FitHrZones,
 } from './garmin-fit';
@@ -37,6 +39,7 @@ import {
 	compositeKey,
 	collectRunIdentities,
 	isCrossProviderDuplicate,
+	isImportDuplicate,
 	RUN_DEDUPE_ORDER,
 	type RunIdentity,
 } from './garmin_dedupe';
@@ -394,8 +397,16 @@ async function importRouteFile(
 	const routes = await parseRouteFile(file);
 	if (!routes || routes.length === 0) return 'skipped';
 	const r = routes[0];
-	const waypoints = r.waypoints;
+	// A TCX's own distance stream, when it validates, is stamped on the track
+	// as `distM` and gives the run's distance, as on the FIT path (#1387).
+	const waypoints = withDeviceDistances(r.waypoints, r.distance_stream);
 	if (waypoints.length < 2) return 'skipped';
+	const routeDistanceM = importedDistanceMetres(
+		null,
+		r.distance_stream,
+		r.waypoints.length,
+		r.distance_m,
+	);
 
 	// Best-effort started_at + duration from the per-point timestamps.
 	const firstTs = waypoints.find((w) => typeof w.ts === 'string')?.ts;
@@ -406,14 +417,19 @@ async function importRouteFile(
 			? Math.max(0, Math.round((Date.parse(lastTs) - Date.parse(firstTs)) / 1000))
 			: 0;
 
-	const composite = compositeKey(startedAt, r.distance_m);
-	if (seenComposite.has(composite)) return 'skipped';
-
-	const distanceM = Math.max(0, Math.round(r.distance_m));
+	// A TCX imported before #1387 was stored at the hop-sum of its positions,
+	// up to several percent off its device distance, so a re-import is matched
+	// under both.
+	const composite = compositeKey(startedAt, routeDistanceM);
+	const distanceM = Math.max(0, Math.round(routeDistanceM));
 	const startMs = Date.parse(startedAt);
 	if (
-		Number.isFinite(startMs) &&
-		isCrossProviderDuplicate({ startedAtMs: startMs, distanceM }, existingIdentities)
+		isImportDuplicate(
+			startedAt,
+			[routeDistanceM, r.distance_m],
+			seenComposite,
+			existingIdentities,
+		)
 	) {
 		return 'skipped';
 	}
@@ -423,11 +439,12 @@ async function importRouteFile(
 		imported_at: new Date().toISOString(),
 		source_file: file.name,
 	};
-	// Embedded best efforts off the GPX/TCX per-point timestamps + positions,
+	// Embedded best efforts off the GPX/TCX per-point timestamps, measured on
+	// the TCX device distance when it validates and the positions otherwise,
 	// same as the FIT path — written to the promoted runs columns. {} when
 	// the original carried no per-point times.
 	const saved = await saveRun({
-		embedded_bests: computeEmbeddedBests(waypoints, 'run'),
+		embedded_bests: computeEmbeddedBests(waypoints, 'run', r.distance_stream),
 		started_at: new Date(startedAt).toISOString(),
 		distance_m: distanceM,
 		duration_s: durationS,

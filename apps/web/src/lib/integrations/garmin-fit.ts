@@ -365,6 +365,29 @@ export function deviceCumulativeMetres(
 	return out;
 }
 
+/// An imported run's distance, metres, by one rule for every importer and
+/// platform: the device's or provider's own total when the file or row carries
+/// one ([totalM]: a FIT session's `total_distance`, the Strava CSV's
+/// `Distance`, the Strava API's `distance`), else the last value of a device
+/// distance stream that passes `deviceCumulativeMetres` (a TCX's), else
+/// [fallbackM] (the hop-sum of the positions). The stream is read as the device
+/// wrote it, not rebased, so what the device measured before its first
+/// positioned record stays in the run: `deviceCumulativeMetres` rebases it only
+/// to give the split axis the split clock's start (#1387). Lockstep with
+/// `importedDistanceMetres` in apps/mobile_android/lib/embedded_bests.dart.
+export function importedDistanceMetres(
+	totalM: number | null | undefined,
+	stream: readonly unknown[] | null | undefined,
+	pointCount: number,
+	fallbackM: number | null | undefined,
+): number {
+	if (typeof totalM === 'number' && Number.isFinite(totalM) && totalM > 0) return totalM;
+	if (deviceCumulativeMetres(stream, pointCount) != null) {
+		return (stream as readonly number[])[pointCount - 1];
+	}
+	return typeof fallbackM === 'number' && Number.isFinite(fallbackM) && fallbackM > 0 ? fallbackM : 0;
+}
+
 /// Embedded best-effort seconds for every canonical distance the track is
 /// long enough to cover. Measured on the file's own distance stream when
 /// `deviceDistance` passes `deviceCumulativeMetres`, otherwise on the
@@ -387,6 +410,27 @@ export function computeEmbeddedBests(
 		if (secs != null && secs > 0) out[key] = secs;
 	}
 	return out;
+}
+
+/// [track] with each point's `distM` set from the device's own distance
+/// stream, rebased to 0 at the first point, when the stream passes
+/// `deviceCumulativeMetres`; [track] unchanged otherwise. Splits and moving
+/// time measure on `distM` when every point carries it
+/// (docs/features/gps_distance.md § Splits and moving time), so an imported
+/// run's mile splits land where the watch's own distance auto-laps did. On
+/// the raw hop-sum of the positions instead, GPS error at a city start put
+/// the first mile ~2.5 min ahead of the watch's lap and the gap unwound over
+/// the rest of a marathon (#1387). Rebased so the axis starts where the
+/// split clock does, at the first positioned record. The mobile Strava ZIP
+/// importer stamps `cumulativeDistanceMetres` the same way
+/// (`_parseTrackFile` in apps/mobile_android/lib/strava_importer.dart).
+export function withDeviceDistances<T extends TrackPoint>(
+	track: T[],
+	stream: readonly unknown[] | null | undefined,
+): T[] {
+	const cum = deviceCumulativeMetres(stream, track.length);
+	if (cum == null) return track;
+	return track.map((p, i) => ({ ...p, distM: cum[i] }));
 }
 
 export interface ParsedFitRun {
@@ -432,8 +476,9 @@ export interface ParsedFitRun {
 	track: TrackPoint[];
 	/// The device's cumulative distance (metres) at each `track` point, one
 	/// entry per point, from FIT `record.distance`; NaN where a record carried
-	/// none. `null` when no positioned record carried a distance. Not stored —
-	/// it only feeds `computeEmbeddedBests`, which validates it.
+	/// none. `null` when no positioned record carried a distance. Feeds
+	/// `computeEmbeddedBests`, which validates it; when it validates it is also
+	/// on the track itself as `distM` (`withDeviceDistances`).
 	distance_stream: number[] | null;
 	/// Per-point HR for records that carried no GPS fix (indoor / treadmill).
 	/// On an outdoor run every record has a fix and its HR rides on the
@@ -632,7 +677,14 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 
 	return {
 		startedAt: new Date(session.start_time).toISOString(),
-		distance_m: Math.max(0, Math.round(session.total_distance ?? 0)),
+		distance_m: Math.round(
+			importedDistanceMetres(
+				session.total_distance,
+				anyDistance ? distanceStream : null,
+				track.length,
+				null,
+			),
+		),
 		duration_s: Math.max(
 			0,
 			Math.round(session.total_timer_time ?? session.total_elapsed_time ?? 0),
@@ -659,7 +711,7 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 		hr_zones: buildHrZonesFromFit(
 			(data as { hr_zone?: { high_bpm?: unknown }[] }).hr_zone,
 		),
-		track,
+		track: withDeviceDistances(track, anyDistance ? distanceStream : null),
 		distance_stream: anyDistance ? distanceStream : null,
 		hr_series: hrSeries,
 	};

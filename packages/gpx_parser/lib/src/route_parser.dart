@@ -145,7 +145,20 @@ class RouteParser {
   /// devices export to. It can also include heart rate and cadence streams,
   /// which we ignore here — we only care about the lat/lng/elevation track
   /// for route purposes.
-  static Route fromTcx(String xmlString) {
+  static Route fromTcx(String xmlString) => tcxWithDistances(xmlString).route;
+
+  /// [fromTcx], plus the device's cumulative distance (`<DistanceMeters>` on
+  /// each `<Trackpoint>`, metres) at each of the route's waypoints,
+  /// index-aligned with `route.waypoints`. An entry is null where that point
+  /// carried none or an unreadable one; the whole list is null when none
+  /// did. Read off the Trackpoint's own child only: a Lap's `<DistanceMeters>`
+  /// is the lap total. The run importers stamp it as
+  /// `Waypoint.cumulativeDistanceMetres` through `deviceCumulativeMetres`,
+  /// as they do a FIT's (`FitParser.parseWithDistances`); a saved route never
+  /// carries it. Mirrors `trackpointDistance` in the web importer
+  /// (apps/web/src/lib/integrations/import.ts).
+  static ({Route route, List<double?>? distancesMetres}) tcxWithDistances(
+      String xmlString) {
     final doc = XmlDocument.parse(xmlString);
 
     final name = doc
@@ -157,6 +170,8 @@ class RouteParser {
         'Imported route';
 
     final points = <Waypoint>[];
+    final distances = <double?>[];
+    var anyDistance = false;
     for (final pt in doc.findAllElements('Trackpoint')) {
       final position = pt.findElements('Position').firstOrNull;
       if (position == null) continue;
@@ -182,9 +197,17 @@ class RouteParser {
         elevationMetres: ele,
         timestamp: time,
       ));
+      final distNode = pt.findElements('DistanceMeters').firstOrNull;
+      final dist = _finiteOrNull(
+          distNode != null ? double.tryParse(distNode.innerText.trim()) : null);
+      if (dist != null) anyDistance = true;
+      distances.add(dist);
     }
 
-    return _buildRoute(name, points);
+    return (
+      route: _buildRoute(name, points),
+      distancesMetres: anyDistance ? distances : null,
+    );
   }
 
   /// Parse a GeoJSON document into a [Route] — the FIRST line in it. Use

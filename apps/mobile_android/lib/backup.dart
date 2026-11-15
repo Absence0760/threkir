@@ -21,6 +21,93 @@ import 'restore_warning.dart';
 
 export 'restore_warning.dart' show RestoreWarning, RestoreWarningKind;
 
+/// Profile columns a restore never writes (mirrors web's
+/// `SERVER_MANAGED_PROFILE_FIELDS`).
+///
+/// `subscription_tier` / `subscription_at` are managed by the RevenueCat
+/// webhook and `parkrun_number` is bound to the live integration row; the
+/// 20260718_001 INSERT WITH CHECK + 20260624_001 UPDATE trigger reject them for
+/// a client, so stripping them lets the rest of the profile restore.
+///
+/// `handle` is a public identity claimed through `set_my_handle`
+/// (20270424000002), which is SECURITY DEFINER precisely so the format and the
+/// case-insensitive uniqueness are enforced and the caller is told which of the
+/// two it failed. Upserting the column directly answers neither: into a
+/// DIFFERENT account it always collides with `user_profiles_handle_lower_key`,
+/// into a FRESH one it silently re-claims a name the deleted account released,
+/// and either way it arrives as a 23505 that fails the whole profile row.
+///
+/// Every consent and its stamp: consent is
+/// given in the app, never restored from a file. `lock_consent_columns`
+/// refuses a changed coach / AI stamp and any non-null health stamp (42501),
+/// which failed the whole row, and an archive whose health stamp was null went
+/// through as a withdrawal, erasing the account's health data (decisions §
+/// 2514, § 2542); a null age or terms stamp would close the Art 8 write gate on
+/// every run the same restore then inserts. And the other server-owned
+/// columns, read-only to a client, which failed the row the same way.
+const Set<String> kNeverRestoredProfileColumns = {
+  'subscription_tier',
+  'subscription_at',
+  'parkrun_number',
+  'handle',
+  'health_data_consent_at',
+  'coach_consent_at',
+  'ai_disclosure_version',
+  'age_confirmed_at',
+  'terms_accepted_at',
+  'billing_issue_at',
+  'tier_updated_event_ts',
+  'shadow_hidden',
+};
+
+/// Profile columns that are Art 9 health data, restored only into an account
+/// with health-data consent (decisions § 2542). `date_of_birth` is not among
+/// them: the column is the child-safety age record (§ 718).
+const Set<String> kHealthConsentProfileColumns = {'height_cm', 'gender'};
+
+/// The archived profile row as it may be restored: without
+/// [kNeverRestoredProfileColumns], and without [kHealthConsentProfileColumns]
+/// unless the account has health-data consent.
+@visibleForTesting
+Map<String, dynamic> restorableProfile(
+  Map<String, dynamic> row, {
+  required bool consented,
+}) {
+  final out = Map<String, dynamic>.from(row);
+  for (final key in kNeverRestoredProfileColumns) {
+    out.remove(key);
+  }
+  if (!consented) {
+    for (final key in kHealthConsentProfileColumns) {
+      out.remove(key);
+    }
+  }
+  return out;
+}
+
+/// The archived settings bag as it may be restored: without its
+/// consent-gated values unless the account has health-data consent (decisions
+/// § 2542). The database refuses a weight without consent, and that one key
+/// used to fail the whole bag. Mirrors web's `restoreOrchestrate`.
+@visibleForTesting
+Map<String, dynamic> restorablePrefs(
+  Map<String, dynamic> prefs, {
+  required bool consented,
+}) =>
+    consented ? prefs : (withoutHealthConsentPrefs(prefs) ?? prefs);
+
+/// Whether the account a restore writes into has health-data consent. An
+/// unreadable answer is treated as none, so the gated values are left out
+/// rather than failing the bag.
+Future<bool> _restoreTargetConsented(ApiClient api) async {
+  try {
+    return await api.fetchHealthDataConsented();
+  } catch (e) {
+    debugPrint('restore: health consent read failed: ${loggableMessage('$e')}');
+    return false;
+  }
+}
+
 /// Full round-trip backup and restore for the signed-in user's data.
 /// See [docs/ops/backup_restore.md](../../../docs/ops/backup_restore.md) for the
 /// archive layout. Format is identical to the web side — a backup made
@@ -469,38 +556,32 @@ class BackupService {
 
     // Profile first.
     final profile = _readJson(archive, 'profile.json');
+    // The consent-gated values are restored only into an account that has
+    // consent (decisions § 2542); consent itself never comes from the archive.
+    final consented =
+        profile != null && await _restoreTargetConsented(apiNonNull);
     if (profile != null) {
       onProgress?.call(const RestoreProgress.stage('profile'));
       try {
         if (profile['profile'] is Map<String, dynamic>) {
-          final row = Map<String, dynamic>.from(profile['profile'] as Map);
-          // Strip server-managed fields. subscription_tier /
-          // subscription_at are managed by the RevenueCat webhook;
-          // parkrun_number is bound to the live integration row. The
-          // 20260718_001 INSERT WITH CHECK + 20260624_001 UPDATE
-          // trigger reject these for non-service-role callers anyway,
-          // but stripping here means the rest of the profile
-          // restores cleanly instead of the upsert silently failing.
-          row.remove('subscription_tier');
-          row.remove('subscription_at');
-          row.remove('parkrun_number');
-          // `handle` is a public identity claimed through `set_my_handle`
-          // (20270424000002), which is SECURITY DEFINER precisely so the
-          // format and the case-insensitive uniqueness are enforced and the
-          // caller is told which of the two it failed. Upserting the column
-          // directly answers neither: into a DIFFERENT account it always
-          // collides with `user_profiles_handle_lower_key`, into a FRESH one
-          // it silently re-claims a name the deleted account released, and
-          // either way it arrives as a 23505 that fails the whole profile row.
-          row.remove('handle');
+          final row = restorableProfile(
+            Map<String, dynamic>.from(profile['profile'] as Map),
+            consented: consented,
+          );
           row['id'] = uid;
           final known = keepKnownColumns(row, kProfileRestoreColumns);
           noteDroppedColumns('profile', known.dropped, result);
           await client.from('user_profiles').upsert(known.row);
           result.profileRestored = true;
         }
-        final prefs = profile['settings_prefs'];
-        if (prefs is Map && prefs.isNotEmpty) {
+        final archived = profile['settings_prefs'];
+        final prefs = archived is Map
+            ? restorablePrefs(
+                Map<String, dynamic>.from(archived),
+                consented: consented,
+              )
+            : null;
+        if (prefs != null && prefs.isNotEmpty) {
           await client.from('user_settings').upsert({
             'user_id': uid,
             'prefs': prefs,

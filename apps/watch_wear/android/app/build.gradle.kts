@@ -52,7 +52,9 @@ kotlin {
 android {
     namespace = "com.runapp.watchwear"
     // androidx.lifecycle:*-compose 2.11.0 requires compileSdk 37 (AGP 9.2.1
-    // + Gradle 9.6 support it). targetSdk stays 35.
+    // + Gradle 9.6 support it). targetSdk stays 35: at 36 heart rate needs
+    // READ_HEART_RATE wired, and ManifestPermissionCoverageTest fails until it
+    // is (decisions § 2546).
     compileSdk = 37
 
     compileOptions {
@@ -184,6 +186,13 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // Packs the symbol table of any unstripped native library into the
+            // AAB's BUNDLE-METADATA, which Play reads on upload. Every library
+            // the watch ships today (Sentry, DataStore, androidx.graphics) comes
+            // prebuilt and already stripped, so there is nothing to extract and
+            // Play's "debug symbols" warning on this bundle is expected
+            // (docs/ops/releasing.md § Play's symbol warnings).
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             signingConfig = if (keystoreFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

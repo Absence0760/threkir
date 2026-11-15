@@ -1,6 +1,9 @@
 import type { TrackPoint } from '../types';
 import { lineLat, lineLng } from './track_line';
 import { runAltitudeSeries } from './run_altitude';
+import { haversineMetres } from '../geo/haversine';
+
+export { haversineMetres };
 
 /**
  * Whether every point of [track] carries the recorder's cumulative credited
@@ -33,7 +36,8 @@ export function hasRecordedDistances(track: readonly TrackPoint[]): boolean {
  * the line positions (the smoothed position when the fix carries one, else the
  * raw fix), unscaled, which is what every track before `distM` measures on.
  * Pass [totalDistanceM] only with the whole stored track (the owner's): a
- * privacy-clipped one ends short of the run and would be stretched.
+ * privacy-clipped one ends short of the run and would be stretched. Callers
+ * get it from `splitAxisTotalMetres`, which gives none for an import.
  * Mirrors `trackCumulativeMetres` in `apps/mobile_android/lib/run_stats.dart`.
  */
 export function trackCumulativeMetres(
@@ -61,6 +65,38 @@ export function trackCumulativeMetres(
 }
 
 /**
+ * The run distance `trackCumulativeMetres` may scale a `distM` axis to: the
+ * run's `distance_m` for a recorder's track (`app`, `watch`), whose axis stops
+ * at the last stored fix and which a server recompute re-derives, and none for
+ * an import. An import's `distM` is the device's own distance stream, so it is
+ * already the right axis, and its `distance_m` is the device's total, which
+ * also counts what the device measured before the first positioned record;
+ * scaling one to the other stretched every split (200 m before the first fix of
+ * a marathon read every 8:00 mile ~2.3 s fast). Mirrors `splitAxisTotalMetres`
+ * in `run_stats.dart`.
+ */
+export function splitAxisTotalMetres(
+	source: string | null | undefined,
+	distanceM: number | null | undefined
+): number | null {
+	return source === 'app' || source === 'watch' ? (distanceM ?? null) : null;
+}
+
+/** The slowest hop that counts as moving, m/s: moving time's floor and where a split table's tail ends. */
+const MOVING_MIN_SPEED_MPS = 0.5;
+
+/**
+ * How long a positions-only track must stay inside `STILL_RADIUS_M` of a fix for
+ * the runner to count as stopped there, seconds. With the radius it is the
+ * moving floor over a window rather than over one hop: GPS jitter while
+ * standing moves a fix 4 m in 5 s (0.8 m/s, above the floor) but goes nowhere.
+ */
+export const STILL_WINDOW_S = 30;
+
+/** `MOVING_MIN_SPEED_MPS` over `STILL_WINDOW_S`: 15 m. */
+export const STILL_RADIUS_M = MOVING_MIN_SPEED_MPS * STILL_WINDOW_S;
+
+/**
  * Moving time — elapsed with stops excluded, derived from a GPS track.
  *
  * Mirrors `apps/mobile_android/lib/run_stats.dart:movingTimeOf`. Both
@@ -78,7 +114,7 @@ export function trackCumulativeMetres(
  */
 export function movingTimeSeconds(
 	track: TrackPoint[] | null | undefined,
-	minSpeedMps = 0.5
+	minSpeedMps = MOVING_MIN_SPEED_MPS
 ): number {
 	if (!track || track.length < 2) return 0;
 	const cum = trackCumulativeMetres(track);
@@ -132,9 +168,17 @@ export const SPLIT_TAIL_MIN_M = 50;
  * wholly outside the stretch that carries an altitude, so on every split when
  * no point does.
  *
- * Distance is `trackCumulativeMetres(track, totalDistanceM)`: pass the run's
- * `distance_m` and a track that carries the recorder's `distM` ends its last
- * split on it.
+ * Distance is `trackCumulativeMetres(track, totalDistanceM)`: pass
+ * `splitAxisTotalMetres(run.source, run.distance_m)` and a track that carries
+ * the recorder's `distM` ends its last split on it.
+ *
+ * Every boundary is timed by elapsed clock time, stops included, so a split
+ * reads what a watch's distance auto-lap reads. The far end is the exception:
+ * the table ends where the runner stopped (`lastMovingIndex`), not at the last
+ * fix, because the minutes a watch keeps recording past the finish line add
+ * time and no distance, which turned a race-pace 0.3 mi tail into a 25:00/mi
+ * row (#1388); on a track without `distM` the jitter of those minutes also
+ * added distance, enough to cross a boundary of its own.
  */
 export function computeRealSplits(
 	track: TrackPoint[],
@@ -159,6 +203,7 @@ export function computeRealSplits(
 
 	const cum = trackCumulativeMetres(track, totalDistanceM);
 	const elevationOf = splitElevationReader(runAltitudeSeries(track), cum);
+	const end = lastMovingIndex(track, cum);
 	let cumDist = 0;
 	let splitStart = { dist: 0, timeMs: startMs };
 	const splits: Split[] = [];
@@ -183,7 +228,7 @@ export function computeRealSplits(
 		splitStart = { dist: endDist, timeMs: endTimeMs };
 	};
 
-	for (let i = 1; i < track.length; i++) {
+	for (let i = 1; i <= end; i++) {
 		const a = track[i - 1];
 		const b = track[i];
 		const segStart = i === 1 ? 0 : cum[i - 1];
@@ -218,14 +263,88 @@ export function computeRealSplits(
 	// headline distance. A wrong pace on a named row is worse than a total
 	// that is under one percent light on a 5 km.
 	if (splits.length > 0 || cumDist > 0) {
-		const lastPoint = track[track.length - 1];
-		const endTimeMs = lastPoint.ts ? Date.parse(lastPoint.ts) : NaN;
-		if (cumDist - splitStart.dist > SPLIT_TAIL_MIN_M) {
-			emit(cumDist, endTimeMs);
+		const endPoint = track[end];
+		const endTimeMs = endPoint.ts ? Date.parse(endPoint.ts) : NaN;
+		const endDist = end === 0 ? 0 : cum[end];
+		if (endDist - splitStart.dist > SPLIT_TAIL_MIN_M) {
+			emit(endDist, endTimeMs);
 		}
 	}
 
 	return splits;
+}
+
+/**
+ * The index of the last point the runner was still moving into, where the
+ * split table ends. The last index when the runner moved to the end.
+ *
+ * On a `distM` axis (`hasRecordedDistances`): walking back from the end, the
+ * first hop whose speed along [cum] is at least `MOVING_MIN_SPEED_MPS`, the
+ * floor moving time uses; the recorder's filter holds still while the runner
+ * stands, so one hop decides. A hop without two usable timestamps cannot be
+ * shown to be a stop, so it counts as moving when it gains any distance.
+ *
+ * On positions alone one hop cannot decide, because standing jitter clears the
+ * floor hop by hop. There the runner is stopped from a fix when the fixes over
+ * the next `STILL_WINDOW_S` stay within `STILL_RADIUS_M` of it (`stoppedFrom`),
+ * and the end is the fix after the last one that was not stopped, when the
+ * still stretch from there lasts `STILL_WINDOW_S` or more. A shorter one is
+ * kept: a finish run to the last fix also ends within the radius of it for
+ * under the window (any speed over the floor covers the radius in less), and
+ * trimming it would cut real running. Moving time keeps the per-hop floor
+ * (decisions § 2541).
+ */
+function lastMovingIndex(track: readonly TrackPoint[], cum: readonly number[]): number {
+	if (!hasRecordedDistances(track)) {
+		const last = track.length - 1;
+		let end = 0;
+		for (let j = last - 1; j >= 0; j--) {
+			if (!stoppedFrom(track, j)) {
+				end = j + 1;
+				break;
+			}
+		}
+		// A still stretch shorter than the window is also how a finish run to
+		// the last fix looks (its last 15 m), so only a longer one is trimmed.
+		const endTs = track[end].ts ? Date.parse(track[end].ts!) : NaN;
+		const lastTs = track[last].ts ? Date.parse(track[last].ts!) : NaN;
+		return lastTs - endTs >= STILL_WINDOW_S * 1000 ? end : last;
+	}
+	for (let i = track.length - 1; i > 0; i--) {
+		const gain = cum[i] - cum[i - 1];
+		if (!(gain > 0)) continue;
+		const a = track[i - 1].ts;
+		const b = track[i].ts;
+		const dtMs = a && b ? Date.parse(b) - Date.parse(a) : NaN;
+		if (!Number.isFinite(dtMs) || dtMs <= 0) return i;
+		if (gain / (dtMs / 1000) >= MOVING_MIN_SPEED_MPS) return i;
+	}
+	return 0;
+}
+
+/**
+ * Whether the runner stood still from fix [j], on the line positions: every
+ * later fix up to and including the first one `STILL_WINDOW_S` or more after it
+ * is closer to it than `STILL_RADIUS_M`, or than the moving floor times its
+ * elapsed time once that is the larger, so a fix after a long signal gap that
+ * is far away still reads as moving. A fix without a timestamp cannot be shown
+ * to be a stop; an untimed fix after it is held to the radius.
+ */
+function stoppedFrom(track: readonly TrackPoint[], j: number): boolean {
+	const p = track[j];
+	const t0 = p.ts ? Date.parse(p.ts) : NaN;
+	if (!Number.isFinite(t0)) return false;
+	const lat0 = lineLat(p);
+	const lng0 = lineLng(p);
+	for (let k = j + 1; k < track.length; k++) {
+		const q = track[k];
+		const t = q.ts ? Date.parse(q.ts) : NaN;
+		const dtS = Number.isFinite(t) ? (t - t0) / 1000 : 0;
+		const reach = Math.max(STILL_RADIUS_M, MOVING_MIN_SPEED_MPS * dtS);
+		if (haversineMetres(lat0, lng0, lineLat(q), lineLng(q)) >= reach) return false;
+		if (dtS >= STILL_WINDOW_S) break;
+	}
+	return true;
 }
 
 /**
@@ -267,40 +386,4 @@ function splitElevationReader(
 	};
 	return (start, end) =>
 		end <= at[0] || start >= at[at.length - 1] ? null : Math.round(altitudeAt(end) - altitudeAt(start));
-}
-
-/**
- * Great-circle distance between two lat/lng points, in metres.
- */
-/**
- * Great-circle metres between two points. Exported so the twin contract with
- * `run_stats.dart`'s `haversineMetres` can be pinned on both sides — it was
- * private, which is why a divergence in it went unnoticed.
- */
-export function haversineMetres(
-	lat1: number,
-	lng1: number,
-	lat2: number,
-	lng2: number
-): number {
-	const r = 6371000;
-	const dLat = ((lat2 - lat1) * Math.PI) / 180;
-	const dLng = ((lng2 - lng1) * Math.PI) / 180;
-	const sinLat = Math.sin(dLat / 2);
-	const sinLng = Math.sin(dLng / 2);
-	const a =
-		sinLat * sinLat +
-		Math.cos((lat1 * Math.PI) / 180) *
-			Math.cos((lat2 * Math.PI) / 180) *
-			sinLng *
-			sinLng;
-	// Clamp before the arc. Rounding can push `a` a hair above 1 for a
-	// near-antipodal pair, and then `Math.sqrt(1 - a)` is NaN — which propagates
-	// silently through every consumer (moving time, splits, segment distances)
-	// rather than throwing. The Dart twin clamps identically; an earlier pass
-	// fixed only that side on the false belief that this one already did, which
-	// left the pair divergent with the NaN moved here. Measured on
-	// (-87.5, 0, 87.5, 180): unclamped NaN, clamped 20015086.796.
-	const clamped = a > 1 ? 1 : a < 0 ? 0 : a;
-	return r * 2 * Math.asin(Math.sqrt(clamped));
 }

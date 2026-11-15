@@ -23,7 +23,8 @@ import '../l10n/date_format.dart';
 import '../map_tile_readiness.dart';
 import 'plan_recap_card.dart' show planRecapBracketLabel;
 import 'badge_grid.dart' show badgeLabelFor, badgeTierLabel;
-import '../run_stats.dart' show RunSplit, computeSplitDurations;
+import '../run_stats.dart'
+    show RunSplit, computeSplitDurations, splitAxisTotalMetres;
 import '../pr_card.dart';
 import '../activity_type_labels.dart';
 import '../flyover_video_flag.dart';
@@ -243,7 +244,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     widget.run.track,
     widget.preferences.unit == DistanceUnit.mi ? 1609.344 : 1000,
     widget.run.startedAt,
-    totalDistanceMetres: widget.run.distanceMetres,
+    totalDistanceMetres:
+        splitAxisTotalMetres(widget.run.source, widget.run.distanceMetres),
   );
 
   /// The race the run is linked to, from the result stamped on it: the

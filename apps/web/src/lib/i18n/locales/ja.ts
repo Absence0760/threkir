@@ -5886,7 +5886,7 @@ export const messages = {
 	"prefs.genderMale": "男性",
 	"prefs.genderFemale": "女性",
 	"prefs.dateOfBirth": "生年月日",
-	"prefs.dateOfBirthPurpose": "年齢別評価の結果に使用し、下の同意にチェックした場合は心拍ゾーンにも使用します。年齢は18歳未満のアカウントを名前検索から除外することにも使われます。",
+	"prefs.dateOfBirthPurpose": "下の同意にチェックした場合、年齢別評価の結果と心拍ゾーンに使用します。年齢は18歳未満のアカウントを名前検索から除外することにも使われます。",
 	"prefs.dobMonth": "月",
 	"prefs.dobDay": "日",
 	"prefs.dobYear": "年",

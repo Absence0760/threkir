@@ -143,6 +143,21 @@ the archive, so its projection is guarded column by column against the
 migrations — see `personal_data_export_profile_guard_test.go` and
 `docs/compliance/data-subject-rights.md`.
 
+The profile row never restores a consent or its stamp (`health_data_consent_at`,
+`coach_consent_at`, `ai_disclosure_version`, `age_confirmed_at`,
+`terms_accepted_at`) or a server-owned column (`subscription_*`,
+`parkrun_number`, `handle`, `billing_issue_at`, `tier_updated_event_ts`,
+`shadow_hidden`): consent is given in the app, not from a file. A refused stamp
+used to fail the whole row, and a null health stamp went through as a
+withdrawal that erased the account's health data. `height_cm` and `gender`
+restore only into an account with health-data consent.
+
+`settings_prefs` restores whole into an account with health-data consent.
+Into one without it (or when the consent state cannot be read) the keys in
+`private.health_consent_pref_keys()` are left out and the rest restores: the
+database refuses a weight without consent, and that one key used to fail the
+whole bag (decisions § 2542).
+
 ## Round-trip guarantees
 
 - Run count is preserved (counts.runs == imported runs).

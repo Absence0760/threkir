@@ -457,6 +457,17 @@ wired: it gates `PassiveMonitoringClient`, and this app reads heart rate through
 `MeasureClient`, whose background access is documented as no
 (`decisions.md § 1015`).
 
+**Heart rate needs a second permission from `targetSdk` 36.** Android 16
+(Wear OS 6) gates Health Services heart rate on
+`android.permission.health.READ_HEART_RATE`. While `targetSdk` is 35 the
+platform treats it as a split of `BODY_SENSORS`, so the one dialog grants both;
+from 36 it does not, and a `BODY_SENSORS`-only app gets "No HR". The app
+therefore still declares and requests `BODY_SENSORS` alone, and
+`ManifestPermissionCoverageTest` reads `targetSdk` from `app/build.gradle.kts`
+and fails at 36+ until `READ_HEART_RATE` is declared, requested (API 36+ only),
+graded as `PermissionCost.HeartRate` and counted toward the health
+foreground-service type (`decisions.md § 2546`).
+
 **Declaring a foreground-service TYPE is half of it too, and the halves live in
 different files.** The manifest's `foregroundServiceType="location|health"` and
 the mask passed to `startForeground` are two separate declarations of the same

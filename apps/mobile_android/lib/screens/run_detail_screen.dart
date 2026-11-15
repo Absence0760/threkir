@@ -1734,8 +1734,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         RunRaceSection(
           service: _raceService,
           runId: run.id,
-          startedAt: run.startedAt.toIso8601String(),
+          startedAt: run.startedAt.toUtc().toIso8601String(),
           distanceM: run.distanceMetres,
+          track: run.track,
         ),
         RunParkCourseChips(api: widget.apiClient!, runId: run.id),
         Padding(
@@ -2573,7 +2574,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     // computeSplitDurations); the previous inline loop re-used a segment's end
     // time for every boundary it crossed, emitting 0:00 phantom splits.
     return computeSplitDurations(run.track, tickLength, run.startedAt,
-            totalDistanceMetres: run.distanceMetres)
+            totalDistanceMetres:
+                splitAxisTotalMetres(run.source, run.distanceMetres))
         .map((s) => _Split(s.tick, s.duration))
         .toList();
   }

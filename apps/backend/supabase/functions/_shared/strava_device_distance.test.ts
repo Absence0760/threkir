@@ -72,10 +72,36 @@ Deno.test('buildTrackAndDistanceFromStreams — no stream, or a misaligned one, 
 	);
 });
 
-Deno.test('buildTrackFromStreams — the stored track never carries the distance stream', () => {
-	const track = buildTrackFromStreams(evenStreams((i) => i * 100), START);
+Deno.test('buildTrackFromStreams — a valid distance stream is on every point as distM, from 0 (#1387)', () => {
+	const track = buildTrackFromStreams(evenStreams((i) => 40 + i * 100), START);
 	assertEquals(track.length, 61);
-	assertEquals(Object.keys(track[1]).sort(), ['lat', 'lng', 'ts']);
+	assertEquals(Object.keys(track[1]).sort(), ['distM', 'lat', 'lng', 'ts']);
+	assertEquals(track[0].distM, 0);
+	assertEquals(track[60].distM, 6000);
+});
+
+Deno.test('buildTrackFromStreams — an invalid or absent distance stream leaves no distM', () => {
+	for (const bad of [
+		(i: number) => (i === 30 ? NaN : i * 100),
+		(i: number) => (i === 30 ? 0 : i * 100),
+		() => 0,
+	]) {
+		const track = buildTrackFromStreams(evenStreams(bad), START);
+		assertEquals(track.some((p) => 'distM' in p), false);
+	}
+	const latlng = [[45, -120], [45.001, -120], [45.002, -120]];
+	assertEquals(buildTrackFromStreams(streams({ latlng }), START).some((p) => 'distM' in p), false);
+});
+
+Deno.test('buildTrackFromStreams — a sample dropped by the sanitiser keeps distM aligned with the kept points', () => {
+	const track = buildTrackFromStreams(
+		streams({
+			latlng: [[45, -120], [91, 0], [45.001, -120], [45.002, -120]],
+			distance: [10, 60, 121, 232],
+		}),
+		START,
+	);
+	assertEquals(track.map((p) => p.distM), [0, 111, 222]);
 });
 
 Deno.test('computeEmbeddedBests — measures on a valid distance stream, not the positions', () => {

@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { OUTPUT, buildMatcher } from '../../../../../scripts/gen_edge_segment_matcher.mjs';
+import { stripComments } from '../core/strip_comments';
 import { computeGlobalSegmentEfforts } from './segments';
 import type { TrackPoint } from '../types';
 
@@ -57,4 +58,43 @@ test('the bundle times a run exactly as the web module does', async () => {
 	assert.ok(web[0] !== null, 'the fixture must produce a match, or the comparison proves nothing');
 	assert.equal(web[1], null, 'the off-line checkpoint must refuse the second geometry');
 	assert.deepEqual(bundle.computeGlobalSegmentEfforts(track, segments), web);
+});
+
+/**
+ * Top-level bindings of an esbuild bundle that nothing else in it names. esbuild
+ * keeps a module's computed constant (`var B = A * 2`) even when no export
+ * reaches it, because it cannot prove the arithmetic side-effect free; CodeQL
+ * then flags the dead binding on every PR (run 43732717713: run_stats.ts's
+ * still-window constants, carried in only because the matcher imported
+ * `haversineMetres` from that module).
+ */
+function unreferencedTopLevelBindings(bundle: string): string[] {
+	const code = stripComments(bundle);
+	const names = [...code.matchAll(/^(?:var|let|const|function\*?|class|async function)\s+([A-Za-z_$][\w$]*)/gm)].map(
+		(m) => m[1],
+	);
+	// Count every identifier token once, rather than building a pattern per
+	// name: a property access (`.name`) is not a read of the binding.
+	const uses = new Map<string, number>();
+	for (const [token] of code.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*/g)) {
+		uses.set(token, (uses.get(token) ?? 0) + 1);
+	}
+	return names.filter((name) => (uses.get(name) ?? 0) < 2);
+}
+
+test('the dead-binding scan finds a computed constant no export reaches', () => {
+	assert.deepEqual(
+		unreferencedTopLevelBindings(
+			'// m.ts\nvar A = 0.5;\nvar B = A * 30;\nfunction used() {\n  return A;\n}\nexport {\n  used\n};\n',
+		),
+		['B'],
+	);
+});
+
+test('the Edge Function bundle carries no top-level binding it never reads', () => {
+	assert.deepEqual(
+		unreferencedTopLevelBindings(readFileSync(OUTPUT, 'utf8')),
+		[],
+		'a module the matcher imports from carries a computed top-level constant the bundle never reads. Import the symbol from a module that holds only what the matcher needs (as segments.ts takes haversineMetres from geo/haversine.ts) rather than shipping dead code to the Edge Function.',
+	);
 });

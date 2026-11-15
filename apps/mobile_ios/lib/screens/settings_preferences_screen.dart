@@ -502,13 +502,21 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     try {
       await widget.settingsSync?.updateUniversal(<String, dynamic>{key: value});
     } catch (e) {
-      // Best-effort (L4): updateUniversal already persisted the change to
-      // the local cache and queued it for the next online drain before any
-      // server push, so a rare cache/auth throw here must not surface as an
-      // unhandled async error or revert the toggle.
+      // Offline, updateUniversal keeps the change and queues it without
+      // throwing. What reaches here is a refusal, which it has already undone
+      // (the control re-reads the bag below and shows the old value), or a
+      // signed-out / unloadable bag; only the refusal is the runner's to hear.
       debugPrint('settings updateUniversal failed for $key: $e');
+      _tellRefused(e);
     }
     if (mounted) setState(() {});
+  }
+
+  /// A change the server refused is never saved, so saying nothing would
+  /// leave the runner believing it was (decisions § 2542).
+  void _tellRefused(Object e) {
+    if (!settingsWriteRejected(e) || !mounted) return;
+    showTopBanner(context, AppLocalizations.of(context).prefsSettingSaveFailed);
   }
 
   /// Roam a pref that is ALREADY saved locally up to the settings bags.
@@ -521,6 +529,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       await push();
     } catch (e) {
       debugPrint('settings roam push failed: $e');
+      _tellRefused(e);
     }
   }
 

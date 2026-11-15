@@ -190,4 +190,42 @@ void main() {
       expect(isCrossSourceDuplicate(hc, const []), isFalse);
     });
   });
+
+  group('alsoDistanceMetres', () {
+    test('a run stored at its positions before #1387 is still the same run',
+        () {
+      // A web Garmin TCX import stored the hop-sum of its positions (3944 m
+      // on the zig-zag start of the TCX fixture); the same run imported now
+      // reads 3714 m, its device total, 5.8 % away.
+      final start = DateTime.utc(2026, 4, 9, 11, 30);
+      final existing = [
+        _run(source: RunSource.garmin, startedAt: start, distanceM: 3944),
+      ];
+      final candidate =
+          _run(source: RunSource.strava, startedAt: start, distanceM: 3714);
+      expect(isCrossSourceDuplicate(candidate, existing), isFalse);
+      expect(
+          isCrossSourceDuplicate(candidate, existing, alsoDistanceMetres: 3944),
+          isTrue);
+      expect(
+          isCrossSourceDuplicate(
+              _run(
+                  source: RunSource.strava,
+                  startedAt: start.add(const Duration(hours: 1)),
+                  distanceM: 3714),
+              existing,
+              alsoDistanceMetres: 3944),
+          isFalse);
+    });
+
+    test('positionsMetres is the hop-sum of the raw positions', () {
+      const mPerDeg = 6371000 * 3.141592653589793 / 180;
+      final track = [
+        for (var i = 0; i <= 10; i++)
+          Waypoint(lat: 0, lng: i * 100 / mPerDeg, smoothedLat: 1, smoothedLng: 1),
+      ];
+      expect(positionsMetres(track), closeTo(1000, 1e-6));
+      expect(positionsMetres(const []), 0);
+    });
+  });
 }

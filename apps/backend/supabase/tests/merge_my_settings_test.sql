@@ -24,9 +24,9 @@ values
 
 insert into user_settings (user_id, prefs) values
   ('dddddddd-dddd-dddd-dddd-dddddddddd01',
-   jsonb_build_object('body_weight_kg', 60, 'privacy_zones', jsonb_build_array(jsonb_build_object('lat', 1, 'lng', 2, 'radius_m', 200)))),
+   jsonb_build_object('weekly_mileage_goal_m', 60, 'privacy_zones', jsonb_build_array(jsonb_build_object('lat', 1, 'lng', 2, 'radius_m', 200)))),
   ('dddddddd-dddd-dddd-dddd-dddddddddd02',
-   jsonb_build_object('body_weight_kg', 90));
+   jsonb_build_object('weekly_mileage_goal_m', 90));
 
 insert into user_device_settings (user_id, device_id, platform, prefs) values
   ('dddddddd-dddd-dddd-dddd-dddddddddd01', 'device-mms', 'web',
@@ -37,12 +37,12 @@ set local "request.jwt.claims" = '{"sub":"dddddddd-dddd-dddd-dddd-dddddddddd01",
 
 -- 1-2. Two writers' deltas, applied one after the other, both survive: the
 --      second merge applies to the bag the first left, not to a stale copy.
-select merge_my_settings(jsonb_build_object('body_weight_kg', 81.5));
+select merge_my_settings(jsonb_build_object('weekly_mileage_goal_m', 8150));
 select merge_my_settings(jsonb_build_object('locale', 'en'));
 select is(
-  (select (prefs->>'body_weight_kg') || '/' || (prefs->>'locale')
+  (select (prefs->>'weekly_mileage_goal_m') || '/' || (prefs->>'locale')
      from user_settings where user_id = 'dddddddd-dddd-dddd-dddd-dddddddddd01'),
-  '81.5/en', 'a later merge of another key keeps the earlier merge''s value');
+  '8150/en', 'a later merge of another key keeps the earlier merge''s value');
 select is(
   (select jsonb_array_length(prefs->'privacy_zones')
      from user_settings where user_id = 'dddddddd-dddd-dddd-dddd-dddddddddd01'),
@@ -68,7 +68,7 @@ select is(
 reset role;
 select is(
   (select prefs from user_settings where user_id = 'dddddddd-dddd-dddd-dddd-dddddddddd02'),
-  jsonb_build_object('body_weight_kg', 90), 'the merge is auth.uid()-scoped');
+  jsonb_build_object('weekly_mileage_goal_m', 90), 'the merge is auth.uid()-scoped');
 
 -- 7. A user with no row gets one.
 set local role authenticated;

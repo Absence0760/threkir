@@ -32,7 +32,7 @@ insert into body_metrics (user_id, weight_kg)
 values ('00000000-0000-0000-0000-0000000ccd11', 65.5),
        ('00000000-0000-0000-0000-0000000ccd11', 66.0);
 -- A's settings bag holds every Art 9 copy beside a key that is not one.
--- D never consented and holds a weight typed at onboarding.
+-- D never consented, so holds no weight (the bag refuses one, 20271229001390).
 insert into user_settings (user_id, prefs)
 values ('00000000-0000-0000-0000-0000000ccd11', jsonb_build_object(
           'date_of_birth', '1990-01-15', 'body_weight_kg', 66.0,
@@ -40,7 +40,7 @@ values ('00000000-0000-0000-0000-0000000ccd11', jsonb_build_object(
           'cycle_last_period_start', '2026-10-01', 'pregnancy_due_date', '2027-03-01',
           'weight_unit', 'kg')),
        ('00000000-0000-0000-0000-0000000ccd14', jsonb_build_object(
-          'body_weight_kg', 80.0, 'weight_unit', 'kg'));
+          'weight_unit', 'kg'));
 insert into user_profiles (id, display_name, preferred_unit)
 values ('00000000-0000-0000-0000-0000000ccd14', 'HDC D', 'km');
 
@@ -133,7 +133,7 @@ select is(
   'withdrawal stripped every Art 9 key from the settings bag and kept the rest'
 );
 
--- ── 6c. A runner who never consented keeps the onboarding weight ─────
+-- ── 6c. A runner who never consented keeps the keys that are not Art 9 ─
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccd14","role":"authenticated"}';
 select lives_ok(
@@ -144,8 +144,8 @@ reset role;
 select is(
   (select prefs from user_settings
     where user_id = '00000000-0000-0000-0000-0000000ccd14'),
-  '{"weight_unit": "kg", "body_weight_kg": 80.0}'::jsonb,
-  'a withdrawal with no consent to withdraw leaves the onboarding weight'
+  '{"weight_unit": "kg"}'::jsonb,
+  'a withdrawal with no consent to withdraw leaves the keys that are not Art 9'
 );
 
 -- ── 7. Withdrawal with NO profile row lands a withdrawn row (user C) ─

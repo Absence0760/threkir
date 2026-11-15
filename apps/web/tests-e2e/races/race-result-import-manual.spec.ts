@@ -7,8 +7,10 @@ import { readMaybeRow, readRows } from '../fixtures/db-read';
 
 /**
  * Auto-match-on-record + manual paste import (race_calendar.md). A same-day,
- * same-distance-band race listing makes the run-detail page surface the
- * inform-tier "Was this the {race}?" prompt. Confirming with a pasted chip time
+ * same-distance-band race listing at the run's GPS start makes the run-detail
+ * page surface the inform-tier "Was this the {race}?" prompt. The run carries a
+ * track because `race_match_candidates` returns nothing for a run with no start
+ * point (issue #1389): a trackless run is offered no race. Confirming with a pasted chip time
  * enriches the existing run row in place (no duplicate run) and renders the
  * official result. The race metadata stays owner-only on a private run.
  */
@@ -19,6 +21,8 @@ test.describe('/runs/[id] — race result import', () => {
 	const stamp = Date.now();
 	const raceName = `E2E Match Marathon ${stamp}`;
 	const day = '2027-04-18';
+	// Hopkinton, where the run's track starts and where the listing sits.
+	const start = { lat: 42.2295, lng: -71.5197 };
 	let listingId: string | null = null;
 	let runId: string | null = null;
 
@@ -32,6 +36,7 @@ test.describe('/runs/[id] — race result import', () => {
 				race_date: day,
 				distance_m: 42195,
 				location_label: 'Boston, MA',
+				location_point: `SRID=4326;POINT(${start.lng} ${start.lat})`,
 				is_verified: true
 			})
 			.select('id')
@@ -61,7 +66,11 @@ test.describe('/runs/[id] — race result import', () => {
 			distance_m: 42_100,
 			duration_s: 14_400,
 			is_public: false,
-			metadata: { activity_type: 'run', title: 'Marathon attempt' }
+			metadata: { activity_type: 'run', title: 'Marathon attempt' },
+			track: [
+				{ lat: start.lat, lng: start.lng, ts: `${day}T13:00:00.000Z` },
+				{ lat: start.lat, lng: start.lng + 0.001, ts: `${day}T13:00:30.000Z` }
+			]
 		});
 
 		await page.goto(`/runs/${runId}`);

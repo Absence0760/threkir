@@ -104,7 +104,7 @@ export const translation: GuideTranslation = {
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
 		"s3.b0.i1": "01322b98d3fa4762",
-		"s3.b0.i2": "1b3d5a9034e460c5",
+		"s3.b0.i2": "b2bbf4b61f684baf",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
 		"s5.heading": "2158104d68549d3e",

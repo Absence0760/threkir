@@ -106,10 +106,15 @@ The format is already universal across all importers and must stay so:
   `csv:{iso}-{distance}-{duration}`. New importers follow the same shape; put
   the prefix-building in one helper (e.g. `garminExternalId`) rather than
   inlining the literal.
-- Idempotency is the per-user partial unique index
-  `(user_id, external_id) where external_id is not null` (per-user, not global —
-  two users legitimately sharing one `strava:<id>` must both keep their row; see
-  `20260528000003`). Importers dedupe with `onConflict` on that key.
+- Idempotency is the per-user unique index `runs_user_external_id_arbiter`
+  on `(user_id, external_id)` (per-user, not global — two users legitimately
+  sharing one `strava:<id>` must both keep their row; see `20260528000003`).
+  Importers dedupe with `onConflict` on that key. **An index an upsert names
+  must not be partial**: PostgREST's `on_conflict=` carries no `WHERE`, so a
+  partial index is never inferred and every upsert raises 42P10. NULLs are
+  already distinct in a unique index, so `where x is not null` buys nothing
+  (`20271231002548`, decisions § 2548; the same trap as `event_pricing`,
+  `20270518_001`).
 - The namespace is a **string-prefix convention**, not structural. If a future
   provider's native ids could ever collide across the `:`-prefix boundary,
   escalate to structural `(source, external_id)` columns with the unique index

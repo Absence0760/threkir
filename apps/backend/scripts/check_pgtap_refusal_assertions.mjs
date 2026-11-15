@@ -2661,6 +2661,26 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'runs_external_id_upsert_arbiter_test.sql',
+    description: 'An imported run upserts on (user_id, external_id) without 42P10',
+    columns: ['runs.metadata'],
+    readBack: 'The upserted run stores the metadata it was given',
+    reason:
+      'the claim is that the upsert finds an arbiter (no 42P10), not what runs_road_distance_matches_track ' +
+      'makes of metadata: it rewrites metadata only when the map-matched distance keys are present, and ' +
+      'the read-back proves the stored metadata is the one supplied.',
+  },
+  {
+    file: 'runs_external_id_upsert_arbiter_test.sql',
+    description: 'Re-pushing the same import takes the update branch',
+    columns: ['runs.metadata'],
+    readBack: 'The upserted run stores the metadata it was given',
+    reason:
+      'the claim is that ON CONFLICT (user_id, external_id) resolves to the update branch, read back as one ' +
+      'row holding the re-pushed distance; the update sets only distance_m, and the metadata read-back ' +
+      'proves the road-distance trigger left the supplied metadata alone.',
+  },
+  {
     file: 'event_results_column_lock_test.sql',
     description: "the runner's own merge upsert, reading every column it writes back from EXCLUDED, still lands",
     columns: [

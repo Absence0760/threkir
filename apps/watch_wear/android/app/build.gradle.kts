@@ -52,7 +52,9 @@ kotlin {
 android {
     namespace = "com.runapp.watchwear"
     // androidx.lifecycle:*-compose 2.11.0 requires compileSdk 37 (AGP 9.2.1
-    // + Gradle 9.6 support it). targetSdk stays 35.
+    // + Gradle 9.6 support it). targetSdk stays 35: at 36 heart rate needs
+    // READ_HEART_RATE wired, and ManifestPermissionCoverageTest fails until it
+    // is (decisions § 2546).
     compileSdk = 37
 
     compileOptions {

@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { OUTPUT, buildMatcher } from '../../../../../scripts/gen_edge_segment_matcher.mjs';
+import { stripComments } from '../core/strip_comments';
 import { computeGlobalSegmentEfforts } from './segments';
 import type { TrackPoint } from '../types';
 
@@ -68,14 +69,17 @@ test('the bundle times a run exactly as the web module does', async () => {
  * `haversineMetres` from that module).
  */
 function unreferencedTopLevelBindings(bundle: string): string[] {
-	const code = bundle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+	const code = stripComments(bundle);
 	const names = [...code.matchAll(/^(?:var|let|const|function\*?|class|async function)\s+([A-Za-z_$][\w$]*)/gm)].map(
 		(m) => m[1],
 	);
-	return names.filter((name) => {
-		const escaped = name.replace(/\$/g, '\\$');
-		return (code.match(new RegExp(`(?<![\\w$.])${escaped}(?![\\w$])`, 'g')) ?? []).length < 2;
-	});
+	// Count every identifier token once, rather than building a pattern per
+	// name: a property access (`.name`) is not a read of the binding.
+	const uses = new Map<string, number>();
+	for (const [token] of code.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*/g)) {
+		uses.set(token, (uses.get(token) ?? 0) + 1);
+	}
+	return names.filter((name) => (uses.get(name) ?? 0) < 2);
 }
 
 test('the dead-binding scan finds a computed constant no export reaches', () => {

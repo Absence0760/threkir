@@ -432,6 +432,29 @@ test('computeRealSplits — mile splits on distM land on the mile boundaries', (
 	assert.ok(Math.abs(summed - 5300) <= splits.length, `splits sum to ${summed}`);
 });
 
+test('computeRealSplits — the tail closes where the runner stopped, not where the watch did (#1388)', () => {
+	// 3.0 m/s for 700 s on distM, then 300 s standing after the finish: the
+	// raw fixes wander 4 m, distM holds still. One mile and a 491 m tail.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 140; i++) pts.push(at(i * 15, i * 5, i * 15));
+	for (let k = 1; k <= 60; k++) pts.push(at(2100 + (k % 2 === 0 ? 0 : 4), 700 + k * 5, 2100));
+	const splits = computeRealSplits(pts, 1609.344, 2100);
+	assert.deepEqual(splits.map((sp) => sp.distance_m), [1609, 491]);
+	for (const sp of splits) assert.equal(sp.pace_s, 333, `split ${sp.km} pace ${sp.pace_s}`);
+
+	// A track without distM whose fixes repeat while the runner stands.
+	const still = pts.map(({ distM: _d, ...p }, i) => (i > 140 ? { ...p, lng: 2100 / 111_320 } : p));
+	assert.ok(Math.abs(computeRealSplits(still, 1609.344).at(-1)!.pace_s - 333) <= 1);
+
+	// A stop mid-run is elapsed time, as a watch's distance auto-lap counts it.
+	const paused = [...pts.slice(0, 51), ...pts.slice(51).map((p) => ({
+		...p,
+		ts: new Date(Date.parse(p.ts!) + 60_000).toISOString(),
+	}))];
+	const first = computeRealSplits(paused, 1609.344, 2100)[0];
+	assert.ok(Math.abs(first.pace_s - (1609.344 / 3 + 60) / 1.609344) <= 1, `paused mile ${first.pace_s}`);
+});
+
 // A barometer run whose GPS altitude disagrees with it in shape and level:
 // the barometer climbs 2 m per 100 m, GPS altitude falls 1 m per 100 m and
 // sits 50 m above it. 2.1 km on distM, a fix every 10 m and 3 s.

@@ -60,6 +60,9 @@ export function trackCumulativeMetres(
 	return out;
 }
 
+/** The slowest hop that counts as moving, m/s: moving time's floor and where a split table's tail ends. */
+const MOVING_MIN_SPEED_MPS = 0.5;
+
 /**
  * Moving time — elapsed with stops excluded, derived from a GPS track.
  *
@@ -78,7 +81,7 @@ export function trackCumulativeMetres(
  */
 export function movingTimeSeconds(
 	track: TrackPoint[] | null | undefined,
-	minSpeedMps = 0.5
+	minSpeedMps = MOVING_MIN_SPEED_MPS
 ): number {
 	if (!track || track.length < 2) return 0;
 	const cum = trackCumulativeMetres(track);
@@ -135,6 +138,13 @@ export const SPLIT_TAIL_MIN_M = 50;
  * Distance is `trackCumulativeMetres(track, totalDistanceM)`: pass the run's
  * `distance_m` and a track that carries the recorder's `distM` ends its last
  * split on it.
+ *
+ * Every boundary is timed by elapsed clock time, stops included, so a split
+ * reads what a watch's distance auto-lap reads. The tail is the one exception
+ * at its far end: it closes at the last hop at or above moving speed, not at
+ * the last fix, because the minutes a watch keeps recording past the finish
+ * line add time and no distance, which turned a race-pace 0.3 mi tail into a
+ * 25:00/mi row (#1388).
  */
 export function computeRealSplits(
 	track: TrackPoint[],
@@ -218,14 +228,36 @@ export function computeRealSplits(
 	// headline distance. A wrong pace on a named row is worse than a total
 	// that is under one percent light on a 5 km.
 	if (splits.length > 0 || cumDist > 0) {
-		const lastPoint = track[track.length - 1];
-		const endTimeMs = lastPoint.ts ? Date.parse(lastPoint.ts) : NaN;
-		if (cumDist - splitStart.dist > SPLIT_TAIL_MIN_M) {
-			emit(cumDist, endTimeMs);
+		const end = lastMovingIndex(track, cum);
+		const endPoint = track[end];
+		const endTimeMs = endPoint.ts ? Date.parse(endPoint.ts) : NaN;
+		const endDist = end === 0 ? 0 : cum[end];
+		if (endDist - splitStart.dist > SPLIT_TAIL_MIN_M) {
+			emit(endDist, endTimeMs);
 		}
 	}
 
 	return splits;
+}
+
+/**
+ * The index of the last point the runner was still moving into: walking back
+ * from the end, the first hop whose speed along [cum] is at least
+ * `MOVING_MIN_SPEED_MPS`, the floor moving time uses. A hop without two
+ * usable timestamps cannot be shown to be a stop, so it counts as moving
+ * when it gains any distance. The last index when the final hop moves.
+ */
+function lastMovingIndex(track: readonly TrackPoint[], cum: readonly number[]): number {
+	for (let i = track.length - 1; i > 0; i--) {
+		const gain = cum[i] - cum[i - 1];
+		if (!(gain > 0)) continue;
+		const a = track[i - 1].ts;
+		const b = track[i].ts;
+		const dtMs = a && b ? Date.parse(b) - Date.parse(a) : NaN;
+		if (!Number.isFinite(dtMs) || dtMs <= 0) return i;
+		if (gain / (dtMs / 1000) >= MOVING_MIN_SPEED_MPS) return i;
+	}
+	return 0;
 }
 
 /**

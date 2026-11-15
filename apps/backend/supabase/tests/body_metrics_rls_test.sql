@@ -26,8 +26,10 @@ values
 -- update — nothing creates them on an auth.users insert.
 select tests.confirm_consent();
 
--- Set the owner's height (superuser, RLS bypassed).
-update user_profiles set height_cm = 178.0 where id = '99999999-0000-0000-0000-0000000000b1';
+-- Set the owner's height (superuser, RLS bypassed), under the health-data
+-- consent it is held with (20271231002547).
+update user_profiles set health_data_consent_at = now(), height_cm = 178.0
+ where id = '99999999-0000-0000-0000-0000000000b1';
 
 -- Seed two weight entries for the owner (superuser).
 insert into body_metrics (id, user_id, recorded_at, weight_kg)

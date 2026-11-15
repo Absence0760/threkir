@@ -34,8 +34,10 @@ values ('b0000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated'
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
 
-insert into user_profiles (id, display_name, preferred_unit)
-values ('b0000000-0000-0000-0000-000000000001', 'Bounds Runner', 'km');
+-- With health-data consent: weight and height are held only under it
+-- (20271231002547), and the subject here is the range, not that gate.
+insert into user_profiles (id, display_name, preferred_unit, health_data_consent_at)
+values ('b0000000-0000-0000-0000-000000000001', 'Bounds Runner', 'km', now());
 
 -- ── body_metrics.weight_kg: > 0 and <= 500, numeric(5,2) ────────────────────
 select lives_ok(

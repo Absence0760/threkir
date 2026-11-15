@@ -110,8 +110,7 @@
 	let countdownLabel = $derived.by(() => {
 		if (daysOut < 0) return null;
 		if (daysOut === 0) return m('raceDayPanel.raceDay');
-		if (daysOut === 1) return m('raceDayPanel.daysToGoOne');
-		return m('raceDayPanel.daysToGoMany', { n: daysOut });
+		return m('raceDayPanel.daysToGo', { n: daysOut });
 	});
 </script>
 

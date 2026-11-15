@@ -500,28 +500,25 @@ class _RenderRootHeader extends RenderSliver
 
 /// Where a page's pinned header ends, for an overlay that must not cover it.
 ///
-/// A hub's tab strip sits under the large title and then pins under the app
-/// bar, so it is not part of the app bar an overlay measures. A top banner
-/// placed under the bar alone covered the strip at 2x text (issue #1374).
-/// [RootPage.tabbed] puts the strip under this scope; the app's top banner
-/// reads [headerKeyOf] from the calling context and starts below the strip
-/// wherever it is when the banner is shown.
-class PinnedHeaderScope extends InheritedWidget {
+/// A root page's title row, and a hub's tab strip under it, are not an app
+/// bar, so an overlay that measured app bars alone covered them (issue
+/// #1374). [RootPage] marks the widget whose bottom edge is the bottom of its
+/// header with this; the app's top banner finds every one that is on screen
+/// and starts below it. The four roots stay alive side by side in the shell,
+/// so the banner measures only a header that is painted, never a hidden
+/// root's.
+class PinnedHeaderScope extends StatelessWidget {
   const PinnedHeaderScope({
     super.key,
     required this.headerKey,
-    required super.child,
+    required this.child,
   });
 
   /// The widget whose bottom edge is the bottom of the pinned header.
   final GlobalKey headerKey;
 
-  /// The pinned header's key for [context], or null on a page without one.
-  /// Reads without depending: a banner measures once, when it is shown.
-  static GlobalKey? headerKeyOf(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<PinnedHeaderScope>()?.headerKey;
+  final Widget child;
 
   @override
-  bool updateShouldNotify(PinnedHeaderScope oldWidget) =>
-      headerKey != oldWidget.headerKey;
+  Widget build(BuildContext context) => child;
 }

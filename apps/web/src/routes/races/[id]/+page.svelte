@@ -422,7 +422,7 @@
 				{m('races.addToSeasonHint', {
 					plan: chain.planName,
 					date: formatDate(chain.planEndIso),
-					days: String(chain.recoveryDays),
+					days: chain.recoveryDays,
 				})}
 			</p>
 		{/if}

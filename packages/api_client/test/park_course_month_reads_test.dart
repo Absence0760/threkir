@@ -9,18 +9,23 @@ import 'package:test/test.dart';
 /// columns by hand, so a misspelled `p_month` reaches the server as an unknown
 /// argument and a missing `park_month` leaves a course page with no month to
 /// show. The fake sits at the http boundary and answers by path; the
-/// PostgREST builders and ApiClient above it are real.
+/// PostgREST builders and ApiClient above it are real. A list body is the
+/// whole result set: it answers the first read of its path, and a later read
+/// (the keyset walk confirming a short page was the last) gets none.
 class _FakeHttp extends http.BaseClient {
   final List<http.BaseRequest> requests = [];
   final Map<String, Object> bodyByPath = {};
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    requests.add(request);
     final match = bodyByPath.entries
         .where((e) => request.url.path.endsWith(e.key))
         .map((e) => e.value);
-    final body = match.isEmpty ? const <dynamic>[] : match.first;
+    final seen = to(request.url.path).isNotEmpty;
+    requests.add(request);
+    final body = match.isEmpty || (seen && match.first is List)
+        ? const <dynamic>[]
+        : match.first;
     return http.StreamedResponse(
       Stream.value(utf8.encode(jsonEncode(body))),
       200,
@@ -119,7 +124,7 @@ void main() {
   test('a park reads its month beside its season', () async {
     fake.bodyByPath[_parksPath] = [_park()];
     final parks = await api.fetchParks();
-    expect(fake.to(_parksPath).single.url.queryParameters['select'], '*,park_season,park_month');
+    expect(fake.to(_parksPath).first.url.queryParameters['select'], '*,park_season,park_month');
     expect(parks.single.season, 2026);
     expect(parks.single.month, 11);
   });
@@ -131,7 +136,7 @@ void main() {
       {'course_id': 'c3'},
     ];
     final counts = await api.fetchParkCourseMonthRunners('p1');
-    expect(fake.to(_runnersPath).single.url.queryParameters['p_park_id'], 'p1');
+    expect(fake.to(_runnersPath).first.url.queryParameters['p_park_id'], 'p1');
     expect(counts, {'c1': 12, 'c2': 1});
   });
 

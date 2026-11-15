@@ -67,7 +67,7 @@ export const guide: Guide = {
 					items: [
 						'**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.',
 						'It shows this year by default. Select **This month** for the month so far, or **All time** for the best times ever.',
-						'Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board.',
+						'Filter by gender or age band. The age filter only includes runners who have given health-data consent, so it may be shorter than the full board.',
 					],
 				},
 			],

@@ -13,6 +13,7 @@ import { TIER_LIMITS } from '../../coach/types';
 import type { SeasonRequestResult } from '../season_types';
 import {
 	EXTRACT_TOOL,
+	SYSTEM_PROMPT,
 	MAX_SEASON_REQUEST_CHARS,
 	SEASON_REQUEST_MODEL,
 	handleSeasonRequest,
@@ -388,4 +389,14 @@ test('the tool schema names exactly the fields the validator reads', () => {
 		'name',
 		'priority',
 	]);
+});
+
+test('the prompt maps the race-priority words the labels use', () => {
+	// The pickers read A goal race, B tune-up race, C training race; a runner
+	// who says "tune-up" must land on B without the model judging how hard
+	// they race it.
+	assert.match(SYSTEM_PROMPT, /goal race \(A\)/);
+	assert.match(SYSTEM_PROMPT, /a tune-up race \(B\)/);
+	assert.match(SYSTEM_PROMPT, /training race \(C\)/);
+	assert.doesNotMatch(SYSTEM_PROMPT, /race properly/);
 });

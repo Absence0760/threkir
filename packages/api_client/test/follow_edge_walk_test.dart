@@ -150,17 +150,14 @@ void main() {
       expect(authorsQueried('achievements'), isEmpty);
     });
 
-    test('a server capping below the ask is walked to the end', () async {
-      // db.max-rows under the page size answers every page short; a short
-      // page is the end only when it is also shorter than the one before.
-      fake.followPages.addAll([
-        _edges(0, 500),
-        _edges(500, 500),
-        _edges(1000, 3),
-      ]);
+    test('a follow list shorter than the cap is read whole in one request',
+        () async {
+      // The server returns min(ask, db.max-rows) rows while it has them, and
+      // the declared cap is the ask, so a short page is the end of the list.
+      fake.followPages.addAll([_edges(0, 3), _edges(3, 3)]);
       await api.fetchFollowingBadgeAwards();
-      expect(followReads(), hasLength(3));
-      expect(authorsQueried('achievements'), hasLength(1003));
+      expect(followReads(), hasLength(1));
+      expect(authorsQueried('achievements'), hasLength(3));
     });
 
     test(

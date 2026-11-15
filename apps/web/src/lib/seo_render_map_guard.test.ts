@@ -90,17 +90,10 @@ function tableRows(heading: string): string[][] {
 const RENDER_MAP = '## Per-surface render map';
 const CANONICAL = '## Canonical consolidation';
 
-/// Paths the doc names that are not SvelteKit routes at all.
-const NOT_ROUTES = new Set([
-	// A static file served straight off S3, not a route directory.
-	'/robots.txt',
-]);
-
 test('every path in the render map resolves to a real route', () => {
 	const missing: string[] = [];
 	for (const row of tableRows(RENDER_MAP)) {
 		for (const path of pathsIn(row[0])) {
-			if (NOT_ROUTES.has(path)) continue;
 			if (path === '/') continue;
 			if (!routeExists(path)) missing.push(path);
 		}

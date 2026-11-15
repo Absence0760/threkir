@@ -193,7 +193,7 @@ test.describe('fundraising — non-charge UI (owner, USER_A)', () => {
 		await expect(page.getByText('50%')).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByText('Jane D.')).toBeVisible();
 		await expect(page.getByText('Go get it!')).toBeVisible();
-		await expect(page.getByText(/1 supporters/)).toBeVisible();
+		await expect(page.getByText(/^1 supporter$/)).toBeVisible();
 	});
 
 	test('closed fundraiser: closed notice, no Donate CTA', async ({ page }) => {

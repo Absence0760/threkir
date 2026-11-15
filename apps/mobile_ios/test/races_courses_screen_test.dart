@@ -563,6 +563,18 @@ void main() {
               epsilon: 24));
     });
 
+    test('See all reads as one course, not "all 1", in every locale', () {
+      expect(lookupAppLocalizations(const Locale('en')).racesAnyTimeSeeAll(1),
+          'See the course');
+      for (final locale in AppLocalizations.supportedLocales) {
+        final l10n = lookupAppLocalizations(locale);
+        expect(l10n.racesAnyTimeSeeAll(1), isNot(contains('1')),
+            reason: '$locale: one course is named, not counted');
+        expect(l10n.racesAnyTimeSeeAll(12), contains('12'),
+            reason: '$locale: a longer list says how many');
+      }
+    });
+
     testWidgets('a course far away reads in whole, grouped kilometres',
         (tester) async {
       tallView(tester);

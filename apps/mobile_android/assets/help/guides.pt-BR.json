@@ -196,7 +196,7 @@
     "id": "using-help",
     "lang": "pt-BR",
     "title": "Como encontrar ajuda no app",
-    "summary": "Onde ficam os guias de ajuda, como pesquisar neles e como ir de uma tela direto para o guia que a explica.",
+    "summary": "Onde ficam os guias de ajuda, como buscar neles e como ir de uma tela direto para o guia que a explica.",
     "kind": "start",
     "category": "account",
     "audience": [
@@ -227,11 +227,11 @@
         ]
       },
       {
-        "heading": "Como pesquisar nos guias",
+        "heading": "Como buscar nos guias",
         "blocks": [
           {
             "type": "p",
-            "text": "Digite uma ou duas palavras em **Pesquisar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Pesquisar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto."
+            "text": "Digite uma ou duas palavras em **Buscar nos guias**, no topo de [[route:/help|Ajuda]], e clique em **Buscar**. Os guias com as suas palavras no título aparecem primeiro, depois os guias que as mencionam no resumo, e depois o resto."
           },
           {
             "type": "note",
@@ -513,7 +513,7 @@
               "Abra [[route:/social|Social]] e escolha a aba **Clubes**.",
               "Selecione **Criar clube**.",
               "Preencha o **Nome**. Os membros procuram o clube por esse nome, e o endereço web do clube é criado a partir dele quando você cria o clube. Renomear o clube depois não muda esse endereço.",
-              "Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando pesquisam a própria região.",
+              "Adicione uma **Descrição** e um **Local**, se quiser. Os dois são opcionais, mas uma cidade e um país em **Local** ajudam corredores próximos a encontrar você quando buscam a própria região.",
               "Escolha uma **Visibilidade**: clubes **Público** aparecem em **Explorar**, enquanto clubes **Privado** ficam ocultos e as pessoas só podem entrar por um link de convite.",
               "Em **Quem pode entrar?**, escolha **Qualquer pessoa pode entrar**, **Requer aprovação** ou **Somente por convite**.",
               "Marque **Exigir o reconhecimento dos riscos da atividade para entrar** se quiser que cada novo membro confirme que entende os riscos das corridas em grupo. Isso só pode ser definido agora, enquanto o clube está sendo criado.",
@@ -1252,7 +1252,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar pagamentos**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto."
+            "text": "A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar repasses**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto."
           },
           {
             "type": "p",
@@ -1267,9 +1267,9 @@
             "type": "steps",
             "items": [
               "Abra [[route:/settings/payouts|Repasses]] na web.",
-              "Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.",
+              "Clique em **Configurar repasses**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.",
               "Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.",
-              "Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de pagamentos precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou."
+              "Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de repasses precisa de atenção antes de você poder receber**, clique em **Concluir a configuração dos repasses** para voltar ao Stripe e continuar de onde parou."
             ]
           }
         ]
@@ -1280,14 +1280,14 @@
           {
             "type": "list",
             "items": [
-              "**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.",
+              "**Tudo pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.",
               "**Cadastro incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo seu antes de aceitar uma cobrança.",
-              "**Sua conta de pagamentos precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração de pagamentos** leva você ao que ele está pedindo."
+              "**Sua conta de repasses precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração dos repasses** leva você ao que ele está pedindo."
             ]
           },
           {
             "type": "p",
-            "text": "Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com um link **Configurar pagamentos** de volta para esta página."
+            "text": "Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os repasses para cobrar por eventos.** com um link **Configurar repasses** de volta para esta página."
           }
         ]
       },
@@ -1435,7 +1435,7 @@
           {
             "type": "list",
             "items": [
-              "Os participantes se inscrevem e pagam na web, veem **Você está inscrito** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
+              "Os participantes se inscrevem e pagam na web, veem **Inscrição feita** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
               "Quando as vagas acabam, aparece **Esgotado** com a opção **Entrar na lista de espera**: veja [[guide:waitlist-and-claim-window|Listas de espera e o prazo de 12 horas para garantir a vaga]].",
               "Marque quem compareceu: [[guide:take-attendance|Registrar a presença]].",
               "Cancelar uma sessão reembolsa todos que pagaram: [[guide:cancel-a-class|Cancelar uma aula]]."
@@ -1490,7 +1490,7 @@
           {
             "type": "list",
             "items": [
-              "Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você é administrador** ou **Você é organizador de eventos**.",
+              "Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você tem a função de administrador** ou **Você tem a função de organizador de eventos**.",
               "Preço, capacidade, a programação de repetição e o plano de sessão são todos definidos na web. O app para celular pode criar uma aula e mostrá-la aos membros, mas não tem campos de preço, capacidade nem plano de sessão.",
               "Se quiser vincular uma sequência, monte-a primeiro: veja [[guide:build-a-session-plan|Montar um plano de sessão]]."
             ]
@@ -1541,7 +1541,7 @@
             "type": "list",
             "items": [
               "A disciplina, o horário, o local, o **Preço** e uma linha sobre cancelamento, como **Cancelamento gratuito até 24 horas antes do início**.",
-              "Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — você está inscrito.**",
+              "Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — sua inscrição está feita.**",
               "**Esgotado** quando os tapetes acabam, com **Entrar na lista de espera** enquanto as vendas estão abertas ([[guide:waitlist-and-claim-window|como funciona a lista de espera]]), e **Inscrições encerradas** quando as vendas terminam.",
               "A sua sequência em **Sequência da sessão**. A pessoa pode abri-la e clicar em **Iniciar sessão** para acompanhar em casa."
             ]
@@ -1645,7 +1645,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o evento na web. Onde aparece **Você está inscrito**, clique em **Cancelar inscrição**.",
+              "Abra o evento na web. Onde aparece **Inscrição feita**, clique em **Cancelar inscrição**.",
               "Leia a caixa de diálogo. Dentro do prazo de reembolso, ela diz que você será reembolsado na forma de pagamento original e que sua vaga fica disponível para alguém da lista de espera.",
               "Clique em **Cancelar inscrição** para continuar, ou em **Manter minha vaga** para desistir."
             ]
@@ -2385,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sem marcação**: o celular ou relógio do corredor registrou a chegada, no momento em que ele cruzou a linha de chegada, ou no círculo de 30 m em volta da chegada, em um percurso sem linha de chegada. Esse é o caso normal, então nem a web nem o app do celular o marcam.",
+              "*Sem marcação*: o celular ou relógio do corredor registrou a chegada, no momento em que ele cruzou a linha de chegada, ou no círculo de 30 m em volta da chegada, em um percurso sem linha de chegada. Esse é o caso normal, então nem a web nem o app do celular o marcam.",
               "**Manual**: o corredor finalizou manualmente, com **Finalizar prova** depois de cobrir pelo menos 90% do percurso, ou usando **Enviar meu tempo** na web durante a prova.",
               "**Organizador** (na web, **Editado pelo organizador**): o organizador inseriu ou corrigiu este resultado, ou o corredor foi marcado como DNF quando o organizador encerrou a prova."
             ]
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra sempre que o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando você define um local, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar só os percursos, um a um, sem o calendário de provas."
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra sempre que o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando você define um lugar, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar só os percursos, um a um, sem o calendário de provas."
           },
           {
             "type": "list",
@@ -3828,7 +3828,7 @@
             "items": [
               "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Você aparece uma vez, com a sua melhor corrida.",
               "Por padrão ela mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Todos os tempos** para ver os melhores tempos de todos os tempos.",
-              "Filtre por gênero ou faixa etária. O filtro de idade só inclui quem concordou em compartilhar dados de saúde, então pode ser menor que a classificação completa."
+              "Filtre por gênero ou faixa etária. O filtro de idade só inclui quem deu consentimento de dados de saúde, então pode ser menor que a classificação completa."
             ]
           }
         ]

@@ -77,7 +77,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'**Créer sur Threkir** ouvre le formulaire d\'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.',
 						'**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.',
-						'**Délier** supprime le lien. Aucun des deux clubs n\'est modifié.',
+						'**Dissocier** supprime le lien. Aucun des deux clubs n\'est modifié.',
 					],
 				},
 				{

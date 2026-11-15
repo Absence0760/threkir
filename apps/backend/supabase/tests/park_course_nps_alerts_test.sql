@@ -9,10 +9,11 @@
 -- sweep did not see. No client reads or writes the table. Only an app admin
 -- reads the queue and acts on it, and closing from it closes the course with
 -- its note and marks every pending flag on it reviewed. A flag never changes
--- a course by itself. The daily schedule is armed.
+-- a course by itself. The queue holds every flag in a state, however many
+-- (20271228100001), gone ones last. The daily schedule is armed.
 
 begin;
-select plan(42);
+select plan(44);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -266,6 +267,25 @@ insert into recorded select 5, * from record_park_nps_alerts(
 select is(
   (select gone_at is null from park_course_nps_alerts where park_course_id = 'd1303333-0000-0000-0000-000000000002'),
   true, 'an alert listed again is no longer gone');
+reset role;
+
+-- ── A long history ──────────────────────────────────────────────────────────
+-- The queue once stopped at 200 rows with nothing to say more existed. 250
+-- dismissed flags, one of them gone, all come back, the gone one last.
+
+insert into park_course_nps_alerts (park_course_id, alert_id, category, title, match, review_status, first_seen_at, gone_at)
+select 'd1303333-0000-0000-0000-000000000003', 'HIST-' || n, 'Caution', 'Old alert ' || n, 'named', 'dismissed',
+       now() - make_interval(days => 300 - n), case when n = 1 then now() end
+  from generate_series(1, 250) n;
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"d1300000-0000-0000-0000-000000000002","role":"authenticated"}';
+select is((select count(*)::int from admin_park_nps_alerts('dismissed')), 250,
+  'an admin reads every flag in a state, past 200');
+select is(
+  (select t.alert_id from admin_park_nps_alerts('dismissed') with ordinality t order by t.ordinality desc limit 1),
+  'HIST-1',
+  'a gone flag comes after the current ones');
 reset role;
 
 -- ── The schedule ────────────────────────────────────────────────────────────

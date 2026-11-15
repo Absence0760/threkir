@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'Las carreras que haces públicas aparecen en tu perfil y en el feed. Las carreras privadas solo las ves tú.',
 						'Tu pertenencia a un club público, y todo lo que publiques en él, pueden verlo las personas que pueden ver el club.',
 						'Mientras compartes un enlace en directo, cualquiera que tenga el enlace puede ver la carrera en curso.',
-						'Una foto que marques con **Mostrar en la página de la carrera**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla.',
+						'Una foto que marques con **Mostrar en la página de la prueba**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla.',
 					],
 				},
 				{

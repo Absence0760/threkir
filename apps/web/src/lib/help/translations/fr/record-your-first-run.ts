@@ -83,7 +83,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Distance, temps écoulé, temps en mouvement et allure.',
-						'Votre tracé GPS, qui sert à dessiner la carte et les splits.',
+						'Votre trace GPS, qui sert à dessiner la carte et les splits.',
 						'Altitude, pas, et fréquence cardiaque si vous avez appairé une ceinture cardio.',
 					],
 				},

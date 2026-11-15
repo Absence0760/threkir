@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test/test.dart';
@@ -126,13 +127,17 @@ void main() {
   test(
     'pages past a tie by (updated_at, id), not by updated_at alone',
     () async {
+      // A full page, so the walk cannot take it as the end; it closes on a
+      // tie at one updated_at.
       fake.pages.add([
+        for (var i = 0; i < kPostgrestMaxRows - 2; i++)
+          _row('f${i.toString().padLeft(4, '0')}', '2025-06-18T09:00:00+00:00'),
         _row('a', '2025-06-18T10:00:00+00:00'),
         _row('b', '2025-06-18T10:00:00+00:00'),
       ]);
       await api.getRunsModifiedSince(DateTime.utc(2025, 6, 18, 8));
 
-      expect(fake.requests, hasLength(greaterThanOrEqualTo(2)));
+      expect(fake.requests, hasLength(2));
       final after = fake.requests[1].url.queryParameters['or'] ?? '';
       expect(after, contains('updated_at.gt.'));
       expect(

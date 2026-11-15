@@ -83,8 +83,8 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'À l\'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l\'organisateur l\'examine avant qu\'il compte.',
-						'Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de l\'épreuve, et le résultat remplace un résultat en attente d\'examen, ou un résultat plus lent. Vous pouvez le faire jusqu\'à 24 heures après la fermeture de la fenêtre.',
-						'Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d\'obtenir pour votre tentative un résultat chronométré par les lignes.',
+						'Ou rechronométrez ensuite votre tentative à partir de sa trace : ouvrez la course sur le web et choisissez **Rechronométrer depuis ma trace**. La trace est chronométrée par les lignes de l\'épreuve, et le résultat remplace un résultat en attente d\'examen, ou un résultat plus lent. Vous pouvez le faire jusqu\'à 24 heures après la fermeture de la fenêtre.',
+						'Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre trace est donc le moyen d\'obtenir pour votre tentative un résultat chronométré par les lignes.',
 					],
 				},
 				{

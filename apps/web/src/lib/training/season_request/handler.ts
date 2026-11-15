@@ -98,7 +98,7 @@ function parseInput(raw: unknown): ParsedInput | null {
 	return { requestText, clientToday: o.today };
 }
 
-const SYSTEM_PROMPT =
+export const SYSTEM_PROMPT =
 	'You list the races in a runner\'s plain-English description of their ' +
 	'racing season. You do NOT write plans, workouts, mileage or advice — the ' +
 	'app plans the season itself from this list after the runner confirms it. ' +
@@ -117,8 +117,8 @@ const SYSTEM_PROMPT =
 	'runner gave the distance in miles, "km" otherwise. Give the race\'s ' +
 	'name as the runner wrote it, or a short description such as "10K" when ' +
 	'they give none. Set priority to A, B or C only when the runner says so ' +
-	'or calls a race their main / goal race (A) or a tune-up / training race ' +
-	'(B or C); omit it otherwise. Convert a goal time to whole seconds ' +
+	'or calls a race their main / goal race (A), a tune-up race (B) or a ' +
+	'training race (C); omit it otherwise. Convert a goal time to whole seconds ' +
 	'("sub-3" for a marathon = 10800, "11 hours" = 39600) and omit it when ' +
 	'none is given.';
 

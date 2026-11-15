@@ -5996,13 +5996,13 @@ class ApiClient {
   }
 
   /// Every active park with its current season, region then name order
-  /// (migration 20271115002383, decisions § 2383). Throws on a failed read.
+  /// (migration 20271115002383, decisions § 2383). Walked by keyset like
+  /// [fetchAllParkCourses], for the reason it gives. Throws on a failed read.
   Future<List<ParkListing>> fetchParks() async {
-    final rows = await _client
-        .from(ParkRow.table)
-        .select('*, park_season, park_month')
-        .order(ParkRow.colRegionCode, ascending: true)
-        .order(ParkRow.colName, ascending: true);
+    final rows = await _walk(
+      _parkOrder,
+      () => _client.from(ParkRow.table).select('*, park_season, park_month'),
+    );
     return [
       for (final r in rows)
         ParkListing(
@@ -6085,14 +6085,16 @@ class ApiClient {
   }
 
   /// A park's courses with their catalogue segment, by slug. A course whose
-  /// segment was pulled is dropped (RLS hides the segment). Throws on a
-  /// failed read.
+  /// segment was pulled is dropped (RLS hides the segment). Walked by keyset
+  /// like [fetchAllParkCourses]. Throws on a failed read.
   Future<List<ParkCourseListing>> fetchParkCourses(String parkId) async {
-    final rows = await _client
-        .from(ParkCourseRow.table)
-        .select('*, global_segments(*)')
-        .eq(ParkCourseRow.colParkId, parkId)
-        .order(ParkCourseRow.colSlug, ascending: true);
+    final rows = await _walk(
+      _parkCourseSlugOrder,
+      () => _client
+          .from(ParkCourseRow.table)
+          .select('*, global_segments(*)')
+          .eq(ParkCourseRow.colParkId, parkId),
+    );
     return [
       for (final r in rows)
         if (r['global_segments'] is Map)
@@ -6106,15 +6108,19 @@ class ApiClient {
   }
 
   /// Every listed park course with its catalogue segment, across all parks,
-  /// for the "Run any time" section of Races & courses. One read where a
+  /// for the "Run any time" section of Races & courses and the park index,
+  /// which search, order and count it on the device. One walk where a
   /// [fetchParkCourses] call per park would be a round trip each; the same
-  /// RLS hides an inactive park's courses and a pulled segment. Throws on a
-  /// failed read.
+  /// RLS hides an inactive park's courses and a pulled segment. Walked by
+  /// keyset because PostgREST cuts an unranged read at `db.max-rows` with a
+  /// 200 and no flag, which would silently drop courses from the list, its
+  /// count and its search. Mirrors web `fetchAllParkCourses`.
+  /// Throws on a failed read.
   Future<List<ParkCourseListing>> fetchAllParkCourses() async {
-    final rows = await _client
-        .from(ParkCourseRow.table)
-        .select('*, global_segments(*)')
-        .order(ParkCourseRow.colSlug, ascending: true);
+    final rows = await _walk(
+      _parkCourseIdOrder,
+      () => _client.from(ParkCourseRow.table).select('*, global_segments(*)'),
+    );
     return [
       for (final r in rows)
         if (r['global_segments'] is Map)
@@ -6132,12 +6138,14 @@ class ApiClient {
   /// with no visible effort this season has no entry. Signed-in only: the
   /// board it wraps refuses an anonymous caller. Throws on a failed read.
   Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
-    final rows = await _client.rpc('park_course_records', params: const {}, get: true);
-    if (rows is! List) return const {};
+    final rows = await _walk(
+      _courseIdOrder,
+      () => _client.rpc<PostgrestList>('park_course_records',
+          params: const {}, get: true),
+    );
     return {
       for (final r in rows)
-        if (r is Map &&
-            r['course_id'] is String &&
+        if (r['course_id'] is String &&
             r['time_seconds'] is num)
           r['course_id'] as String: ParkCourseRecord(
             season: (r['season'] as num).toInt(),
@@ -6153,15 +6161,42 @@ class ApiClient {
   /// has no entry. Signed-in only. Mirrors web `fetchParkCourseMonthRunners`.
   /// Throws on a failed read.
   Future<Map<String, int>> fetchParkCourseMonthRunners(String parkId) async {
-    final rows = await _client.rpc('park_course_month_runners',
-        params: {'p_park_id': parkId}, get: true);
-    if (rows is! List) return const {};
+    final rows = await _walk(
+      _courseIdOrder,
+      () => _client.rpc<PostgrestList>('park_course_month_runners',
+          params: {'p_park_id': parkId}, get: true),
+    );
     return {
       for (final r in rows)
-        if (r is Map && r['course_id'] is String && r['runners'] is num)
+        if (r['course_id'] is String && r['runners'] is num)
           r['course_id'] as String: (r['runners'] as num).toInt(),
     };
   }
+
+  /// Region then name, the park index order; `id` makes it total. Mirrors
+  /// web `PARK_ORDER`.
+  static const List<KeysetKey> _parkOrder = [
+    KeysetKey(ParkRow.colRegionCode, ascending: true, nullsFirst: false),
+    KeysetKey(ParkRow.colName, ascending: true, nullsFirst: false),
+    KeysetKey(ParkRow.colId, ascending: true, nullsFirst: false),
+  ];
+
+  /// A park's courses by slug; `id` makes it total.
+  static const List<KeysetKey> _parkCourseSlugOrder = [
+    KeysetKey(ParkCourseRow.colSlug, ascending: true, nullsFirst: false),
+    KeysetKey(ParkCourseRow.colId, ascending: true, nullsFirst: false),
+  ];
+
+  /// Every course across the catalogue; the screens order it themselves
+  /// (`orderAnyTimeCourses`), so the walk needs only a total order.
+  static const List<KeysetKey> _parkCourseIdOrder = [
+    KeysetKey(ParkCourseRow.colId, ascending: true, nullsFirst: false),
+  ];
+
+  /// The per-course RPCs return one row per course.
+  static const List<KeysetKey> _courseIdOrder = [
+    KeysetKey('course_id', ascending: true, nullsFirst: false),
+  ];
 
   /// One park course by its id, with its park and the park's current season
   /// and month, for opening a course from a month-close notice (the row
@@ -6332,12 +6367,19 @@ class ApiClient {
       fetchRecapParkCourses(DateTime start, DateTime end) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const [];
-    final effortRows = await _client
-        .from(GlobalSegmentEffortRow.table)
-        .select(GlobalSegmentEffortRow.colGlobalSegmentId)
-        .eq(GlobalSegmentEffortRow.colUserId, uid)
-        .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
-        .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String());
+    // A year of efforts passes `db.max-rows` for a runner who lives on the
+    // catalogue, and a read cut there undercounts their parks with a 200, so
+    // it is walked.
+    final effortRows = await _walk(
+      _effortIdOrder,
+      () => _client
+          .from(GlobalSegmentEffortRow.table)
+          .select(
+              '${GlobalSegmentEffortRow.colId}, ${GlobalSegmentEffortRow.colGlobalSegmentId}')
+          .eq(GlobalSegmentEffortRow.colUserId, uid)
+          .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
+          .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String()),
+    );
     final segmentIds = {
       for (final r in effortRows) r[GlobalSegmentEffortRow.colGlobalSegmentId] as String,
     }.toList();
@@ -6358,6 +6400,10 @@ class ApiClient {
         ),
     ];
   }
+
+  static const List<KeysetKey> _effortIdOrder = [
+    KeysetKey(GlobalSegmentEffortRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Catalogue-segment efforts a run earned, joined to the segment and ranked
   /// in one round-trip via `global_segment_effort_ranks`. The catalogue twin of

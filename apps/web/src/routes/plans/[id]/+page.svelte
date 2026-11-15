@@ -1652,11 +1652,6 @@
 			if (d === 0) {
 				relation = namedRace ? m('planDetail.namedRaceDay', { name: namedRace }) : m('planDetail.raceDay');
 				raceState = 'today';
-			} else if (d === 1) {
-				relation = namedRace
-					? m('planDetail.namedRaceTomorrow', { name: namedRace })
-					: m('planDetail.raceTomorrow');
-				raceState = 'upcoming';
 			} else {
 				relation = namedRace
 					? m('planDetail.namedRaceInDays', { name: namedRace, d })

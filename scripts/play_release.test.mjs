@@ -25,6 +25,7 @@ import {
 	nextFraction,
 	promote,
 	readServiceAccount,
+	refusalHint,
 	uploadToFormFactor,
 } from './play_release.mjs';
 
@@ -466,6 +467,30 @@ test('a refused token names the status and the service account, never the assert
 		assert.ok(!message.includes('eyJ'), 'the assertion leaked into the error');
 		return true;
 	});
+});
+
+test('a 403 naming a policy declaration points at App content and the hand upload, not the service account', async () => {
+	/** @param {string} message @returns {import('./play_release.mjs').Fetcher} */
+	const refusing = (message) => async (url) =>
+		url === TOKEN_URI
+			? { ok: true, status: 200, text: async () => JSON.stringify({ access_token: 't', expires_in: 3600 }) }
+			: { ok: false, status: 403, text: async () => JSON.stringify({ error: { code: 403, message, status: 'PERMISSION_DENIED' } }) };
+	const assertion = () => 'x.y.z';
+	const fgs = makeApi({ fetcher: refusing('You must let us know whether your app uses any Foreground Service permissions.'), assertion });
+	await assert.rejects(fgs.post('/applications/com.threkir.app/edits'), (err) => {
+		const message = /** @type {Error} */ (err).message;
+		assert.match(message, /HTTP 403: PERMISSION_DENIED: You must let us know whether your app uses any Foreground Service permissions/);
+		assert.match(message, /policy declaration, not the service account/);
+		assert.match(message, /App content/);
+		assert.match(message, /upload the signed AAB attached to the GitHub Release by hand/);
+		assert.ok(!message.includes('Users and permissions'), 'the service-account hint was appended to a declaration refusal');
+		return true;
+	});
+	const access = makeApi({ fetcher: refusing('The caller does not have permission'), assertion });
+	await assert.rejects(access.post('/applications/com.threkir.app/edits'), /Users and permissions/);
+	assert.equal(refusalHint(500, 'Foreground Service'), '');
+	assert.match(refusalHint(403, 'PERMISSION_DENIED: Complete the Data safety form'), /App content/);
+	assert.match(refusalHint(401, 'Request had invalid authentication credentials.'), /service account/);
 });
 
 // --- upload: a form factor's bundle onto its internal track -----------------------

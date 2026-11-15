@@ -480,11 +480,12 @@ test('computeRealSplits — standing jitter on a track without distM is not runn
 	assert.deepEqual(shortSplits.map((sp) => sp.distance_m), [1609, 1537]);
 	for (const sp of shortSplits) assert.equal(sp.pace_s, truePace, `split ${sp.km} pace ${sp.pace_s}`);
 
-	// Running to the last fix ends within STILL_RADIUS_M of it, pace unchanged.
-	const running = pts.slice(0, 141);
-	const ran = computeRealSplits(running, 1609.344);
-	assert.ok(splits[1].distance_m - ran[1].distance_m <= STILL_RADIUS_M, `tail ${ran[1].distance_m}`);
-	assert.equal(ran[1].pace_s, truePace);
+	// Running to the last fix ends at it: its last STILL_RADIUS_M is real
+	// running, and a still stretch shorter than the window is not trimmed.
+	assert.equal(STILL_RADIUS_M, 15);
+	assert.deepEqual(computeRealSplits(pts.slice(0, 141), 1609.344), splits);
+	const briefStop = [...pts.slice(0, 141), ...pts.slice(141, 145)];
+	assert.equal(computeRealSplits(briefStop, 1609.344)[1].distance_m, 504);
 });
 
 test('splitAxisTotalMetres — scales a recorder axis, never an import', () => {

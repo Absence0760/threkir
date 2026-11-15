@@ -430,17 +430,31 @@ List<RunSplit> computeSplitDurations(
 /// On positions alone one hop cannot decide, because standing jitter clears
 /// the floor hop by hop. There the runner is stopped from a fix when the fixes
 /// over the next [kStillWindow] stay within [kStillRadiusMetres] of it
-/// ([_stoppedFrom]), and the end is the fix after the last one that was not.
-/// That can shorten a finish run to the very end by under
-/// [kStillRadiusMetres], which moves distance and time together. Moving time
+/// ([_stoppedFrom]), and the end is the fix after the last one that was not,
+/// when the still stretch from there lasts [kStillWindow] or more. A shorter
+/// one is kept: a finish run to the last fix also ends within the radius of it
+/// for under the window, and trimming it would cut real running. Moving time
 /// keeps the per-hop floor (decisions § 2541). Twin of `lastMovingIndex` in
 /// `run_stats.ts`.
 int _lastMovingIndex(List<Waypoint> track, List<double> cum) {
   if (!hasRecordedDistances(track)) {
-    for (var j = track.length - 2; j >= 0; j--) {
-      if (!_stoppedFrom(track, j)) return j + 1;
+    final last = track.length - 1;
+    var end = 0;
+    for (var j = last - 1; j >= 0; j--) {
+      if (!_stoppedFrom(track, j)) {
+        end = j + 1;
+        break;
+      }
     }
-    return 0;
+    // A still stretch shorter than the window is also how a finish run to the
+    // last fix looks (its last 15 m), so only a longer one is trimmed.
+    final endTs = track[end].timestamp;
+    final lastTs = track[last].timestamp;
+    return endTs != null &&
+            lastTs != null &&
+            lastTs.difference(endTs) >= kStillWindow
+        ? end
+        : last;
   }
   for (var i = track.length - 1; i > 0; i--) {
     final gain = cum[i] - cum[i - 1];

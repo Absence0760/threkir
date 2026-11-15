@@ -284,17 +284,28 @@ export function computeRealSplits(
  * On positions alone one hop cannot decide, because standing jitter clears the
  * floor hop by hop. There the runner is stopped from a fix when the fixes over
  * the next `STILL_WINDOW_S` stay within `STILL_RADIUS_M` of it (`stoppedFrom`),
- * and the end is the fix after the last one that was not stopped. That can shorten a finish
- * the runner ran to the very end by under `STILL_RADIUS_M`, which moves the
- * tail's distance and time together and so not its pace. Moving time keeps the
- * per-hop floor (decisions § 2541).
+ * and the end is the fix after the last one that was not stopped, when the
+ * still stretch from there lasts `STILL_WINDOW_S` or more. A shorter one is
+ * kept: a finish run to the last fix also ends within the radius of it for
+ * under the window (any speed over the floor covers the radius in less), and
+ * trimming it would cut real running. Moving time keeps the per-hop floor
+ * (decisions § 2541).
  */
 function lastMovingIndex(track: readonly TrackPoint[], cum: readonly number[]): number {
 	if (!hasRecordedDistances(track)) {
-		for (let j = track.length - 2; j >= 0; j--) {
-			if (!stoppedFrom(track, j)) return j + 1;
+		const last = track.length - 1;
+		let end = 0;
+		for (let j = last - 1; j >= 0; j--) {
+			if (!stoppedFrom(track, j)) {
+				end = j + 1;
+				break;
+			}
 		}
-		return 0;
+		// A still stretch shorter than the window is also how a finish run to
+		// the last fix looks (its last 15 m), so only a longer one is trimmed.
+		const endTs = track[end].ts ? Date.parse(track[end].ts!) : NaN;
+		const lastTs = track[last].ts ? Date.parse(track[last].ts!) : NaN;
+		return lastTs - endTs >= STILL_WINDOW_S * 1000 ? end : last;
 	}
 	for (let i = track.length - 1; i > 0; i--) {
 		const gain = cum[i] - cum[i - 1];

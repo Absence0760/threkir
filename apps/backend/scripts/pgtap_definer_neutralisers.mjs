@@ -2218,6 +2218,12 @@ export const UNREGISTERED_DEFINER_RELATIONS = [
       "the function carries no access-control filter to drop: its only WHERE is `user_id = p_user_id`, a subject selector, and who may call it at all is enforced by the EXECUTE grant (service_role only), which the same file's 42501 throws_ok assertions pin for authenticated and anon. The empty result claims that a user id with no stored token reads as nothing to revoke - delete-account's 'skipped' - not that a row is being hidden. Emptiness is not what it turns on either: two `results_eq` positives in the same transaction name the row the function DOES return for the account that has one",
   },
   {
+    relation: 'race_match_candidates',
+    assertion: 'a run with no start point gets no candidates',
+    reason:
+      "the claim is about the function's input, not a visibility: with no start point there is nothing to rank the 50 kept rows by, so `s.pt is not null` returns nothing for every caller (20271229100001). That predicate is a subject selector and the definer has no access-control filter of its own to drop - it is a definer only to call the revoked `private.event_course_endpoints`, and what a caller may see of a course is decided by `public_race_listings`, whose `course_route_id` is null unless the route is public. A replacement over that view would leave the null-start predicate in place, so the assertion would survive: an EXPECTED_SURVIVORS entry bought with a copy of the candidate query. Emptiness is not what it turns on either: assertions (1), (2) and (9) in the same file, with a start point, name the listings the function DOES return, so a function that had gone silent fails there first",
+  },
+  {
     relation: 'public_runs',
     assertion: 'a safety stub is not in public_runs',
     reason:

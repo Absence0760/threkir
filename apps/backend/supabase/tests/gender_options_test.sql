@@ -21,16 +21,17 @@ values
 
 -- 2. nonbinary is rejected by the narrowed CHECK.
 select throws_ok(
-  $$insert into user_profiles (id, display_name, gender)
-    values ('00000000-0000-0000-0000-0000000c0001', 'NB', 'nonbinary')$$,
+  $$insert into user_profiles (id, display_name, gender, health_data_consent_at)
+    values ('00000000-0000-0000-0000-0000000c0001', 'NB', 'nonbinary', now())$$,
   '23514',
   null,
   'nonbinary is rejected by the narrowed gender CHECK'
 );
 
 -- 3. Each surviving value is accepted + round-trips.
-insert into user_profiles (id, display_name, gender)
-values ('00000000-0000-0000-0000-0000000c0001', 'Runner', 'male');
+-- With health-data consent: gender is held only under it (20271231002547).
+insert into user_profiles (id, display_name, gender, health_data_consent_at)
+values ('00000000-0000-0000-0000-0000000c0001', 'Runner', 'male', now());
 select is(
   (select gender from user_profiles where id = '00000000-0000-0000-0000-0000000c0001'),
   'male',

@@ -20,21 +20,17 @@ test.describe('/nutrition/fuel — fluid from body weight', () => {
 	const admin = getAdminClient();
 	let user: SagaUser;
 
-	async function plant(consented: boolean, weightKg: number | null) {
+	async function plant(weightKg: number) {
 		[user] = await createSagaUsers(1, { displayNames: ['Fuel Weight Saga'] });
-		if (consented) {
-			const { error } = await admin
-				.from('user_profiles')
-				.update({ health_data_consent_at: new Date().toISOString() })
-				.eq('id', user.id);
-			if (error) throw error;
-		}
-		if (weightKg != null) {
-			const { error } = await admin
-				.from('body_metrics')
-				.insert({ user_id: user.id, weight_kg: weightKg, recorded_at: noonOnBrowserDay(-1) });
-			if (error) throw error;
-		}
+		const { error: consentErr } = await admin
+			.from('user_profiles')
+			.update({ health_data_consent_at: new Date().toISOString() })
+			.eq('id', user.id);
+		if (consentErr) throw consentErr;
+		const { error } = await admin
+			.from('body_metrics')
+			.insert({ user_id: user.id, weight_kg: weightKg, recorded_at: noonOnBrowserDay(-1) });
+		if (error) throw error;
 	}
 
 	test.afterEach(async () => {
@@ -44,7 +40,7 @@ test.describe('/nutrition/fuel — fluid from body weight', () => {
 	test('with consent and a weight, opting in scales fluid by weight and heat still multiplies it', async ({
 		browser,
 	}) => {
-		await plant(true, 90);
+		await plant(90);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		const page = await ctx.newPage();
 		try {
@@ -66,8 +62,22 @@ test.describe('/nutrition/fuel — fluid from body weight', () => {
 		}
 	});
 
-	test('a weight without consent is never used, even with ?bw=1 in the link', async ({ browser }) => {
-		await plant(false, 90);
+	// The database holds no weight without consent (decisions § 2547): a
+	// withdrawal erases the series, and a new one is refused. So the case to
+	// pin is the withdrawal, followed by a link that still asks for the rate.
+	test('after consent is withdrawn no weight is used, even with ?bw=1 in the link', async ({ browser }) => {
+		await plant(90);
+		const { error: withdrawErr } = await admin
+			.from('user_profiles')
+			.update({ health_data_consent_at: null })
+			.eq('id', user.id);
+		if (withdrawErr) throw withdrawErr;
+		const { count, error: countErr } = await admin
+			.from('body_metrics')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', user.id);
+		if (countErr) throw countErr;
+		expect(count, 'the withdrawal erased the weight series').toBe(0);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		const page = await ctx.newPage();
 		try {

@@ -20,7 +20,8 @@
 --      DERIVATION is the processing — `healthUseDob` returns null for
 --      `consent_withheld` on the runner's own row too.
 --   5. The gender tier is unaffected and gains no term of its own: `gender` is
---      only ever populated under consent, so it was already correct.
+--      only ever populated under consent (enforced by 20271231002547), so it
+--      was already correct.
 --
 -- Reads as authenticated callers via `set local "request.jwt.claims"`.
 -- No service-role bypass.
@@ -41,19 +42,22 @@ values
   ('00000000-0000-0000-0000-0000000ac004', 'authenticated', 'authenticated',
    'nodate@agc.local', '', now(), now());
 
--- ac002 and ac003 are the same age and the same gender; the ONLY thing that
--- differs is the Art 9 stamp. ac004 carries no date at all and is the control
--- the withheld runner must be indistinguishable from. The stamp is written
--- directly because `tests.confirm_consent()` stamps the Art 8 age-confirmation
--- columns, which are a different gate on a different lawful basis.
+-- ac002 and ac003 are the same age; what differs is the Art 9 stamp, and with
+-- it the gender, which since 20271231002547 is held only under consent
+-- (decisions § 2547). ac004 carries no date at all and is the control the
+-- withheld runner must be indistinguishable from on the age tiers; it has
+-- consent and a gender so the gender tier below still sees a dateless runner.
+-- The stamp is written directly because `tests.confirm_consent()` stamps the
+-- Art 8 age-confirmation columns, which are a different gate on a different
+-- lawful basis.
 insert into user_profiles (id, display_name, gender, date_of_birth, health_data_consent_at)
 values
-  ('00000000-0000-0000-0000-0000000ac001', 'Route Owner', 'male', null, null),
+  ('00000000-0000-0000-0000-0000000ac001', 'Route Owner', null, null, null),
   ('00000000-0000-0000-0000-0000000ac002', 'Consented Forty', 'male',
    (now() - interval '41 years')::date, now()),
-  ('00000000-0000-0000-0000-0000000ac003', 'Withheld Forty', 'male',
+  ('00000000-0000-0000-0000-0000000ac003', 'Withheld Forty', null,
    (now() - interval '41 years')::date, null),
-  ('00000000-0000-0000-0000-0000000ac004', 'No Date At All', 'male', null, null);
+  ('00000000-0000-0000-0000-0000000ac004', 'No Date At All', 'male', null, now());
 
 select tests.confirm_consent();
 
@@ -161,15 +165,15 @@ select results_eq(
   'route board: the unfiltered board is untouched by the consent term'
 );
 
--- 5. The gender tier gains no term of its own and must not change: `gender` is
---    only ever populated under consent, so it was already correct. A fix that
---    widened the gate to every demographic column would surface here.
+-- 5. The gender tier gains no age term: a consented runner with a gender and
+--    no date of birth is on it beside the consented forty-year-old. A fix that
+--    widened the age gate to every demographic column would drop ac004 here.
+--    The withheld runner holds no gender (20271231002547), so is not on it.
 select results_eq(
   $$ select user_id::text from segment_leaderboard_tiered(
        '77777777-7777-7777-7777-77777777ac01'::uuid, 'male', null, 50) $$,
   $$ values
        ('00000000-0000-0000-0000-0000000ac002'),
-       ('00000000-0000-0000-0000-0000000ac003'),
        ('00000000-0000-0000-0000-0000000ac004')
   $$,
   'route board: the gender tier is unaffected by the age consent term'

@@ -4769,7 +4769,7 @@ export const messages = {
 	"races.distanceHalf": "Meia",
 	"races.distanceMarathon": "Maratona",
 	"races.distanceUltra": "Ultra",
-	"races.register": "Página da prova e inscrição",
+	"races.racePage": "Página da prova",
 	"races.viewResults": "Ver resultados",
 	"races.importResult": "Importar o meu resultado",
 	"races.trainForThis": "Treinar para esta prova",

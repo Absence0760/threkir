@@ -16200,7 +16200,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Page de l\'épreuve et inscription';
+  String get racesRacePage => 'Page de l\'épreuve';
 
   @override
   String get racesTrainForThis => 'S\'entraîner pour cette épreuve';

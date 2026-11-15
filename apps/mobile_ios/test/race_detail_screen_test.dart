@@ -311,7 +311,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Listed on RunSignUp'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Race page & register'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Race page'), findsOneWidget);
     expect(find.byKey(const Key('race-detail-share')), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Import my result'), findsNothing);
     expect(find.textContaining('You can import your official result from race day'),

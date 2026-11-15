@@ -16153,7 +16153,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Rennseite & Anmeldung';
+  String get racesRacePage => 'Rennseite';
 
   @override
   String get racesTrainForThis => 'Für dieses Rennen trainieren';

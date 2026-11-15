@@ -615,7 +615,7 @@ class _RaceCard extends StatelessWidget {
         if (race.entryUrl != null)
           OutlinedButton(
             onPressed: () => _launch(context, race.entryUrl!),
-            child: Text(l.racesRegister),
+            child: Text(l.racesRacePage),
           ),
         if (race.resultsUrl != null)
           OutlinedButton(

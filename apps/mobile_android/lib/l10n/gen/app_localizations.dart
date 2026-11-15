@@ -25269,11 +25269,11 @@ abstract class AppLocalizations {
   /// **'Ultra'**
   String get racesDistanceUltra;
 
-  /// Opens the race's own page on the site that lists it, which carries the race details as well as registration
+  /// Opens the race's own page on the site that lists it, which carries the race details and, before race day, registration. Kept short so it fits beside Import my result on a phone-width race card
   ///
   /// In en, this message translates to:
-  /// **'Race page & register'**
-  String get racesRegister;
+  /// **'Race page'**
+  String get racesRacePage;
 
   /// Race card action that opens the plan wizard sized around that race
   ///

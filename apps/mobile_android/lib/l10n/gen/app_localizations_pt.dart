@@ -16185,7 +16185,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página da prova e inscrição';
+  String get racesRacePage => 'Página da prova';
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';
@@ -40314,7 +40314,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página da prova e inscrição';
+  String get racesRacePage => 'Página da prova';
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';

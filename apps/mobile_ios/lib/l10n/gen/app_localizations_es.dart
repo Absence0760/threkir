@@ -16158,7 +16158,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página de la prueba e inscripción';
+  String get racesRacePage => 'Página de la prueba';
 
   @override
   String get racesTrainForThis => 'Entrenar para esta prueba';

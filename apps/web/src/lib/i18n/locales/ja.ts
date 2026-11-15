@@ -4765,7 +4765,7 @@ export const messages = {
 	"races.distanceHalf": "ハーフ",
 	"races.distanceMarathon": "マラソン",
 	"races.distanceUltra": "ウルトラ",
-	"races.register": "大会ページ・エントリー",
+	"races.racePage": "大会ページ",
 	"races.viewResults": "結果を見る",
 	"races.importResult": "自分の記録をインポート",
 	"races.trainForThis": "このレースに向けてトレーニング",

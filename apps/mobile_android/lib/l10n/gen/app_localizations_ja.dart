@@ -15020,7 +15020,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesDistanceUltra => 'ウルトラ';
 
   @override
-  String get racesRegister => '大会ページ・エントリー';
+  String get racesRacePage => '大会ページ';
 
   @override
   String get racesTrainForThis => 'このレースに向けてトレーニング';

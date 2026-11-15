@@ -80,7 +80,7 @@
 				rel="noopener noreferrer"
 				data-testid="race-register"
 			>
-				{m('races.register')}
+				{m('races.racePage')}
 			</a>
 		{/if}
 		{#if race.results_url}

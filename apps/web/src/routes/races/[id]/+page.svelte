@@ -389,7 +389,7 @@
 					rel="noopener noreferrer"
 					data-testid="race-detail-register"
 				>
-					{m('races.register')}
+					{m('races.racePage')}
 				</a>
 			{/if}
 			{#if resultsHref && resultsHref !== '#'}

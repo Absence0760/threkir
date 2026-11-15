@@ -20687,9 +20687,9 @@
   "@racesDistanceUltra": {
     "description": "Distance-band chip: ultra"
   },
-  "racesRegister": "Race page & register",
-  "@racesRegister": {
-    "description": "Opens the race's own page on the site that lists it, which carries the race details as well as registration"
+  "racesRacePage": "Race page",
+  "@racesRacePage": {
+    "description": "Opens the race's own page on the site that lists it, which carries the race details and, before race day, registration. Kept short so it fits beside Import my result on a phone-width race card"
   },
   "racesTrainForThis": "Train for this race",
   "@racesTrainForThis": {

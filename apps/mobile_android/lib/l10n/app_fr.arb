@@ -4319,7 +4319,7 @@
   "racesDistanceHalf": "Semi",
   "racesDistanceMarathon": "Marathon",
   "racesDistanceUltra": "Ultra",
-  "racesRegister": "Page de l'épreuve et inscription",
+  "racesRacePage": "Page de l'épreuve",
   "racesTrainForThis": "S'entraîner pour cette épreuve",
   "racesBuildPlan": "Créer un plan pour cette épreuve",
   "racesTailorWithAi": "L'adapter avec l'IA",

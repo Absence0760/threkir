@@ -892,7 +892,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       if (race.entryUrl != null)
         OutlinedButton(
           onPressed: () => _launch(race.entryUrl!),
-          child: Text(l.racesRegister),
+          child: Text(l.racesRacePage),
         ),
       if (race.resultsUrl != null)
         OutlinedButton(

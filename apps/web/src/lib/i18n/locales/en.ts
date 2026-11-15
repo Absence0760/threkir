@@ -4783,7 +4783,7 @@ export const en = {
 	"races.distanceHalf": "Half",
 	"races.distanceMarathon": "Marathon",
 	"races.distanceUltra": "Ultra",
-	"races.register": "Race page & register",
+	"races.racePage": "Race page",
 	"races.viewResults": "View results",
 	"races.importResult": "Import my result",
 	"races.trainForThis": "Train for this race",

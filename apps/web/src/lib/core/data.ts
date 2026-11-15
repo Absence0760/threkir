@@ -87,6 +87,7 @@ import type { CourseGateColumns, GateWhich, SessionStartMode } from '../races/co
 import { parseStartMode } from '../races/race_start_modes';
 import { raceOccurrenceForRun, type RetimeCandidate, type RetimeCourse, type RetimeCurrent } from '../races/race_retime';
 import type { Gate } from '../geo/gate_crossing';
+import type { RaceCourseLines } from '../integrations/race_match';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import { parseDmKind, type DmKind } from '../social/coach_share';
@@ -3788,27 +3789,78 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 	};
 }
 
-/// The auto-match seam: given a run's id, return same-day nearby race listings
-/// to offer "Is this your race?". Reads the run's date + start point, then asks
-/// search_race_listings for that day's listings near the start; scoring is the
-/// pure raceMatchScore (integrations/race_match.ts), applied by the caller.
-export async function findRaceMatchCandidates(runId: string): Promise<RaceListingResult[]> {
-	const { data: run, error } = await supabase
-		.from(TABLES.runs)
-		.select('started_at, track_url')
-		.eq('id', runId)
-		.maybeSingle();
-	if (error || !run?.started_at) return [];
-	const day = (run.started_at as string).slice(0, 10);
-	// The run's GPS start point isn't a column; the caller passes the recorded
-	// start latlng into raceMatchScore. Here we window on the date and let the
-	// caller filter by proximity + distance band. A same-day window keeps the
-	// candidate set tiny.
-	try {
-		return await searchRaceListings({ from: day, to: day, limit: 20 });
-	} catch {
-		return [];
-	}
+/// A race listing as the auto-match seam reads it: the calendar projection
+/// plus what `raceMatch` gates and ranks on (issue #1389).
+export interface RaceMatchCandidate extends RaceListingResult {
+	course_distance_m: number | null;
+	location: { lat: number; lng: number } | null;
+	/// The public course's start and finish lines, when it has them.
+	lines: RaceCourseLines | null;
+}
+
+function candidateGate(
+	lat: number | null,
+	lng: number | null,
+	bearingDeg: number | null,
+	halfWidthM: number | null
+): Gate | null {
+	if (lat == null || lng == null || bearingDeg == null || halfWidthM == null) return null;
+	return { lat, lng, bearingDeg, halfWidthM };
+}
+
+/// The auto-match seam: the listings a run started at `startedAt` from
+/// `start` could be, from `race_match_candidates` (a day either side, within
+/// 50 km of the start when one is known, nearest first). Gating and ranking
+/// are the pure `bestRaceMatch` (integrations/race_match.ts), applied by the
+/// caller with the run's track.
+export async function findRaceMatchCandidates(
+	startedAt: string,
+	start: { lat: number; lng: number } | null
+): Promise<RaceMatchCandidate[]> {
+	const { data, error } = await supabase.rpc(
+		'race_match_candidates',
+		{
+			p_started_at: startedAt,
+			p_start_lat: start?.lat ?? undefined,
+			p_start_lng: start?.lng ?? undefined
+		},
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => {
+		const start = candidateGate(
+			r.start_gate_lat,
+			r.start_gate_lng,
+			r.start_gate_bearing_deg,
+			r.gate_half_width_m
+		);
+		const finish = candidateGate(
+			r.finish_gate_lat,
+			r.finish_gate_lng,
+			r.finish_gate_bearing_deg,
+			r.gate_half_width_m
+		);
+		return {
+			id: r.id,
+			provider: r.provider,
+			provider_race_id: r.provider_race_id,
+			name: r.name,
+			race_date: r.race_date,
+			distance_m: r.distance_m,
+			location_label: r.location_label,
+			entry_url: r.entry_url,
+			results_url: r.results_url,
+			is_verified: r.is_verified,
+			distance_m_away: r.distance_m_away,
+			organiser_is_official: r.organiser_is_official,
+			course_distance_m: r.course_distance_m,
+			location:
+				r.location_lat != null && r.location_lng != null
+					? { lat: r.location_lat, lng: r.location_lng }
+					: null,
+			lines: start || finish ? { start, finish } : null
+		};
+	});
 }
 
 /** Clubs the current user belongs to (owner or member). */

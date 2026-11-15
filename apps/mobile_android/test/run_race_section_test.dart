@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/race_match.dart';
 import '../lib/race_service.dart';
 import '../lib/widgets/run_race_section.dart';
 import 'worst_case_layout.dart';
@@ -18,8 +19,20 @@ class _FakeRaceService extends RaceService {
   Future<RaceResultForRun?> fetchRaceResultForRun(String runId) async => result;
 
   @override
-  Future<List<RaceListingView>> findRaceMatchCandidates(String runId) async =>
-      candidates;
+  Future<List<RaceMatchCandidate>> findRaceMatchCandidates(
+    String startedAt, {
+    RaceMatchFix? start,
+  }) async =>
+      [
+        for (final l in candidates)
+          RaceMatchCandidate(
+            listing: l,
+            match: ListingMatchInput(
+              raceDate: l.raceDate,
+              distanceM: l.distanceM,
+            ),
+          ),
+      ];
 
   @override
   Future<List<RaceListingView>> searchRaceListings({
@@ -39,13 +52,14 @@ class _FakeRaceService extends RaceService {
   Future<bool> isProviderConfigured(String provider) async => false;
 }
 
-RaceListingView _listing(String id, String name, {int? distanceM}) =>
+RaceListingView _listing(String id, String name,
+        {int? distanceM, String raceDate = '2027-04-18'}) =>
     RaceListingView(
       id: id,
       provider: 'manual',
       providerRaceId: null,
       name: name,
-      raceDate: '2027-04-18',
+      raceDate: raceDate,
       distanceM: distanceM,
       locationLabel: null,
       entryUrl: null,
@@ -169,6 +183,26 @@ void main() {
     expect(find.textContaining('Boston Marathon'), findsOneWidget);
     expect(find.text('Import result'), findsOneWidget);
     expect(find.text('Not this race'), findsOneWidget);
+  });
+
+  // Issue #1389: a short race on another date, and a same-day one of another
+  // distance, are never offered; the marathon on the run's day is.
+  testWidgets('offers the race on the run\'s day and distance, not the others',
+      (tester) async {
+    final service = _FakeRaceService(
+      candidates: [
+        _listing('l1', 'TFC Turkey Trot',
+            distanceM: 5000, raceDate: '2027-04-29'),
+        _listing('l2', 'Same-day 5K', distanceM: 5000),
+        _listing('l3', 'Boston Marathon', distanceM: 42195),
+      ],
+    );
+    await tester.pumpWidget(
+        _app(service, startedAt: '2027-04-18T13:00:00.000Z', distanceM: 42100));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Boston Marathon'), findsOneWidget);
+    expect(find.textContaining('Turkey Trot'), findsNothing);
+    expect(find.textContaining('Same-day 5K'), findsNothing);
   });
 
   testWidgets('dismissing the prompt hides it', (tester) async {

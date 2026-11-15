@@ -1734,8 +1734,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         RunRaceSection(
           service: _raceService,
           runId: run.id,
-          startedAt: run.startedAt.toIso8601String(),
+          startedAt: run.startedAt.toUtc().toIso8601String(),
           distanceM: run.distanceMetres,
+          track: run.track,
         ),
         RunParkCourseChips(api: widget.apiClient!, runId: run.id),
         Padding(

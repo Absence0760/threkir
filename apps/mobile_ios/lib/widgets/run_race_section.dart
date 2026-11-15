@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppInsets, AppSpace, ListCard, TermValueRow;
@@ -10,8 +11,9 @@ import 'top_banner.dart';
 
 /// Run-detail race section (race_calendar.md). Owner-only. When the run already
 /// carries an official result it renders it; otherwise it runs the inform-tier
-/// auto-match check — a same-day, same-distance-band listing surfaces a
-/// non-blocking "Was this the {race}?" prompt that never writes without a tap.
+/// auto-match check — a listing on the run's day that its start, distance or
+/// course also agrees with ([bestRaceMatch]) surfaces a non-blocking "Was this
+/// the {race}?" prompt that never writes without a tap.
 ///
 /// Layered-resilience: every fetch is best-effort + swallowed (an L4 auxiliary
 /// effect) so a race lookup can never break the rest of run detail.
@@ -21,12 +23,17 @@ class RunRaceSection extends StatefulWidget {
   final String startedAt;
   final double? distanceM;
 
+  /// The run's stored track, read for its start point and for whether it
+  /// crossed a candidate course's timing lines.
+  final List<Waypoint>? track;
+
   const RunRaceSection({
     super.key,
     required this.service,
     required this.runId,
     required this.startedAt,
     required this.distanceM,
+    this.track,
   });
 
   @override
@@ -51,10 +58,22 @@ class _RunRaceSectionState extends State<RunRaceSection> {
       RaceListingView? candidate;
       if (result == null || !result.hasResult) {
         try {
-          final listings =
-              await widget.service.findRaceMatchCandidates(widget.runId);
-          candidate = _bestCandidate(listings);
-        } catch (_) {
+          final fixes = raceMatchFixes(widget.track);
+          final listings = await widget.service.findRaceMatchCandidates(
+            widget.startedAt,
+            start: fixes.isEmpty ? null : fixes.first,
+          );
+          candidate = bestRaceMatch(
+            RunMatchInput(
+              startedAt: widget.startedAt,
+              distanceM: widget.distanceM,
+              track: fixes,
+            ),
+            listings,
+            (c) => c.match,
+          )?.listing;
+        } catch (e, s) {
+          debugPrint('RunRaceSection race match failed: $e\n$s');
           candidate = null;
         }
       }
@@ -67,28 +86,6 @@ class _RunRaceSectionState extends State<RunRaceSection> {
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  RaceListingView? _bestCandidate(List<RaceListingView> listings) {
-    final run = RunMatchInput(
-      runDate: widget.startedAt,
-      runDistanceM: widget.distanceM,
-    );
-    RaceListingView? best;
-    double bestScore = 0;
-    for (final l in listings) {
-      final listing = ListingMatchInput(
-        raceDate: l.raceDate,
-        distanceM: l.distanceM,
-        distanceMAway: l.distanceMAway,
-      );
-      final score = raceMatchScore(run, listing);
-      if (isRaceMatchCandidate(run, listing) && score > bestScore) {
-        best = l;
-        bestScore = score;
-      }
-    }
-    return best;
   }
 
   Future<void> _confirmMatch() async {

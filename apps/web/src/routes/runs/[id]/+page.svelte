@@ -2423,6 +2423,7 @@
 			runOwnerId={run.user_id}
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
+			track={run.track}
 			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 

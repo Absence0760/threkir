@@ -10,33 +10,13 @@ Both stores reject submissions on privacy mismatches more often than any other c
 
 ## What to check
 
-The `app-store-privacy-auditor` agent has the full per-store checklist. The headline items:
+The inventory lives in the tree, not here: `docs/compliance/store_declarations.json` (one Play record, `com.threkir.app`, for phone + Wear OS; one App Store record for iPhone + Apple Watch) and its guard `node scripts/check_store_declarations.mjs`, plus `node scripts/check_ios_native_declarations.mjs`. The `app-store-privacy-auditor` agent runs both and judges what they cannot:
 
-### iOS
-
-- Privacy Nutrition Labels (Health & Fitness, Precise Location declared)
-- `NSPrivacyAccessedAPITypes` (`PrivacyInfo.xcprivacy`) exists + covers every plugin
-- Every required `NSUsageDescription` (Location When In Use + Always, Motion, Bluetooth, HealthKit Share/Update, PhotoLibrary)
-- `ITSAppUsesNonExemptEncryption = false`
-- `UIBackgroundModes` = location + processing; `BGTaskSchedulerPermittedIdentifiers` lists `com.threkir.backgroundSync`
-- In-app account deletion (Guideline 5.1.1(v))
-- Sign in with Apple at least as prominent as Google (Guideline 4.8)
-- HealthKit data not sent for advertising (Guideline 5.1.3)
-
-### Play
-
-- Data Safety form matches binary
-- Target SDK ≥ Play's current floor
-- Background-location justification + in-app explainer
-- Foreground service types declared (`location`, `dataSync`)
-- Health Connect data types declared + Privacy Policy URL set
-- In-app + web account deletion
-- Wear OS Data Safety form separate from phone app
-
-### Cross-store
-
-- Subscription disclosure: price + period + renewal + cancel + restore-purchases
-- Age rating accurate (health data may bump)
+- Every `[FAIL]` from the guards, and every `[OWNER TO CONFIRM]` console state (`unknown` / `pending`) that blocks the next release
+- Whether each registry entry names the right console form under current policy
+- Privacy label / Data safety vs what the binaries do; no tracking; HealthKit never used for advertising (Guideline 5.1.3)
+- Encryption export, target SDK, in-app + web account deletion, Sign in with Apple (Guideline 4.8)
+- Subscription disclosure (price, period, renewal, cancel, restore purchases) and age rating
 
 ## Report
 

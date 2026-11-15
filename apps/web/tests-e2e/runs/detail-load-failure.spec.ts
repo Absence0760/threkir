@@ -11,7 +11,7 @@ import { USER_A } from '../fixtures/users';
  * run and the highest-traffic detail page in the app rendered "Run not
  * found" — telling an owner their run is gone when it is merely unreachable.
  *
- * The helper now reports the error separately (PGRST116 "no rows" stays a
+ * The helper now reports the error separately (no row stays a
  * genuine not-found) and the page states the failure with a retry.
  */
 test.describe('/runs/[id] — a failed read is not a missing run', () => {
@@ -38,7 +38,7 @@ test.describe('/runs/[id] — a failed read is not a missing run', () => {
 	});
 
 	test('a genuinely absent run still gets the not-found card', async ({ page }) => {
-		// No interception: the read succeeds and matches no row (PGRST116),
+		// No interception: the read succeeds and matches no row,
 		// which must stay a not-found rather than becoming an error.
 		await page.goto('/runs/00000000-0000-4000-8000-000000000abc');
 

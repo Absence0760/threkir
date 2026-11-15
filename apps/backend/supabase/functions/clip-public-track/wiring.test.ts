@@ -258,3 +258,22 @@ Deno.test('a non-owner is never served the credited distance, and the owner keep
     'exactly two track responses: the owner\'s, and the withheld non-owner one',
   );
 });
+
+Deno.test('a signed-out caller with no Authorization header is served as anon', () => {
+  // The publishable key is not a JWT, so supabase-js sends a signed-out
+  // browser's request with `apikey` and no Authorization header. Refusing
+  // that with 401 took the map, the replay and the track preview off every
+  // public share page for every spectator.
+  assert(
+    !/if \(!authHeader\) \{[\s\S]{0,80}status: 401/.test(SRC),
+    'a missing Authorization header must not be refused',
+  );
+  assert(
+    /const callerId = authHeader\s*\?/.test(SRC),
+    'the caller is identified only when a header was sent, and is anon otherwise',
+  );
+  assert(
+    /authHeader \? \{ global: \{ headers: \{ Authorization: authHeader \} \} \} : \{\}/.test(SRC),
+    'the row read runs as the caller when one is identified and as anon otherwise',
+  );
+});

@@ -62,19 +62,22 @@ Deno.serve(withCors(withSentry('clip-public-track', async (req: Request) => {
   const guarded = await readJsonWithLimit<{ run_id?: unknown }>(req, 1024);
   if ('tooLarge' in guarded) return guarded.tooLarge;
 
+  // A signed-out spectator sends no Authorization header at all: supabase-js
+  // puts only a JWT there, and the publishable key that replaced the legacy
+  // anon JWT is not one, so it travels as `apikey` alone. That caller is the
+  // anon role, the one this function exists to serve, so a missing header
+  // reads as anonymous rather than as a refusal.
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return Response.json({ error: 'missing authorization' }, { status: 401 });
-  }
 
   const userClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     publishableKey(),
-    { global: { headers: { Authorization: authHeader } } },
+    authHeader ? { global: { headers: { Authorization: authHeader } } } : {},
   );
 
-  const { data: { user } } = await userClient.auth.getUser();
-  const callerId = user?.id ?? null;
+  const callerId = authHeader
+    ? (await userClient.auth.getUser()).data.user?.id ?? null
+    : null;
 
   // Validate body BEFORE rate-limiting so malformed requests don't
   // drain the IP bucket. An anon attacker who fires 60 empty POSTs in

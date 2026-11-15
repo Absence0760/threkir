@@ -911,11 +911,12 @@ export async function fetchRunById(
 		.select('*')
 		.eq('id', id)
 		.eq('user_id', userId)
-		.single();
+		.maybeSingle();
 
-	// PGRST116 is "no rows matched" — a genuine not-found (or not-owner),
-	// not a failure to find out.
-	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
+	// `maybeSingle`, not `single`: a non-owner opening someone else's run is
+	// the ordinary case here, and `single` answers it with a 406 (PGRST116)
+	// that every viewer's network panel shows as a failed request.
+	if (error) return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 
 	// Lazy-load the GPS track from Storage when the run has one.
@@ -1255,15 +1256,13 @@ export async function fetchPublicRun(
 		.from('public_runs')
 		.select('*')
 		.eq('id', id)
-		.single();
+		.maybeSingle();
 
-	// PGRST116 is "no rows matched" — the run is private, deleted, or was
-	// never there. Anything else is a failure to find out, and collapsing the
-	// two rendered "Run not found" to every recipient of a shared link
-	// whenever the read merely failed. `fetchRunById` was fixed for exactly
-	// this and says so; the public half is the one strangers hit, and a
-	// stranger has no way to tell a broken read from a deleted run.
-	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
+	// No row means private, deleted, or never there; an error is a failure to
+	// find out. Collapsing the two rendered "Run not found" to every recipient
+	// of a shared link whenever the read merely failed, and a stranger has no
+	// way to tell a broken read from a deleted run.
+	if (error) return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 	return { run: { ...data, track: null } as Run, error: null };
 }

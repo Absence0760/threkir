@@ -345,7 +345,7 @@ export async function ingestActivity(
 	}
 }
 
-type StreamTrackPoint = { lat: number; lng: number; ele?: number; ts?: string; bpm?: number };
+type StreamTrackPoint = { lat: number; lng: number; ele?: number; ts?: string; bpm?: number; distM?: number };
 
 export function buildTrackFromStreams(
 	streams: Record<string, { data: unknown[] }>,
@@ -358,8 +358,12 @@ export function buildTrackFromStreams(
 /// that survived sanitising, so the two stay index-aligned. `distance` is null
 /// when the response carried no `distance` stream or one of a different
 /// length than `latlng`; a kept point whose sample is not a number gets NaN,
-/// which `deviceCumulativeMetres` then rejects. The distance never reaches
-/// the stored track: it only feeds the embedded bests.
+/// which `deviceCumulativeMetres` then rejects. When the stream passes that
+/// check it is also on every track point as `distM`, rebased to 0 at the
+/// first, so the split table measures on Strava's distance rather than the
+/// hop-sum of the positions (docs/features/gps_distance.md § Splits and
+/// moving time, #1387), as the FIT importers do. Lockstep with the Go
+/// worker's `BuildTrackFromStreams`.
 export function buildTrackAndDistanceFromStreams(
 	streams: Record<string, { data: unknown[] }>,
 	startIso: string,
@@ -420,7 +424,10 @@ export function buildTrackAndDistanceFromStreams(
 			distanceOut.push(typeof d === 'number' ? d : NaN);
 		}
 	}
-	return { track: out, distance: distanceIn ? distanceOut : null };
+	const distance = distanceIn ? distanceOut : null;
+	const cum = deviceCumulativeMetres(distance, out.length);
+	if (cum != null) for (let i = 0; i < out.length; i++) out[i].distM = cum[i];
+	return { track: out, distance };
 }
 
 /// The one log-safe field of a thrown value. supabase-js rejects with a plain

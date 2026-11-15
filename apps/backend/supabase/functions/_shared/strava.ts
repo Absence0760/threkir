@@ -612,7 +612,7 @@ interface EmbeddedTrackPoint {
 /// is what decides the `fastest_*_s` an IMPORTED run lands with while the two
 /// clients decide it for a recorded one. Exported so the twin contract can be
 /// pinned to the last bit rather than described. Expression for expression the
-/// same as `runs/run_stats.ts` and `run_stats.dart`, clamp included — this used
+/// same as `geo/haversine.ts` and `run_stats.dart`, clamp included — this used
 /// to take the unclamped `atan2` form, and on an evenly-spaced 5 km track the
 /// two forms sum to 5000.000000000002 m and 4999.999999999998 m respectively, so
 /// against a strict window comparison the importer found a 5 km best in a run

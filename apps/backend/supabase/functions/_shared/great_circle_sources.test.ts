@@ -40,7 +40,7 @@
 ///
 /// THE BEHAVIOURAL PIN IS HONEST ABOUT ITS REACH, which took measuring. The
 /// sibling web guard's `the canonical clamps before the arc` case is VACUOUS —
-/// deleting the clamp from `runs/run_stats.ts` leaves all four of its cases
+/// deleting the clamp from `geo/haversine.ts` leaves all four of its cases
 /// green — because the `asin` spelling both trees use is self-clamping over
 /// every reachable input: `a` never exceeds 1 by more than one ulp and
 /// `Math.sqrt` rounds that back to exactly 1.0. Only the `atan2` spelling
@@ -82,7 +82,7 @@ const GREAT_CIRCLE_SOURCES: Source[] = [
 		reason:
 			'THE copy that has to be one. A Deno Edge Function cannot import from `apps/web/src/lib`, ' +
 			'and `embeddedHaversineM` is what decides the `fastest_*_s` an IMPORTED run lands with ' +
-			'while `runs/run_stats.ts` and `run_stats.dart` decide it for a recorded one. It is those ' +
+			'while `geo/haversine.ts` and `run_stats.dart` decide it for a recorded one. It is those ' +
 			'two expression for expression, clamp included, and `_shared/strava.test.ts` pins it to an ' +
 			'exact fifty-leg sum rather than to a tolerance — a tolerance is what cannot see the ' +
 			'one-ULP divergence of § 1525. A SECOND entry would not have that excuse: every other ' +
@@ -129,7 +129,7 @@ Deno.test('no module computes a great-circle distance the table does not know ab
 		undeclared,
 		[],
 		'a new copy of the great-circle distance. Import `embeddedHaversineM` from ' +
-			'`_shared/strava.ts` instead — it is already the canonical `runs/run_stats.ts` ' +
+			'`_shared/strava.ts` instead — it is already the canonical `geo/haversine.ts` ' +
 			'expression for expression. If the module genuinely cannot, add it to ' +
 			`GREAT_CIRCLE_SOURCES with the reason: ${undeclared.join(', ')}`,
 	);

@@ -41,7 +41,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { haversineMetres } from '../runs/run_stats';
+import { haversineMetres } from '../geo/haversine';
 
 const SCAN_ROOT = 'src';
 
@@ -53,10 +53,10 @@ const ARC_OF_A_SQUARE_ROOT = /Math\.(?:asin|atan2)\([^;]{0,80}?Math\.sqrt\(/g;
 /// The canonical, and every place still computing its own.
 const GREAT_CIRCLE_SOURCES: { file: string; arcs: number; reason: string }[] = [
 	{
-		file: 'src/lib/runs/run_stats.ts',
+		file: 'src/lib/geo/haversine.ts',
 		arcs: 1,
 		reason:
-			'THE canonical. Exported as `haversineMetres`, clamps `a` into [0, 1] before the arc, and is what `run_stats.dart` computes point for point — so it is the one form both platforms already agree on. Every other module in this tree that needs a great-circle distance imports it, and `apps/mobile_android/test/great_circle_sources_test.dart` asserts the same of the Dart tree — a guard on one platform only is how `route_snap` stayed divergent (§ 1524).',
+			'THE canonical. Exported as `haversineMetres` (and re-exported by `runs/run_stats.ts`, so its importers keep that path; it lives in a module of its own so the Edge segment-matcher bundle does not carry `run_stats.ts` module state), clamps `a` into [0, 1] before the arc, and is what `run_stats.dart` computes point for point — so it is the one form both platforms already agree on. Every other module in this tree that needs a great-circle distance imports it, and `apps/mobile_android/test/great_circle_sources_test.dart` asserts the same of the Dart tree — a guard on one platform only is how `route_snap` stayed divergent (§ 1524).',
 	},
 	{
 		file: 'src/lib/parks/course_run_fixture.ts',
@@ -91,7 +91,7 @@ test('no module computes a great-circle distance the table does not know about',
 	assert.deepEqual(
 		undeclared,
 		[],
-		`a new copy of the great-circle distance. Import \`haversineMetres\` from \`src/lib/runs/run_stats\` instead; if the module genuinely cannot, add it to GREAT_CIRCLE_SOURCES with the reason: ${undeclared.join(', ')}`,
+		`a new copy of the great-circle distance. Import \`haversineMetres\` from \`src/lib/geo/haversine\` instead; if the module genuinely cannot, add it to GREAT_CIRCLE_SOURCES with the reason: ${undeclared.join(', ')}`,
 	);
 });
 
@@ -114,7 +114,7 @@ test('the canonical is one module, and it is the one both platforms already shar
 	// question rather than an answer.
 	const canonical = GREAT_CIRCLE_SOURCES.filter((s) => s.reason.startsWith('THE canonical'));
 	assert.equal(canonical.length, 1);
-	assert.equal(canonical[0].file, 'src/lib/runs/run_stats.ts');
+	assert.equal(canonical[0].file, 'src/lib/geo/haversine.ts');
 });
 
 test('the canonical clamps before the arc, which is the whole reason it is the canonical', () => {

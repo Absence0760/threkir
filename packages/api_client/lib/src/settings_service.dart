@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -364,12 +365,29 @@ Map<String, dynamic>? withoutHealthConsentPrefs(Map<String, dynamic> changes) {
 }
 
 /// Whether [error] is the server refusing a settings write (RLS, CHECK, a
-/// consent gate) rather than the network failing. PostgREST answers a refusal
-/// with a SQLSTATE or `PGRST*` code, and an unparseable error body with its
-/// HTTP status as the code; a transport failure is not a
-/// [PostgrestException] at all. Mirrors web's `classifyWriteFailure`.
-bool settingsWriteRejected(Object error) =>
-    error is PostgrestException && (error.code ?? '').trim().isNotEmpty;
+/// consent gate), which the identical payload will meet again, rather than a
+/// failure worth retrying. PostgREST answers a refusal with a SQLSTATE or
+/// `PGRST*` code. Transient, and so not a refusal: anything that is not a
+/// [PostgrestException] (offline, DNS, a timeout); an unparseable 5xx body,
+/// which postgrest-dart reports with the HTTP status as its code; PostgREST's
+/// own could-not-reach-the-database codes (`PGRST000`-`PGRST003`); and the
+/// SQLSTATE classes a retry can clear (08 connection, 40 rollback, 53
+/// resources, 57 operator intervention including a statement timeout, and
+/// 55P03 lock not available). Mirrors web's `classifyWriteFailure`, which
+/// differs only in treating a 5xx as a refusal it surfaces.
+bool settingsWriteRejected(Object error) {
+  if (error is! PostgrestException) return false;
+  final code = (error.code ?? '').trim();
+  if (code.isEmpty) return false;
+  if (RegExp(r'^5\d\d$').hasMatch(code)) return false;
+  if (RegExp(r'^PGRST00[0-3]$').hasMatch(code)) return false;
+  if (code == '55P03') return false;
+  const transientClasses = {'08', '40', '53', '57'};
+  if (code.length == 5 && transientClasses.contains(code.substring(0, 2))) {
+    return false;
+  }
+  return true;
+}
 
 /// Push a universal change, and when the server refuses it for want of consent
 /// (42501) push it again without its consent-gated values. A change queued
@@ -402,8 +420,9 @@ Future<List<T>> drainSettingsQueue<T>(
     try {
       await push(queue[i]);
     } catch (e) {
-      if (settingsWriteRejected(e)) continue;
-      return queue.sublist(i);
+      if (!settingsWriteRejected(e)) return queue.sublist(i);
+      debugPrint('settings: a queued change the server refused was dropped: '
+          '${safeErrorLabel(e)}');
     }
   }
   return const [];
@@ -642,11 +661,17 @@ class SettingsService {
   /// in-memory map + cache so [effective] reflects the user's edit
   /// immediately. The server push is best-effort — on failure (network
   /// down, server returns 5xx, etc.) the change is queued to a pending
-  /// list and replayed on the next successful [load]. A refusal for want of
-  /// health-data consent is pushed again without the consent-gated values
-  /// ([pushWithoutRefusedHealthPrefs]), here and on the replay, and a replayed
-  /// change the server still refuses is dropped rather than left to block the
-  /// queue.
+  /// list and replayed on the next successful [load].
+  ///
+  /// **A refusal is not queued.** When the server refuses the change (RLS, a
+  /// CHECK, the health-data consent gate: [settingsWriteRejected]) it would
+  /// refuse the identical replay too, so queueing it showed "Saved" over a
+  /// change that never landed and was later dropped. The local write is undone
+  /// and the error rethrown for the caller to tell the runner, as web's
+  /// `pushOrQueue` does. On the replay a change refused for want of consent
+  /// is pushed again without the consent-gated values
+  /// ([pushWithoutRefusedHealthPrefs]), and one still refused is dropped
+  /// rather than left to block the queue.
   ///
   /// **Concurrency note:** the server push merges the delta in one
   /// statement (`merge_my_settings`), so a concurrent writer — another
@@ -654,12 +679,17 @@ class SettingsService {
   /// Same RPC as `apps/web/src/lib/settings/settings.ts: updateUniversal`.
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     final userId = _requireUser();
+    final base = _universal;
     _universal = applyPrefsChanges(_universal, changes);
     await _cache.writeUniversal(userId, _universal);
     try {
-      await pushWithoutRefusedHealthPrefs(
-          changes, (c) => _pushUniversal(userId, c));
-    } catch (_) {
+      await _pushUniversal(userId, changes);
+    } catch (e) {
+      if (settingsWriteRejected(e)) {
+        _universal = base;
+        await _cache.writeUniversal(userId, base);
+        rethrow;
+      }
       await _cache.appendPending(
         userId,
         _deviceId,
@@ -668,15 +698,21 @@ class SettingsService {
     }
   }
 
-  /// Merge [changes] into the device bag and persist. Same null and
-  /// offline semantics as [updateUniversal].
+  /// Merge [changes] into the device bag and persist. Same null, offline
+  /// and refusal semantics as [updateUniversal].
   Future<void> updateDevice(Map<String, dynamic> changes) async {
     final userId = _requireUser();
+    final base = _device;
     _device = applyPrefsChanges(_device, changes);
     await _cache.writeDevice(userId, _deviceId, _device);
     try {
       await _pushDevice(userId, changes);
-    } catch (_) {
+    } catch (e) {
+      if (settingsWriteRejected(e)) {
+        _device = base;
+        await _cache.writeDevice(userId, _deviceId, base);
+        rethrow;
+      }
       await _cache.appendPending(
         userId,
         _deviceId,

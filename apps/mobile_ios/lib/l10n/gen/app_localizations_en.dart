@@ -1542,6 +1542,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get prefsSettingSaveFailed => 'Couldn\'t save that setting.';
+
+  @override
   String get safetyInvalidEmail => 'Enter a valid email address.';
 
   @override

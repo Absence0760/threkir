@@ -1573,6 +1573,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get prefsSettingSaveFailed => 'Não foi possível guardar a definição.';
+
+  @override
   String get safetyInvalidEmail => 'Introduza um e-mail válido.';
 
   @override
@@ -25711,6 +25714,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String safetySettingSaveFailed(String error) {
     return 'Não foi possível salvar a configuração: $error';
   }
+
+  @override
+  String get prefsSettingSaveFailed =>
+      'Não foi possível salvar a configuração.';
 
   @override
   String get safetyInvalidEmail => 'Digite um e-mail válido.';

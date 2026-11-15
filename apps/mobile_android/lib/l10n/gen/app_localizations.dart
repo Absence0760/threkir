@@ -2477,6 +2477,12 @@ abstract class AppLocalizations {
   /// **'Could not save setting: {error}'**
   String safetySettingSaveFailed(String error);
 
+  /// Banner when the server refuses a change made on the Preferences screen (a permission or validation refusal, not being offline); the control shows its previous value again
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that setting.'**
+  String get prefsSettingSaveFailed;
+
   /// Inline error when the entered email is not valid
   ///
   /// In en, this message translates to:

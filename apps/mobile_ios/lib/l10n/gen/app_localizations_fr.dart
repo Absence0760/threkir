@@ -1570,6 +1570,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get prefsSettingSaveFailed => 'Impossible d\'enregistrer le réglage.';
+
+  @override
   String get safetyInvalidEmail => 'Saisissez une adresse e-mail valide.';
 
   @override

@@ -394,6 +394,7 @@
   "safetyAddFailed": "Não foi possível adicionar o contacto: {error}",
   "safetyRemoveFailed": "Não foi possível remover o contacto: {error}",
   "safetySettingSaveFailed": "Não foi possível guardar a definição: {error}",
+  "prefsSettingSaveFailed": "Não foi possível guardar a definição.",
   "safetyInvalidEmail": "Introduza um e-mail válido.",
   "safetyAddedToast": "Contacto adicionado — enviamos um e-mail de confirmação.",
   "safetyRemovedToast": "Contacto removido.",

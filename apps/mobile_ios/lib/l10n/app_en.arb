@@ -1964,6 +1964,10 @@
       }
     }
   },
+  "prefsSettingSaveFailed": "Couldn't save that setting.",
+  "@prefsSettingSaveFailed": {
+    "description": "Banner when the server refuses a change made on the Preferences screen (a permission or validation refusal, not being offline); the control shows its previous value again"
+  },
   "safetyInvalidEmail": "Enter a valid email address.",
   "@safetyInvalidEmail": {
     "description": "Inline error when the entered email is not valid"

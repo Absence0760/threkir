@@ -7,7 +7,7 @@
 -- statements below are the ones PostgREST builds for that upsert.
 
 begin;
-select plan(6);
+select plan(7);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -52,6 +52,14 @@ select is(
       and external_id = 'healthconnect:upsert-1'),
   42330::numeric,
   'The update branch wrote the re-pushed value'
+);
+
+select is(
+  (select metadata from runs
+    where user_id = '99999999-9999-9999-9999-99999999a548'
+      and external_id = 'healthconnect:upsert-1'),
+  '{"activity_type":"run"}'::jsonb,
+  'The upserted run stores the metadata it was given'
 );
 
 insert into runs (user_id, started_at, distance_m, duration_s, source, metadata)

@@ -1,0 +1,959 @@
+{
+	"$comment": "What the store consoles must declare for what the shipped code requests. Read by scripts/check_store_declarations.mjs; explained in store_declarations.md. Update the console first, then this file.",
+	"statuses": {
+		"declared": "The console holds it. verified_on dates the record that proves it; an entry without verified_on is inferred, and its evidence says from what.",
+		"pending": "Known to be missing from the console and being added now.",
+		"unknown": "Nobody has recorded what the console holds. The owner must look.",
+		"not_required": "No console form exists for it (form is null). Listed so a new one is classified, not missed."
+	},
+	"play": {
+		"record": "com.threkir.app",
+		"form_factors": [
+			"phone",
+			"wear_os"
+		],
+		"android_permissions": [
+			{
+				"key": "android.permission.ACCESS_COARSE_LOCATION",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission; disclosed through Data safety (approximate location), no form of its own."
+			},
+			{
+				"key": "android.permission.ACCESS_FINE_LOCATION",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission; disclosed through Data safety (precise location), no form of its own."
+			},
+			{
+				"key": "android.permission.ACCESS_BACKGROUND_LOCATION",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Sensitive app permissions → Location permissions",
+				"status": "unknown",
+				"evidence": "Play does not publish a release requesting background location without this declaration and the phone app is in production, so it is very likely declared; but no dated console reading exists. Owner to confirm, and that the prominent-disclosure video still matches lib/background_location_nudge.dart."
+			},
+			{
+				"key": "android.permission.ACCESS_NETWORK_STATE",
+				"in": [
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission.",
+				"plugins": [
+					"connectivity_plus",
+					"firebase_messaging"
+				]
+			},
+			{
+				"key": "android.permission.ACTIVITY_RECOGNITION",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission with no Play form; step data is disclosed through Data safety (fitness info)."
+			},
+			{
+				"key": "android.permission.BLUETOOTH",
+				"in": [],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission, maxSdkVersion 30 in the plugin's manifest.",
+				"plugins": [
+					"reactive_ble_mobile"
+				]
+			},
+			{
+				"key": "android.permission.BLUETOOTH_ADMIN",
+				"in": [],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission, maxSdkVersion 30 in the plugin's manifest.",
+				"plugins": [
+					"reactive_ble_mobile"
+				]
+			},
+			{
+				"key": "android.permission.BLUETOOTH_CONNECT",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission with no Play form."
+			},
+			{
+				"key": "android.permission.BLUETOOTH_SCAN",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission, neverForLocation; no Play form."
+			},
+			{
+				"key": "android.permission.BODY_SENSORS",
+				"in": [
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm. Heart rate itself is on Data safety (health info, verified 2026-11-14)."
+			},
+			{
+				"key": "android.permission.CAMERA",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission with no Play form; photos are disclosed through Data safety.",
+				"plugins": [
+					"mobile_scanner"
+				]
+			},
+			{
+				"key": "android.permission.FOREGROUND_SERVICE",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission; the types it enables are under foreground_service_types."
+			},
+			{
+				"key": "android.permission.FOREGROUND_SERVICE_HEALTH",
+				"in": [
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared through its service type: see foreground_service_types → health."
+			},
+			{
+				"key": "android.permission.FOREGROUND_SERVICE_LOCATION",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared through its service type: see foreground_service_types → location."
+			},
+			{
+				"key": "android.permission.INTERNET",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission.",
+				"plugins": [
+					"firebase_messaging",
+					"google_sign_in_android"
+				]
+			},
+			{
+				"key": "android.permission.POST_NOTIFICATIONS",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Runtime permission with no Play form.",
+				"plugins": [
+					"firebase_messaging",
+					"workmanager_android"
+				]
+			},
+			{
+				"key": "android.permission.POST_PROMOTED_NOTIFICATIONS",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission (Android 16 Live Updates)."
+			},
+			{
+				"key": "android.permission.RECEIVE_BOOT_COMPLETED",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission; the boot-time sync it buys is described in Data safety's app-activity answers."
+			},
+			{
+				"key": "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+				"in": [
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content (battery optimization exemption, as #1097 tracks it)",
+				"status": "unknown",
+				"evidence": "Open owner item on #1097 ('Declare REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', from #1073), never ticked. The Wear app now ships in the phone's record, so this applies to com.threkir.app."
+			},
+			{
+				"key": "android.permission.VIBRATE",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission."
+			},
+			{
+				"key": "android.permission.WAKE_LOCK",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Normal permission.",
+				"plugins": [
+					"firebase_messaging"
+				]
+			},
+			{
+				"key": "android.permission.WRITE_EXTERNAL_STORAGE",
+				"in": [
+					"phone"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "maxSdkVersion 29, for saving a share image on API 26-29; no Play form at that cap."
+			}
+		],
+		"foreground_service_types": [
+			{
+				"key": "location",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Foreground service permissions",
+				"status": "declared",
+				"evidence": "No dated console reading. Play refuses an upload whose manifest carries a foreground service type the FGS form does not list (the watch_wear@1.1.0 403, #1378 checkpoint 2026-11-14), and mobile_android bundles carrying FOREGROUND_SERVICE_LOCATION have been accepted (1.25.0 uploaded 2026-11-12), so location is on the form.",
+				"services": {
+					"phone": [
+						"com.baseflow.geolocator.GeolocatorLocationService"
+					],
+					"wear_os": [
+						".recording.RunRecordingService"
+					]
+				}
+			},
+			{
+				"key": "health",
+				"in": [
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Foreground service permissions",
+				"status": "pending",
+				"evidence": "watch_wear@1.1.0 refused with 403 'You must let us know whether your app uses any Foreground Service permissions' (#1378 checkpoint 2026-11-14). Owner step 1 of the 2026-11-15 walkthrough on #1378 declares it; flip to declared with that date once saved.",
+				"services": {
+					"wear_os": [
+						".recording.RunRecordingService"
+					]
+				}
+			}
+		],
+		"health_connect": [
+			{
+				"key": "READ_DISTANCE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "READ_EXERCISE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "READ_EXERCISE_ROUTES",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "READ_HEART_RATE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "READ_STEPS",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "READ_WEIGHT",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "WRITE_DISTANCE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "WRITE_EXERCISE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "WRITE_HEART_RATE",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Health apps (Health Connect data access)",
+				"status": "unknown",
+				"evidence": "Play reviews Health Connect access per data type. No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			}
+		],
+		"data_safety": [
+			{
+				"key": "approximate_location",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "CoarseLocation"
+			},
+			{
+				"key": "precise_location",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "declared",
+				"verified_on": "2026-11-14",
+				"evidence": "#1378 checkpoint 2026-11-14: Data safety covers the watch's data (precise location, health info, fitness info, crash logs); nothing needed changing.",
+				"apple_equivalent": "PreciseLocation"
+			},
+			{
+				"key": "health_info",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "declared",
+				"verified_on": "2026-11-14",
+				"evidence": "#1378 checkpoint 2026-11-14: Data safety covers the watch's data (precise location, health info, fitness info, crash logs); nothing needed changing.",
+				"apple_equivalent": "Health"
+			},
+			{
+				"key": "fitness_info",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "declared",
+				"verified_on": "2026-11-14",
+				"evidence": "#1378 checkpoint 2026-11-14: Data safety covers the watch's data (precise location, health info, fitness info, crash logs); nothing needed changing.",
+				"apple_equivalent": "Fitness"
+			},
+			{
+				"key": "email_address",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "EmailAddress"
+			},
+			{
+				"key": "phone_number",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "PhoneNumber"
+			},
+			{
+				"key": "personal_info_other",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm. Date of birth and gender.",
+				"apple_equivalent": "OtherDataTypes"
+			},
+			{
+				"key": "name",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "Name"
+			},
+			{
+				"key": "user_ids",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "UserID"
+			},
+			{
+				"key": "device_or_other_ids",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm. FCM push token.",
+				"apple_equivalent": "DeviceID"
+			},
+			{
+				"key": "purchase_history",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "PurchaseHistory"
+			},
+			{
+				"key": "photos",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "PhotosorVideos"
+			},
+			{
+				"key": "other_user_generated_content",
+				"in": [
+					"phone"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "OtherUserContent"
+			},
+			{
+				"key": "crash_logs",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "declared",
+				"verified_on": "2026-11-14",
+				"evidence": "#1378 checkpoint 2026-11-14: Data safety covers the watch's data (precise location, health info, fitness info, crash logs); nothing needed changing.",
+				"apple_equivalent": "CrashData"
+			},
+			{
+				"key": "diagnostics",
+				"in": [
+					"phone",
+					"wear_os"
+				],
+				"form": "Play Console → Policy and programs → App content → Data safety",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm.",
+				"apple_equivalent": "PerformanceData"
+			}
+		],
+		"console_only": [
+			{
+				"category": "foreground_service_types",
+				"key": "dataSync",
+				"status": "unknown",
+				"evidence": "The #1378 checkpoint of 2026-11-14 says the phone declared FOREGROUND_SERVICE_DATA_SYNC alongside location. No shipped manifest has carried it since the May 2026 audit, so if the FGS form still lists dataSync the owner should remove it there, then delete this row."
+			}
+		]
+	},
+	"app_store": {
+		"record": "com.threkir.app",
+		"targets": [
+			"ios",
+			"watchos"
+		],
+		"usage_descriptions": [
+			{
+				"key": "NSBluetoothAlwaysUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSCalendarsUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSCalendarsWriteOnlyAccessUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSCameraUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSHealthShareUsageDescription",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSHealthUpdateUsageDescription",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSLocationAlwaysAndWhenInUseUsageDescription",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSLocationTemporaryUsageDescriptionDictionary",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSLocationWhenInUseUsageDescription",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSMotionUsageDescription",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSPhotoLibraryAddUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			},
+			{
+				"key": "NSPhotoLibraryUsageDescription",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Read by App Review from the binary; no console form. The data it unlocks is on the App Privacy label."
+			}
+		],
+		"background_modes": [
+			{
+				"key": "audio",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Review Information → Notes, and TestFlight → Test Information",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: TestFlight Test Information saved 2026-10-06 explains background location (records a run with the screen off) and background audio (pace cues while locked)."
+			},
+			{
+				"key": "location",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Review Information → Notes, and TestFlight → Test Information",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: TestFlight Test Information saved 2026-10-06 explains background location (records a run with the screen off) and background audio (pace cues while locked). The watch's use is the same recording, but its own line is not on record."
+			},
+			{
+				"key": "processing",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Review Information → Notes, and TestFlight → Test Information",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm."
+			},
+			{
+				"key": "workout-processing",
+				"in": [
+					"watchos"
+				],
+				"form": "App Store Connect → App Review Information → Notes, and TestFlight → Test Information",
+				"status": "unknown",
+				"evidence": "No record in docs/ or the #1378 / #1097 / #1061 checkpoints of what the console holds. Owner to confirm. (WKBackgroundModes.)"
+			}
+		],
+		"healthkit_types": [
+			{
+				"key": "DISTANCE_DELTA",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy (published 2026-10-06) declares Health & Fitness — workouts, heart rate, distance, steps, body weight — linked, App functionality + Product personalization."
+			},
+			{
+				"key": "HEART_RATE",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy (published 2026-10-06) declares Health & Fitness — workouts, heart rate, distance, steps, body weight — linked, App functionality + Product personalization."
+			},
+			{
+				"key": "WEIGHT",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy (published 2026-10-06) declares Health & Fitness — workouts, heart rate, distance, steps, body weight — linked, App functionality + Product personalization."
+			},
+			{
+				"key": "WORKOUT",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy (published 2026-10-06) declares Health & Fitness — workouts, heart rate, distance, steps, body weight — linked, App functionality + Product personalization."
+			}
+		],
+		"required_reason_apis": [
+			{
+				"key": "ActiveKeyboards:3EC4.1",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			},
+			{
+				"key": "DiskSpace:E174.1",
+				"in": [
+					"ios"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			},
+			{
+				"key": "FileTimestamp:C617.1",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			},
+			{
+				"key": "SystemBootTime:35F9.1",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			},
+			{
+				"key": "UserDefaults:1C8F.1",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			},
+			{
+				"key": "UserDefaults:CA92.1",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": null,
+				"status": "not_required",
+				"note": "Declared in the bundle's PrivacyInfo.xcprivacy; App Store Connect checks it at upload, and there is no console form."
+			}
+		],
+		"app_privacy_label": [
+			{
+				"key": "PreciseLocation",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "CoarseLocation",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "Health",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "Fitness",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "EmailAddress",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "PhoneNumber",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "OtherDataTypes",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "Name",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "UserID",
+				"in": [
+					"ios",
+					"watchos"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "PhotosorVideos",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "PurchaseHistory",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "OtherUserContent",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "DeviceID",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "CrashData",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			},
+			{
+				"key": "PerformanceData",
+				"in": [
+					"ios"
+				],
+				"form": "App Store Connect → App Privacy",
+				"status": "declared",
+				"verified_on": "2026-10-06",
+				"evidence": "#1061: App Privacy published 2026-10-06 from apps/mobile_ios/deployment.md § Privacy nutrition label, which has not changed since. One label covers the iPhone and Apple Watch apps."
+			}
+		]
+	}
+}

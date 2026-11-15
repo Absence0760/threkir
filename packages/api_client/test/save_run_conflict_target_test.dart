@@ -11,7 +11,9 @@ import 'package:test/test.dart';
 /// bare `external_id` target makes every sync of a run carrying an
 /// external_id (Strava ZIP / CSV / Health Connect import) fail
 /// deterministically and get swallowed. The conflict target must name
-/// both index columns, in order.
+/// both index columns, in order. Naming the columns is not enough on its own:
+/// the index must also be non-partial, which only the database can show
+/// (`runs_external_id_upsert_arbiter_test.sql`, decisions § 2548).
 void main() {
   test('run upserts target the composite (user_id, external_id) index', () {
     final src = File('lib/src/api_client.dart').readAsStringSync();
@@ -23,7 +25,7 @@ void main() {
       isTrue,
       reason:
           'run upserts must set onConflict to the composite (user_id, external_id) '
-          'so it matches the runs_user_external_id unique index',
+          'so it matches the runs_user_external_id_arbiter unique index',
     );
 
     // The bare single-column target that triggered 42P10 must be gone.

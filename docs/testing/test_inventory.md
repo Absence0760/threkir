@@ -220,11 +220,11 @@ HTTP-level coverage for the four `SupabaseClient` methods added in the May 2026 
 
 **Cross-cutting (5 tests):** `FetchExportRoutes` with every optional pointer field set decodes to non-nil pointers (DistanceM, ElevationM, Surface, IsPublic, Slug, Featured, RunCount, IsStarred, Description, ClubID, CreatedAt, UpdatedAt); context cancellation propagates; all 4 new methods carry both apikey + Authorization headers via the shared `do()` helper (defensive guard against a future refactor that bypasses it).
 
-### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 43 tests
+### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 46 tests
 
 Pure-logic coverage of the restore orchestrator extracted from `backup.ts`. The Supabase upserts live behind a small `RestoreBackend` interface; tests substitute a counter-tracking fake so the loop is observable without booting supabase-js. Production wires a thin supabase-js adapter (`supabaseRestoreBackend()` in `backup.ts`); tests wire the fake (`makeFakeBackend()`).
 
-**profile + settings (9 tests):** profile present → `upsertProfile` fires with stripped fields + user id; null profile → no call; `upsertProfile` error becomes a warning, downstream stages still process; non-empty `settingsPrefs` triggers `upsertSettings`; empty prefs is a no-op; settings error → warning + downstream continues. Into an account without health-data consent the consent-gated keys are left out and the rest restores (decisions § 2542); with consent they restore; an unreadable consent state counts as none; a bag of only gated keys writes nothing.
+**profile + settings (12 tests):** profile present → `upsertProfile` fires with stripped fields + user id; null profile → no call; `upsertProfile` error becomes a warning, downstream stages still process; non-empty `settingsPrefs` triggers `upsertSettings`; empty prefs is a no-op; settings error → warning + downstream continues. Into an account without health-data consent the consent-gated keys are left out and the rest restores (decisions § 2542); with consent they restore; an unreadable consent state counts as none; a bag of only gated keys writes nothing. An archived consent stamp (health, coach, AI, age, terms) is never written, so the profile row restores; height and gender restore only with consent.
 
 **runs + tracks (10 tests):** happy-path single run uploads track BEFORE upserting row (order pin); run with no track in archive still upserts the row with `track_url=null`; uploadTrack failure → warning, row still upserts; upsertRun failure → warning, other rows continue (partial-success contract); `generateNewIds` replaces every run id; with `generateNewIds`, the track upload path uses the NEW id even though the archive is keyed by ORIGINAL id; event_id resolution — unknown ids nulled, known ids preserved; `fetchValidEventIds` is only called when ids are present; resolver error bubbles (current contract pinned); `coalesceActivityType` inserts `'run'` when metadata missing the key, and preserves explicit values.
 
@@ -861,13 +861,13 @@ The pure-JS clipper drives owner-side previews; non-owner viewers go through the
 
 TypeScript unit tests for the streaming + parallel-download backup writer (`lib/backup_writer.ts`). Run with `npx tsx --test src/lib/backup.test.ts` from `apps/web`. Exercises the pure writer seam without supabase-js: round-trip through JSZip to confirm manifest + runs + routes + profile + tracks all land; bounded-concurrency contract observed via a counter-tracking fetcher (peak in-flight ≤ `concurrency`, observable parallelism); single-track failure doesn't sink the rest (manifest counts reflect what landed); empty `runsWithTracks` produces a valid manifest-only archive; `concurrency < 1` rejected; progress events ordered (`tracks` → `writing` → `done`); profile `id` field stripped to keep the archive re-homeable.
 
-### `apps/web/src/lib/backup/backup_reader.test.ts` — 24 tests
+### `apps/web/src/lib/backup/backup_reader.test.ts` — 25 tests
 
 Pure-Dart-equivalent tests for the read side at `lib/backup_reader.ts` — `parseBackupArchive` + `stripServerManagedProfileFields` + `coalesceActivityType` + `extractEventIds`. Run with `npx tsx --test src/lib/backup_reader.test.ts`. Builds synthetic archives in-memory with a thin `buildArchive` helper; the Uint8Array `JSZip.loadAsync` accepts in Node (the parameter type is widened to accept it explicitly).
 
 **parseBackupArchive (11 tests):** missing `manifest.json` throws; wrong format throws; future-version throws; missing `version` field accepted as v0 for back-compat; happy path returns runs + routes + profile + settingsPrefs + lazy `getTrackBytes`; `getTrackBytes` returns null for unknown id; missing `runs.json` / `routes.json` / `profile.json` yields safe defaults; `profile.json` with `null` profile field is tolerated; manifest carries metadata keys (exported_by_user_id, exported_from, counts) through verbatim.
 
-**stripServerManagedProfileFields (3 tests):** drops `subscription_tier` + `subscription_at` + `parkrun_number`; no-op when none of those keys are present and returns a fresh object; preserves nested objects (hr_zones) untouched.
+**stripServerManagedProfileFields (5 tests):** drops `subscription_tier` + `subscription_at` + `parkrun_number`; drops `handle`; drops every consent stamp and the other client-read-only columns (decisions § 2542); no-op when none of those keys are present and returns a fresh object; preserves nested objects (hr_zones) untouched.
 
 **coalesceActivityType (5 tests):** inserts `'run'` when metadata is null / undefined / missing the key / non-string-typed / not a map; preserves explicit string-typed values; clones the input instead of mutating it.
 

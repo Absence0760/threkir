@@ -161,19 +161,50 @@ async function readRowList(zip: ZipArchive, name: string): Promise<JsonObject[]>
 export function stripServerManagedProfileFields(
 	profile: Record<string, unknown>
 ): Record<string, unknown> {
-	const {
-		subscription_tier: _tier,
-		subscription_at: _subAt,
-		parkrun_number: _parkrun,
-		handle: _handle,
-		...rest
-	} = profile;
-	void _tier;
-	void _subAt;
-	void _parkrun;
-	void _handle;
+	const rest = { ...profile };
+	for (const key of SERVER_MANAGED_PROFILE_FIELDS) delete rest[key];
 	return rest;
 }
+
+/**
+ * The profile columns a restore never writes. Beside the subscription, parkrun
+ * and handle columns above:
+ *
+ * - **Every consent and its stamp** (`health_data_consent_at`,
+ *   `coach_consent_at`, `ai_disclosure_version`, `age_confirmed_at`,
+ *   `terms_accepted_at`). Consent is given in the app, never restored from a
+ *   file: `lock_consent_columns` refuses a changed coach / AI stamp and any
+ *   non-null health stamp (42501), which failed the whole row, and an archive
+ *   whose health stamp was null went through as a WITHDRAWAL, erasing the
+ *   destination's heart rate, food log and body measurements (decisions §
+ *   2514, § 2542). A null age or terms stamp would close the Art 8 write gate
+ *   on every run the same restore then inserts.
+ * - **The other server-owned columns** (`billing_issue_at`,
+ *   `tier_updated_event_ts`, `shadow_hidden`): read-only to a client, so any
+ *   difference failed the row the same way.
+ */
+export const SERVER_MANAGED_PROFILE_FIELDS: readonly string[] = [
+	'subscription_tier',
+	'subscription_at',
+	'parkrun_number',
+	'handle',
+	'health_data_consent_at',
+	'coach_consent_at',
+	'ai_disclosure_version',
+	'age_confirmed_at',
+	'terms_accepted_at',
+	'billing_issue_at',
+	'tier_updated_event_ts',
+	'shadow_hidden',
+];
+
+/**
+ * The profile columns that are Art 9 health data, kept only with health-data
+ * consent (decisions § 2542): restored only into an account that has it.
+ * `date_of_birth` is not among them: the column is the child-safety age record
+ * (§ 718).
+ */
+export const HEALTH_CONSENT_PROFILE_FIELDS: readonly string[] = ['height_cm', 'gender'];
 
 /**
  * Resolve the run's activity from a backed-up row onto the real

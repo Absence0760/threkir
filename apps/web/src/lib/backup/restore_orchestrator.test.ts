@@ -207,6 +207,52 @@ test('non-empty settingsPrefs → upsertSettings fires', async () => {
 	assert.deepEqual(call.arg, { unit: 'km', split_audio: true });
 });
 
+test('an archived consent stamp is never written, so the profile row restores', async () => {
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			profile: {
+				display_name: 'Ada',
+				health_data_consent_at: null,
+				coach_consent_at: '2026-01-01T00:00:00Z',
+				ai_disclosure_version: 1,
+				age_confirmed_at: null,
+				terms_accepted_at: null
+			}
+		}),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertProfile');
+	assert.deepEqual(call?.arg, { display_name: 'Ada', id: 'uid' });
+	assert.equal(result.profileRestored, true);
+});
+
+test('into an account without health-data consent, height and gender are left out of the profile', async () => {
+	const backend = makeFakeBackend();
+	backend.consented = false;
+	await restoreOrchestrate(
+		makeParsedBackup({
+			profile: { display_name: 'Ada', height_cm: 170, gender: 'female', date_of_birth: '1990-01-01' }
+		}),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertProfile');
+	assert.deepEqual(call?.arg, { display_name: 'Ada', date_of_birth: '1990-01-01', id: 'uid' });
+});
+
+test('with health-data consent, height and gender restore', async () => {
+	const backend = makeFakeBackend();
+	await restoreOrchestrate(
+		makeParsedBackup({ profile: { display_name: 'Ada', height_cm: 170, gender: 'female' } }),
+		'uid',
+		backend
+	);
+	const call = backend.calls.find((c) => c.method === 'upsertProfile');
+	assert.deepEqual(call?.arg, { display_name: 'Ada', height_cm: 170, gender: 'female', id: 'uid' });
+});
+
 // Decisions § 2542: the database refuses a weight without health-data
 // consent, and that one key used to fail the whole settings bag.
 test('into an account without health-data consent, the gated values are left out and the rest restores', async () => {

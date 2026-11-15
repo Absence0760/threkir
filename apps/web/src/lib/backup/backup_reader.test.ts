@@ -203,6 +203,25 @@ test('stripServerManagedProfileFields: drops handle, which set_my_handle owns', 
 	assert.equal(Object.hasOwn(out, 'handle'), false);
 });
 
+test('stripServerManagedProfileFields: drops every consent stamp and the other server-owned columns', () => {
+	// Consent is given in the app, never restored from a file: a stamp the
+	// lock refuses failed the whole row, and a null health stamp went through
+	// as a withdrawal that erased the destination's health data (§ 2542).
+	const out = stripServerManagedProfileFields({
+		display_name: 'Tester',
+		date_of_birth: '1990-01-01',
+		health_data_consent_at: '2026-01-01T00:00:00Z',
+		coach_consent_at: null,
+		ai_disclosure_version: 2,
+		age_confirmed_at: null,
+		terms_accepted_at: '2026-01-01T00:00:00Z',
+		billing_issue_at: null,
+		tier_updated_event_ts: 1,
+		shadow_hidden: false
+	});
+	assert.deepEqual(out, { display_name: 'Tester', date_of_birth: '1990-01-01' });
+});
+
 test('stripServerManagedProfileFields: no-op when none of the keys are present', () => {
 	const original = { display_name: 'X', preferred_unit: 'mi' };
 	const out = stripServerManagedProfileFields(original);

@@ -15,6 +15,7 @@ import type { JsonObject } from '../types';
 import {
 	coalesceRunActivity,
 	extractEventIds,
+	HEALTH_CONSENT_PROFILE_FIELDS,
 	stripServerManagedProfileFields,
 	type ParsedBackup
 } from './backup_reader';
@@ -212,11 +213,23 @@ export async function restoreOrchestrate(
 	};
 	noteIncompleteArchive(parsed.manifest, result);
 
+	// The consent-gated values are restored only into an account that has
+	// consent (decisions § 2542); consent itself never comes from the archive.
+	// An unreadable consent state is treated as none.
+	const hasProfileOrPrefs =
+		parsed.profile != null || Object.keys(parsed.settingsPrefs).length > 0;
+	const consented = hasProfileOrPrefs
+		? await backend.healthDataConsented().catch(() => false)
+		: false;
+
 	// Profile + settings first — later rows may reference preferences.
 	if (parsed.profile) {
 		onProgress?.({ stage: 'profile', current: 0, total: 1 });
 		try {
 			const portableProfile = stripServerManagedProfileFields(parsed.profile);
+			if (!consented) {
+				for (const key of HEALTH_CONSENT_PROFILE_FIELDS) delete portableProfile[key];
+			}
 			const known = keepKnownColumns(
 				{ ...portableProfile, id: userId },
 				PROFILE_RESTORE_COLUMNS
@@ -230,11 +243,8 @@ export async function restoreOrchestrate(
 	}
 	if (Object.keys(parsed.settingsPrefs).length > 0) {
 		try {
-			// The consent-gated values are restored only into an account that
-			// has consent (decisions § 2542): the database refuses a weight
-			// without it, and that one key used to fail the whole bag. An
-			// unreadable consent state is treated as none.
-			const consented = await backend.healthDataConsented().catch(() => false);
+			// The database refuses a weight without consent, and that one key
+			// used to fail the whole bag.
 			const prefs = consented
 				? parsed.settingsPrefs
 				: (withoutHealthConsentPrefs(parsed.settingsPrefs) ?? parsed.settingsPrefs);

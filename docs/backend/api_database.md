@@ -1276,6 +1276,15 @@ create table user_profiles (
 -- drift (decisions § 2542). Pinned by withdraw_coach_consent_test.sql,
 -- withdraw_health_data_consent_test.sql and
 -- consent_null_clears_gated_values_test.sql.
+-- Since 20271231002547 the values themselves need the stamp: the
+-- user_profiles_check_health_values trigger refuses a new or changed
+-- non-null height_cm or gender unless the resulting row has
+-- health_data_consent_at, and body_metrics_check_health_consent refuses
+-- a body_metrics insert or update for an owner without it (both 42501).
+-- Clearing a value, a write leaving it as it was, and a delete are never
+-- refused. The same migration deleted the values held without consent
+-- (private.erase_values_held_without_consent; decisions § 2547), pinned
+-- by health_values_need_consent_test.sql.
 --
 -- date_of_birth is NOT among them (20270605_001, decisions § 721).
 -- The column is the child-safety age record the under-18 exclusions
@@ -1347,13 +1356,13 @@ unreadable lookup, or an unknown version all deny. Pinned by `ai_disclosure_cons
 disclosure copy (`coachPage.consent*` in the every web locale) before it is presented in
 production. The code, the gate, and the record ship now.
 
-`height_cm` (migration `20261216_001`, nutrition BMR) is **special-category health data** and shares the `gender`/`date_of_birth` posture: it is **owner-only** — not on the `20260707_001` public-safe column grant, so it's read back through `get_my_profile()` and never exposed to other authenticated callers or anon — and its persistence is gated on `health_data_consent_at` at the client layer, exactly like gender/DOB. Same for the `body_metrics` weight series below.
+`height_cm` (migration `20261216_001`, nutrition BMR) is **special-category health data** and shares the `gender`/`date_of_birth` posture: it is **owner-only** — not on the `20260707_001` public-safe column grant, so it's read back through `get_my_profile()` and never exposed to other authenticated callers or anon — and its persistence is gated on `health_data_consent_at`, like `gender`: the clients write either only under consent, and since `20271231002547` the `user_profiles_check_health_values` trigger refuses a new or changed non-null value without it (42501; decisions § 2547). `date_of_birth` is not gated (the child-safety age record, § 718). Same for the `body_metrics` weight series below.
 
 **`age_confirmed_at` / `terms_accepted_at`** (migration `20260929_001`, GDPR Art 8) are the affirmative age/ToS-consent timestamps, stamped server-side by the `confirm_age_and_terms()` SECURITY DEFINER RPC (first-stamp-wins), or, for an email sign-up, by `private.stamp_signup_consent()` from the sign-up's `raw_user_meta_data` when `auth.users.email_confirmed_at` is first set (migration `20271023000001`, #1229; same first-stamp-wins, and metadata that does not parse or falls outside `created_at` − 1 day … + 1 hour is ignored). NULL means consent never landed (the client gate was bypassed — a direct `curl` to GoTrue `/auth/v1/signup`, or an OAuth callback that dropped the `sessionStorage` tick). Originally these were enforced **only** by a client-side redirect to `/auth/confirm-age`, so an unconsented `authenticated` account had full functional use of the app. **`20270424000004` adds the server-side enforcement**: a fail-closed `BEFORE INSERT` trigger (`private.enforce_consent()`) on the core personal-data content tables — `runs`, `gym_workouts`, `food_log`, `body_metrics`, `routes` — raises `42501` when the caller (`auth.uid()`) has no `age_confirmed_at` stamp. The reusable trigger keys on `auth.uid()` (the RLS insert check already forces `new.user_id = auth.uid()`); a null `auth.uid()` (service_role / backend jobs) and the never-gated `user_profiles` consent-stamping path both pass through, so legitimate signup and async ingestion are unaffected. **Prod deploy gated on CISO/legal sign-off** per the compliance rule. Pinned by `consent_write_gate_test.sql`; see [web_app_auth.md § Consent is enforced server-side](../features/web_app_auth.md).
 
 #### `body_metrics`
 
-Weight time-series for the nutrition Mifflin-St Jeor BMR target (migration `20261216_001`). Weight is a **time-series**, not a single mutable column, because a trend matters and a column loses history. **GDPR special-category health data**: owner-only RLS (no public read at all — `gym_workouts` / `food_log` are also owner-only on the base table since `20270313_001`, but each has a redacted `public_*` view for its `is_public` rows; `body_metrics` has neither), cascade-deletes from `auth.users`, gated on `health_data_consent_at` at the client layer, and must be in the DSAR export path (G1/G6).
+Weight time-series for the nutrition Mifflin-St Jeor BMR target (migration `20261216_001`). Weight is a **time-series**, not a single mutable column, because a trend matters and a column loses history. **GDPR special-category health data**: owner-only RLS (no public read at all — `gym_workouts` / `food_log` are also owner-only on the base table since `20270313_001`, but each has a redacted `public_*` view for its `is_public` rows; `body_metrics` has neither), cascade-deletes from `auth.users`, gated on `health_data_consent_at` (the clients write only under consent, and since `20271231002547` the `body_metrics_check_health_consent` trigger refuses an insert or update for an owner without it, 42501; decisions § 2547), and must be in the DSAR export path (G1/G6).
 
 ```sql
 create table body_metrics (

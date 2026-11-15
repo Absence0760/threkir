@@ -966,7 +966,7 @@ void main() {
     });
 
     group('body weight is kept only with health-data consent', () {
-      // Weight is Art 9 health data (decisions § 2541): typing one alone asks
+      // Weight is Art 9 health data (decisions § 2542): typing one alone asks
       // for the consent, and without it nothing is stored — not the bag key
       // the calorie estimates read, not the body_metrics series.
       Future<(_FakeApi, _FakeSettingsService)> finishWithWeight(

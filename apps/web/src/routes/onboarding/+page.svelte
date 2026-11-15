@@ -377,7 +377,7 @@
 			// The typed value is in the display unit (kg or lbs); store canonical
 			// kg. parseWeightToKg rejects empty / non-numeric / negative input.
 			// Weight is health data: it is kept only with health-data consent,
-			// and the database refuses the bag key without it (decisions § 2541).
+			// and the database refuses the bag key without it (decisions § 2542).
 			// Without it the calorie estimate uses its 70 kg default.
 			// `bind:value` on a type=number input coerces bodyWeight to a
 			// number (or null when empty); parseWeightToKg takes the raw typed

@@ -1,5 +1,5 @@
 -- The settings-bag weight needs health-data consent (migration
--- 20271229001390_body_weight_needs_health_consent.sql; decisions § 2541).
+-- 20271229001390_body_weight_needs_health_consent.sql; decisions § 2542).
 --
 -- Pins:
 --   * a runner without health_data_consent_at cannot store body_weight_kg,

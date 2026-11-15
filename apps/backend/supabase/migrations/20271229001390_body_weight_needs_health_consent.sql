@@ -1,5 +1,5 @@
 -- The settings-bag weight is kept only with health-data consent (the legal
--- pre-review of the #1381/#1382 consent wording, Finding A; decisions § 2541,
+-- pre-review of the #1381/#1382 consent wording, Finding A; decisions § 2542,
 -- amending § 1811).
 --
 -- `user_settings.prefs.body_weight_kg` mirrors the consent-gated

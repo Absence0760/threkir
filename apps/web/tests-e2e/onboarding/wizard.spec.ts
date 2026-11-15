@@ -382,7 +382,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		).toBeVisible();
 		await expect(page.getByText(/Body weight in lbs/i)).toBeVisible();
 		// Enter 154 lbs → 154 / 2.2046226218 = 69.85 kg canonical. A weight is
-		// kept only with health-data consent (decisions § 2541).
+		// kept only with health-data consent (decisions § 2542).
 		await page.getByLabel(/Body weight in lbs/i).fill('154');
 		await page.getByRole('checkbox', { name: /consent/i }).check();
 		await page.getByRole('button', { name: 'Continue' }).click();
@@ -479,7 +479,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(data?.gender).toBeNull();
 	});
 
-	test('a weight typed without health-data consent is not saved, and a weight alone asks for the consent (§ 2541)', async ({
+	test('a weight typed without health-data consent is not saved, and a weight alone asks for the consent (§ 2542)', async ({
 		page,
 	}) => {
 		// Weight is Art 9 health data. The step used to show the consent box
@@ -730,7 +730,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(continueBtn).toBeEnabled();
 		await expect(skipBtn).toBeEnabled();
 		await expect(page.getByRole('alert')).toHaveCount(0);
-		// A weight is kept only with health-data consent (decisions § 2541).
+		// A weight is kept only with health-data consent (decisions § 2542).
 		await page.getByRole('checkbox', { name: /consent/i }).check();
 		await continueBtn.click();
 

@@ -1259,9 +1259,12 @@ create table user_profiles (
 -- strips the Art 9 copies in user_settings.prefs in the same call:
 -- the date_of_birth mirror, cycle_tracking_mode, cycle_length_days,
 -- cycle_last_period_start, pregnancy_due_date, hr_medication_affected,
--- and body_weight_kg when consent had been given (an onboarding weight
--- from a runner who never consented stays). Before, each client
--- cleared its own subset, and only web Account cleared the cycle keys.
+-- and (since 20271229001390, on every withdrawal) body_weight_kg. Before,
+-- each client cleared its own subset, and only web Account cleared the
+-- cycle keys. The settings-bag weight itself needs consent: the
+-- user_settings_check_body_weight trigger refuses a new or changed
+-- body_weight_kg without health_data_consent_at (42501), pinned by
+-- body_weight_consent_test.sql (decisions § 2542).
 -- (A direct NULL write of
 -- health_data_consent_at remains trigger-permitted, but clients use
 -- the RPC.) Pinned by withdraw_coach_consent_test.sql +

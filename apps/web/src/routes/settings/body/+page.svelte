@@ -218,7 +218,7 @@
 			// special-category data feeding those reads.
 			// `body_weight_kg` is the same kind of mirror — of the weight series
 			// — and every calorie estimate (web, phone, Wear OS) reads it, so it
-			// goes with the series whenever consent is off (decisions § 2541).
+			// goes with the series whenever consent is off (decisions § 2542).
 			await updateUniversal(auth.user.id, {
 				date_of_birth: healthDataConsent && dateOfBirth ? dateOfBirth : null,
 				...(healthDataConsent ? {} : { body_weight_kg: null }),

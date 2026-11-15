@@ -333,7 +333,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       final push = _pushNotifications.value;
       if (push != null) bag[SettingsKeys.pushNotifications] = push;
       // Weight is health data: it is kept only with health-data consent, and
-      // the database refuses the bag key without it (decisions § 2541).
+      // the database refuses the bag key without it (decisions § 2542).
       // Without it the calorie estimate uses its 70 kg default.
       final w = parseTypedDecimal(_weightCtl.value.text);
       final consentedWeight =

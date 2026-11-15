@@ -292,7 +292,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         // touches it: since § 721 the RPC leaves it standing, so there is
         // nothing to put back.
         // The weight series' mirror goes with the series: it is kept only
-        // with consent, and the database refuses it without (§ 2541).
+        // with consent, and the database refuses it without (§ 2542).
         await widget.settingsSync?.updateUniversal(<String, dynamic>{
           SettingsKeys.dateOfBirth: null,
           SettingsKeys.bodyWeightKg: null,

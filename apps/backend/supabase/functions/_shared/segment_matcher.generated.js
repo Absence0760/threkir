@@ -115,6 +115,9 @@ function trackLine(track) {
 }
 
 // apps/web/src/lib/runs/run_stats.ts
+var MOVING_MIN_SPEED_MPS = 0.5;
+var STILL_WINDOW_S = 30;
+var STILL_RADIUS_M = MOVING_MIN_SPEED_MPS * STILL_WINDOW_S;
 function haversineMetres(lat1, lng1, lat2, lng2) {
   const r = 6371e3;
   const dLat = (lat2 - lat1) * Math.PI / 180;

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -298,6 +299,15 @@ func BuildTrackFromStreams(streams map[string]StravaStream, startIso string) []T
 	altitude := streams["altitude"].Data
 	time_ := streams["time"].Data
 	hr := streams["heartrate"].Data
+	// Strava's own cumulative distance, kept per surviving point so it stays
+	// index-aligned with the sanitised track. Only a stream as long as
+	// latlng is read; a sample that is not a number is NaN, which
+	// deviceCumulativeMetres rejects.
+	rawDistance := streams["distance"].Data
+	if len(rawDistance) != len(latlng) {
+		rawDistance = nil
+	}
+	var distances []float64
 
 	startMs, _ := time.Parse(time.RFC3339, startIso)
 	startUnix := startMs.UnixMilli()
@@ -353,6 +363,55 @@ func BuildTrackFromStreams(streams map[string]StravaStream, startIso string) []T
 			}
 		}
 		out = append(out, pt)
+		if rawDistance != nil {
+			d := math.NaN()
+			// json.Unmarshal reads a JSON null into a float64 as a no-op,
+			// which would turn a missing sample into 0; it stays NaN.
+			var v float64
+			if string(rawDistance[i]) != "null" && json.Unmarshal(rawDistance[i], &v) == nil {
+				d = v
+			}
+			distances = append(distances, d)
+		}
+	}
+	// A distance stream that passes deviceCumulativeMetres is on every point
+	// as DistM, rebased to 0 at the first, so the split table measures on
+	// Strava's distance rather than the hop-sum of the positions
+	// (docs/features/gps_distance.md § Splits and moving time, #1387).
+	if cum := deviceCumulativeMetres(distances, len(out)); cum != nil {
+		for i := range out {
+			d := cum[i]
+			out[i].DistM = &d
+		}
+	}
+	return out
+}
+
+// deviceCumulativeMetres is the provider's per-point distance stream rebased
+// to 0 at the first point, or nil when it cannot stand in for the positions:
+// a length other than the track's, fewer than two points, any value
+// non-finite / negative, a step backwards, or no distance gained at all. One
+// bad sample rejects the whole stream. Port of `deviceCumulativeMetres` in
+// apps/backend/supabase/functions/_shared/strava.ts.
+func deviceCumulativeMetres(stream []float64, pointCount int) []float64 {
+	if len(stream) != pointCount || pointCount < 2 {
+		return nil
+	}
+	out := make([]float64, pointCount)
+	prev := math.Inf(-1)
+	for i, v := range stream {
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v < prev {
+			return nil
+		}
+		prev = v
+		out[i] = v
+	}
+	base := out[0]
+	if !(out[pointCount-1] > base) {
+		return nil
+	}
+	for i := range out {
+		out[i] -= base
 	}
 	return out
 }

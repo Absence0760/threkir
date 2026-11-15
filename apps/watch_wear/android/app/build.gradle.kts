@@ -184,6 +184,13 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // Packs the symbol table of any unstripped native library into the
+            // AAB's BUNDLE-METADATA, which Play reads on upload. Every library
+            // the watch ships today (Sentry, DataStore, androidx.graphics) comes
+            // prebuilt and already stripped, so there is nothing to extract and
+            // Play's "debug symbols" warning on this bundle is expected
+            // (docs/ops/releasing.md § Play's symbol warnings).
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             signingConfig = if (keystoreFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

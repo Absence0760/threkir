@@ -281,6 +281,25 @@ jobs:
             --dart-define=REVENUECAT_API_KEY_ANDROID="$REVENUECAT_API_KEY_ANDROID" \
             --dart-define=APP_RELEASE="$APP_RELEASE"
 
+      - name: The bundle carries its R8 mapping and native symbols
+        # Play reads both out of the AAB's BUNDLE-METADATA on upload, so
+        # nothing is uploaded beside it (docs/ops/releasing.md § Play's symbol
+        # warnings). A release with minify switched off, or AGP no longer
+        # extracting the symbol tables, would otherwise ship crash reports Play
+        # cannot read, and say so only as a Play Console warning.
+        run: |
+          aab=apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
+          entries=$(unzip -Z1 "$aab")
+          if ! grep -qx 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map' <<< "$entries"; then
+            echo "::error::$aab carries no R8 mapping (BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map). Is minify still on for release?"
+            exit 1
+          fi
+          if ! grep -q '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/.*/libapp\.so\.sym$' <<< "$entries"; then
+            echo "::error::$aab carries no native symbol tables (BUNDLE-METADATA/com.android.tools.build.debugsymbols). Check ndk.debugSymbolLevel in android/app/build.gradle.kts."
+            exit 1
+          fi
+          grep '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/' <<< "$entries"
+
       - name: Attach AAB to the Release
         # The Release already exists — it triggered this run. Upload the
         # signed AAB onto it (no name/notes → the human-authored release

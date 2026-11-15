@@ -158,6 +158,27 @@ jobs:
             -PAPP_RELEASE="$APP_RELEASE" \
             --no-daemon
 
+      - name: What the bundle carries for Play's crash reports
+        # Play reads an R8 mapping and native symbol tables out of the AAB's
+        # BUNDLE-METADATA on upload. This bundle has neither, and Play Console
+        # flags both: R8 is off for the watch (isMinifyEnabled = false), so
+        # there is no mapping, and every native library it ships comes prebuilt
+        # and already stripped, so there are no symbols to extract. Both
+        # warnings are expected until that changes (docs/ops/releasing.md §
+        # Play's symbol warnings); this step says which one a bundle earns.
+        run: |
+          entries=$(unzip -Z1 apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab)
+          if grep -qx 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map' <<< "$entries"; then
+            echo "R8 mapping: in the bundle."
+          else
+            echo "::notice::No R8 mapping in the bundle (minify is off), so Play warns that no deobfuscation file is associated with it. Expected."
+          fi
+          if grep -q '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/' <<< "$entries"; then
+            grep '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/' <<< "$entries"
+          else
+            echo "::notice::No native symbol tables in the bundle: its native libraries ($(grep -o 'lib[^/]*\.so$' <<< "$entries" | sort -u | tr '\n' ' ')) all arrive stripped, so Play warns that no debug symbols were uploaded. Expected."
+          fi
+
       - name: Attach artifacts to the Release
         # The Release already exists — it triggered this run. Upload the
         # signed AAB onto it (no name/notes → the human-authored release

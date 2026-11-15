@@ -313,11 +313,12 @@ Triggered by publishing a GitHub Release for `mobile_android@1.2.3`. Its body mu
 5. Reads version from the tag (`1.2.3`); derives `versionCode` from `git rev-list --count HEAD`, and pins both into `pubspec.yaml`.
 6. Decodes the keystore + writes `key.properties` (so the gradle release `signingConfig` engages), and stubs an empty `.env.development`.
 7. `flutter build appbundle --release` with the production `--dart-define`s (§ Production config above) — the build is signed by gradle via `key.properties`, no separate sign step.
-8. Attaches the AAB to the GitHub Release that triggered the run.
-9. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`, unless Play already holds that version code (a re-run).
-10. Puts the version code on the production track as a staged rollout at 1% with the What's New as its notes and commits the edit, which sends it for review (`scripts/play_release.mjs promote`). Production already carrying it is a no-op; a different build still rolling out, or other changes already in review, fail the job rather than being cancelled.
+8. Checks the AAB carries its R8 mapping and native symbol tables in `BUNDLE-METADATA`, which Play reads on upload for deobfuscated and symbolicated crash reports, and fails if either is missing ([releasing.md § Play's symbol warnings](../../docs/ops/releasing.md#plays-symbol-warnings)).
+9. Attaches the AAB to the GitHub Release that triggered the run.
+10. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`, unless Play already holds that version code (a re-run).
+11. Puts the version code on the production track as a staged rollout at 1% with the What's New as its notes and commits the edit, which sends it for review (`scripts/play_release.mjs promote`). Production already carrying it is a no-op; a different build still rolling out, or other changes already in review, fail the job rather than being cancelled.
 
-**Promoting an existing build without rebuilding.** Actions → Release Android → Run workflow, `tag` = `mobile_android@1.2.3`. The `promote` job waits for the `production` approval, derives the version code from the tag exactly as the build did, reads the Release's `## What's New`, and runs step 10. This is how a build already on Internal (`mobile_android@1.24.0`, version code 5158) reaches production.
+**Promoting an existing build without rebuilding.** Actions → Release Android → Run workflow, `tag` = `mobile_android@1.2.3`. The `promote` job waits for the `production` approval, derives the version code from the tag exactly as the build did, reads the Release's `## What's New`, and runs step 11. This is how a build already on Internal (`mobile_android@1.24.0`, version code 5158) reaches production.
 
 **The daily rollout step.** `.github/workflows/play-rollout.yml` runs `scripts/play_release.mjs advance` at 15:00 UTC: an in-progress production rollout that Play has published moves to the next step, and past 50% it completes. It does nothing while the release is in review or approved but unpublished (managed publishing), while other changes are in review, and when the rollout is halted. A red run opens a `play-rollout` issue.
 

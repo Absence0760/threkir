@@ -9222,6 +9222,37 @@ export type Database = {
           thumb_512_path: string
         }[]
       }
+      race_match_candidates: {
+        Args: {
+          p_start_lat?: number
+          p_start_lng?: number
+          p_started_at: string
+        }
+        Returns: {
+          course_distance_m: number
+          distance_m: number
+          distance_m_away: number
+          entry_url: string
+          finish_gate_bearing_deg: number
+          finish_gate_lat: number
+          finish_gate_lng: number
+          gate_half_width_m: number
+          id: string
+          is_verified: boolean
+          location_label: string
+          location_lat: number
+          location_lng: number
+          name: string
+          organiser_is_official: boolean
+          provider: string
+          provider_race_id: string
+          race_date: string
+          results_url: string
+          start_gate_bearing_deg: number
+          start_gate_lat: number
+          start_gate_lng: number
+        }[]
+      }
       race_pending_dnf_count: {
         Args: { p_event_id: string; p_instance_start: string }
         Returns: number

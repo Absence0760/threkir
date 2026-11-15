@@ -3173,3 +3173,7 @@ The real catalogue loaded through `private.load_park_catalogue`, the database's 
 ### `apps/web/tests-e2e/parks/park-course-real-run.spec.ts` — 1 test
 
 The real Beaver Lake line planted, the fixture's clean run uploaded, the `segment-match` Edge Function called as the job worker calls it; the effort it writes is the board row on the course page, and the share page names no runner.
+
+### `apps/backend/supabase/tests/consent_null_clears_gated_values_test.sql` — 16 tests
+
+Migration `20271230001390` ([decisions § 2542](../architecture/decisions.md)): `private.health_consent_pref_keys()` is the seven settings keys `settings.md` names as consent-gated; a profile rename and a settings write that leave the stamp alone clear nothing; the owner nulling `health_data_consent_at` directly clears height and gender, the `body_metrics` series, the heart-rate targets on their plan and every consent-gated settings key, and keeps the `date_of_birth` age record and the keys that are not health data; a second consented runner keeps all of theirs; then `withdraw_health_data_consent()` clears the same set for that runner.

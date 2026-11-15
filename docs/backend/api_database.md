@@ -1265,10 +1265,17 @@ create table user_profiles (
 -- user_settings_check_body_weight trigger refuses a new or changed
 -- body_weight_kg without health_data_consent_at (42501), pinned by
 -- body_weight_consent_test.sql (decisions § 2542).
--- (A direct NULL write of
--- health_data_consent_at remains trigger-permitted, but clients use
--- the RPC.) Pinned by withdraw_coach_consent_test.sql +
--- withdraw_health_data_consent_test.sql.
+-- A direct NULL write of health_data_consent_at remains
+-- trigger-permitted (clients use the RPC), and since 20271230001390 it
+-- clears the same set: private.erase_consent_gated_values(uid) nulls
+-- height_cm + gender, deletes body_metrics, nulls the heart-rate
+-- targets on the runner's plans and strips the settings keys
+-- private.health_consent_pref_keys() names. The AFTER trigger
+-- user_profiles_health_consent_transition runs it on every non-null
+-- to null transition, and the RPC calls it too, so the two cannot
+-- drift (decisions § 2542). Pinned by withdraw_coach_consent_test.sql,
+-- withdraw_health_data_consent_test.sql and
+-- consent_null_clears_gated_values_test.sql.
 --
 -- date_of_birth is NOT among them (20270605_001, decisions § 721).
 -- The column is the child-safety age record the under-18 exclusions

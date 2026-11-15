@@ -368,7 +368,7 @@
   "safetyPhoneHint": "Füge eine Mobilnummer hinzu, dann kann dieser Kontakt auch per SMS benachrichtigt werden – ob er das möchte, entscheidet er bei der Bestätigung. E-Mail-Benachrichtigungen werden immer gesendet.",
   "safetyInvalidPhone": "Gib die Nummer im internationalen Format ein, z. B. +447700900123.",
   "safetySmsBadge": "SMS aktiv",
-  "safetySmsPending": "SMS inaktiv – noch nicht eingewilligt",
+  "safetySmsPending": "SMS inaktiv – Kontakt hat noch nicht eingewilligt",
   "safetyConfirmSmsLabel": "Mich auch per SMS benachrichtigen",
   "safetyContactOfTitle": "Du bist Sicherheitskontakt",
   "safetyContactOfIntro": "Diese Läuferinnen und Läufer haben dich als Notfallkontakt eingetragen und du hast bestätigt. Du kannst jederzeit ändern, wie du benachrichtigt wirst, oder dich zurückziehen.",

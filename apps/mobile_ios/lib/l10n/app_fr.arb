@@ -368,7 +368,7 @@
   "safetyPhoneHint": "Ajoutez un numéro de mobile et ce contact pourra aussi être alerté par SMS — il choisit lors de la confirmation. Les alertes par e-mail sont toujours envoyées.",
   "safetyInvalidPhone": "Saisissez le numéro au format international, par ex. +447700900123.",
   "safetySmsBadge": "SMS activé",
-  "safetySmsPending": "SMS désactivé — pas encore accepté",
+  "safetySmsPending": "SMS désactivé — le contact n'a pas encore accepté",
   "safetyConfirmSmsLabel": "M'alerter aussi par SMS",
   "safetyContactOfTitle": "Vous êtes contact de sécurité",
   "safetyContactOfIntro": "Ces personnes vous ont désigné comme contact d'urgence et vous avez confirmé. Vous pouvez changer la façon dont vous êtes alerté, ou vous retirer, à tout moment.",

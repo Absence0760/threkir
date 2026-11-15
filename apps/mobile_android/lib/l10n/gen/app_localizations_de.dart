@@ -1471,7 +1471,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get safetySmsBadge => 'SMS aktiv';
 
   @override
-  String get safetySmsPending => 'SMS inaktiv – noch nicht eingewilligt';
+  String get safetySmsPending =>
+      'SMS inaktiv – Kontakt hat noch nicht eingewilligt';
 
   @override
   String get safetyConfirmSmsLabel => 'Mich auch per SMS benachrichtigen';

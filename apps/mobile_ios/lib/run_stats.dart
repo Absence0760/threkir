@@ -53,7 +53,8 @@ bool hasRecordedDistances(List<Waypoint> track) {
 /// hop-sum over the line positions ([Waypoint.lineLat] / [Waypoint.lineLng]),
 /// unscaled, which is what every track before the key measures on. Pass
 /// [totalDistanceMetres] only with the whole stored track (the owner's): a
-/// privacy-clipped one ends short of the run and would be stretched. Mirrors
+/// privacy-clipped one ends short of the run and would be stretched. Callers
+/// get it from [splitAxisTotalMetres], which gives none for an import. Mirrors
 /// `trackCumulativeMetres` in `apps/web/src/lib/runs/run_stats.ts`.
 List<double> trackCumulativeMetres(
   List<Waypoint> track, {
@@ -78,10 +79,34 @@ List<double> trackCumulativeMetres(
   return out;
 }
 
+/// The run distance [trackCumulativeMetres] may scale a recorded-distance axis
+/// to: the run's distance for a recorder's track ([RunSource.app],
+/// [RunSource.watch]), whose axis stops at the last stored fix and which a
+/// server recompute re-derives, and none for an import. An import's axis is
+/// the device's own distance stream, so it is already the right axis, and its
+/// distance is the device's total, which also counts what the device measured
+/// before the first positioned record; scaling one to the other stretched
+/// every split (200 m before the first fix of a marathon read every 8:00 mile
+/// ~2.3 s fast). Mirrors `splitAxisTotalMetres` in `run_stats.ts`.
+double? splitAxisTotalMetres(RunSource? source, double? distanceMetres) =>
+    source == RunSource.app || source == RunSource.watch
+        ? distanceMetres
+        : null;
+
 /// ~1.8 km/h: slower than a slow walk, faster than GPS jitter standing still.
 /// The finished moving time, the live Avg pace and the "Stopped" chip share
 /// it.
 const double kMovingMinSpeedMps = 0.5;
+
+/// How long a track without recorded distances must stay inside
+/// [kStillRadiusMetres] of a fix for the runner to count as stopped there. With
+/// the radius it is the moving floor over a window rather than over one hop:
+/// GPS jitter while standing moves a fix 4 m in 5 s (0.8 m/s, above the floor)
+/// but goes nowhere. Mirrors `STILL_WINDOW_S` in `run_stats.ts`.
+const Duration kStillWindow = Duration(seconds: 30);
+
+/// [kMovingMinSpeedMps] over [kStillWindow]: 15 m.
+const double kStillRadiusMetres = kMovingMinSpeedMps * 30;
 
 /// Display only: the clock keeps running (decisions § 4).
 const Duration kStoppedAfter = Duration(seconds: 10);
@@ -310,9 +335,16 @@ class RunSplit {
 /// a 0:00 duration (which also poisoned the "fastest split" reduction). One
 /// interpolated split per tick fixes that.
 ///
-/// Distance is [trackCumulativeMetres] with [totalDistanceMetres]: pass the
-/// run's distance and a track that carries the recorder's cumulative credit
-/// places every boundary on the same axis as the headline figure.
+/// Distance is [trackCumulativeMetres] with [totalDistanceMetres]: pass
+/// [splitAxisTotalMetres] of the run and a track that carries the recorder's
+/// cumulative credit places every boundary on the same axis as the headline
+/// figure.
+///
+/// The splits end where the runner stopped ([_lastMovingIndex]), not at the
+/// last fix: the minutes a watch keeps recording past the finish add time and
+/// no distance, and on a track without recorded distances their jitter adds
+/// distance too, enough to cross a boundary of its own. The web twin also ends
+/// its tail split there.
 ///
 /// Elevation is the net change across the split, read off
 /// [runAltitudeSeries] — the barometer when the run carries one, else GPS
@@ -337,13 +369,14 @@ List<RunSplit> computeSplitDurations(
   final cum =
       trackCumulativeMetres(track, totalDistanceMetres: totalDistanceMetres);
   final elevationOf = _splitElevationReader(runAltitudeSeries(track), cum);
+  final end = _lastMovingIndex(track, cum);
   final splits = <RunSplit>[];
   var cumulative = 0.0;
   var nextTick = 1;
   var tickStart = track.first.timestamp ?? startedAt;
   var tickStartDist = 0.0;
 
-  for (var i = 1; i < track.length; i++) {
+  for (var i = 1; i <= end; i++) {
     final a = track[i - 1];
     final b = track[i];
     final segStart = i == 1 ? 0.0 : cum[i - 1];
@@ -383,6 +416,68 @@ List<RunSplit> computeSplitDurations(
     }
   }
   return splits;
+}
+
+/// The index of the last point the runner was still moving into, where the
+/// splits end. The last index when the runner moved to the end.
+///
+/// On a recorded-distance axis ([hasRecordedDistances]): walking back from the
+/// end, the first hop whose speed along [cum] is at least
+/// [kMovingMinSpeedMps]; the recorder's filter holds still while the runner
+/// stands, so one hop decides. A hop without two timestamps cannot be shown to
+/// be a stop, so it counts as moving when it gains any distance.
+///
+/// On positions alone one hop cannot decide, because standing jitter clears
+/// the floor hop by hop. There the runner is stopped from a fix when the fixes
+/// over the next [kStillWindow] stay within [kStillRadiusMetres] of it
+/// ([_stoppedFrom]), and the end is the fix after the last one that was not.
+/// That can shorten a finish run to the very end by under
+/// [kStillRadiusMetres], which moves distance and time together. Moving time
+/// keeps the per-hop floor (decisions § 2541). Twin of `lastMovingIndex` in
+/// `run_stats.ts`.
+int _lastMovingIndex(List<Waypoint> track, List<double> cum) {
+  if (!hasRecordedDistances(track)) {
+    for (var j = track.length - 2; j >= 0; j--) {
+      if (!_stoppedFrom(track, j)) return j + 1;
+    }
+    return 0;
+  }
+  for (var i = track.length - 1; i > 0; i--) {
+    final gain = cum[i] - cum[i - 1];
+    if (!(gain > 0)) continue;
+    final a = track[i - 1].timestamp;
+    final b = track[i].timestamp;
+    if (a == null || b == null) return i;
+    final dtMs = b.difference(a).inMilliseconds;
+    if (dtMs <= 0) return i;
+    if (gain / (dtMs / 1000) >= kMovingMinSpeedMps) return i;
+  }
+  return 0;
+}
+
+/// Whether the runner stood still from fix [j], on the line positions: every
+/// later fix up to and including the first one [kStillWindow] or more after it
+/// is closer to it than [kStillRadiusMetres], or than the moving floor times
+/// its elapsed time once that is the larger, so a fix after a long signal gap
+/// that is far away still reads as moving. A fix without a timestamp cannot be
+/// shown to be a stop; an untimed fix after it is held to the radius. Twin of
+/// `stoppedFrom` in `run_stats.ts`.
+bool _stoppedFrom(List<Waypoint> track, int j) {
+  final p = track[j];
+  final t0 = p.timestamp;
+  if (t0 == null) return false;
+  final windowS = kStillWindow.inMilliseconds / 1000;
+  for (var k = j + 1; k < track.length; k++) {
+    final q = track[k];
+    final t = q.timestamp;
+    final dtS = t == null ? 0.0 : t.difference(t0).inMilliseconds / 1000;
+    final reach = max(kStillRadiusMetres, kMovingMinSpeedMps * dtS);
+    if (haversineMetres(p.lineLat, p.lineLng, q.lineLat, q.lineLng) >= reach) {
+      return false;
+    }
+    if (dtS >= windowS) break;
+  }
+  return true;
 }
 
 /// The net elevation, whole metres, of the split from `start` to `end` along

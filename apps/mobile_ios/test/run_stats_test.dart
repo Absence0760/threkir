@@ -729,6 +729,68 @@ void main() {
         const Duration(seconds: 180),
       );
     });
+
+    test('standing jitter on a track without recorded distances is not '
+        'running (#1388)', () {
+      // 3.0 m/s for 1050 s, 60 m short of the second mile, then 300 s
+      // standing while the fix wanders 4 m every 5 s (0.8 m/s, over the hop
+      // floor). The jitter's hop-sum (240 m) crossed the second mile and
+      // closed it at 375 s/km.
+      final pts = [
+        for (var i = 0; i <= 210; i++) at(i * 15.0, i * 5),
+        for (var k = 1; k <= 60; k++)
+          at(3150.0 + (k.isEven ? 0 : 4), 1050 + k * 5),
+      ];
+      final splits = computeSplitDurations(pts, 1609.344, start);
+      expect(splits.map((s) => s.tick), [1]);
+      final hop = haversineMetres(0, 0, 0, 15 / 111320);
+      expect(splits.single.duration.inMilliseconds / 1000,
+          closeTo(1609.344 / hop * 5, 0.01));
+
+      // Running past the boundary to the last fix still closes it.
+      final ran = computeSplitDurations(
+          [for (var i = 0; i <= 230; i++) at(i * 15.0, i * 5)], 1609.344, start);
+      expect(ran.map((s) => s.tick), [1, 2]);
+    });
+
+    test('splitAxisTotalMetres scales a recorder axis, never an import', () {
+      expect(splitAxisTotalMetres(RunSource.app, 5000), 5000);
+      expect(splitAxisTotalMetres(RunSource.watch, 5000), 5000);
+      for (final source in [
+        RunSource.garmin,
+        RunSource.strava,
+        RunSource.healthconnect,
+        RunSource.healthkit,
+        RunSource.parkrun,
+        RunSource.race,
+        null,
+      ]) {
+        expect(splitAxisTotalMetres(source, 5000), isNull, reason: '$source');
+      }
+    });
+
+    test('distance before the first fix does not stretch an import', () {
+      // A marathon at 8:00/mi whose watch measured 200 m before its first
+      // fix: the recorded distance is the device stream rebased to that fix
+      // (41,995 m) and the run's distance the device total (42,195 m). Scaled
+      // one to the other, every mile read 2.3 s fast.
+      const v = 1609.344 / 480;
+      final pts = [
+        for (var i = 0; i * 5 * v <= 41995; i++)
+          at(i * 5 * v, i * 5, distM: i * 5 * v),
+      ];
+      final splits = computeSplitDurations(pts, 1609.344, start,
+          totalDistanceMetres: splitAxisTotalMetres(RunSource.garmin, 42195));
+      expect(splits, hasLength(26));
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(480, 0.01),
+            reason: 'mile ${s.tick}');
+      }
+      final stretched = computeSplitDurations(pts, 1609.344, start,
+          totalDistanceMetres: 42195);
+      expect(480 - stretched.first.duration.inMilliseconds / 1000,
+          closeTo(2.28, 0.01));
+    });
   });
   group('split elevation', () {
     final start = DateTime.utc(2026, 4, 1, 7);

@@ -29,6 +29,8 @@ import {
 	parseFitBuffer,
 	garminExternalId,
 	computeEmbeddedBests,
+	deviceCumulativeMetres,
+	withDeviceDistances,
 	type ParsedFitRun,
 	type FitHrZones,
 } from './garmin-fit';
@@ -394,8 +396,12 @@ async function importRouteFile(
 	const routes = await parseRouteFile(file);
 	if (!routes || routes.length === 0) return 'skipped';
 	const r = routes[0];
-	const waypoints = r.waypoints;
+	// A TCX's own distance stream, when it validates, is stamped on the track
+	// as `distM` and is the run's distance, as on the FIT path (#1387).
+	const deviceCum = deviceCumulativeMetres(r.distance_stream, r.waypoints.length);
+	const waypoints = withDeviceDistances(r.waypoints, r.distance_stream);
 	if (waypoints.length < 2) return 'skipped';
+	const routeDistanceM = deviceCum != null ? deviceCum[deviceCum.length - 1] : r.distance_m;
 
 	// Best-effort started_at + duration from the per-point timestamps.
 	const firstTs = waypoints.find((w) => typeof w.ts === 'string')?.ts;
@@ -406,10 +412,10 @@ async function importRouteFile(
 			? Math.max(0, Math.round((Date.parse(lastTs) - Date.parse(firstTs)) / 1000))
 			: 0;
 
-	const composite = compositeKey(startedAt, r.distance_m);
+	const composite = compositeKey(startedAt, routeDistanceM);
 	if (seenComposite.has(composite)) return 'skipped';
 
-	const distanceM = Math.max(0, Math.round(r.distance_m));
+	const distanceM = Math.max(0, Math.round(routeDistanceM));
 	const startMs = Date.parse(startedAt);
 	if (
 		Number.isFinite(startMs) &&
@@ -423,11 +429,12 @@ async function importRouteFile(
 		imported_at: new Date().toISOString(),
 		source_file: file.name,
 	};
-	// Embedded best efforts off the GPX/TCX per-point timestamps + positions,
+	// Embedded best efforts off the GPX/TCX per-point timestamps, measured on
+	// the TCX device distance when it validates and the positions otherwise,
 	// same as the FIT path — written to the promoted runs columns. {} when
 	// the original carried no per-point times.
 	const saved = await saveRun({
-		embedded_bests: computeEmbeddedBests(waypoints, 'run'),
+		embedded_bests: computeEmbeddedBests(waypoints, 'run', r.distance_stream),
 		started_at: new Date(startedAt).toISOString(),
 		distance_m: distanceM,
 		duration_s: durationS,

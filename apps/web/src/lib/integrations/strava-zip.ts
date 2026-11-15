@@ -14,7 +14,7 @@
 
 import { openZip, type ZipArchive } from '../core/zip_archive';
 import { parseRouteFile, type ImportedRoute } from './import';
-import { parseFitBuffer, computeEmbeddedBests } from './garmin-fit';
+import { parseFitBuffer, computeEmbeddedBests, withDeviceDistances } from './garmin-fit';
 import { saveRun, addRunPhoto } from '../core/data';
 import type { JsonObject } from '../types';
 import { TABLES, METADATA_KEYS } from '../core/schema';
@@ -258,7 +258,13 @@ async function importOne(
 			} else {
 				const synthetic = new File([blob], innerName);
 				const routes = await parseRouteFile(synthetic);
-				if (routes.length > 0) track = routes[0].waypoints;
+				if (routes.length > 0) {
+					// A TCX carries the device's own distance per point; stamped
+					// as `distM` the same way the FIT path is, so the splits land
+					// on the watch's laps (#1387).
+					track = withDeviceDistances(routes[0].waypoints, routes[0].distance_stream);
+					deviceDistance = routes[0].distance_stream;
+				}
 			}
 		}
 	}

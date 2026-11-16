@@ -1856,7 +1856,7 @@ The mobile mirror of web's `tests-e2e/clubs/strava-clubs.spec.ts` and `tests-e2e
 
 The gym catalogue picker's search / hidden-exact / ordering decision, pinned on both platforms but by deliberately different instruments ([decisions § 1333](../architecture/decisions.md), [§ 1382](../architecture/decisions.md)). Web has no harness that can compile a `.svelte` component, so the decision was moved OUT of the markup into a pure module and `cataloguePickerView` is tested directly: a blank query lists everything and offers no create, the search folds both sides through the canonical key, an exact name the CATEGORY filter is hiding is reported rather than dropped into “No exercises match.”, a shadowed name reports the same entry whichever order the fetch returned, and five ordering cases pin the folded comparator — an accented name not filed after `z`, the phone's order rather than the host collation's, § 1334's measured eight-name list, the id tiebreak for names the fold calls equal, and that the input array is not reordered in place. `flutter_test` renders widgets natively, so the Dart side pins the WIDGET instead and therefore reaches strictly more than the web module can — the rendered sentence and the rendered order, which § 1333 says only a browser can prove on web: the same search / hidden-exact / ordering cases plus the create path end to end (no affordance without an API client, a create under a category filed there and under “all” filed under other, a refused create reported while staying on the picker, tapping a row popping with that entry) and the shadowing badge. The counts are NOT a mirror pair and are not expected to match — the two suites test different objects. The iOS twin runs the Dart file byte-for-byte.
 
-### `scripts/check_infra_iam.test.mjs` — 91 tests
+### `scripts/check_infra_iam.test.mjs` — 95 tests
 
 The IAM rails under `infra/`, which no test had reached. `infra/github-oidc/`
 mints the only two identities anything outside the AWS account can assume, and
@@ -1890,6 +1890,11 @@ and on two it must refuse rather than guess at, `sopsFilters` on the
 comprehension that carries no predicate, and `envPlaintextKeys` on the
 intermediate local (`sentry_env`) that a reader looking only at `*_lambda_env`
 would miss.
+Four more pin the org-move trust form (Absence0760/project-mgmt#14), a `sub`
+written as a list over `local.github_subject_prefixes`: it passes and is read
+as `<prefix>:environment:<name>`, a wildcard environment in it fails, a list
+over anything else reads as no `sub` at all, and crossing the two environments
+in the list form fails as the string form does.
 
 ### `scripts/check_infra_coverage.test.mjs` — 82 tests
 

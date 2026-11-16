@@ -203,6 +203,10 @@ export const CLAIM_PREFIX = 'token.actions.githubusercontent.com';
 /// is one a reader (and a scanner) has to notice to trust the pattern.
 export const CLAIM_PREFIX_PATTERN = 'token\\.actions\\.githubusercontent\\.com';
 
+/// What parseOidcStack records for a sub written as
+/// `[for p in local.github_subject_prefixes : "${p}:environment:<name>"]`.
+export const SUBJECT_PREFIXES_TOKEN = '${local.github_subject_prefixes}';
+
 /// Actions granted on `Resource: "*"` because AWS models no resource for them,
 /// each with the reason. An action on `*` that is absent from this map fails;
 /// an entry here that no statement uses fails too, because a stale exemption
@@ -752,6 +756,19 @@ export function parseOidcStack(raw) {
           ),
         )) {
           claims.set(m[1], m[2]);
+        }
+        // The org-move form (Absence0760/project-mgmt#14): a list of exact
+        // subjects built from `local.github_subject_prefixes`, one per trusted
+        // prefix. Recorded under a token the shape check below accepts, so each
+        // element is still held to `<prefix>:environment:<name>` and the
+        // prefixes themselves are shape-checked against the tfvars.
+        for (const m of condition.matchAll(
+          new RegExp(
+            `"${CLAIM_PREFIX_PATTERN}:(sub)"\\s*=\\s*\\[\\s*for\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+in\\s+local\\.github_subject_prefixes\\s*:\\s*"\\$\\{\\2\\}(:[^"]*)"\\s*\\]`,
+            'g',
+          ),
+        )) {
+          claims.set(m[1], `${SUBJECT_PREFIXES_TOKEN}${m[3]}`);
         }
       }
     }
@@ -1644,7 +1661,7 @@ export function compareSources(oidc, release, web, oidcVars) {
     // checked against the tfvars below — accepting the token here would
     // otherwise let any string through under a variable's name.
     const shape = sub.match(
-      /^(?:\$\{var\.github_subject_prefix\}|repo:(?:\$\{var\.github_repo\}|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)):environment:([A-Za-z0-9_-]+)$/,
+      /^(?:\$\{var\.github_subject_prefix\}|\$\{local\.github_subject_prefixes\}|repo:(?:\$\{var\.github_repo\}|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)):environment:([A-Za-z0-9_-]+)$/,
     );
     if (!shape) {
       errors.push(
@@ -1699,9 +1716,13 @@ export function compareSources(oidc, release, web, oidcVars) {
   // being a hole. The immutable form carries numeric IDs
   // (repo:<owner>@<id>/<repo>@<id>); the legacy form carries the slug. Anything
   // else — a ref, a wildcard, an empty string — is refused here.
-  const usesSubjectPrefix = oidc.roles.some((r) =>
-    (r.claims.get('sub') ?? '').startsWith('${var.github_subject_prefix}'),
-  );
+  const usesSubjectPrefix = oidc.roles.some((r) => {
+    const sub = r.claims.get('sub') ?? '';
+    return (
+      sub.startsWith('${var.github_subject_prefix}') ||
+      sub.startsWith(SUBJECT_PREFIXES_TOKEN)
+    );
+  });
   if (usesSubjectPrefix) {
     const prefixVar = oidcVars.match(
       /variable\s+"github_subject_prefix"\s*\{([\s\S]*?)\n\}/,
@@ -1744,6 +1765,26 @@ export function compareSources(oidc, release, web, oidcVars) {
       );
     } else if (value !== undefined) {
       ok.push(`github_subject_prefix is repo-shaped (${value})`);
+    }
+    // The org-move extras (Absence0760/project-mgmt#14) are trusted exactly
+    // like the primary, so they are held to the same shape. Terraform's own
+    // validation on the variable says the same thing at plan time.
+    const extras = tfvars.match(
+      /^\s*github_extra_subject_prefixes\s*=\s*\[([^\]]*)\]/m,
+    )?.[1];
+    if (extras !== undefined) {
+      for (const [, extra] of extras.matchAll(/"([^"]*)"/g)) {
+        if (!/^repo:[A-Za-z0-9_.-]+(@\d+)?\/[A-Za-z0-9_.-]+(@\d+)?$/.test(extra)) {
+          errors.push(
+            `infra/github-oidc/terraform.tfvars: github_extra_subject_prefixes entry ` +
+              `${JSON.stringify(extra)} is not \`repo:<owner>[@<id>]/<repo>[@<id>]\`. Read it, ` +
+              'never guess it: `gh api repos/<owner>/<repo>/actions/oidc/customization/sub ' +
+              '--jq .sub_claim_prefix`.',
+          );
+        } else {
+          ok.push(`github_extra_subject_prefixes entry is repo-shaped (${extra})`);
+        }
+      }
     }
   }
 

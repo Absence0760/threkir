@@ -14,8 +14,8 @@ import { USER_A } from '../fixtures/users';
  * by keyset cursor now; this plants one more course than a single read can
  * return and expects every one of them to reach both pages.
  *
- * The park sits in region ZZ-ZZZ so it sorts after every other park and its
- * courses never push another spec's planted course out of the first eight.
+ * The park sits in region ZZ-ZZZ so it sorts after every other park and never
+ * pushes another spec's planted park out of the first eight.
  */
 
 const MAX_ROWS = 1000;
@@ -120,8 +120,8 @@ test.describe('park catalogue past db.max-rows', () => {
 		await page.goto('/races');
 		const search = page.getByTestId('races-search');
 		await search.fill(p.tag);
-		const seeAll = page.getByTestId('races-any-time-all');
-		await expect(seeAll).toHaveText(/^See all 1,?001 courses/, { timeout: 30_000 });
+		const park = page.getByTestId('races-any-time-park').filter({ hasText: p.parkName });
+		await expect(park.getByTestId('park-card-facts')).toContainText(/1,?001 courses/, { timeout: 30_000 });
 
 		// The last course by slug is the one a single read past the cap could
 		// not reach whatever order the server chose; the search finds it.

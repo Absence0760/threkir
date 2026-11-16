@@ -9,6 +9,7 @@ library;
 
 import 'route_gpx.dart';
 import 'route_guide.dart';
+import 'run_stats.dart' show haversineMetres;
 
 const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
 
@@ -516,3 +517,54 @@ BoardPeriod? stepBoardMonth(BoardPeriod period, int delta, ParkNow now) {
   }
   return BoardPeriod.month(season, month);
 }
+
+/// A start and finish this close are one place, as on a loop: the distance
+/// the web course map draws one start-and-finish pin at (`SAME_PLACE_M`).
+const double kSameCourseEndM = 30;
+
+class CourseEnds {
+  final ({double lat, double lng}) start;
+
+  /// Null when the course starts and finishes in the same place.
+  final ({double lat, double lng})? finish;
+
+  const CourseEnds(this.start, this.finish);
+}
+
+({double lat, double lng})? _gatePoint(({double? lat, double? lng})? g) {
+  final lat = g?.lat;
+  final lng = g?.lng;
+  return lat != null && lng != null && lat.isFinite && lng.isFinite
+      ? (lat: lat, lng: lng)
+      : null;
+}
+
+/// Where a course starts and finishes: the centre of its start and end timing
+/// lines when it has them (the points the matcher times from), else the first
+/// and last point of the line drawn on the screen. A loop, or a course whose
+/// two ends are within [kSameCourseEndM] of each other, has one place for
+/// both. Null when there is no point to give.
+CourseEnds? courseEnds({
+  required List<({double lat, double lng})> line,
+  ({double? lat, double? lng})? startGate,
+  ({double? lat, double? lng})? endGate,
+  String? shape,
+}) {
+  final start = _gatePoint(startGate) ?? (line.isEmpty ? null : line.first);
+  final finish = _gatePoint(endGate) ?? (line.isEmpty ? null : line.last);
+  if (start == null || finish == null) return null;
+  final same = shape == 'loop' ||
+      haversineMetres(start.lat, start.lng, finish.lat, finish.lng) <=
+          kSameCourseEndM;
+  return CourseEnds(start, same ? null : finish);
+}
+
+String _fixed5(double v) {
+  final s = v.toStringAsFixed(5);
+  return s == '-0.00000' ? '0.00000' : s;
+}
+
+/// A point as "lat, lng" to five decimals (about 1 m), the order Google Maps
+/// and Apple Maps both read when it is pasted into their search.
+String formatLatLng(({double lat, double lng}) p) =>
+    '${_fixed5(p.lat)}, ${_fixed5(p.lng)}';

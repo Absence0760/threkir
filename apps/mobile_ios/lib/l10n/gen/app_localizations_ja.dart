@@ -15020,7 +15020,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesDistanceUltra => 'ウルトラ';
 
   @override
-  String get racesRegister => '大会ページ・エントリー';
+  String get racesRacePage => '大会ページ';
 
   @override
   String get racesTrainForThis => 'このレースに向けてトレーニング';
@@ -21249,6 +21249,39 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksLegendStartFinish => 'スタート・フィニッシュ';
+
+  @override
+  String get parksEndsTitle => 'スタート・フィニッシュ地点';
+
+  @override
+  String get parksEndsCopy => 'コピー';
+
+  @override
+  String get parksEndsCopyStart => 'スタートの座標をコピー';
+
+  @override
+  String get parksEndsCopyFinish => 'フィニッシュの座標をコピー';
+
+  @override
+  String get parksEndsCopyStartFinish => 'スタート兼フィニッシュの座標をコピー';
+
+  @override
+  String get parksEndsCopied => '座標をコピーしました';
+
+  @override
+  String get parksEndsCopyFailed => '座標をコピーできませんでした。選択して手動でコピーしてください。';
+
+  @override
+  String get parksEndsDirections => '経路';
+
+  @override
+  String get parksEndsDirectionsStart => 'スタートまでの経路';
+
+  @override
+  String get parksEndsDirectionsFinish => 'フィニッシュまでの経路';
+
+  @override
+  String get parksEndsDirectionsStartFinish => 'スタート兼フィニッシュまでの経路';
 
   @override
   String get parksLegendCheckpoints => 'チェックポイント：必ず通過してください';

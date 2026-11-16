@@ -965,7 +965,7 @@ const NOUN_CAPITALISING_LOCALES = new Set(["de"]);
  * companion test drops an entry that has stopped covering anything.
  */
 const INTERPOLATED_CAPITAL_EXEMPT: Record<string, string> = {
-	"races.register":
+	"races.racePage":
 		"is a button's label, quoted inside races.fieldEntryUrlHint so the hint names " +
 		"the button exactly as it reads on the card; a label keeps its capital in quotes.",
 	"coachingAthlete.runnerFallback":

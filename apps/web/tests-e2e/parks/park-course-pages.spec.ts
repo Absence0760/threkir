@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { originOf } from '../fixtures/base-url';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
@@ -10,7 +11,8 @@ import { USER_A } from '../fixtures/users';
  * its one credit line, its one primary action, an empty board that invites a
  * first run with its filters hidden, and the notices callout: the times
  * notice on every course and the give-way note on a course an organised group
- * shares (decisions § 2460).
+ * shares (decisions § 2460), and the start and finish to copy or get
+ * directions to.
  *
  * Every row is planted (service role) in one park under a unique slug, at
  * (37.4, -78.4), which no seed row or other spec uses, and removed afterwards.
@@ -192,6 +194,51 @@ test.describe('park course pages', () => {
 		await expect(page.getByTestId('park-season-all-time')).toHaveCount(0);
 		await expect(page.getByTestId('park-board-filters')).toHaveCount(0);
 		await expect(page.getByTestId('park-board-compare')).toHaveCount(0);
+	});
+
+	test('the course page gives its start and finish to copy and get directions to; a loop gives one point', async ({
+		page,
+		context,
+		baseURL,
+	}) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: originOf(baseURL) });
+		await page.goto(`/parks/us-va/${PARK_SLUG}/50k`);
+		const ends = page.getByTestId('park-course-ends');
+		await expect(ends).toBeVisible({ timeout: 15_000 });
+		await expect(ends.getByRole('heading', { name: 'Start and finish points' })).toBeVisible();
+		await expect(ends.getByTestId('park-course-ends-start-coords')).toHaveText('37.40000, -78.38000');
+		await expect(ends.getByTestId('park-course-ends-finish-coords')).toHaveText('37.40898, -78.38000');
+		await expect(ends.getByTestId('park-course-ends-startFinish')).toHaveCount(0);
+
+		const copy = ends.getByRole('button', { name: 'Copy finish coordinates' });
+		await copy.click();
+		await expect(ends.getByTestId('park-course-ends-finish-status')).toHaveText('Coordinates copied');
+		expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('37.40898, -78.38000');
+
+		const directions = ends.getByRole('link', { name: 'Directions to the start' });
+		await expect(directions).toHaveAttribute('href', /destination=37\.40000%2C-78\.38000/);
+		await expect(directions).toHaveAttribute('target', '_blank');
+
+		await page.goto(`/parks/us-va/${PARK_SLUG}/5k`);
+		const loop = page.getByTestId('park-course-ends');
+		await expect(loop.getByTestId('park-course-ends-startFinish')).toContainText('Start and finish', { timeout: 15_000 });
+		await expect(loop.getByTestId('park-course-ends-start')).toHaveCount(0);
+		await expect(loop.getByRole('button', { name: 'Copy start and finish coordinates' })).toBeVisible();
+	});
+
+	test('a refused copy says so and leaves the coordinates to select', async ({ page }) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(navigator, 'clipboard', {
+				value: { writeText: () => Promise.reject(new Error('denied')) },
+			});
+		});
+		await page.goto(`/parks/us-va/${PARK_SLUG}/50k`);
+		const ends = page.getByTestId('park-course-ends');
+		await ends.getByRole('button', { name: 'Copy start coordinates' }).click({ timeout: 15_000 });
+		await expect(ends.getByTestId('park-course-ends-start-status')).toHaveText(
+			"Couldn't copy the coordinates. Select them and copy them yourself.",
+		);
+		await expect(ends.getByTestId('park-course-ends-start-coords')).toHaveText('37.40000, -78.38000');
 	});
 
 	test('a course without its own credit falls back to the geometry source label', async ({ page }) => {

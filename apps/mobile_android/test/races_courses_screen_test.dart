@@ -21,8 +21,10 @@ import 'pump_until.dart';
 import 'supabase_test_init.dart';
 import 'worst_case_layout.dart';
 
-/// Races & courses (issue #1352): the race calendar and the park courses
-/// that can be run any day, as two sections that load and fail on their own.
+/// Races & courses (issue #1352): the race calendar and the parks whose
+/// courses can be run any day, as two sections that load and fail on their
+/// own. Run any time lists parks; a course is listed on its own only when the
+/// search finds it by its own name (decisions § 2550).
 
 class _Races extends RaceService {
   final List<RaceListingView> results;
@@ -120,13 +122,13 @@ class _ParksApi extends ApiClient {
     this.viewer = 'viewer-1',
     this.failCourses = false,
     this.failRecords = false,
-    this.extraCourses = 0,
+    this.extraParks = 0,
   });
 
   final String? viewer;
   final bool failCourses;
   final bool failRecords;
-  final int extraCourses;
+  final int extraParks;
   int recordCalls = 0;
 
   @override
@@ -135,7 +137,12 @@ class _ParksApi extends ApiClient {
   @override
   Future<List<ParkListing>> fetchParks() async {
     if (failCourses) throw StateError('parks down');
-    return [_park('p1', 'Pocahontas'), _park('p2', 'Swift Creek')];
+    return [
+      _park('p1', 'Pocahontas'),
+      _park('p2', 'Swift Creek'),
+      // Named to sort after the two parks the tests look for.
+      for (var i = 0; i < extraParks; i++) _park('px-$i', 'Zz Extra Park $i'),
+    ];
   }
 
   @override
@@ -146,8 +153,8 @@ class _ParksApi extends ApiClient {
       _course('near', 'p2', 'Near Loop', distanceM: 10000, laps: 2, lat: 37.51),
       // A course whose park the reader cannot see is not listed.
       _course('hidden', 'p-gone', 'Hidden Loop', lat: 37.5),
-      for (var i = 0; i < extraCourses; i++)
-        _course('extra-$i', 'p2', 'Extra Loop $i', lat: 37.6 + i / 100),
+      for (var i = 0; i < extraParks; i++)
+        _course('extra-$i', 'px-$i', 'Extra Loop $i', lat: 37.6 + i / 100),
     ];
   }
 
@@ -207,11 +214,35 @@ void main() {
 
   Future<void> coursesListed(WidgetTester tester) => pumpUntil(
         tester,
-        () => find.text('Far Loop').evaluate().isNotEmpty,
-        describe: 'the park courses to list',
+        () => find
+            .byKey(const ValueKey('races-any-time-park-p1'))
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the parks to list',
       );
 
-  worstCaseTestWidgets('the race and course cards', (tester, locale) async {
+  Finder keyed(String prefix, {List<String> not = const []}) =>
+      anyTime(find.byWidgetPredicate((w) {
+        final key = w.key;
+        if (key is! ValueKey<String>) return false;
+        return key.value.startsWith(prefix) &&
+            !not.any((n) => key.value.startsWith(n));
+      }));
+  // The park link on a course card and the distance line share the prefix.
+  Finder parkCards() => keyed('races-any-time-park-', not: [
+        'races-any-time-park-away-',
+        'races-any-time-park-link-',
+      ]);
+  Finder courseCards() => keyed('races-any-time-course-');
+
+  Future<void> type(WidgetTester tester, String text) async {
+    await tester.enterText(find.byKey(const Key('races-search')), text);
+    // Past the 250 ms debounce.
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+  }
+
+  worstCaseTestWidgets('the race cards and park cards', (tester, locale) async {
     await tester.pumpWidget(worstCaseApp(
       locale: locale,
       home: RacesScreen(
@@ -219,8 +250,8 @@ void main() {
         api: _ParksApi(),
       ),
     ));
-    // Far Loop is below a 320 x 640 viewport, so wait for the race instead;
-    // the walk builds the course cards as it scrolls past them.
+    // The parks are below a 320 x 640 viewport, so wait for the race instead;
+    // the walk builds the park cards as it scrolls past them.
     await pumpUntil(
       tester,
       () => find.text('Richmond 10K').evaluate().isNotEmpty,
@@ -228,11 +259,12 @@ void main() {
     );
     await tester.pump();
     await walkScrollable(tester, primaryScrollable(), 'Races & courses');
-    expect(find.text('Far Loop'), findsOneWidget);
+    expect(find.text('Pocahontas'), findsOneWidget);
   });
 
-  testWidgets('shows Upcoming races and Run any time, each with its content',
-      (tester) async {
+  testWidgets(
+      'shows Upcoming races and Run any time, which lists the parks and not '
+      'their courses', (tester) async {
     tallView(tester);
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(results: [_race('r1', 'Richmond 10K')]),
@@ -246,24 +278,29 @@ void main() {
     expect(find.text('Upcoming races'), findsOneWidget);
     expect(find.text('Run any time'), findsOneWidget);
     expect(find.text('Richmond 10K'), findsOneWidget);
-    expect(anyTime(find.text('Near Loop')), findsOneWidget);
+    expect(parkCards(), findsNWidgets(2));
+    expect(anyTime(find.text('Swift Creek')), findsOneWidget);
+    expect(anyTime(find.byType(ParkCard)), findsNWidgets(2));
+    // The park, not its courses again: they are on its page.
+    expect(courseCards(), findsNothing);
+    expect(anyTime(find.text('Near Loop')), findsNothing);
+    expect(anyTime(find.text('Far Loop')), findsNothing);
+    expect(anyTime(find.textContaining('Fastest in')), findsNothing);
+    // A course whose park the reader cannot see brings no park with it.
     expect(anyTime(find.text('Hidden Loop')), findsNothing);
-    expect(anyTime(find.text('Fastest in 2026: 25:00 by Bea')), findsOneWidget);
-    expect(anyTime(find.text('Fastest in 2026: 45:00')), findsOneWidget);
-    // A course distance reads as its name (#1352): no "10.00 km", and no
-    // "Loop" on a loop.
-    expect(anyTime(find.textContaining('10 km')), findsOneWidget);
-    expect(anyTime(find.textContaining('10.00')), findsNothing);
-    expect(anyTime(find.textContaining(' · Loop')), findsNothing);
-    expect(find.byKey(const ValueKey('races-any-time-laps-near')), findsOneWidget);
-    expect(find.byKey(const ValueKey('races-any-time-laps-far')), findsNothing);
-    expect(anyTime(find.text('2 laps')), findsOneWidget);
+    expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('parks-park-summary-p2')))
+            .data,
+        startsWith('1 course'));
+    // One list, so no Parks sub-heading.
+    expect(anyTime(find.text('Parks')), findsNothing);
     // Upcoming races leads, as on web.
     expect(tester.getTopLeft(find.text('Upcoming races')).dy,
         lessThan(tester.getTopLeft(find.text('Run any time')).dy));
   });
 
-  testWidgets('a failed race search leaves the courses listed', (tester) async {
+  testWidgets('a failed race search leaves the parks listed', (tester) async {
     tallView(tester);
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(fail: true),
@@ -274,7 +311,7 @@ void main() {
         find.text("Couldn't load races. Check your connection and try again."),
         findsOneWidget);
     expect(find.byKey(const Key('races-any-time-error')), findsNothing);
-    expect(anyTime(find.text('Far Loop')), findsOneWidget);
+    expect(anyTime(find.text('Pocahontas')), findsOneWidget);
   });
 
   testWidgets('a failed course read leaves the races listed, with a retry',
@@ -298,14 +335,25 @@ void main() {
     expect(find.byKey(const Key('races-any-time-all')), findsNothing);
   });
 
-  testWidgets('failed records leave the courses listed, without a record line',
-      (tester) async {
+  testWidgets(
+      'a course found by name carries its record, and failed records leave it '
+      'listed without one', (tester) async {
     tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(),
+      api: _ParksApi(),
+    )));
+    await coursesListed(tester);
+    await type(tester, 'far loop');
+    expect(anyTime(find.text('Fastest in 2026: 25:00 by Bea')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(),
       api: _ParksApi(failRecords: true),
     )));
     await coursesListed(tester);
+    await type(tester, 'near loop');
     await pumpUntil(
       tester,
       () => find
@@ -315,44 +363,43 @@ void main() {
       describe: 'the records failure to show',
     );
     expect(anyTime(find.text('Near Loop')), findsOneWidget);
-    expect(anyTime(find.textContaining('record:')), findsNothing);
+    expect(anyTime(find.textContaining('Fastest in')), findsNothing);
   });
 
-  testWidgets('signed out, the courses list with no record read at all',
+  testWidgets('signed out, the parks list with no record read at all',
       (tester) async {
     tallView(tester);
     final api = _ParksApi(viewer: null);
     await tester.pumpWidget(_app(RacesScreen(service: _Races(), api: api)));
     await coursesListed(tester);
     expect(api.recordCalls, 0);
-    expect(anyTime(find.textContaining('record')), findsNothing);
+    await type(tester, 'far loop');
+    expect(anyTime(find.text('Far Loop')), findsOneWidget);
+    expect(anyTime(find.textContaining('Fastest in')), findsNothing);
     expect(find.byKey(const Key('races-any-time-records-failed')),
         findsNothing);
   });
 
   testWidgets(
-      'the Show switch hides either section, and Courses lists every course',
+      'the Show switch hides either section, and Courses lists every park',
       (tester) async {
     tallView(tester);
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(results: [_race('r1', 'Richmond 10K')]),
-      api: _ParksApi(extraCourses: 8),
+      api: _ParksApi(extraParks: 8),
     )));
     await coursesListed(tester);
-    final cards = anyTime(find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('races-any-time-course-')));
     expect(find.text('Upcoming races'), findsOneWidget);
-    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+    expect(parkCards(), findsNWidgets(kRunAnyTimeLimit));
 
     await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
     await tester.pump();
     expect(find.text('Upcoming races'), findsNothing);
     expect(find.text('Richmond 10K'), findsNothing);
     expect(find.byKey(const Key('filter-bar-filters')), findsNothing);
-    // The section is kept, not rebuilt, so every course is there at once,
-    // and with every course listed there is no "See all".
-    expect(cards, findsNWidgets(10));
+    // The section is kept, not rebuilt, so every park is there at once, and
+    // with every park listed there is no "See all".
+    expect(parkCards(), findsNWidgets(10));
     expect(find.byKey(const Key('races-any-time-all')), findsNothing);
 
     await tester.tap(find.widgetWithText(ChoiceChip, 'Races'));
@@ -365,35 +412,25 @@ void main() {
     await tester.pump();
     expect(find.text('Upcoming races'), findsOneWidget);
     await coursesListed(tester);
-    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+    expect(parkCards(), findsNWidgets(kRunAnyTimeLimit));
   });
 
-  testWidgets(
-      'Courses leads with the parks, nearest course first, each opening its '
-      'park; All has no park row', (tester) async {
+  testWidgets('a park card opens its park page, in every view', (tester) async {
     tallView(tester);
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(),
       api: _ParksApi(),
+      initialShow: RacesShow.courses,
     )));
     await coursesListed(tester);
-    expect(find.byKey(const Key('races-any-time-parks')), findsNothing);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
-    await tester.pump();
-    final row = find.byKey(const Key('races-any-time-parks'));
-    expect(row, findsOneWidget);
-    expect(find.text('Parks'), findsOneWidget);
-    final cards = find.descendant(of: row, matching: find.byType(ParkCard));
-    expect(cards, findsNWidgets(2));
-    expect(
-        find.descendant(
-            of: find.byKey(const ValueKey('races-any-time-park-p2')),
-            matching: find.text('Swift Creek')),
-        findsOneWidget);
     // The stable order, without a fix: Pocahontas first.
-    expect(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p1'))).dx,
-        lessThan(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p2'))).dx));
+    expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('races-any-time-park-p1')))
+            .dy,
+        lessThan(tester
+            .getTopLeft(find.byKey(const ValueKey('races-any-time-park-p2')))
+            .dy));
     await tester.tap(find.descendant(
         of: find.byKey(const ValueKey('races-any-time-park-p2')),
         matching: find.text('Swift Creek')));
@@ -406,7 +443,7 @@ void main() {
         tester.widget<ParkScreen>(find.byType(ParkScreen)).listing.park.id, 'p2');
   });
 
-  testWidgets('a course card names its park as a link of its own',
+  testWidgets('a course found by name names its park as a link of its own',
       (tester) async {
     tallView(tester);
     await tester.pumpWidget(_app(RacesScreen(
@@ -414,6 +451,7 @@ void main() {
       api: _ParksApi(),
     )));
     await coursesListed(tester);
+    await type(tester, 'near loop');
     final link = find.byKey(const ValueKey('races-any-time-park-link-near'));
     expect(
       tester.getSemantics(link),
@@ -479,20 +517,20 @@ void main() {
           ),
         ));
 
-    testWidgets('without a fix, a stable order: region, park, distance',
+    testWidgets('without a fix, a stable order: region, then park name',
         (tester) async {
       tallView(tester);
       await tester.pumpWidget(
           section(_ParksApi(), positions: () => const Stream.empty()));
       await coursesListed(tester);
-      expect(tester.getTopLeft(find.text('Far Loop')).dy,
-          lessThan(tester.getTopLeft(find.text('Near Loop')).dy),
-          reason: 'Pocahontas sorts before Swift Creek');
+      expect(tester.getTopLeft(find.text('Pocahontas')).dy,
+          lessThan(tester.getTopLeft(find.text('Swift Creek')).dy));
       expect(find.textContaining(' away'), findsNothing);
     });
 
-    testWidgets('with a fix, the nearest course first, with how far it is',
-        (tester) async {
+    testWidgets(
+        'with a fix, the park with the nearest course first, with how far it '
+        'is', (tester) async {
       tallView(tester);
       final fixes = StreamController<Position>();
       addTearDown(fixes.close);
@@ -503,30 +541,33 @@ void main() {
       await pumpUntil(
         tester,
         () => find.textContaining(' away').evaluate().isNotEmpty,
-        describe: 'the fix to reorder the courses',
+        describe: 'the fix to reorder the parks',
       );
-      expect(tester.getTopLeft(find.text('Near Loop')).dy,
-          lessThan(tester.getTopLeft(find.text('Far Loop')).dy));
+      expect(tester.getTopLeft(find.text('Swift Creek')).dy,
+          lessThan(tester.getTopLeft(find.text('Pocahontas')).dy));
+      expect(
+          find.byKey(const ValueKey('races-any-time-park-away-p2')),
+          findsOneWidget);
     });
 
     testWidgets(
-        'a course opens its course page; See all in the heading opens the '
-        'full index', (tester) async {
+        'a park opens its park page; See all in the heading opens the full '
+        'index', (tester) async {
       tallView(tester);
-      await tester.pumpWidget(section(_ParksApi(extraCourses: 8),
+      await tester.pumpWidget(section(_ParksApi(extraParks: 8),
           positions: () => const Stream.empty()));
       await coursesListed(tester);
-      await tester.tap(find.text('Far Loop'));
+      await tester.tap(find.text('Pocahontas'));
       await pumpUntil(
         tester,
-        () => find.byType(ParkCourseScreen).evaluate().isNotEmpty,
-        describe: 'the course page to open',
+        () => find.byType(ParkScreen).evaluate().isNotEmpty,
+        describe: 'the park page to open',
       );
-      Navigator.of(tester.element(find.byType(ParkCourseScreen))).pop();
+      Navigator.of(tester.element(find.byType(ParkScreen))).pop();
       await pumpUntil(
         tester,
-        () => find.byType(ParkCourseScreen).evaluate().isEmpty,
-        describe: 'the course page to close',
+        () => find.byType(ParkScreen).evaluate().isEmpty,
+        describe: 'the park page to close',
       );
       await tester.tap(find.byKey(const Key('races-any-time-all')));
       await pumpUntil(
@@ -543,11 +584,11 @@ void main() {
           section(_ParksApi(), positions: () => const Stream.empty()));
       await coursesListed(tester);
       expect(find.byKey(const Key('races-any-time-all')), findsNothing,
-          reason: 'two courses fit under the limit of eight');
+          reason: 'two parks fit under the limit of eight');
 
       // A new section, not the old one handed a new client.
       await tester.pumpWidget(const SizedBox());
-      await tester.pumpWidget(section(_ParksApi(extraCourses: 8),
+      await tester.pumpWidget(section(_ParksApi(extraParks: 8),
           positions: () => const Stream.empty()));
       await pumpUntil(
         tester,
@@ -555,6 +596,7 @@ void main() {
         describe: 'the cut-short list to offer See all',
       );
       final seeAll = find.byKey(const Key('races-any-time-all'));
+      // Ten parks of one course each.
       expect(find.descendant(of: seeAll, matching: find.text('See all 10 courses')),
           findsOneWidget);
       // In the heading row, not under the last card.
@@ -588,7 +630,7 @@ void main() {
       await pumpUntil(
         tester,
         () => find.textContaining(' away').evaluate().isNotEmpty,
-        describe: 'the fix to measure the courses',
+        describe: 'the fix to measure the parks',
       );
       final lines = [
         for (final e in find.textContaining(' away').evaluate())
@@ -603,19 +645,6 @@ void main() {
   });
 
   group('the search', () {
-    Future<void> type(WidgetTester tester, String text) async {
-      await tester.enterText(find.byKey(const Key('races-search')), text);
-      // Past the 250 ms debounce.
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump();
-    }
-
-    Finder courseCards() => anyTime(find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>)
-            .value
-            .startsWith('races-any-time-course-')));
-
     testWidgets(
         'is in the FilterBar with help and the overflow on its row, in every '
         'view', (tester) async {
@@ -650,48 +679,51 @@ void main() {
     });
 
     testWidgets(
-        'filters the courses by name, park and place after a pause, and '
-        'keeps doing so in the Courses view', (tester) async {
+        'finds parks by name and place and courses by their own name after a '
+        'pause, and keeps doing so in the Courses view', (tester) async {
       tallView(tester);
       await tester.pumpWidget(_app(RacesScreen(
         service: _Races(results: [_race('r1', 'Richmond 10K')]),
         api: _ParksApi(),
       )));
       await coursesListed(tester);
-      expect(courseCards(), findsNWidgets(2));
+      expect(parkCards(), findsNWidgets(2));
+      expect(courseCards(), findsNothing);
 
       await tester.enterText(find.byKey(const Key('races-search')), 'far');
       await tester.pump();
-      expect(courseCards(), findsNWidgets(2),
+      expect(parkCards(), findsNWidgets(2),
           reason: 'debounced: nothing refilters on the keystroke');
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
+      // By course name: the course on its own, under Courses, with its park.
+      expect(courseCards(), findsOneWidget);
       expect(anyTime(find.text('Far Loop')), findsOneWidget);
-      expect(anyTime(find.text('Near Loop')), findsNothing);
+      expect(anyTime(find.text('Pocahontas, Virginia')), findsOneWidget);
+      expect(parkCards(), findsNothing);
+      expect(anyTime(find.text('Courses')), findsOneWidget);
 
-      // By park, with an accent and in capitals.
+      // By park, with an accent and in capitals: the park, not its course.
       await type(tester, 'SWÏFT');
-      expect(anyTime(find.text('Near Loop')), findsOneWidget);
-      expect(anyTime(find.text('Far Loop')), findsNothing);
+      expect(find.byKey(const ValueKey('races-any-time-park-p2')),
+          findsOneWidget);
+      expect(parkCards(), findsOneWidget);
+      expect(courseCards(), findsNothing);
 
       // By place: both parks are in Virginia.
       await type(tester, 'virginia');
-      expect(courseCards(), findsNWidgets(2));
+      expect(parkCards(), findsNWidgets(2));
+      expect(courseCards(), findsNothing);
 
       // Words combine across course and park.
       await type(tester, 'pocahontas loop');
       expect(courseCards(), findsOneWidget);
       expect(anyTime(find.text('Far Loop')), findsOneWidget);
+      expect(parkCards(), findsNothing);
 
       await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
       await tester.pump();
       expect(courseCards(), findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byKey(const Key('races-any-time-parks')),
-              matching: find.byType(ParkCard)),
-          findsOneWidget,
-          reason: 'the park row follows the search');
       expect(
           find.descendant(
               of: find.byKey(const Key('races-search')),
@@ -716,7 +748,7 @@ void main() {
           of: none, matching: find.widgetWithText(FilledButton, 'Clear search')));
       await tester.pump();
       expect(none, findsNothing);
-      expect(courseCards(), findsNWidgets(2));
+      expect(parkCards(), findsNWidgets(2));
       expect(
           tester
               .widget<TextField>(find.descendant(
@@ -739,8 +771,11 @@ void main() {
       ));
       await pumpUntil(
         tester,
-        () => find.byKey(const Key('races-any-time-parks')).evaluate().isNotEmpty,
-        describe: 'the courses to list',
+        () => find
+            .byKey(const ValueKey('races-any-time-park-p1'))
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the parks to list',
       );
       await tester.enterText(
           find.byKey(const Key('races-search')), 'a long search with no match');
@@ -757,7 +792,7 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: RunAnyTimeSection(
-              api: _ParksApi(extraCourses: 8),
+              api: _ParksApi(extraParks: 8),
               positions: () => const Stream.empty(),
             ),
           ),

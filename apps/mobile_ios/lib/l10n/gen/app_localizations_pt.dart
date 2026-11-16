@@ -16185,7 +16185,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página da prova e inscrição';
+  String get racesRacePage => 'Página da prova';
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';
@@ -22847,6 +22847,42 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksLegendStartFinish => 'Partida e meta';
+
+  @override
+  String get parksEndsTitle => 'Pontos de partida e chegada';
+
+  @override
+  String get parksEndsCopy => 'Copiar';
+
+  @override
+  String get parksEndsCopyStart => 'Copiar as coordenadas da partida';
+
+  @override
+  String get parksEndsCopyFinish => 'Copiar as coordenadas da chegada';
+
+  @override
+  String get parksEndsCopyStartFinish =>
+      'Copiar as coordenadas da partida e chegada';
+
+  @override
+  String get parksEndsCopied => 'Coordenadas copiadas';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'Não foi possível copiar as coordenadas. Selecione-as e copie-as manualmente.';
+
+  @override
+  String get parksEndsDirections => 'Como chegar';
+
+  @override
+  String get parksEndsDirectionsStart => 'Como chegar à partida';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Como chegar ao local de chegada';
+
+  @override
+  String get parksEndsDirectionsStartFinish =>
+      'Como chegar à partida e chegada';
 
   @override
   String get parksLegendCheckpoints =>
@@ -40314,7 +40350,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página da prova e inscrição';
+  String get racesRacePage => 'Página da prova';
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';
@@ -46974,6 +47010,42 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksLegendStartFinish => 'Largada e chegada';
+
+  @override
+  String get parksEndsTitle => 'Pontos de largada e chegada';
+
+  @override
+  String get parksEndsCopy => 'Copiar';
+
+  @override
+  String get parksEndsCopyStart => 'Copiar as coordenadas da largada';
+
+  @override
+  String get parksEndsCopyFinish => 'Copiar as coordenadas da chegada';
+
+  @override
+  String get parksEndsCopyStartFinish =>
+      'Copiar as coordenadas da largada e chegada';
+
+  @override
+  String get parksEndsCopied => 'Coordenadas copiadas';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'Não foi possível copiar as coordenadas. Selecione e copie você mesmo.';
+
+  @override
+  String get parksEndsDirections => 'Como chegar';
+
+  @override
+  String get parksEndsDirectionsStart => 'Como chegar à largada';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Como chegar ao local de chegada';
+
+  @override
+  String get parksEndsDirectionsStartFinish =>
+      'Como chegar à largada e chegada';
 
   @override
   String get parksLegendCheckpoints =>

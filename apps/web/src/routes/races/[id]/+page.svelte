@@ -45,6 +45,8 @@
 	import type { Route, RouteMarker } from '#lib/types.ts';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
 	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
+	import CourseEndsBlock from '#lib/components/parks/CourseEndsBlock.svelte';
+	import { courseEnds } from '#lib/parks/park_courses.ts';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 
@@ -298,6 +300,9 @@
 	);
 
 	const coursePoints = $derived(routePathPoints(courseRoute?.waypoints));
+	// From the line this page draws, which for a non-owner is the clipped one,
+	// so the block gives no point the map does not already show.
+	const courseEndPoints = $derived(courseEnds({ line: coursePoints }));
 	const courseClimbNames = $derived(climbNamesFromMarkers(courseMarkers, coursePoints));
 
 	let entryHref = $derived(race?.entry_url ? safeHref(race.entry_url) : null);
@@ -389,7 +394,7 @@
 					rel="noopener noreferrer"
 					data-testid="race-detail-register"
 				>
-					{m('races.register')}
+					{m('races.racePage')}
 				</a>
 			{/if}
 			{#if resultsHref && resultsHref !== '#'}
@@ -476,6 +481,9 @@
 						/>
 						<DriveCourseButton points={courseRoute.waypoints} markers={courseMarkers} title={race.name} />
 					</div>
+					{#if courseEndPoints}
+						<CourseEndsBlock ends={courseEndPoints} testidPrefix="race-detail" headingLevel={3} />
+					{/if}
 				{/if}
 			</section>
 		{/if}

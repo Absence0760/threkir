@@ -1,8 +1,10 @@
 /**
- * The order of the "Run any time" park courses on the Races & courses page
- * (issue #1352). Nearest first when the page has a point to measure from,
- * otherwise a stable order that does not depend on where the reader is.
- * Either way a closed course sinks below every course that can be run.
+ * The order of the "Run any time" parks and park courses on the Races &
+ * courses page (issue #1352). Nearest first when the page has a point to
+ * measure from, otherwise a stable order that does not depend on where the
+ * reader is. Either way what cannot be run sinks below what can. The section
+ * lists parks; a course is listed on its own only when a search finds it by
+ * its own name (decisions § 2550).
  *
  * Parity pair with `apps/mobile_android/lib/any_time_courses.dart`
  * (docs/architecture/parity_pairs.md).
@@ -71,6 +73,112 @@ export function orderAnyTimeCourses<T>(
 		return compareStable(a.k, b.k);
 	});
 	return rows.map(({ course, awayM }) => ({ course, awayM }));
+}
+
+type LatLng = { lat: number; lng: number };
+
+export interface AnyTimeParkKey {
+	regionCode: string;
+	parkName: string;
+	slug: string;
+	/** True when every course the park lists is closed. */
+	allClosed: boolean;
+	/** Its courses' starts, the points the park is measured by. */
+	starts: readonly LatLng[];
+	/** The park's own location, measured only when no course has a start. */
+	location: LatLng | null;
+}
+
+export interface OrderedPark<T> {
+	park: T;
+	/** Metres from the origin to the park's nearest course start; null with no origin or point. */
+	awayM: number | null;
+}
+
+function parkAwayM(origin: LatLng, k: AnyTimeParkKey): number | null {
+	const points = k.starts.length > 0 ? k.starts : k.location ? [k.location] : [];
+	let best: number | null = null;
+	for (const p of points) {
+		const d = haversineMetres(origin.lat, origin.lng, p.lat, p.lng);
+		if (best === null || d < best) best = d;
+	}
+	return best;
+}
+
+/**
+ * Parks in "Run any time" order: the course rule applied per park. With an
+ * origin, by the distance to the park's nearest course start (its own
+ * location when no course has one), a park with neither after every measured
+ * one; without, by region then name. A park whose courses are all closed
+ * comes last in both.
+ */
+export function orderAnyTimeParks<T>(
+	parks: readonly T[],
+	key: (park: T) => AnyTimeParkKey,
+	origin: LatLng | null,
+): OrderedPark<T>[] {
+	const rows = parks.map((park) => {
+		const k = key(park);
+		return { park, k, awayM: origin ? parkAwayM(origin, k) : null };
+	});
+	rows.sort((a, b) => {
+		const closed = Number(a.k.allClosed) - Number(b.k.allClosed);
+		if (closed !== 0) return closed;
+		if (origin) {
+			if (a.awayM !== null && b.awayM !== null && a.awayM !== b.awayM) return a.awayM - b.awayM;
+			if (a.awayM === null && b.awayM !== null) return 1;
+			if (a.awayM !== null && b.awayM === null) return -1;
+		}
+		return (
+			compareText(a.k.regionCode, b.k.regionCode) ||
+			compareText(a.k.parkName, b.k.parkName) ||
+			compareText(a.k.slug, b.k.slug)
+		);
+	});
+	return rows.map(({ park, awayM }) => ({ park, awayM }));
+}
+
+export interface AnyTimeSearchView {
+	parkId: string;
+	courseName: string;
+	parkName: string;
+	regionCode: string;
+}
+
+export interface AnyTimeHits<C> {
+	/** The parks to list, each once, in the order their first course came. */
+	parkIds: string[];
+	/** The courses to list on their own. */
+	courses: C[];
+}
+
+/**
+ * What "Run any time" lists for a search. With no words, every park and no
+ * course on its own. With words, the parks whose own name or place matches,
+ * plus each course that matches by its own name where its park does not, so
+ * "beaver" finds Beaver Lake Trail and "pocahontas" finds the park, not its
+ * six courses again.
+ */
+export function anyTimeSearchHits<C>(
+	courses: readonly C[],
+	view: (course: C) => AnyTimeSearchView,
+	terms: readonly string[],
+): AnyTimeHits<C> {
+	const parkIds: string[] = [];
+	const seen = new Set<string>();
+	const hits: C[] = [];
+	for (const c of courses) {
+		const v = view(c);
+		if (parkSearchMatches(terms, { parkName: v.parkName, regionCode: v.regionCode })) {
+			if (!seen.has(v.parkId)) {
+				seen.add(v.parkId);
+				parkIds.push(v.parkId);
+			}
+		} else if (parkSearchMatches(terms, v)) {
+			hits.push(c);
+		}
+	}
+	return { parkIds, courses: hits };
 }
 
 /**

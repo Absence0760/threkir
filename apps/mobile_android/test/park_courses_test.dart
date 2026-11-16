@@ -395,4 +395,66 @@ void main() {
       expect(parseSharedUse(raw), isNull, reason: '$raw');
     }
   });
+
+  group('course ends', () {
+    const line = [
+      (lat: 37.39124, lng: -77.5762),
+      (lat: 37.4, lng: -77.58),
+      (lat: 37.41, lng: -77.59),
+    ];
+
+    test('the first and last point of the line without timing lines', () {
+      final ends = courseEnds(line: line, shape: 'point_to_point')!;
+      expect(ends.start, (lat: 37.39124, lng: -77.5762));
+      expect(ends.finish, (lat: 37.41, lng: -77.59));
+    });
+
+    test('the timing line centres when the course has them, each on its own',
+        () {
+      final both = courseEnds(
+        line: line,
+        startGate: (lat: 37.3913, lng: -77.5763),
+        endGate: (lat: 37.4101, lng: -77.5901),
+      )!;
+      expect(both.start, (lat: 37.3913, lng: -77.5763));
+      expect(both.finish, (lat: 37.4101, lng: -77.5901));
+      final one = courseEnds(
+        line: line,
+        startGate: (lat: 37.3913, lng: -77.5763),
+        endGate: (lat: null, lng: null),
+      )!;
+      expect(one.start, (lat: 37.3913, lng: -77.5763));
+      expect(one.finish, (lat: 37.41, lng: -77.59));
+    });
+
+    test('a loop, or two ends within 30 m, is one place', () {
+      final loop = courseEnds(line: line, shape: 'loop')!;
+      expect(loop.start, (lat: 37.39124, lng: -77.5762));
+      expect(loop.finish, isNull);
+      // 0.0002 degrees of latitude is about 22 m; 0.0003 about 33 m.
+      final near = [line[0], line[1], (lat: 37.39144, lng: -77.5762)];
+      expect(courseEnds(line: near, shape: 'out_and_back')!.finish, isNull);
+      final apart = [line[0], line[1], (lat: 37.39154, lng: -77.5762)];
+      expect(courseEnds(line: apart, shape: 'out_and_back')!.finish,
+          (lat: 37.39154, lng: -77.5762));
+    });
+
+    test('no line and no timing lines has nothing to give', () {
+      expect(courseEnds(line: const []), isNull);
+      final gates = courseEnds(
+        line: const [],
+        startGate: (lat: 1, lng: 2),
+        endGate: (lat: 1, lng: 2),
+      )!;
+      expect(gates.start, (lat: 1.0, lng: 2.0));
+      expect(gates.finish, isNull);
+    });
+
+    test('formatLatLng: lat then lng, five decimals, no negative zero', () {
+      expect(formatLatLng((lat: 37.39124, lng: -77.5762)), '37.39124, -77.57620');
+      expect(formatLatLng((lat: 37.391244, lng: -77.576196)),
+          '37.39124, -77.57620');
+      expect(formatLatLng((lat: -0.000001, lng: 0)), '0.00000, 0.00000');
+    });
+  });
 }

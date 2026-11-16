@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { parseRouteGuide } from './route_guide';
 import {
+	courseEnds,
+	formatLatLng,
 	COURSE_SHAPES,
 	courseAttribution,
 	courseIsCountable,
@@ -370,3 +372,51 @@ test('parseSharedUse: reads a known key and nothing else', () => {
 		assert.equal(parseSharedUse(raw), null, String(raw));
 	}
 });
+
+const line = [
+	{ lat: 37.39124, lng: -77.5762 },
+	{ lat: 37.4, lng: -77.58 },
+	{ lat: 37.41, lng: -77.59 },
+];
+
+test('courseEnds: the first and last point of the line without timing lines', () => {
+	assert.deepEqual(courseEnds({ line, shape: 'point_to_point' }), {
+		start: { lat: 37.39124, lng: -77.5762 },
+		finish: { lat: 37.41, lng: -77.59 },
+	});
+});
+
+test('courseEnds: the timing line centres when the course has them, each on its own', () => {
+	assert.deepEqual(
+		courseEnds({ line, startGate: { lat: 37.3913, lng: -77.5763 }, endGate: { lat: 37.4101, lng: -77.5901 } }),
+		{ start: { lat: 37.3913, lng: -77.5763 }, finish: { lat: 37.4101, lng: -77.5901 } },
+	);
+	assert.deepEqual(courseEnds({ line, startGate: { lat: 37.3913, lng: -77.5763 }, endGate: { lat: null, lng: null } }), {
+		start: { lat: 37.3913, lng: -77.5763 },
+		finish: { lat: 37.41, lng: -77.59 },
+	});
+});
+
+test('courseEnds: a loop, or two ends within 30 m, is one place', () => {
+	assert.deepEqual(courseEnds({ line, shape: 'loop' }), { start: { lat: 37.39124, lng: -77.5762 }, finish: null });
+	// 0.0002 degrees of latitude is about 22 m; 0.0003 about 33 m.
+	const near = [line[0], line[1], { lat: 37.39144, lng: -77.5762 }];
+	assert.equal(courseEnds({ line: near, shape: 'out_and_back' })?.finish, null);
+	const apart = [line[0], line[1], { lat: 37.39154, lng: -77.5762 }];
+	assert.deepEqual(courseEnds({ line: apart, shape: 'out_and_back' })?.finish, { lat: 37.39154, lng: -77.5762 });
+});
+
+test('courseEnds: no line and no timing lines has nothing to give', () => {
+	assert.equal(courseEnds({ line: [] }), null);
+	assert.deepEqual(courseEnds({ line: [], startGate: { lat: 1, lng: 2 }, endGate: { lat: 1, lng: 2 } }), {
+		start: { lat: 1, lng: 2 },
+		finish: null,
+	});
+});
+
+test('formatLatLng: lat then lng, five decimals, no negative zero', () => {
+	assert.equal(formatLatLng({ lat: 37.39124, lng: -77.5762 }), '37.39124, -77.57620');
+	assert.equal(formatLatLng({ lat: 37.391244, lng: -77.576196 }), '37.39124, -77.57620');
+	assert.equal(formatLatLng({ lat: -0.000001, lng: 0 }), '0.00000, 0.00000');
+});
+

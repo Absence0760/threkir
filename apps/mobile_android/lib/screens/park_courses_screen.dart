@@ -44,6 +44,7 @@ import '../preferences.dart';
 import '../route_guide.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
+import '../widgets/course_ends_card.dart';
 import '../widgets/elevation_chart.dart';
 import '../widgets/error_state.dart';
 import 'help_screen.dart' show openGuide;
@@ -959,6 +960,10 @@ class ParkCourseScreen extends StatefulWidget {
   /// null opens on this year. Web carries it as `?period=`.
   final BoardPeriod? initialPeriod;
 
+  /// Test seam for the start and finish directions; production opens the
+  /// maps app.
+  final Future<bool> Function(Uri uri)? launch;
+
   const ParkCourseScreen({
     super.key,
     required this.api,
@@ -966,6 +971,7 @@ class ParkCourseScreen extends StatefulWidget {
     required this.course,
     this.fromPark = false,
     this.initialPeriod,
+    this.launch,
   });
 
   @override
@@ -1161,6 +1167,14 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final wayfinding = courseOffersWayfinding(course.status);
     final canNavigate = api != null && routeId != null && wayfinding;
     final canShare = geometry.length >= 2 && wayfinding;
+    // Where the course starts and finishes, as the matcher times it: its line
+    // centres, else the ends of the drawn line.
+    final ends = courseEnds(
+      line: [for (final w in geometry) (lat: w.lat, lng: w.lng)],
+      startGate: (lat: segment.startGateLat, lng: segment.startGateLng),
+      endGate: (lat: segment.endGateLat, lng: segment.endGateLng),
+      shape: course.courseShape,
+    );
     return DetailPage(
       title: segment.name,
       actions: [
@@ -1259,6 +1273,10 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                ],
+                if (ends != null) ...[
+                  const SizedBox(height: 16),
+                  CourseEndsCard(ends: ends, launch: widget.launch),
                 ],
                 if (elevationSeries(geometry) != null) ...[
                   const SizedBox(height: 20),

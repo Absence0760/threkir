@@ -71,7 +71,7 @@ test.describe('/races/[id] — race detail', () => {
 		await expect(page.getByTestId('race-detail-name')).toHaveText(raceName);
 		await expect(page.getByTestId('race-detail-source')).toHaveText('Listed on RunSignUp');
 		await expect(page.getByTestId('race-detail-register')).toHaveAttribute('href', entryUrl);
-		await expect(page.getByTestId('race-detail-register')).toHaveText('Race page & register');
+		await expect(page.getByTestId('race-detail-register')).toHaveText('Race page');
 		await expect(page.getByTestId('race-detail-train')).toBeVisible();
 		await expect(page.getByTestId('race-detail-import')).toHaveCount(0);
 		await expect(page.getByTestId('race-detail-import-later')).toBeVisible();

@@ -16158,7 +16158,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Página de la prueba e inscripción';
+  String get racesRacePage => 'Página de la prueba';
 
   @override
   String get racesTrainForThis => 'Entrenar para esta prueba';
@@ -22821,6 +22821,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksLegendStartFinish => 'Salida y meta';
+
+  @override
+  String get parksEndsTitle => 'Puntos de salida y meta';
+
+  @override
+  String get parksEndsCopy => 'Copiar';
+
+  @override
+  String get parksEndsCopyStart => 'Copiar las coordenadas de la salida';
+
+  @override
+  String get parksEndsCopyFinish => 'Copiar las coordenadas de la meta';
+
+  @override
+  String get parksEndsCopyStartFinish =>
+      'Copiar las coordenadas de la salida y meta';
+
+  @override
+  String get parksEndsCopied => 'Coordenadas copiadas';
+
+  @override
+  String get parksEndsCopyFailed =>
+      'No se pudieron copiar las coordenadas. Selecciónalas y cópialas tú.';
+
+  @override
+  String get parksEndsDirections => 'Cómo llegar';
+
+  @override
+  String get parksEndsDirectionsStart => 'Cómo llegar a la salida';
+
+  @override
+  String get parksEndsDirectionsFinish => 'Cómo llegar a la meta';
+
+  @override
+  String get parksEndsDirectionsStartFinish => 'Cómo llegar a la salida y meta';
 
   @override
   String get parksLegendCheckpoints =>

@@ -312,7 +312,6 @@ class _RacesScreenState extends State<RacesScreen> {
                 limit: _show.value == RacesShow.courses
                     ? null
                     : kRunAnyTimeLimit,
-                showParks: _show.value == RacesShow.courses,
                 query: _settledQuery,
                 onClearQuery: _clearSearch,
               ),
@@ -615,7 +614,7 @@ class _RaceCard extends StatelessWidget {
         if (race.entryUrl != null)
           OutlinedButton(
             onPressed: () => _launch(context, race.entryUrl!),
-            child: Text(l.racesRegister),
+            child: Text(l.racesRacePage),
           ),
         if (race.resultsUrl != null)
           OutlinedButton(

@@ -25,6 +25,7 @@
 		boardPeriodArgs,
 		boardPeriodParam,
 		courseAttribution,
+		courseEnds,
 		courseOffersWayfinding,
 		parkCourseGpx,
 		parseBoardPeriod,
@@ -60,6 +61,7 @@
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import CourseEndsBlock from '#lib/components/parks/CourseEndsBlock.svelte';
 	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
 	import { parseRouteGuide } from '#lib/parks/route_guide.ts';
 	import ParkCourseReportDialog from '#lib/components/parks/ParkCourseReportDialog.svelte';
@@ -141,6 +143,19 @@
 			lng: Number(w.lng),
 			ele: w.ele,
 		})),
+	);
+
+	// Where the course starts and finishes, as the matcher times it: its line
+	// centres, else the ends of the drawn line.
+	const ends = $derived(
+		course
+			? courseEnds({
+					line: mapTrack,
+					startGate: { lat: course.segment.start_gate_lat, lng: course.segment.start_gate_lng },
+					endGate: { lat: course.segment.end_gate_lat, lng: course.segment.end_gate_lng },
+					shape: course.course_shape,
+				})
+			: null,
 	);
 
 	async function load() {
@@ -446,6 +461,12 @@
 			{/if}
 
 			<div class="notices-slot">
+				<!-- In this slot so the wide layout keeps its placed rows. -->
+				{#if ends}
+					<div class="ends-wrap">
+						<CourseEndsBlock {ends} testidPrefix="park-course" />
+					</div>
+				{/if}
 				<ParkCourseNotices
 					distanceM={Number(course.segment.distance_m)}
 					sharedUse={parseSharedUse(course.shared_use)}
@@ -757,6 +778,9 @@
 		border-radius: var(--radius-md);
 		background: var(--color-warning-light);
 		color: var(--color-warning-text);
+	}
+	.ends-wrap {
+		margin-bottom: var(--space-lg);
 	}
 	/* One column on a phone, in reading order. From 72rem the map and the board
 	   take the wide column and the summary, actions, route guide and notices the narrow

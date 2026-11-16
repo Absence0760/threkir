@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTheme;
 
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -181,8 +182,41 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
     expect(find.text('E2E Half'), findsOneWidget);
-    expect(find.text('Race page & register'), findsOneWidget);
+    expect(find.text('Race page'), findsOneWidget);
     expect(find.text('Import my result'), findsOneWidget);
+  });
+
+  testWidgets(
+      'on a 360 dp phone the race page and import buttons share one row',
+      (tester) async {
+    // The test font draws every glyph a full em wide, nearly twice Manrope's
+    // average, so whether the two labels fit one row is measured in the
+    // app's own font and button theme.
+    for (final family in ['Manrope', 'packages/ui_kit/Manrope']) {
+      await (FontLoader(family)
+            ..addFont(rootBundle.load('packages/ui_kit/fonts/Manrope-SemiBold.ttf')))
+          .load();
+    }
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final service = _FakeRaceService(
+      results: [_listing('r-row', 'Riverside Half')],
+    );
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: RacesScreen(service: service),
+    ));
+    await tester.pump();
+
+    final racePage = find.widgetWithText(OutlinedButton, 'Race page');
+    final import = find.widgetWithText(FilledButton, 'Import my result');
+    expect(racePage, findsOneWidget);
+    expect(import, findsOneWidget);
+    expect(tester.getCenter(racePage).dy, tester.getCenter(import).dy);
+    expect(tester.getCenter(racePage).dx, lessThan(tester.getCenter(import).dx));
   });
 
   testWidgets('a race not yet run offers no import, only from race day on',
@@ -630,7 +664,7 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page & register'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page'));
     await tester.pump();
     await tester.pump();
 
@@ -661,7 +695,7 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page & register'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page'));
     await tester.pump();
     await tester.pump();
 

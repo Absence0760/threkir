@@ -1,12 +1,10 @@
-github_repo = "Absence0760/threkir"
+github_repo = "jaredhoward-dev/threkir"
 
 # The OIDC `sub` prefix GitHub actually issues. Immutable subject claims are
 # on for this repo, so it carries numeric IDs rather than the slug above and
 # does NOT change when the repo is renamed. Read it with:
-#   gh api repos/Absence0760/threkir/actions/oidc/customization/sub --jq .sub_claim_prefix
-github_subject_prefix = "repo:Absence0760@21693150/threkir@1202414286"
-
-# Org move (Absence0760/project-mgmt#14): before transferring the repo into the
-# GitHub org, list the post-transfer prefix here so the roles trust both; after
-# the transfer, move it into github_subject_prefix and empty this list.
-github_extra_subject_prefixes = ["repo:jaredhoward-dev@357177875/threkir@1202414286"]
+#   gh api repos/jaredhoward-dev/threkir/actions/oidc/customization/sub --jq .sub_claim_prefix
+# Since the move into the jaredhoward-dev org (project-mgmt#14) this is the
+# only subject the roles trust; github_extra_subject_prefixes is back to its
+# default of [].
+github_subject_prefix = "repo:jaredhoward-dev@357177875/threkir@1202414286"

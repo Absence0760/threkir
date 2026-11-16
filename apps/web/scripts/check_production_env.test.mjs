@@ -543,7 +543,7 @@ test('refuses a Postgres connection string, and does not echo its password', () 
 	// PUBLIC_* is inlined into every client bundle by Vite, so this one
 	// publishes a database password — and the finding that refuses it must not
 	// print the password into a CI log either.
-	const url = 'postgresql://postgres:hunter2@db.abcd.supabase.co:5432/postgres';
+	const url = 'postgresql://postgres:hunter2@db.abcd.supabase.co:5432/postgres'; // trufflehog:ignore -- placeholder fixture (db.abcd), not a credential
 	const r = checkProductionEnv({
 		PUBLIC_SUPABASE_URL: url,
 		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',

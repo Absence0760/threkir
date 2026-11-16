@@ -78,6 +78,39 @@ test.describe('/plans/new — AI plan request', () => {
 		await expect(editor.getByRole('button', { name: 'Create plan' })).toBeEnabled();
 	});
 
+	test('an ultra extraction selects the Ultra entry with its distance', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					inputs: {
+						goalEvent: 'custom',
+						goalDistanceM: 56000,
+						raceDate: null,
+						goalTimeSec: 6 * 3600,
+						recent5kSec: null,
+						daysPerWeek: 5,
+						weeks: null,
+						beginnerWalkRun: false,
+						planName: 'Two Oceans',
+						assumptions: []
+					}
+				})
+			});
+		});
+
+		const editor = await describe(page, 'plan my 56 km Two Oceans in six hours, 5 days a week');
+		await expect(editor.locator('.ai-applied')).toBeVisible({ timeout: 10_000 });
+		await expect(editor.getByRole('combobox', { name: /Goal race/ })).toHaveValue('ultra_56k');
+		await expect(editor.getByTestId('plan-ultra-distance')).toBeVisible();
+		// The ultra default length, and a goal time past the road 9-hour field.
+		await expect(editor.locator('.weeks .week-item')).toHaveCount(16);
+		const goalTime = editor.locator('fieldset', { hasText: 'Goal time' }).first().locator('input[type="number"]');
+		await expect(goalTime.nth(0)).toHaveValue('6');
+		await expect(editor.getByRole('button', { name: 'Create plan' })).toBeEnabled();
+	});
+
 	test('a second fill replaces the first one\'s length and goal time rather than inheriting them', async ({
 		page,
 		mockRoute

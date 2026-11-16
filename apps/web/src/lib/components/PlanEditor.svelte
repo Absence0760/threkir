@@ -299,7 +299,11 @@
 		exitImportMode();
 		beginnerWalkRun = inputs.beginnerWalkRun;
 		goalEvent = inputs.goalEvent;
-		ultraChoice = null;
+		// An ultra arrives as `custom` plus its distance and selects the
+		// matching Ultra entry, so the distance field shows what was heard.
+		const ultra = inputs.goalEvent === 'custom' && inputs.goalDistanceM != null;
+		ultraChoice = ultra ? (ultraPresetFor(inputs.goalDistanceM!) ?? 'ultra_other') : null;
+		if (ultra) ultraDistanceM = inputs.goalDistanceM;
 		daysPerWeek = inputs.daysPerWeek;
 		// A fill replaces the shape of the plan, not just the fields this
 		// description happened to name: a second fill must not inherit the

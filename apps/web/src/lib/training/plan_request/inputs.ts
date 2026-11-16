@@ -18,7 +18,8 @@
 // is unit-testable in isolation (inputs.test.ts).
 
 import { lengthLimit } from '../../core/column_limits';
-import { GOAL_DISTANCES_M, type GoalEvent } from '../training';
+import { GOAL_DISTANCES_M, isUltraDistance, type GoalEvent } from '../training';
+import { RACE_GOAL_MAX_HOURS } from '../plan_races';
 
 export type PlanRequestGoalEvent = Exclude<GoalEvent, 'custom'>;
 
@@ -38,7 +39,12 @@ export const PLAN_REQUEST_ASSUMPTIONS = [
 export type PlanRequestAssumption = (typeof PLAN_REQUEST_ASSUMPTIONS)[number];
 
 export interface PlanRequestInputs {
-	goalEvent: PlanRequestGoalEvent;
+	/// A road rung, or `custom` for an ultra, whose distance is then in
+	/// `goalDistanceM`.
+	goalEvent: PlanRequestGoalEvent | 'custom';
+	/// Metres, set only with a `custom` (ultra) goal: past the marathon and at
+	/// most MAX_ULTRA_DISTANCE_M.
+	goalDistanceM: number | null;
 	/// ISO `yyyy-mm-dd`, strictly after today and at most two years out.
 	raceDate: string | null;
 	goalTimeSec: number | null;
@@ -68,6 +74,16 @@ export const MAX_GOAL_PACE_SEC_PER_KM = 900;
 /// The goal-time hours field caps at 9, so a longer goal would fill a field
 /// the browser then refuses to submit.
 export const MAX_GOAL_TIME_SEC = 10 * 3600;
+
+/// The ultra band, km. The floor is the marathon itself — anything not past
+/// it is a road race — and 400 km is past every single-stage race a plan is
+/// built for (the Moab 240 is 386 km); further is a units misread.
+export const MAX_ULTRA_DISTANCE_M = 400_000;
+/// An ultra's goal pace may be a hike: 20:00/km still finishes a 240-miler
+/// inside its cutoff. The time cap is the race goal cap every plan surface
+/// shares.
+export const MAX_ULTRA_GOAL_PACE_SEC_PER_KM = 1200;
+export const MAX_ULTRA_GOAL_TIME_SEC = RACE_GOAL_MAX_HOURS * 3600;
 
 /// Recent 5K band: 12:00 is past the world record, and the minutes field caps
 /// at 59, so 60:00 itself would fill a field the browser refuses to submit.
@@ -109,10 +125,23 @@ function validRaceDate(raw: unknown, todayIso: string): string | null {
 	return race <= limit ? (raw as string) : null;
 }
 
-function goalTimeFitsPace(goalTimeSec: number, goalEvent: PlanRequestGoalEvent): boolean {
-	if (goalTimeSec >= MAX_GOAL_TIME_SEC) return false;
-	const pace = goalTimeSec / (GOAL_DISTANCES_M[goalEvent] / 1000);
-	return pace >= MIN_GOAL_PACE_SEC_PER_KM && pace <= MAX_GOAL_PACE_SEC_PER_KM;
+function goalTimeFitsPace(goalTimeSec: number, distanceM: number): boolean {
+	const ultra = isUltraDistance(distanceM);
+	if (goalTimeSec >= (ultra ? MAX_ULTRA_GOAL_TIME_SEC : MAX_GOAL_TIME_SEC)) return false;
+	const pace = goalTimeSec / (distanceM / 1000);
+	return (
+		pace >= MIN_GOAL_PACE_SEC_PER_KM &&
+		pace <= (ultra ? MAX_ULTRA_GOAL_PACE_SEC_PER_KM : MAX_GOAL_PACE_SEC_PER_KM)
+	);
+}
+
+/// An ultra distance in km from the model, as whole metres, or null when it
+/// is not a number past the marathon and inside the band.
+function validUltraDistanceM(raw: unknown): number | null {
+	const km = finiteNumber(raw);
+	if (km === null) return null;
+	const m = Math.round(km * 1000);
+	return isUltraDistance(m) && m <= MAX_ULTRA_DISTANCE_M ? m : null;
 }
 
 function cleanPlanName(raw: unknown): string | null {
@@ -138,11 +167,16 @@ export function validatePlanInputs(raw: unknown, todayIso: string): PlanRequestI
 	const requestedEvent = GOAL_EVENTS.has(o.goal_event as string)
 		? (o.goal_event as PlanRequestGoalEvent)
 		: null;
-	let goalEvent: PlanRequestGoalEvent;
+	const ultraDistanceM = validUltraDistanceM(o.ultra_distance_km);
+	let goalEvent: PlanRequestGoalEvent | 'custom';
+	let goalDistanceM: number | null = null;
 	if (beginnerWalkRun) {
 		// A walk-run plan is the couch-to-5K progression; it has no other
 		// distance and no goal time, so anything else the model sent is dropped.
 		goalEvent = 'distance_5k';
+	} else if (ultraDistanceM !== null) {
+		goalEvent = 'custom';
+		goalDistanceM = ultraDistanceM;
 	} else if (requestedEvent) {
 		goalEvent = requestedEvent;
 	} else {
@@ -154,7 +188,8 @@ export function validatePlanInputs(raw: unknown, todayIso: string): PlanRequestI
 	const rawGoalTime = finiteNumber(o.goal_time_sec);
 	if (rawGoalTime !== null) {
 		const rounded = Math.round(rawGoalTime);
-		if (!beginnerWalkRun && rounded > 0 && goalTimeFitsPace(rounded, goalEvent)) {
+		const distanceM = goalDistanceM ?? GOAL_DISTANCES_M[goalEvent as PlanRequestGoalEvent];
+		if (!beginnerWalkRun && rounded > 0 && goalTimeFitsPace(rounded, distanceM)) {
 			goalTimeSec = rounded;
 		} else if (!beginnerWalkRun) {
 			assumptions.push('goal_time_dropped');
@@ -162,7 +197,9 @@ export function validatePlanInputs(raw: unknown, todayIso: string): PlanRequestI
 	}
 	if (
 		beginnerWalkRun &&
-		((requestedEvent !== null && requestedEvent !== 'distance_5k') || rawGoalTime !== null)
+		((requestedEvent !== null && requestedEvent !== 'distance_5k') ||
+			ultraDistanceM !== null ||
+			rawGoalTime !== null)
 	) {
 		assumptions.push('beginner_5k');
 	}
@@ -200,6 +237,7 @@ export function validatePlanInputs(raw: unknown, todayIso: string): PlanRequestI
 
 	return {
 		goalEvent,
+		goalDistanceM,
 		raceDate,
 		goalTimeSec,
 		recent5kSec,

@@ -13,6 +13,7 @@ import {
 	DEFAULT_DAYS_PER_WEEK,
 	DEFAULT_GOAL_EVENT,
 	MAX_PLAN_WEEKS,
+	MAX_ULTRA_GOAL_TIME_SEC,
 	MIN_PLAN_WEEKS,
 	PLAN_REQUEST_ASSUMPTIONS,
 	isoEpochDay,
@@ -36,6 +37,7 @@ const FULL = {
 test('a complete, sane extraction passes through unchanged with no assumptions', () => {
 	assert.deepEqual(validatePlanInputs(FULL, TODAY), {
 		goalEvent: 'distance_half',
+		goalDistanceM: null,
 		raceDate: '2027-03-14',
 		goalTimeSec: 7140,
 		recent5kSec: 1590,
@@ -50,6 +52,7 @@ test('a complete, sane extraction passes through unchanged with no assumptions',
 test('an empty extraction is all defaults, and says which were assumed', () => {
 	const r = validatePlanInputs({}, TODAY);
 	assert.equal(r.goalEvent, DEFAULT_GOAL_EVENT);
+	assert.equal(r.goalDistanceM, null);
 	assert.equal(r.daysPerWeek, DEFAULT_DAYS_PER_WEEK);
 	assert.equal(r.raceDate, null);
 	assert.equal(r.goalTimeSec, null);
@@ -275,4 +278,58 @@ test('isoEpochDay refuses rolled-over and malformed dates', () => {
 	assert.equal(isoEpochDay('2027-02-29'), null);
 	assert.equal(isoEpochDay('2028-02-29') !== null, true);
 	assert.equal(isoEpochDay(20270314), null);
+});
+
+test('an ultra distance in km becomes a custom goal of that many metres', () => {
+	for (const [km, m] of [
+		[56, 56_000],
+		[87.7, 87_700],
+		[160.9, 160_900],
+		[42.2, 42_200],
+		[400, 400_000],
+	] as const) {
+		const r = validatePlanInputs({ ultra_distance_km: km }, TODAY);
+		assert.equal(r.goalEvent, 'custom', String(km));
+		assert.equal(r.goalDistanceM, m);
+		assert.ok(!r.assumptions.includes('goal_event_default'));
+	}
+	// An ultra distance outranks a road rung the model also sent.
+	const both = validatePlanInputs({ goal_event: 'distance_full', ultra_distance_km: 56 }, TODAY);
+	assert.equal(both.goalEvent, 'custom');
+	assert.equal(both.goalDistanceM, 56_000);
+});
+
+test('an ultra distance not past the marathon or beyond 400 km is dropped', () => {
+	for (const bad of [42.195, 30, 400.1, 1000, -56, 0, '56', null, Number.NaN, Number.POSITIVE_INFINITY]) {
+		const r = validatePlanInputs({ ultra_distance_km: bad }, TODAY);
+		assert.equal(r.goalEvent, DEFAULT_GOAL_EVENT, String(bad));
+		assert.equal(r.goalDistanceM, null);
+		assert.ok(r.assumptions.includes('goal_event_default'));
+	}
+	// A road rung beside a dropped distance survives.
+	const r = validatePlanInputs({ goal_event: 'distance_full', ultra_distance_km: 30 }, TODAY);
+	assert.equal(r.goalEvent, 'distance_full');
+	assert.equal(r.goalDistanceM, null);
+});
+
+test('an ultra goal time is kept up to the race goal cap, at up to a 20:00/km hike', () => {
+	const kept = (km: number, sec: number) =>
+		validatePlanInputs({ ultra_distance_km: km, goal_time_sec: sec }, TODAY).goalTimeSec;
+	assert.equal(kept(56, 6 * 3600), 6 * 3600);
+	assert.equal(kept(160.9, 30 * 3600), 30 * 3600);
+	// The Moab 240 at its 112-hour cutoff: 1045 s/km, a hike, still a goal.
+	assert.equal(kept(386, 112 * 3600), 112 * 3600);
+	// Faster than 2:30/km, or slower than 20:00/km, is a misread.
+	assert.equal(kept(56, 2 * 3600), null);
+	assert.equal(kept(56, 19 * 3600), null);
+	assert.equal(kept(400, MAX_ULTRA_GOAL_TIME_SEC), null);
+	// The road band is unchanged: a 10-hour marathon is still dropped.
+	assert.equal(validatePlanInputs({ goal_event: 'distance_full', goal_time_sec: 10 * 3600 }, TODAY).goalTimeSec, null);
+});
+
+test('beginner_walk_run overrides an ultra distance with the 5K walk-run plan', () => {
+	const r = validatePlanInputs({ ultra_distance_km: 56, beginner_walk_run: true }, TODAY);
+	assert.equal(r.goalEvent, 'distance_5k');
+	assert.equal(r.goalDistanceM, null);
+	assert.ok(r.assumptions.includes('beginner_5k'));
 });

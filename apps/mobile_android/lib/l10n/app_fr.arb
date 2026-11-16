@@ -4734,7 +4734,6 @@
   "seasonPlanDescribeButton": "Trouver mes courses",
   "seasonPlanDescribeWorking": "Lecture…",
   "seasonPlanDescribeFound": "Courses trouvées dans ta description. Vérifie chacune avant de continuer.",
-  "seasonPlanDescribeAssumed": "Certains détails ont été complétés pour toi. Vérifie la date, la distance et la priorité de chaque course.",
   "seasonPlanErrorConsent": "L’assistant de saison nécessite la nouvelle information sur l’IA. Tu peux quand même ajouter tes courses ci-dessous.",
   "seasonPlanErrorDailyLimit": "Tu as utilisé tes requêtes IA du jour. Ajoute tes courses toi-même ci-dessous, ou réessaie demain.",
   "seasonPlanErrorNotUnderstood": "Aucune course n’a été trouvée. Ajoute-les toi-même ci-dessous.",

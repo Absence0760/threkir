@@ -4734,7 +4734,6 @@
   "seasonPlanDescribeButton": "Meine Rennen finden",
   "seasonPlanDescribeWorking": "Wird gelesen…",
   "seasonPlanDescribeFound": "Rennen aus deiner Beschreibung. Prüfe jedes, bevor du weitermachst.",
-  "seasonPlanDescribeAssumed": "Einige Angaben wurden für dich ergänzt. Prüfe Datum, Distanz und Priorität jedes Rennens.",
   "seasonPlanErrorConsent": "Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.",
   "seasonPlanErrorDailyLimit": "Du hast deine KI-Anfragen für heute aufgebraucht. Trage deine Rennen unten selbst ein oder versuche es morgen wieder.",
   "seasonPlanErrorNotUnderstood": "Darin wurden keine Rennen gefunden. Trage sie unten selbst ein.",

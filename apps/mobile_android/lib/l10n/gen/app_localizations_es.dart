@@ -16592,10 +16592,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Carreras encontradas en tu descripción. Revisa cada una antes de continuar.';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      'Algunos datos se completaron por ti. Revisa la fecha, la distancia y la prioridad de cada carrera.';
-
-  @override
   String get seasonPlanErrorConsent =>
       'El asistente de temporada necesita el aviso de IA actualizado. Aun así puedes añadir tus carreras abajo.';
 

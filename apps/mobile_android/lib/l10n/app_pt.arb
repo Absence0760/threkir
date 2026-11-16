@@ -4734,7 +4734,6 @@
   "seasonPlanDescribeButton": "Encontrar as minhas provas",
   "seasonPlanDescribeWorking": "A ler…",
   "seasonPlanDescribeFound": "Provas encontradas na sua descrição. Verifique cada uma antes de continuar.",
-  "seasonPlanDescribeAssumed": "Alguns dados foram preenchidos automaticamente. Verifique a data, a distância e a prioridade de cada prova.",
   "seasonPlanErrorConsent": "O assistente de época precisa do aviso de IA atualizado. Pode adicionar as suas provas abaixo na mesma.",
   "seasonPlanErrorDailyLimit": "Já usou os pedidos de IA de hoje. Adicione as suas provas abaixo ou tente amanhã.",
   "seasonPlanErrorNotUnderstood": "Não foram encontradas provas. Adicione-as abaixo.",

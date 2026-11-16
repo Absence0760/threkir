@@ -73,14 +73,16 @@ const FLAG_NAME = /^[a-z][a-z0-9_]*$/;
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 const FUNCTION_NAME = /^[a-z][a-z0-9_]*$/;
 const FUNCTION_DIR = /^[a-z][a-z0-9-]*$/;
-const SIGNOFF_URL = /^https:\/\/github\.com\/Absence0760\/[A-Za-z0-9_.-]+\/(issues|pull)\/[0-9]+(#(issuecomment|discussion_r|pullrequestreview)-?[0-9]+)?$/;
+// Both owners while the repos move from the Absence0760 account to the
+// jaredhoward-dev org (project-mgmt#14); old links keep redirecting.
+const SIGNOFF_URL = /^https:\/\/github\.com\/(Absence0760|jaredhoward-dev)\/[A-Za-z0-9_.-]+\/(issues|pull)\/[0-9]+(#(issuecomment|discussion_r|pullrequestreview)-?[0-9]+)?$/;
 const SIGNOFF_PATH = /^(reviews|docs)\/[A-Za-z0-9_./-]+\.md(#[a-z0-9-]+)?$/;
 
 /** @param {string} signoff */
 export function signoffProblem(signoff) {
 	if (SIGNOFF_URL.test(signoff)) return null;
 	if (SIGNOFF_PATH.test(signoff) && !signoff.includes('..')) return null;
-	return 'is neither a GitHub issue / PR / comment URL in Absence0760 nor a reviews/ or docs/ .md path';
+	return 'is neither a GitHub issue / PR / comment URL in Absence0760 or jaredhoward-dev nor a reviews/ or docs/ .md path';
 }
 
 /**

@@ -5,3 +5,8 @@ github_repo = "Absence0760/threkir"
 # does NOT change when the repo is renamed. Read it with:
 #   gh api repos/Absence0760/threkir/actions/oidc/customization/sub --jq .sub_claim_prefix
 github_subject_prefix = "repo:Absence0760@21693150/threkir@1202414286"
+
+# Org move (Absence0760/project-mgmt#14): before transferring the repo into the
+# GitHub org, list the post-transfer prefix here so the roles trust both; after
+# the transfer, move it into github_subject_prefix and empty this list.
+# github_extra_subject_prefixes = ["repo:<org>@<org_id>/threkir@1202414286"]

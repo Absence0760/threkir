@@ -29,6 +29,7 @@ import {
   stringsFor,
   CLAIM_PREFIX,
   CLAIM_PREFIX_PATTERN,
+  SUBJECT_PREFIXES_TOKEN,
   ACTION_DIR,
   CREDENTIALS_ACTION,
   ENV_FILES,
@@ -56,7 +57,7 @@ import {
 
 /**
  * @param {string} env
- * @param {{ sub?: string, operator?: string, aud?: string, envToken?: string,
+ * @param {{ sub?: string, subExpr?: string, operator?: string, aud?: string, envToken?: string,
  *           name?: string, resources?: string[] }} [over]
  */
 function role(env, over = {}) {
@@ -84,7 +85,7 @@ function role(env, over = {}) {
     `      Condition = {\n` +
     `        ${operator} = {\n` +
     `          "token.actions.githubusercontent.com:aud" = "${aud}"\n` +
-    `          "token.actions.githubusercontent.com:sub" = "${sub}"\n` +
+    `          "token.actions.githubusercontent.com:sub" = ${over.subExpr ?? `"${sub}"`}\n` +
     `        }\n` +
     `      }\n` +
     `    }]\n` +
@@ -280,6 +281,66 @@ test('a pull_request-shaped sub fails', () => {
     ),
   });
   assert.ok(has(errors, /not `repo:<owner\/repo>:environment:<name>`/), errors.join('\n'));
+});
+
+// The org-move form (Absence0760/project-mgmt#14): one exact subject per
+// trusted prefix, built from local.github_subject_prefixes.
+/** @param {string} envName */
+const listSub = (envName) =>
+  `[for p in local.github_subject_prefixes : "\${p}:environment:${envName}"]`;
+
+test('a list of exact subjects over local.github_subject_prefixes passes', () => {
+  const oidc = parseOidcStack(
+    oidcSource(
+      role('prod', { subExpr: listSub('production') }),
+      role('preview', { subExpr: listSub('preview') }),
+    ),
+  );
+  assert.equal(
+    oidc.roles[0].claims.get('sub'),
+    `${SUBJECT_PREFIXES_TOKEN}:environment:production`,
+  );
+  const { errors } = run({
+    oidc: oidcSource(
+      role('prod', { subExpr: listSub('production') }),
+      role('preview', { subExpr: listSub('preview') }),
+    ),
+    vars: VARS + 'variable "github_subject_prefix" {\n  type = string\n}\n',
+  });
+  // Only the committed tfvars can be read here; its prefix is repo-shaped.
+  assert.deepEqual(errors, []);
+});
+
+test('the list form still has to name an environment, not a ref', () => {
+  const { errors } = run({
+    oidc: oidcSource(
+      role('prod', { subExpr: listSub('*') }),
+      role('preview', { subExpr: listSub('preview') }),
+    ),
+  });
+  assert.ok(has(errors, /wildcard|not `repo:<owner\/repo>:environment:<name>`/), errors.join('\n'));
+});
+
+test('a list over anything but local.github_subject_prefixes reads as no sub', () => {
+  const { errors } = run({
+    oidc: oidcSource(
+      role('prod', {
+        subExpr: '[for p in var.anything : "${p}:environment:production"]',
+      }),
+      role('preview'),
+    ),
+  });
+  assert.ok(has(errors, /pins no .*:sub/), errors.join('\n'));
+});
+
+test('crossing the environments in the list form fails too', () => {
+  const { errors } = run({
+    oidc: oidcSource(
+      role('prod', { subExpr: listSub('preview') }),
+      role('preview', { subExpr: listSub('production') }),
+    ),
+  });
+  assert.ok(errors.length > 0);
 });
 
 test('an unpinned audience fails', () => {

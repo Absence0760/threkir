@@ -56,6 +56,19 @@
 # `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. Do not
 # reconstruct it from `github_repo` — that is the bug this comment exists
 # to stop someone reintroducing.
+#
+# ── Org move (Absence0760/project-mgmt#14) ──
+#
+# Moving the repo from the `Absence0760` account into a GitHub organization
+# changes the prefix: a repo transferred after 2026-07-15 issues
+# `repo:<org>@<org_id>/<repo>@<repo_id>`. The roles therefore trust a LIST of
+# exact subjects — `github_subject_prefix` plus `github_extra_subject_prefixes`
+# — still under StringEquals, never StringLike. Before the transfer, add the
+# post-transfer prefix as an extra and apply; after it, make the new prefix the
+# primary, empty the extras and apply again. With no extras the policy is the
+# single subject it always was (IAM treats a one-element list as that string,
+# so there is no plan diff). Read each prefix, never build it:
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
 
 # ── CloudFrontInvalidate scoping caveat ──
 #
@@ -93,6 +106,14 @@ locals {
     },
     var.tags,
   )
+
+  # Every OIDC subject prefix the deploy roles trust: the primary first, then
+  # the org-move extras (see the header). distinct() so listing the primary
+  # again as an extra cannot duplicate a subject.
+  github_subject_prefixes = distinct(concat(
+    [var.github_subject_prefix],
+    var.github_extra_subject_prefixes,
+  ))
 }
 
 # ─────────────────── OIDC provider ───────────────────
@@ -122,7 +143,7 @@ resource "aws_iam_role" "deploy_prod" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:production"
+          "token.actions.githubusercontent.com:sub" = [for p in local.github_subject_prefixes : "${p}:environment:production"]
         }
       }
     }]
@@ -210,7 +231,7 @@ resource "aws_iam_role" "deploy_preview" {
         # can assume this role.
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:preview"
+          "token.actions.githubusercontent.com:sub" = [for p in local.github_subject_prefixes : "${p}:environment:preview"]
         }
       }
     }]

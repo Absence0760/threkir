@@ -16,6 +16,10 @@
 // the live-alias snapshot before it and the sync after it, against a stub
 // Lambda whose versions and aliases live in files (decisions § 1825).
 //
+// It is also driven for the env stack's variables: the estate's
+// <env>.tfvars.sops is decrypted to a private file outside the repo, handed to
+// the env plan as -var-file, and removed on exit.
+//
 // Not covered: sops's own rule matching and KMS (stubbed), Terraform itself
 // (stubbed — every plan but the env stack's reports no changes) and
 // disaster-recovery.sh (interactive).
@@ -87,7 +91,13 @@ case "$*" in
   "output -raw kms_key_arn") echo "$STUB_ARN" ;;
   "version") echo "Terraform v1.15.0" ;;
   "init "*) exit 0 ;;
-  "plan "*) case "$PWD" in */infra/envs/*) exit "\${STUB_ENV_PLAN:-2}" ;; *) exit 0 ;; esac ;;
+  "plan "*)
+    # A -var-file is logged with the file's mode, so a case can check that the
+    # decrypted tfvars was private while the plan ran, and gone after.
+    for a in "$@"; do
+      [[ "$a" == -var-file=* ]] && printf 'plan-var-file %s %s %s\\n' "\${PWD##*/infra/}" "$(stat -c %a "\${a#-var-file=}")" "\${a#-var-file=}" >> "$STUB_LOG"
+    done
+    case "$PWD" in */infra/envs/*) exit "\${STUB_ENV_PLAN:-2}" ;; *) exit 0 ;; esac ;;
   "apply "*)
     # An apply that changes a function's config publishes a version of it.
     printf 'apply %s\n' "\${PWD##*/infra/}" >> "$STUB_LOG"
@@ -97,6 +107,7 @@ esac
 `,
 	sops: `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$STUB_LOG"
+case " $* " in *" --decrypt "*".tfvars.sops "*) printf 'apex_domain = "example.test"\\n'; exit 0 ;; esac
 out=""; prev=""
 for a in "$@"; do [[ "$prev" == --output ]] && out="$a"; prev="$a"; done
 case " $* " in *" --encrypt "*) cat >/dev/null; printf 'ENC\\n' > "$out" ;; esac
@@ -386,5 +397,22 @@ test('deploy-env.sh fails loudly, naming the manual step, when the sync fails af
 		assert.match(r.out, /envs\/preview WAS applied, but repointing the Lambda live aliases failed/);
 		assert.match(r.out, /bin\/lambda-alias-sync\.sh preview\n/);
 		assert.equal(liveOf(lambda, 'coach'), '3');
+	});
+});
+
+test('deploy-env.sh plans the env stack with the decrypted estate tfvars, and removes it on exit', () => {
+	withWorkspace({ files: { 'threkir/preview.tfvars.sops': 'CIPHERTEXT\n' } }, ({ estate, lambda, sopsCalls, run }) => {
+		seedLambdas(lambda);
+		const r = run('deploy-env.sh', ['preview', '--skip-preflight', '--auto-approve']);
+		assert.equal(r.status, 0, r.out);
+		assert.ok(sopsCalls().includes(`--decrypt ${estate}/threkir/preview.tfvars.sops`), sopsCalls().join('\n'));
+		const planned = sopsCalls().filter((c) => c.startsWith('plan-var-file '));
+		assert.equal(planned.length, 1, sopsCalls().join('\n'));
+		const [, stack, mode, file] = (planned[0] ?? '').split(' ');
+		assert.equal(stack, 'envs/preview');
+		assert.equal(mode, '600');
+		assert.ok(file && !file.startsWith(REPO_ROOT), file);
+		assert.ok(!existsSync(file), `${file} survived the run`);
+		assert.ok(sopsCalls().includes('apply envs/preview'), sopsCalls().join('\n'));
 	});
 });

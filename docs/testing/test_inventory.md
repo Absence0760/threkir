@@ -1958,7 +1958,7 @@ The migration replay both client transport guards read ([decisions § 1803](../a
 
 The Dart half of web's `rpc_transport_guard.test.ts` ([decisions § 1803](../architecture/decisions.md)). The real tree is the positive control — clean, at least 60 call sites across `packages/api_client` and `apps/mobile_android`, and the three reads § 1791 left POSTing now GETs — and each case mutates an in-memory copy into one refused shape: a stable read POSTed, a no-argument one POSTed (told it needs `params: const {}` too), a GET to a volatile function and to a jsonb-argument one, a GET with no params map (postgrest-dart throws `ArgumentError` on one), a GET that would send null, a conditional omission of a parameter whose default is not NULL, and an unknown or missing parameter name. Plus a non-literal callee or `get:` flag, a commented-out call, a stale `POST_EXEMPT` entry, and the map-literal reader (collection-`if`, null-aware `?v`, spreads).
 
-### `scripts/bin_lib_estate.test.mjs` — 11 tests
+### `scripts/bin_lib_estate.test.mjs` — 15 tests
 
 `bin/lib/estate.sh`'s sops creation-rule lookup, against fixture configs
 ([decisions § 1615](../architecture/decisions.md)). Each file resolves to its
@@ -1970,10 +1970,14 @@ dash-line and trailing-comment spellings are read; keys nested under
 one line and keeps the file mode, keeps the dash on a dash-line key, and refuses
 a path with no rule or a rule with no `kms` key. The slot paths derive from one
 resolved directory, and `is_kms_arn` rejects a placeholder, an alias ARN and a
-trailing space. The parser's output was also compared under GNU awk,
+trailing space. `estate_tfvars_resolve` decrypts the estate's sops copy to a
+private temp file outside the env dir, treats a plaintext `terraform.tfvars` as
+the override and decrypts nothing, stops on a stale symlink or one onto the
+ciphertext (naming the `rm`), and returns 1 with nothing to use, leaving no temp
+dir when the decrypt fails. The parser's output was also compared under GNU awk,
 `gawk --posix` and Ubuntu 24.04's `mawk`: identical.
 
-### `scripts/bin_estate_scripts.test.mjs` — 16 tests (5 added for the post-apply alias sync)
+### `scripts/bin_estate_scripts.test.mjs` — 17 tests
 
 `sops-init.sh`, `key-rotate.sh`, `secret-set.sh` and `aws-preflight.sh`, driven
 against a fixture estate with `aws`, `terraform`, `sops` and `gh` stubbed on
@@ -1991,7 +1995,8 @@ hard-fails a wrong account, a missing slot and a missing rule. `deploy-env.sh`
 repoints the `live` aliases after an apply without a second prompt, holds an alias
 that was already behind (a rollback), changes nothing on `--plan`, only reports
 drift when the env stack had nothing to apply, and fails loudly when the repoint
-fails. Not covered: sops's own matching and KMS, `disaster-recovery.sh`.
+fails, and plans the env stack with the decrypted estate tfvars, removing them on
+exit. Not covered: sops's own matching and KMS, `disaster-recovery.sh`.
 
 ### `.github/actions/start-supabase/start_stack.test.mjs` — 21 tests (9 added, then 5 for #963, then 6 for #916, then 1 for § 2233)
 

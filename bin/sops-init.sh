@@ -191,7 +191,7 @@ ok "Both $ESTATE_SLUG/ rules carry a KMS ARN"
 
 step "Next steps (commit the encrypted file in the PRIVATE estate repo, never here)"
 log "Edit secrets:    sops $ESTATE_SLOT_DIR/<env>.sops.yaml"
-log "Re-apply env:    cd infra/envs/<env> && terraform apply"
+log "Re-apply env:    bin/deploy-<env>.sh   (decrypts $ESTATE_SLUG/<env>.tfvars.sops for the plan)"
 log "Verify decrypt:  sops --decrypt $ESTATE_SLOT_DIR/<env>.sops.yaml"
 log "Commit secrets:  (cd $INFRA_SECRETS_DIR && git add $ESTATE_SLUG .sops.yaml && git commit)"
 log ""

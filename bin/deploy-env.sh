@@ -29,6 +29,13 @@
 #   --plan          plan only, never apply (read-only)
 #   --auto-approve  apply without prompting (CI-style)
 #   --skip-preflight  skip aws-preflight.sh (don't unless you know why)
+#
+# The env stack's variables: a plaintext infra/envs/<env>/terraform.tfvars
+# (regular file) is an explicit override; otherwise the estate's
+# ../infra-secrets/threkir/<env>.tfvars.sops is decrypted to a private temp
+# file outside the repo, passed as -var-file, and removed on exit
+# (estate_tfvars_resolve in bin/lib/estate.sh). A leftover symlink from the
+# retired plaintext layout stops the run before anything is applied.
 
 set -euo pipefail
 
@@ -71,6 +78,7 @@ ENV_STACK_APPLIED=0
 cleanup_on_exit() {
 	[[ -n "$preflight_log" && -f "$preflight_log" ]] && rm -f "$preflight_log"
 	[[ -n "$alias_snapshot" && -f "$alias_snapshot" ]] && rm -f "$alias_snapshot"
+	estate_tfvars_cleanup
 	for stack_dir in infra/bootstrap infra/dns infra/github-oidc "$ENV_STACK"; do
 		rm -f "$REPO_ROOT/$stack_dir/.tfplan"
 	done
@@ -93,6 +101,14 @@ if [[ $SKIP_PREFLIGHT -eq 0 ]]; then
 		cat "$preflight_log" >&2
 		fatal "Preflight failed; fix issues above before applying."
 	fi
+fi
+
+# Resolved before any stack runs, so a stale symlink or a failed decrypt stops
+# the chain before the shared stacks apply.
+step "Env variables ($ENV_STACK)"
+if ! estate_tfvars_resolve "$ENV_NAME" "$REPO_ROOT/$ENV_STACK"; then
+	warn "No $ENV_STACK/terraform.tfvars and no $(estate_tfvars_file "$ENV_NAME") — the env plan will fail on its required variables."
+	dim "  Clone the estate repo as ../infra-secrets, or cp $ENV_STACK/terraform.tfvars.example $ENV_STACK/terraform.tfvars and fill it in."
 fi
 
 apply_stack() {
@@ -183,12 +199,13 @@ apply_stack() {
 	popd >/dev/null
 }
 
-# Bootstrap takes a -var; the rest read from terraform.tfvars or
-# remote state. Args after `--` are passed verbatim to `terraform plan`.
+# Bootstrap takes a -var; the env stack takes the resolved -var-file (if any);
+# the rest read from their committed terraform.tfvars or remote state. Args
+# after `--` are passed verbatim to `terraform plan`.
 apply_stack "Stack 1/4: bootstrap (state bucket)" "infra/bootstrap" -- -var "state_bucket_name=threkir-tfstate"
 apply_stack "Stack 2/4: dns (Route 53 + ACM)" "infra/dns"
 apply_stack "Stack 3/4: github-oidc (deploy roles)" "infra/github-oidc"
-apply_stack "Stack 4/4: envs/$ENV_NAME (S3 + CloudFront + Lambda + KMS)" "$ENV_STACK"
+apply_stack "Stack 4/4: envs/$ENV_NAME (S3 + CloudFront + Lambda + KMS)" "$ENV_STACK" -- ${ESTATE_TFVARS_ARGS[@]+"${ESTATE_TFVARS_ARGS[@]}"}
 
 step "Post-apply"
 if [[ $ENV_STACK_APPLIED -eq 1 ]]; then

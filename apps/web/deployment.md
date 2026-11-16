@@ -79,7 +79,7 @@ infra/
 │   │   ├── main.tf
 │   │   ├── backend.tf     # Remote state in S3 with native lockfile
 │   │   ├── variables.tf   # `secrets_file` — defaults to the estate's threkir/prod.sops.yaml
-│   │   └── terraform.tfvars   # symlink into the estate repo (infra-secrets/threkir/prod.tfvars)
+│   │   └── terraform.tfvars.example   # template; the real values are the estate's threkir/prod.tfvars.sops (no tfvars file or symlink here)
 │   └── preview/           # Same shape, separate state, separate resources
 ├── dns/                   # Route 53 hosted zone, ACM cert in us-east-1
 │   └── ...                # One stack — both envs share the zone
@@ -99,7 +99,7 @@ infra/
 ├── .sops.yaml             # Routes threkir/<env>.sops.yaml to that env's KMS key
 └── threkir/
     ├── prod.sops.yaml     # sops-encrypted runtime secrets (KMS key from this env's stack)
-    └── prod.tfvars        # plaintext, non-secret tfvars (publishable keys, emails)
+    └── prod.tfvars.sops   # the prod tfvars (publishable keys, emails), sops-encrypted (binary); bin/deploy-prod.sh decrypts it to a private temp file per run
 ```
 
 No ciphertext is ever committed to this public repo: `infra/.gitignore` blocks any `secrets.enc.yaml` as a second fail-safe behind the rule-less `.sops.yaml` ([decisions § 53](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). The slot name `threkir` is defined once, in `bin/lib/estate.sh`, and every operator script resolves the estate through it.
@@ -426,7 +426,7 @@ If the AWS account itself is lost, recovery is roughly:
 2. `cd infra/bootstrap && terraform init && terraform apply` — recreates the state bucket.
 3. `cd ../dns && terraform init && terraform apply` — recreates the hosted zone + ACM cert.
 4. `cd ../github-oidc && terraform init && terraform apply -var "github_repo=<owner>/<repo>"` — recreates the OIDC trust + deploy roles.
-5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated. The estate's existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is encrypted under the OLD key and cannot be recovered**, because KMS keys don't survive the account. The estate repo backs up the encrypted blobs, not the key. Re-issue the secrets fresh (Anthropic key, Supabase secret key, Sentry DSN). Run `bin/sops-init.sh prod` to wire the new KMS ARN into the estate `.sops.yaml` and seed a new encrypted file, and `bin/secret-set.sh prod <KEY>` for each value. Then re-apply, so the `aws_kms_ciphertext` blobs are rebuilt under the new key.
+5. `cd ../envs/prod && cp terraform.tfvars.example terraform.tfvars`, fill it in, then `terraform init && terraform apply` — recreates the prod web stack. The estate's `threkir/prod.tfvars.sops` is encrypted under a KMS key in the lost account too, so it cannot be decrypted either: rebuild the values from the example (they are non-secret — publishable keys, public URLs, alert emails), then re-encrypt them into the estate under a key in the new account and delete the plaintext copy. **The KMS key for runtime secrets is recreated. The estate's existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is encrypted under the OLD key and cannot be recovered**, because KMS keys don't survive the account. The estate repo backs up the encrypted blobs, not the key. Re-issue the secrets fresh (Anthropic key, Supabase secret key, Sentry DSN). Run `bin/sops-init.sh prod` to wire the new KMS ARN into the estate `.sops.yaml` and seed a new encrypted file, and `bin/secret-set.sh prod <KEY>` for each value. Then re-apply, so the `aws_kms_ciphertext` blobs are rebuilt under the new key.
 6. Update the domain registrar's NS records to point at the new Route 53 hosted zone.
 7. Push the desired tag to trigger a deploy.
 
@@ -442,7 +442,7 @@ Reconciled 2026-09-28 against what the prod deploys actually did (`web@1.6.0` ru
 
 - [x] AWS account created (or sub-account in an org) — the `Threkir` member account of the personal AWS Organization; every `release-web.yml` prod run since `web@1.0.3` assumes its deploy role
 - [ ] AWS account root MFA enabled — not verifiable from the repo or GitHub; confirm in the org's IAM console
-- [x] Prod tfvars sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED) — both keys present in the estate's `infra-secrets/threkir/prod.tfvars` (the canonical copy `infra/envs/prod/terraform.tfvars` symlinks to; key names checked 2026-09-28, values not read)
+- [x] Prod tfvars sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED) — both keys present in the estate's prod tfvars (key names checked 2026-09-28 on the then-plaintext copy, values not read; now sops-encrypted as `infra-secrets/threkir/prod.tfvars.sops`, which `bin/deploy-prod.sh` decrypts for the plan — no symlink under `infra/envs/prod`)
 - [x] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native) — every later stack's `backend.tf` initialises against it; `infra/dns` planned clean and `infra/github-oidc` applied through it on 2026-09-18 (#922, #928)
 - [x] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless) — CloudFront serves the ACM cert below, which it only accepts from `us-east-1`
 - [x] Domain `threkir.com` registered (Route 53 or external + delegated) — registered 2026-05-24 through Amazon Registrar (`whois`, checked 2026-09-28)

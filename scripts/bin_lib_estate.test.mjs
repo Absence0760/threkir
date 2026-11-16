@@ -14,7 +14,7 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -197,5 +197,82 @@ test('is_kms_arn accepts a key ARN and nothing shaped like one', () => {
 		for (const v of ['KMS_RUNNING_PREVIEW_ARN_PLACEHOLDER', 'arn:aws:kms:us-east-1:111111111111:alias/threkir-sops', `${ARN_PROD} `, '']) {
 			assert.equal(lib(dir, 'is_kms_arn "$1"', [v]).status, 1, JSON.stringify(v));
 		}
+	});
+});
+
+// estate_tfvars_resolve: where an env root's Terraform variables come from once
+// the estate's plaintext <env>.tfvars became <env>.tfvars.sops. Driven against
+// a fixture env dir and a sops stub that "decrypts" to a marker line.
+
+/**
+ * Runs `body` with a fixture estate, an empty env dir and a sops stub on PATH.
+ * @param {(ctx: { dir: string, envDir: string, run: (body: string) => ReturnType<typeof lib> }) => void} fn
+ */
+function withTfvarsFixture(fn) {
+	withEstate((dir) => {
+		mkdirSync(join(dir, 'threkir'));
+		const envDir = join(dir, 'env');
+		mkdirSync(envDir);
+		const stubs = join(dir, 'stubs');
+		mkdirSync(stubs);
+		writeFileSync(join(stubs, 'sops'), '#!/usr/bin/env bash\n[[ -n "${STUB_SOPS_FAIL:-}" ]] && exit 128\nprintf \'apex_domain = "example.test"\\n\'\n');
+		chmodSync(join(stubs, 'sops'), 0o755);
+		fn({ dir, envDir, run: (body) => lib(dir, `PATH="${stubs}:$PATH"; ${body}`) });
+	});
+}
+
+const SHOW = 'printf "args=%s\\n" "${ESTATE_TFVARS_ARGS[*]-}"; printf "tmp=%s\\n" "$ESTATE_TFVARS_TMPDIR"';
+
+test('estate_tfvars_resolve decrypts the sops copy to a private temp file outside the env dir', () => {
+	withTfvarsFixture(({ dir, envDir, run }) => {
+		writeFileSync(join(dir, 'threkir', 'prod.tfvars.sops'), 'CIPHERTEXT\n');
+		const r = run(`estate_tfvars_resolve prod "${envDir}"; f="\${ESTATE_TFVARS_ARGS[0]#-var-file=}"; ${SHOW}; echo "file=$(stat -c %a "$f") dir=$(stat -c %a "$ESTATE_TFVARS_TMPDIR")"; cat "$f"; d="$ESTATE_TFVARS_TMPDIR"; estate_tfvars_cleanup; [[ ! -e "$d" ]] && echo removed`);
+		assert.equal(r.status, 0, r.err);
+		assert.match(r.out, /^args=-var-file=\S+\/prod\.tfvars$/m);
+		assert.ok(!r.out.includes(`args=-var-file=${envDir}`), r.out);
+		assert.match(r.out, /file=600 dir=700/);
+		assert.match(r.out, /apex_domain = "example\.test"/);
+		assert.match(r.out, /^removed$/m);
+	});
+});
+
+test('estate_tfvars_resolve treats a plaintext terraform.tfvars as the override and decrypts nothing', () => {
+	withTfvarsFixture(({ dir, envDir, run }) => {
+		writeFileSync(join(dir, 'threkir', 'prod.tfvars.sops'), 'CIPHERTEXT\n');
+		writeFileSync(join(envDir, 'terraform.tfvars'), 'apex_domain = "override.test"\n');
+		const r = run(`estate_tfvars_resolve prod "${envDir}"; ${SHOW}`);
+		assert.equal(r.status, 0, r.err);
+		assert.match(r.out, /^args=$/m);
+		assert.match(r.out, /^tmp=$/m);
+	});
+});
+
+test('estate_tfvars_resolve stops on a stale symlink, and on one onto the ciphertext, naming the rm', () => {
+	withTfvarsFixture(({ dir, envDir, run }) => {
+		writeFileSync(join(dir, 'threkir', 'prod.tfvars.sops'), 'CIPHERTEXT\n');
+		symlinkSync(join(dir, 'threkir', 'prod.tfvars'), join(envDir, 'terraform.tfvars'));
+		let r = run(`estate_tfvars_resolve prod "${envDir}"`);
+		assert.equal(r.status, 1);
+		assert.match(r.err, /no longer exists/);
+		assert.ok(r.err.includes(`rm '${envDir}/terraform.tfvars'`), r.err);
+		rmSync(join(envDir, 'terraform.tfvars'));
+		symlinkSync(join(dir, 'threkir', 'prod.tfvars.sops'), join(envDir, 'terraform.tfvars'));
+		r = run(`estate_tfvars_resolve prod "${envDir}"`);
+		assert.equal(r.status, 1);
+		assert.match(r.err, /ciphertext/);
+		assert.ok(r.err.includes(`rm '${envDir}/terraform.tfvars'`), r.err);
+	});
+});
+
+test('estate_tfvars_resolve returns 1 with nothing to use, and leaves no temp dir when the decrypt fails', () => {
+	withTfvarsFixture(({ dir, envDir, run }) => {
+		let r = run(`estate_tfvars_resolve prod "${envDir}" || echo "rc=$?"; ${SHOW}`);
+		assert.match(r.out, /^rc=1$/m);
+		assert.match(r.out, /^args=$/m);
+		writeFileSync(join(dir, 'threkir', 'prod.tfvars.sops'), 'CIPHERTEXT\n');
+		r = run(`export STUB_SOPS_FAIL=1; trap 'printf "tmp=%s\\n" "$ESTATE_TFVARS_TMPDIR"' EXIT; estate_tfvars_resolve prod "${envDir}"`);
+		assert.equal(r.status, 1);
+		assert.match(r.err, /could not decrypt .*threkir\/prod\.tfvars\.sops/);
+		assert.match(r.out, /^tmp=$/m);
 	});
 });

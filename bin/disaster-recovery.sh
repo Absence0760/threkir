@@ -214,10 +214,11 @@ if probe_phase_done 2d; then
 else
 	step "Phase 2d — apply infra/envs/preview"
 	log "Creates S3 + CloudFront + Lambda + KMS for preview."
-	log "Make sure infra/envs/preview/terraform.tfvars exists; copy from .example if needed."
+	log "Variables: infra/envs/preview/terraform.tfvars (plaintext override) or the estate's $(estate_tfvars_rel preview); copied from .example if neither exists."
 	if confirm "Proceed with Phase 2d?"; then
-		if [[ ! -f "$REPO_ROOT/infra/envs/preview/terraform.tfvars" ]]; then
-			warn "infra/envs/preview/terraform.tfvars missing"
+		trap estate_tfvars_cleanup EXIT
+		if ! estate_tfvars_resolve preview "$REPO_ROOT/infra/envs/preview"; then
+			warn "infra/envs/preview/terraform.tfvars missing (and no $(estate_tfvars_rel preview) in the estate)"
 			cp "$REPO_ROOT/infra/envs/preview/terraform.tfvars.example" \
 			   "$REPO_ROOT/infra/envs/preview/terraform.tfvars"
 			log "Copied from .example. Edit it now to set your apex_domain etc., then re-run this script."
@@ -226,8 +227,9 @@ else
 		(
 			cd "$REPO_ROOT/infra/envs/preview"
 			terraform init -input=false
-			terraform apply
+			terraform apply ${ESTATE_TFVARS_ARGS[@]+"${ESTATE_TFVARS_ARGS[@]}"}
 		)
+		estate_tfvars_cleanup
 		ok "Phase 2d complete"
 	fi
 fi
@@ -266,10 +268,14 @@ else
 	dim "  sops $(estate_secrets_file preview)"
 	read -rp "Press Enter once you've added the real Anthropic API key. " _
 	log "Re-applying preview so Lambda picks up the new env vars:"
+	trap estate_tfvars_cleanup EXIT
+	estate_tfvars_resolve preview "$REPO_ROOT/infra/envs/preview" ||
+		fatal "infra/envs/preview has no terraform.tfvars and the estate has no $(estate_tfvars_rel preview) — run Phase 2d first"
 	(
 		cd "$REPO_ROOT/infra/envs/preview"
-		terraform apply
+		terraform apply ${ESTATE_TFVARS_ARGS[@]+"${ESTATE_TFVARS_ARGS[@]}"}
 	)
+	estate_tfvars_cleanup
 	ok "Phase 3b complete"
 fi
 

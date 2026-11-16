@@ -32,6 +32,73 @@ SOPS_CONFIG="$INFRA_SECRETS_DIR/.sops.yaml"
 estate_secrets_rel() { printf '%s/%s.sops.yaml\n' "$ESTATE_SLUG" "$1"; }
 estate_secrets_file() { printf '%s/%s\n' "$INFRA_SECRETS_DIR" "$(estate_secrets_rel "$1")"; }
 
+# estate_tfvars_rel <env>   → threkir/<env>.tfvars.sops: the env's Terraform
+#                              variables, sops-encrypted (binary format)
+# estate_tfvars_file <env>  → the same file as a path to open
+estate_tfvars_rel() { printf '%s/%s.tfvars.sops\n' "$ESTATE_SLUG" "$1"; }
+estate_tfvars_file() { printf '%s/%s\n' "$INFRA_SECRETS_DIR" "$(estate_tfvars_rel "$1")"; }
+
+# estate_tfvars_resolve <env> <env-dir>
+# Decides where Terraform gets an env root's variables, and sets
+# ESTATE_TFVARS_ARGS to the flags every `terraform plan`/`import` of that root
+# needs (`apply <saved plan>` takes none). In order:
+#
+#   1. <env-dir>/terraform.tfvars as a regular file: an explicit plaintext
+#      override (the from-example flow). Terraform auto-loads it; no flags.
+#   2. <env-dir>/terraform.tfvars as a symlink: the retired layout, which
+#      linked the estate's plaintext <env>.tfvars into place. A dangling one
+#      (the plaintext is gone) or one onto the sops file (Terraform would read
+#      ciphertext as HCL) is fatal, naming the `rm`. One onto some other
+#      existing file is honoured as an override, with a warning.
+#   3. The estate's <env>.tfvars.sops: decrypted into a fresh 0700 `mktemp -d`
+#      directory outside the repo, as a 0600 file, passed as `-var-file=`. The
+#      caller removes it with estate_tfvars_cleanup in its EXIT trap.
+#
+# Returns 1, with ESTATE_TFVARS_ARGS empty, when there is none of the three.
+ESTATE_TFVARS_ARGS=()
+ESTATE_TFVARS_TMPDIR=""
+estate_tfvars_resolve() {
+	local env="$1" env_dir="$2" tfvars sops_file target out
+	tfvars="$env_dir/terraform.tfvars"
+	sops_file="$(estate_tfvars_file "$env")"
+	ESTATE_TFVARS_ARGS=()
+	if [[ -L "$tfvars" ]]; then
+		if [[ ! -e "$tfvars" ]]; then
+			fatal "$tfvars is a symlink to a file that no longer exists (the estate's plaintext tfvars moved to $(estate_tfvars_rel "$env")). Delete it — rm '$tfvars' — and re-run; the scripts decrypt the sops copy themselves."
+		fi
+		target="$(readlink -f "$tfvars")"
+		if [[ "$target" == *.sops ]]; then
+			fatal "$tfvars links to the sops-encrypted $target, which Terraform would read as ciphertext. Delete it — rm '$tfvars' — and re-run."
+		fi
+		warn "$tfvars is a symlink (retired layout) — Terraform auto-loads it as an override. Delete it once the estate has $(estate_tfvars_rel "$env")."
+		return 0
+	fi
+	if [[ -f "$tfvars" ]]; then
+		log "Using the plaintext override $tfvars"
+		return 0
+	fi
+	[[ -f "$sops_file" ]] || return 1
+	estate_tfvars_cleanup
+	ESTATE_TFVARS_TMPDIR="$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/$ESTATE_SLUG-tfvars.XXXXXX")" ||
+		fatal "could not create a private temp directory for the decrypted tfvars"
+	out="$ESTATE_TFVARS_TMPDIR/$env.tfvars"
+	if ! (umask 077 && sops --decrypt "$sops_file" >"$out"); then
+		estate_tfvars_cleanup
+		fatal "could not decrypt $sops_file — check the AWS session (AWS_PROFILE=$ESTATE_SLUG, aws sso login) and that sops is installed"
+	fi
+	ESTATE_TFVARS_ARGS=("-var-file=$out")
+	log "Decrypted $(estate_tfvars_rel "$env") to a private temp file (removed on exit)"
+}
+
+# estate_tfvars_cleanup — removes the decrypted tfvars, if any. Safe to call
+# repeatedly and from an EXIT trap.
+estate_tfvars_cleanup() {
+	if [[ -n "$ESTATE_TFVARS_TMPDIR" ]]; then
+		rm -rf -- "$ESTATE_TFVARS_TMPDIR"
+	fi
+	ESTATE_TFVARS_TMPDIR=""
+}
+
 is_kms_arn() { [[ "$1" =~ ^arn:aws:kms:[a-z0-9-]+:[0-9]+:key/[a-f0-9-]+$ ]]; }
 
 # Reads the subset of YAML the estate config is written in: a block sequence

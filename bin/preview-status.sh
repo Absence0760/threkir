@@ -27,6 +27,7 @@
 set -euo pipefail
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/estate.sh"
 
 ENV_NAME="${1:-preview}"
 LOG_LINES=10
@@ -80,7 +81,20 @@ ok "Distribution ID:   $DIST_ID"
 # read the apex.
 # Anchor the regex to `apex_domain` followed by `=` so we don't match
 # `apex_domain_alt` or any other variable that starts with the same prefix.
-APEX="$(grep -E '^apex_domain[[:space:]]*=' "$ENV_DIR/terraform.tfvars" 2>/dev/null | sed -E 's/.*=\s*"([^"]+)".*/\1/' || true)"
+# A plaintext terraform.tfvars (override) wins; otherwise the estate's
+# sops-encrypted copy is decrypted through the pipe — nothing is written to disk
+# — and only the apex_domain line survives the grep. Missing estate clone, sops
+# or AWS session: no apex, and the cloudfront.net fallback below.
+read_apex() {
+	local tfvars="$ENV_DIR/terraform.tfvars" sops_file
+	sops_file="$(estate_tfvars_file "$ENV_NAME")"
+	if [[ -f "$tfvars" ]]; then
+		cat "$tfvars"
+	elif [[ -f "$sops_file" ]] && command -v sops >/dev/null; then
+		sops --decrypt "$sops_file" 2>/dev/null
+	fi
+}
+APEX="$(read_apex | grep -E '^apex_domain[[:space:]]*=' | sed -E 's/.*=\s*"([^"]+)".*/\1/' || true)"
 if [[ -n "$APEX" ]]; then
 	if [[ "$ENV_NAME" == "preview" ]]; then
 		PUBLIC_HOST="preview.$APEX"
@@ -90,7 +104,7 @@ if [[ -n "$APEX" ]]; then
 	ok "Public hostname:   $PUBLIC_HOST"
 else
 	PUBLIC_HOST="$DOMAIN_NAME"
-	warn "Couldn't read apex_domain from $ENV_DIR/terraform.tfvars — using cloudfront.net hostname"
+	warn "Couldn't read apex_domain from $ENV_DIR/terraform.tfvars or $(estate_tfvars_rel "$ENV_NAME") — using cloudfront.net hostname"
 fi
 
 step "1/5 — HTTPS / responds 200"

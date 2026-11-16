@@ -188,11 +188,11 @@ you which one you forgot.
 
 Working from zero — no AWS account, no domain, no AWS CLI:
 
-**0.1 — AWS account.** Sign up at https://aws.amazon.com/. Enable MFA on the root account, create an Identity Center user with `AdministratorAccess` (we tighten later), and assign it to the account. Note the **AWS access portal URL** Identity Center gives you (`https://d-xxxxxx.awsapps.com/start`). Account-wide spend alerts are Terraformed in `infra/envs/prod/budgets.tf` (50 % / 100 % ACTUAL + 100 % FORECASTED notifications); set `monthly_budget_limit_usd` and `budget_alert_emails` in `terraform.tfvars` before the prod apply.
+**0.1 — AWS account.** Sign up at https://aws.amazon.com/. Enable MFA on the root account, create an Identity Center user with `AdministratorAccess` (we tighten later), and assign it to the account. Note the **AWS access portal URL** Identity Center gives you (`https://d-xxxxxx.awsapps.com/start`). Account-wide spend alerts are Terraformed in `infra/envs/prod/budgets.tf` (50 % / 100 % ACTUAL + 100 % FORECASTED notifications); set `monthly_budget_limit_usd` and `budget_alert_emails` in the prod tfvars (the estate's sops-encrypted `threkir/prod.tfvars.sops`, see § 5) before the prod apply.
 
 **0.2 — Domain.** Either register one fresh (Porkbun, Namecheap, Cloudflare Registrar — all fine; you don't need Route 53 to register, only to host DNS) or pick an apex you already own. The default examples use `threkir.com` — search the repo for it and swap if you're using something else. The places that hardcode it are:
 - `infra/dns/` — set `apex_domain` in the committed `infra/dns/terraform.tfvars` (which also carries `email_auth_records`, the Resend DKIM/SPF/MX/DMARC set plus the `default._bimi` sender-logo record — public DNS data, Terraformed so a DR rebuild restores mail deliverability instead of dropping it; the BIMI logo render is gated on DMARC reaching enforcement + a paid VMC, see docs/features/email.md § Sender brand logo)
-- `infra/envs/{preview,prod}/terraform.tfvars` — set `apex_domain` there (canonical copies live in the private estate repo as `../infra-secrets/threkir/{preview,prod}.tfvars`, symlinked into place — see § 4/5)
+- the env tfvars — set `apex_domain` there. Prod's canonical copy is sops-encrypted in the private estate repo as `../infra-secrets/threkir/prod.tfvars.sops` (no file or symlink under `infra/envs/prod/`; the deploy scripts decrypt it to a private temp file for the plan — see § 5). Preview has no estate copy: a plaintext `infra/envs/preview/terraform.tfvars` copied from the example (gitignored) — see § 4
 - `infra/envs/preview/variables.tf` + `infra/envs/prod/variables.tf` — `default = "threkir.com"` if you want a fallback
 
 **0.3 — Workstation tooling.**
@@ -284,11 +284,11 @@ If a secret is unset, the workflow writes an empty string into `.env`, and `apps
 
 ```bash
 cd ../envs/preview
-# The canonical tfvars lives in the PRIVATE estate repo (plaintext — the values
-# are non-secret: publishable key, public URLs, alert emails; the private repo
-# keeps them off public GitHub and makes any workstation deploy-ready). Symlink
-# it in; fall back to cp-from-example only if you're not using the estate repo.
-ln -s ../../../../infra-secrets/threkir/preview.tfvars terraform.tfvars
+# An env's canonical tfvars lives sops-encrypted in the PRIVATE estate repo as
+# threkir/<env>.tfvars.sops (only prod has one; see § 5 for how to plan with it).
+# Preview uses a plaintext override instead: a regular terraform.tfvars here
+# (gitignored), which Terraform auto-loads and bin/deploy-env.sh prefers.
+cp terraform.tfvars.example terraform.tfvars
 $EDITOR terraform.tfvars                          # fill in supabase URL + anon key
 terraform init
 terraform apply
@@ -349,11 +349,15 @@ Same flow, in `envs/prod/` (ciphertext → `../infra-secrets/threkir/prod.sops.y
 
 ```bash
 cd ../prod
-ln -s ../../../../infra-secrets/threkir/prod.tfvars terraform.tfvars   # canonical copy in the estate repo (see § 4)
-$EDITOR terraform.tfvars
-terraform init
-terraform apply
-ARN=$(terraform output -raw kms_key_arn)
+# No terraform.tfvars here: the canonical copy is sops-encrypted in the estate
+# repo. A symlink left from the old plaintext layout must go (rm terraform.tfvars);
+# a symlink to the .sops file would feed ciphertext to Terraform.
+AWS_PROFILE=threkir sops ../../../../infra-secrets/threkir/prod.tfvars.sops     # edit the values (commit in the estate repo)
+AWS_PROFILE=threkir terraform init
+AWS_PROFILE=threkir sops exec-file --no-fifo --filename prod.tfvars ../../../../infra-secrets/threkir/prod.tfvars.sops 'terraform plan -var-file={} -out=tfplan'
+AWS_PROFILE=threkir terraform apply tfplan
+rm tfplan       # a saved plan holds the variable values in plaintext (gitignored; delete after apply)
+ARN=$(AWS_PROFILE=threkir terraform output -raw kms_key_arn)
 ( cd ../../../../infra-secrets
   $EDITOR .sops.yaml                                           # set `kms:` on the ^threkir/prod\.sops\.yaml$ rule to $ARN
   mkdir -p threkir
@@ -362,8 +366,15 @@ ARN=$(terraform output -raw kms_key_arn)
   sops --config "$PWD/.sops.yaml" --filename-override "$PWD/threkir/prod.sops.yaml" --output threkir/prod.sops.yaml --encrypt /tmp/coach.yaml
   shred -u /tmp/coach.yaml
   git add threkir/prod.sops.yaml .sops.yaml && git commit -m 'threkir: prod secrets' )
-terraform apply
+AWS_PROFILE=threkir sops exec-file --no-fifo --filename prod.tfvars ../../../../infra-secrets/threkir/prod.tfvars.sops 'terraform plan -var-file={} -out=tfplan'
+AWS_PROFILE=threkir terraform apply tfplan && rm tfplan
 ```
+
+`bin/deploy-prod.sh` does the same without the manual steps: with no regular
+`terraform.tfvars` in `infra/envs/prod`, it decrypts `threkir/prod.tfvars.sops`
+to a 0600 file in a private `mktemp -d` directory outside the repo, passes it as
+`-var-file` to the env plan, and removes it on exit. A plaintext
+`terraform.tfvars` (regular file) there still works as an explicit override.
 
 ### 6. First code deploy
 

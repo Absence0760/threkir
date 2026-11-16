@@ -226,7 +226,7 @@ const SHOW = 'printf "args=%s\\n" "${ESTATE_TFVARS_ARGS[*]-}"; printf "tmp=%s\\n
 test('estate_tfvars_resolve decrypts the sops copy to a private temp file outside the env dir', () => {
 	withTfvarsFixture(({ dir, envDir, run }) => {
 		writeFileSync(join(dir, 'threkir', 'prod.tfvars.sops'), 'CIPHERTEXT\n');
-		const r = run(`estate_tfvars_resolve prod "${envDir}"; f="\${ESTATE_TFVARS_ARGS[0]#-var-file=}"; ${SHOW}; stat -c 'file=%a dir=%a' "$f" "$ESTATE_TFVARS_TMPDIR" | paste -sd' '; cat "$f"; d="$ESTATE_TFVARS_TMPDIR"; estate_tfvars_cleanup; [[ ! -e "$d" ]] && echo removed`);
+		const r = run(`estate_tfvars_resolve prod "${envDir}"; f="\${ESTATE_TFVARS_ARGS[0]#-var-file=}"; ${SHOW}; echo "file=$(stat -c %a "$f") dir=$(stat -c %a "$ESTATE_TFVARS_TMPDIR")"; cat "$f"; d="$ESTATE_TFVARS_TMPDIR"; estate_tfvars_cleanup; [[ ! -e "$d" ]] && echo removed`);
 		assert.equal(r.status, 0, r.err);
 		assert.match(r.out, /^args=-var-file=\S+\/prod\.tfvars$/m);
 		assert.ok(!r.out.includes(`args=-var-file=${envDir}`), r.out);

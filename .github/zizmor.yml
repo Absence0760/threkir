@@ -15,5 +15,5 @@ rules:
     ignore:
       - ci.yml
       - security.yml
-      - gitleaks-sweep.yml
+      - secret-scan-sweep.yml
       - release-backend.yml

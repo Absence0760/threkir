@@ -76,8 +76,8 @@
 //      job in `ci.yml` block a merge; nothing said anything about the other
 //      workflows, and a `needs:` entry cannot name a job in a sibling file. So
 //      a scanner in a file of its own runs on every PR, goes red on a finding,
-//      and merges anyway — which is what `gitleaks.yml` did for its whole life
-//      until § 1264 moved it behind a called job. The remedy is not always the
+//      and merges anyway — which is what `gitleaks.yml` (now `secret-scan.yml`)
+//      did until § 1264 moved it behind a called job. The remedy is not always the
 //      fold: `security.yml` is refused it on a measured reason, and
 //      `pr-title-lint.yml` triggers on `edited`, which is how a RETITLE
 //      re-lints and which `ci.yml` deliberately does not carry. What the rule
@@ -1252,7 +1252,7 @@ export function checkPrGates(files, advisory = PR_ADVISORY) {
 				`${wf.name} runs on every pull request and no job of it is waited on by ` +
 					`\`${GATE_JOB}\`, so however red it goes the PR still merges — branch protection ` +
 					`requires one context and a \`needs:\` entry cannot name a job in another file. ` +
-					`Either call it from ci.yml the way terraform.yml and gitleaks.yml are called, ` +
+					`Either call it from ci.yml the way terraform.yml and secret-scan.yml are called, ` +
 					`or add it to PR_ADVISORY with the reason the fold is the WRONG answer rather ` +
 					`than the unmade one.`,
 			);

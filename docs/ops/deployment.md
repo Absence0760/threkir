@@ -330,22 +330,26 @@ the stale ones (run 42412145141, where that re-resolution crashed xcodebuild).
 A `needs:` entry is scoped to its own workflow, so a job in a sibling workflow
 file can never be waited on directly. Two workflows reach the gate anyway by
 being **called instead of triggered** -- `terraform.yml` ([decisions
-§ 1149](../architecture/decisions.md)) and `gitleaks.yml` ([§
-1264](../architecture/decisions.md)) are `on: workflow_call`, and `ci.yml` has
-a one-line job for each. A called workflow's job results fan into the calling
+§ 1149](../architecture/decisions.md)) and `secret-scan.yml` ([§
+1264](../architecture/decisions.md), then `gitleaks.yml`; TruffleHog since
+[§ 2552](../architecture/decisions.md)) are `on: workflow_call`, and `ci.yml`
+has a one-line job for each. A called workflow's job results fan into the calling
 job, so one `needs:` entry covers every job those files hold today and every
 one they gain later.
 
-**`gitleaks.yml` is called AND scheduled, and only the called half gates.** The
-`workflow_call` path diffs against the base ref; the weekly `cron` is the only
+**The secret scan is called AND scheduled, and only the called half gates.**
+`secret-scan.yml` runs TruffleHog over the event's commit range plus the
+checked-out tree, and fails on a verified or unknown finding (unverified ones
+only warn). The `workflow_call` path from `ci.yml` scans the PR's or push's
+range; the weekly `cron` is the only
 scan that reads the whole of `main`'s history, and it reaches the gate by no
 route at all -- it runs on no PR. It failed every week from 2026-05-18 to
 2026-09-21 without that being visible anywhere ([decisions
-§ 1697](../architecture/decisions.md)). `gitleaks-sweep.yml` now holds that cron, calls the same
+§ 1697](../architecture/decisions.md)). `secret-scan-sweep.yml` (then `gitleaks-sweep.yml`) now holds that cron, calls the same
 scan, and opens a `secret-scan`-labelled issue on a failed sweep, closing it on
 the next clean one -- the shape `audit.yml` already uses. It is a separate file
 because a callee may not request a permission its caller lacks, and putting the
-`issues: write` in `gitleaks.yml` failed `ci.yml` at startup. The issue carries the run link and never the
+`issues: write` in the scan file failed `ci.yml` at startup. The issue carries the run link and never the
 findings, because this repository is public. A red weekly sweep is therefore an
 open issue rather than a merge block -- deliberately, since the history it
 reads is already merged and blocking the next unrelated PR would not unmerge
@@ -576,8 +580,8 @@ in the gate, and fails the PR when a build step stops covering a tree the repo
 holds. What is still outside the gate is a leg that fails outright or a bad
 `queries:` value -- loud states, unlike the silent one.
 
-Folding `security.yml` into `ci.yml` the way `terraform.yml` and `gitleaks.yml`
-were folded would buy the rest of that second guarantee without a repo setting,
+Folding `security.yml` into `ci.yml` the way `terraform.yml` and the secret
+scan were folded would buy the rest of that second guarantee without a repo setting,
 and it has been re-derived and declined three times now, so the cost is recorded
 here to stop a fourth: the fold re-keys all four analyses (the action derives
 its key from the run's workflow path), and `security.yml`'s own `push` and

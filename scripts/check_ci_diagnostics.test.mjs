@@ -1197,10 +1197,10 @@ on:
     branches: [main]
   pull_request:
 jobs:
-  gitleaks:
-    uses: ./.github/workflows/gitleaks.yml
+  secret-scan:
+    uses: ./.github/workflows/secret-scan.yml
   ci-gate:
-    needs: [gitleaks]
+    needs: [secret-scan]
 `;
 
 test('parseTriggers reads all three spellings of an on: block', () => {
@@ -1218,7 +1218,7 @@ test('parseTriggers reads all three spellings of an on: block', () => {
 test('a PR-triggered workflow nothing waits on fails, and names the two remedies', () => {
 	const files = [
 		{ name: 'ci.yml', text: CI_CALLING },
-		{ name: 'gitleaks.yml', text: 'on:\n  workflow_call:\n' },
+		{ name: 'secret-scan.yml', text: 'on:\n  workflow_call:\n' },
 		{ name: 'scanner.yml', text: 'on:\n  pull_request:\n' },
 	];
 	const { errors } = checkPrGates(files, new Map());
@@ -1233,7 +1233,7 @@ test('a workflow called from ci.yml reaches the gate and needs no exemption', ()
 		{ name: 'ci.yml', text: CI_CALLING },
 		// Even carrying its own PR trigger, a called workflow's results fan into
 		// the calling job, which IS in the gate's needs.
-		{ name: 'gitleaks.yml', text: 'on:\n  workflow_call:\n  pull_request:\n' },
+		{ name: 'secret-scan.yml', text: 'on:\n  workflow_call:\n  pull_request:\n' },
 	];
 	assert.deepEqual(checkPrGates(files, new Map()).errors, []);
 });
@@ -1241,7 +1241,7 @@ test('a workflow called from ci.yml reaches the gate and needs no exemption', ()
 test('an exemption fails once its workflow reaches the gate, and once it stops running on PRs', () => {
 	const advisory = new Map([['scanner.yml', 'x'.repeat(80)]]);
 	const reachable = [
-		{ name: 'ci.yml', text: CI_CALLING.replace('workflows/gitleaks.yml', 'workflows/scanner.yml') },
+		{ name: 'ci.yml', text: CI_CALLING.replace('workflows/secret-scan.yml', 'workflows/scanner.yml') },
 		{ name: 'scanner.yml', text: 'on:\n  pull_request:\n' },
 	];
 	const { errors } = checkPrGates(reachable, advisory);
@@ -1250,7 +1250,7 @@ test('an exemption fails once its workflow reaches the gate, and once it stops r
 
 	const dropped = [
 		{ name: 'ci.yml', text: CI_CALLING },
-		{ name: 'gitleaks.yml', text: 'on:\n  workflow_call:\n' },
+		{ name: 'secret-scan.yml', text: 'on:\n  workflow_call:\n' },
 	];
 	const { errors: stale } = checkPrGates(dropped, advisory);
 	assert.equal(stale.length, 1);
@@ -1260,7 +1260,7 @@ test('an exemption fails once its workflow reaches the gate, and once it stops r
 test('an advisory reason too short to say why the fold is wrong fails', () => {
 	const files = [
 		{ name: 'ci.yml', text: CI_CALLING },
-		{ name: 'gitleaks.yml', text: 'on:\n  workflow_call:\n' },
+		{ name: 'secret-scan.yml', text: 'on:\n  workflow_call:\n' },
 		{ name: 'scanner.yml', text: 'on:\n  pull_request:\n' },
 	];
 	const { errors } = checkPrGates(files, new Map([['scanner.yml', 'not got to it yet']]));

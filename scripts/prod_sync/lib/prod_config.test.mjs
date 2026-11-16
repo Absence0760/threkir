@@ -83,6 +83,8 @@ test('enabling needs a sign-off that links the approval', () => {
 		'https://github.com/Absence0760/threkir/issues/1097',
 		'https://github.com/Absence0760/threkir/pull/1351',
 		'https://github.com/Absence0760/project-mgmt/issues/10#issuecomment-99',
+		'https://github.com/jaredhoward-dev/threkir/issues/1097#issuecomment-1234567',
+		'https://github.com/jaredhoward-dev/threkir/pull/1351',
 		'reviews/legal-live-overlay.md',
 		'docs/features/clubs.md#signoff',
 	]) {
@@ -90,6 +92,8 @@ test('enabling needs a sign-off that links the approval', () => {
 	}
 	for (const bad of [
 		'https://github.com/someone/threkir/issues/1',
+		'https://github.com/jaredhoward/threkir/issues/1',
+		'https://github.com/jaredhoward-devx/threkir/issues/1',
 		'http://github.com/Absence0760/threkir/issues/1',
 		'https://example.com/approval',
 		'docs/../secrets.md',

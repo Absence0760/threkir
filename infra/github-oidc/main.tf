@@ -37,7 +37,7 @@
 # The subject is NOT `repo:<owner>/<repo>:…`. This repo issues IMMUTABLE
 # SUBJECT CLAIMS, so GitHub substitutes numeric IDs for both names:
 #
-#   repo:Absence0760@21693150/threkir@1202414286:environment:production
+#   repo:jaredhoward-dev@357177875/threkir@1202414286:environment:production
 #
 # Those IDs survive a rename, which is the feature. `web@1.5.0` deployed fine
 # on 2026-09-10 and every deploy after failed AssumeRoleWithWebIdentity with
@@ -67,7 +67,9 @@
 # post-transfer prefix as an extra and apply; after it, make the new prefix the
 # primary, empty the extras and apply again. With no extras the policy is the
 # single subject it always was (IAM treats a one-element list as that string,
-# so there is no plan diff). Read each prefix, never build it:
+# so there is no plan diff). The move finished on 2026-11-16 and the extras
+# were emptied; the roles trust only the org subject now. Read each prefix,
+# never build it:
 #   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
 
 # ── CloudFrontInvalidate scoping caveat ──

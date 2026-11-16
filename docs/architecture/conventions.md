@@ -2471,6 +2471,8 @@ And where a rule genuinely has a blind spot, the guard **reports the blind spot*
 
 ## A secret-scan allowlist names the value, never the file — and the difference has to be tested
 
+This section is about `.gitleaks.toml`, which only the local gitleaks pre-commit hook reads. CI's scan is TruffleHog (`secret-scan.yml`, [decisions.md § 2552](decisions.md)): it fails only on a credential its provider accepts (or could not check), lists the rest as unverified warnings, and takes a reviewed false positive as a `trufflehog:ignore` comment on its line, which is per line rather than per file for the same reason.
+
 `.gitleaks.toml`'s entries are matched on the matched **secret**, not on a path, so the scanner stays live on the source a false positive sits in. That is the file's stated convention and it is load-bearing: an entry keyed on a path is indistinguishable from switching the scanner off over that file, and the file where a fixture lives is exactly the file a real key is most likely to be pasted into next.
 
 **Assert it, don't state it.** The convention had been written down and never checked. The way to check it is to plant a token of a shape gitleaks actually detects — a `ghp_`-shaped one does — in the allowlisted file itself and confirm it still fails while the allowlisted literal beside it does not. Do that when adding an entry; a canary built from a credential the scanner does not recognise in the first place tests nothing and reads as a pass ([decisions.md § 1697](decisions.md)).

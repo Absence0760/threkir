@@ -44,7 +44,7 @@ Per the rule in `CLAUDE.md`: every PR that touches code also touches tests and d
 pnpm install               # bootstrap (or the stack's equivalent)
 pnpm check                 # typecheck across workspaces
 pnpm test                  # unit / integration tests
-pre-commit run --all-files # gitleaks + the other hygiene hooks
+pre-commit run --all-files # gitleaks + the other hygiene hooks (CI scans with TruffleHog)
 ```
 
 Or, if Claude Code is available: `/check` runs all of the above in sequence and reports.

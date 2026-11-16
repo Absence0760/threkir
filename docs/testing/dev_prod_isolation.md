@@ -33,7 +33,7 @@ Per-toolchain loader (only Vite has a real "mode", so the mechanics differ):
 - **Wear (Gradle):** reads `.env.development` then overlays `.env.local`; release reads neither.
 - **job_worker (Go):** a stdlib `loadEnvFiles(".env.local", ".env.development")` at startup; existing env wins. Prod ships only the binary (multi-stage image), so neither file is present and Fly secrets are the sole source.
 
-The committed `.env.development` files carry only the public Supabase demo JWTs; the `gitleaks` allowlist and the `env-isolation` job in [ci.yml](../../.github/workflows/ci.yml) scan them by path so a *real* key slipping in fails the build.
+The committed `.env.development` files carry only the public Supabase demo JWTs; the `env-isolation` job in [ci.yml](../../.github/workflows/ci.yml) scans them by path, and CI's TruffleHog secret scan (`secret-scan.yml`) checks every candidate against its provider, so a *real* key slipping in fails the build while the demo JWTs stay unverified warnings. The local gitleaks pre-commit hook allowlists them in `.gitleaks.toml`.
 
 ## What is guarded
 

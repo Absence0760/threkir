@@ -1,7 +1,7 @@
 # sops routing for this repo — DELIBERATELY RULE-LESS.
 #
 # This repo is PUBLIC. Production secrets are NOT encrypted or stored here —
-# they live in the PRIVATE estate repo Absence0760/infra-secrets (cloned as a
+# they live in the PRIVATE estate repo jaredhoward-dev/infra-secrets (cloned as a
 # sibling at ../infra-secrets), one subdir per project:
 #
 #     ../infra-secrets/threkir/prod.sops.yaml

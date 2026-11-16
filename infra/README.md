@@ -200,7 +200,7 @@ Working from zero — no AWS account, no domain, no AWS CLI:
 - Terraform ≥ 1.13 (`dnf install terraform`)
 - AWS CLI v2 (already installed per workstation conventions)
 - sops (already installed; uses age locally + AWS KMS for shared)
-- The PRIVATE estate secrets repo cloned as a sibling of this repo: `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets`. Production sops ciphertext lives there (under `threkir/`), never in this public repo. Set `INFRA_SECRETS_DIR` / `TF_VAR_secrets_file` if your clone lives elsewhere.
+- The PRIVATE estate secrets repo cloned as a sibling of this repo: `git clone git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets`. Production sops ciphertext lives there (under `threkir/`), never in this public repo. Set `INFRA_SECRETS_DIR` / `TF_VAR_secrets_file` if your clone lives elsewhere.
 
 **0.4 — AWS CLI SSO.**
 
@@ -297,7 +297,7 @@ terraform apply
 The first apply creates the KMS key, S3 bucket, CloudFront distribution, and Lambda **with a placeholder zip and no `ANTHROPIC_API_KEY`** (because the secrets file doesn't exist yet). The coach endpoint will return 503 — that's expected. Static site already works.
 
 > **Secrets live in the PRIVATE estate repo, NOT here.** This repo is PUBLIC.
-> Production sops ciphertext is committed to `Absence0760/infra-secrets` (cloned
+> Production sops ciphertext is committed to `jaredhoward-dev/infra-secrets` (cloned
 > as a sibling at `../infra-secrets`), under `threkir/<env>.sops.yaml` — never
 > under `infra/` (a sops file in public history leaks KMS-ARN metadata + secret
 > key names; `infra/.gitignore` blocks it as a fail-safe). The Terraform

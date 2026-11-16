@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# The PRIVATE estate secrets repo (Absence0760/infra-secrets): where this
+# The PRIVATE estate secrets repo (jaredhoward-dev/infra-secrets): where this
 # project's slot is, and which sops creation rule governs a file in it. Source
 # it after common.sh, which provides REPO_ROOT:
 #

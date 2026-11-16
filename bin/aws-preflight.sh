@@ -131,7 +131,7 @@ step "estate secrets (.sops.yaml)"
 # Prod secrets live in the PRIVATE estate repo ../infra-secrets, not here.
 if [[ ! -f "$SOPS_CONFIG" ]]; then
 	warn "estate secrets repo not found at $INFRA_SECRETS_DIR"
-	dim "Clone Absence0760/infra-secrets as a sibling, or set INFRA_SECRETS_DIR."
+	dim "Clone jaredhoward-dev/infra-secrets as a sibling, or set INFRA_SECRETS_DIR."
 elif [[ ! -d "$ESTATE_SLOT_DIR" ]]; then
 	# The account pin and every secrets path resolve under the slot, so a
 	# missing slot has already switched the wrong-account guard above off.

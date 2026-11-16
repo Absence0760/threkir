@@ -1,6 +1,6 @@
 # Park course geometry
 
-Phase 3 of the park courses plan ([#1313](https://github.com/Absence0760/threkir/issues/1313)): the committed, reviewable pipeline that turns trails in a park into course lines for the `parks` / `park_courses` / `global_segments` tables.
+Phase 3 of the park courses plan ([#1313](https://github.com/jaredhoward-dev/threkir/issues/1313)): the committed, reviewable pipeline that turns trails in a park into course lines for the `parks` / `park_courses` / `global_segments` tables.
 
 ## Layout
 

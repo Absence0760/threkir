@@ -20,7 +20,7 @@ import path from 'node:path';
 import { parseWayFull } from './lib/osm_response.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
 
-const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/Absence0760/threkir)';
+const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/jaredhoward-dev/threkir)';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6';
 const EPQS = 'https://epqs.nationalmap.gov/v1/json';
 const ELEVATION_CONCURRENCY = 4;

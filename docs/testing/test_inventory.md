@@ -1890,7 +1890,7 @@ and on two it must refuse rather than guess at, `sopsFilters` on the
 comprehension that carries no predicate, and `envPlaintextKeys` on the
 intermediate local (`sentry_env`) that a reader looking only at `*_lambda_env`
 would miss.
-Four more pin the org-move trust form (Absence0760/project-mgmt#14), a `sub`
+Four more pin the org-move trust form (jaredhoward-dev/project-mgmt#14), a `sub`
 written as a list over `local.github_subject_prefixes`: it passes and is read
 as `<prefix>:environment:<name>`, a wildcard environment in it fails, a list
 over anything else reads as no `sub` at all, and crossing the two environments

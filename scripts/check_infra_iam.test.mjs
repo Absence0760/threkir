@@ -283,7 +283,7 @@ test('a pull_request-shaped sub fails', () => {
   assert.ok(has(errors, /not `repo:<owner\/repo>:environment:<name>`/), errors.join('\n'));
 });
 
-// The org-move form (Absence0760/project-mgmt#14): one exact subject per
+// The org-move form (jaredhoward-dev/project-mgmt#14): one exact subject per
 // trusted prefix, built from local.github_subject_prefixes.
 /** @param {string} envName */
 const listSub = (envName) =>

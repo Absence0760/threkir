@@ -12,7 +12,7 @@ the stack is re-applied so the Lambda gets them. Run the rows top-to-bottom:
 
 | # | When | Run |
 |---|---|---|
-| 0 | Prod secrets live in the private estate repo — clone it once as a sibling | `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets` |
+| 0 | Prod secrets live in the private estate repo — clone it once as a sibling | `git clone git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets` |
 | 1 | Before any `terraform apply` | `bin/aws-preflight.sh` |
 | 2 | Stand up the env (S3 + CloudFront + Lambda + KMS) — Lambda comes up *without* the coach key on this first pass (coach → 503, expected) | `bin/deploy-preview.sh` |
 | 3 | Wire the new env KMS ARN into `../infra-secrets/.sops.yaml` + seed `threkir/preview.sops.yaml` | `bin/sops-init.sh preview` |

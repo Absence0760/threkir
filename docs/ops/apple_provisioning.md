@@ -646,12 +646,12 @@ The `.p8` can be piped straight from `sops` into `gh` so it never lands on disk
 or in shell history:
 
 ```
-cd ~/github/infra-secrets && AWS_PROFILE=threkir sops -d --extract '["siwa_key_p8"]' threkir/push-credentials.sops.yaml | gh secret set APPLE_SIWA_PRIVATE_KEY --env apple-secret-rotation --repo Absence0760/threkir
+cd ~/github/infra-secrets && AWS_PROFILE=threkir sops -d --extract '["siwa_key_p8"]' threkir/push-credentials.sops.yaml | gh secret set APPLE_SIWA_PRIVATE_KEY --env apple-secret-rotation --repo jaredhoward-dev/threkir
 ```
 
 3. Run it once by hand, after step 5 and the Client IDs above are in place:
    **Actions** → **Rotate Apple OAuth client secret** → **Run workflow**, or
-   `gh workflow run rotate-apple-client-secret.yml --repo Absence0760/threkir`.
+   `gh workflow run rotate-apple-client-secret.yml --repo jaredhoward-dev/threkir`.
    A green run logs the new expiry date and nothing else.
 
 **When it fails**, the run's `::error::` line names the cause and the

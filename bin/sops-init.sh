@@ -5,7 +5,7 @@
 # creates the keys, and (optionally) seeds an empty `threkir/<env>.sops.yaml`
 # there for any env that doesn't have one yet.
 #
-# Production secrets live in ../infra-secrets (Absence0760/infra-secrets), NOT in
+# Production secrets live in ../infra-secrets (jaredhoward-dev/infra-secrets), NOT in
 # this PUBLIC repo — one subdir per project, named by ESTATE_SLUG in
 # bin/lib/estate.sh. Set INFRA_SECRETS_DIR to override the default sibling-clone
 # location.
@@ -76,7 +76,7 @@ need_aws_auth
 ok "AWS auth OK ($(aws sts get-caller-identity --query Arn --output text))"
 
 if [[ ! -d "$INFRA_SECRETS_DIR" ]]; then
-	fatal "Estate secrets repo not found at $INFRA_SECRETS_DIR — clone Absence0760/infra-secrets as a sibling of this repo, or set INFRA_SECRETS_DIR."
+	fatal "Estate secrets repo not found at $INFRA_SECRETS_DIR — clone jaredhoward-dev/infra-secrets as a sibling of this repo, or set INFRA_SECRETS_DIR."
 fi
 if [[ ! -f "$SOPS_CONFIG" ]]; then
 	fatal "$SOPS_CONFIG missing — is $INFRA_SECRETS_DIR a checkout of the infra-secrets repo?"

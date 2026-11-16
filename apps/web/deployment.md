@@ -95,7 +95,7 @@ infra/
 └── .sops.yaml             # DELIBERATELY rule-less: `sops --encrypt` under infra/ fails
                            # closed. The creation rules live in the estate's own .sops.yaml
 
-../infra-secrets/          # PRIVATE estate repo (Absence0760/infra-secrets), cloned as a sibling
+../infra-secrets/          # PRIVATE estate repo (jaredhoward-dev/infra-secrets), cloned as a sibling
 ├── .sops.yaml             # Routes threkir/<env>.sops.yaml to that env's KMS key
 └── threkir/
     ├── prod.sops.yaml     # sops-encrypted runtime secrets (KMS key from this env's stack)

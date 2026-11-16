@@ -107,4 +107,4 @@ dim "  (cd $INFRA_SECRETS_DIR && git commit -am '$ESTATE_SLUG: rotate $ENV_NAME 
 
 step "Push to Lambda"
 log "The Lambda still has env vars from the old apply. Re-apply to push:"
-dim "  cd infra/envs/$ENV_NAME && terraform apply"
+dim "  bin/deploy-$ENV_NAME.sh    # applies infra/envs/$ENV_NAME with its decrypted tfvars, then syncs the live aliases"

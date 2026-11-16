@@ -32,7 +32,7 @@
 # After running, re-apply the env so the Lambda picks up the new
 # value:
 #
-#   cd infra/envs/<env> && terraform apply
+#   bin/deploy-<env>.sh   (decrypts the env's tfvars, applies, syncs aliases)
 
 set -euo pipefail
 
@@ -146,4 +146,4 @@ log ""
 log "Commit the encrypted file in the PRIVATE estate repo (never in this one):"
 dim "  (cd $INFRA_SECRETS_DIR && git add $ESTATE_SLUG/$ENV_NAME.sops.yaml && git commit -m '$ESTATE_SLUG: rotate $KEY')"
 log "Push to the Lambda:"
-dim "  cd infra/envs/$ENV_NAME && terraform apply"
+dim "  bin/deploy-$ENV_NAME.sh    # applies infra/envs/$ENV_NAME with its decrypted tfvars, then syncs the live aliases"

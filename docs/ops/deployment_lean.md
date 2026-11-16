@@ -227,7 +227,7 @@ delegation is live.
 > env tfvars (the 10-wide account pool is itself the tighter bill cap meanwhile) and revert
 > the two lines + re-apply once approved.
 
-**Required `infra/envs/prod/terraform.tfvars` values — the apply hard-fails validation without them:**
+**Required prod tfvars values (the estate's sops-encrypted `../infra-secrets/threkir/prod.tfvars.sops`, edited with `AWS_PROFILE=threkir sops <that file>`; `bin/deploy-prod.sh` decrypts it for the plan) — the apply hard-fails validation without them:**
 
 - `public_supabase_url` — the raw `https://<ref>.supabase.co` (**not** the example's
   `api.threkir.com`, which is Pro-only).

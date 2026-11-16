@@ -29,10 +29,10 @@ exist; `reviews/` is gitignored, so prefer a link.
 ```json
 {
   "feature_flags": {
-    "live_overlay": { "enabled": true, "signoff": "https://github.com/Absence0760/threkir/issues/1097#issuecomment-…" }
+    "live_overlay": { "enabled": true, "signoff": "https://github.com/jaredhoward-dev/threkir/issues/1097#issuecomment-…" }
   },
   "function_env": {
-    "EXAMPLE_TOGGLE_ENABLED": { "enabled": true, "signoff": "https://github.com/Absence0760/threkir/issues/<n>#issuecomment-…" }
+    "EXAMPLE_TOGGLE_ENABLED": { "enabled": true, "signoff": "https://github.com/jaredhoward-dev/threkir/issues/<n>#issuecomment-…" }
   },
   "web_env": {
     "PUBLIC_COURSE_DRIVE_ENABLED": { "enabled": false }

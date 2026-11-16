@@ -241,7 +241,7 @@ if [[ $PLAN_ONLY -eq 0 ]]; then
 		warn "No coach secret wired yet — the Lambda is up but /api/coach returns 503."
 		log "Phase 2 — wire the secret (it lives in the PRIVATE ../infra-secrets repo, never here):"
 		if [[ ! -d "$INFRA_SECRETS_DIR" ]]; then
-			dim "  git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets   # clone the estate repo first"
+			dim "  git clone git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets   # clone the estate repo first"
 		fi
 		dim "  bin/sops-init.sh $ENV_NAME                                   # wire KMS ARN + seed $ESTATE_SLUG/$ENV_NAME.sops.yaml"
 		dim "  echo -n \"sk-ant-…\" | bin/secret-set.sh $ENV_NAME ANTHROPIC_API_KEY   # real key via stdin"

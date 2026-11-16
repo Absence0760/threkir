@@ -243,7 +243,7 @@ Never commit a production secret. Three storage layers, in order of preference:
 
 1. **Provider-native secret store** — Supabase Vault (already set up for OAuth tokens via `get_integration_tokens` / `set_integration_tokens` per [decisions.md § 41](../architecture/decisions.md#41-oauth-tokens-are-stored-in-supabase-vault-not-as-plaintext-columns)), AWS Secrets Manager (the coach Lambda's `ANTHROPIC_API_KEY` and server-side `SENTRY_DSN`), Fly.io secrets, GitHub Actions secrets. Scoped to the service that needs them.
 2. **`.env.local` files** — gitignored, present on developer laptops and CI runners that need them. Templates committed as `.env.example`.
-3. **The private estate secrets repo** (`Absence0760/infra-secrets`, sops + per-project AWS KMS — see the repo-root CLAUDE.md § Production secrets) — durable source of truth for long-lived key material that must survive a lost workstation (e.g. the Android upload keystore at `threkir/android-upload-keystore.sops.yaml`). Access is IAM (`kms:Decrypt`); Bitwarden holds the owner's interactive credentials. There is no 1Password anywhere in this estate.
+3. **The private estate secrets repo** (`jaredhoward-dev/infra-secrets`, sops + per-project AWS KMS — see the repo-root CLAUDE.md § Production secrets) — durable source of truth for long-lived key material that must survive a lost workstation (e.g. the Android upload keystore at `threkir/android-upload-keystore.sops.yaml`). Access is IAM (`kms:Decrypt`); Bitwarden holds the owner's interactive credentials. There is no 1Password anywhere in this estate.
 
 The matrix of "what lives where":
 
@@ -528,7 +528,7 @@ alternative, flipping it to *evaluate*, keeps the record without the lock.
   Bypass only for a hotfix, and record every bypass on the PR** (who, why, and
   the run that failed to upload).
 - (d) **Monthly, review the ruleset's version history
-  (`gh api repos/Absence0760/threkir/rulesets/25104920/history`) and its rule
+  (`gh api repos/jaredhoward-dev/threkir/rulesets/25104920/history`) and its rule
   insights for bypasses (`.../rulesets/rule-suites`)**, against the bypass
   records on the PRs. The owner is the only admin, so this review is the
   compensating control for the segregation-of-duties gap.
@@ -642,7 +642,7 @@ the only record of it.
 
 ### The edge runtime's first-request SIGBUS is fixed by a pinned image
 
-[Issue #916](https://github.com/Absence0760/threkir/issues/916): the local
+[Issue #916](https://github.com/jaredhoward-dev/threkir/issues/916): the local
 Supabase stack's edge runtime exited **135 (SIGBUS)** while serving the first
 request it got, which is the `start-supabase` action's own readiness probe, so
 a job failed before a test ran and reported

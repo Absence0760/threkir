@@ -245,7 +245,7 @@ Four destinations. The client DSN goes to one, the backend DSN to two.
   which holds the signing keys. `release-web.yml` bakes it into `.env.production` and
   `release-android.yml` re-reads the same secret into `--dart-define=SENTRY_DSN`, so one
   secret covers web and both mobile twins:
-  `gh secret set PUBLIC_SENTRY_DSN --repo Absence0760/threkir`
+  `gh secret set PUBLIC_SENTRY_DSN --repo jaredhoward-dev/threkir`
 - **Backend DSN → Supabase Edge Function secrets**, which every EF reads through
   `withSentry()`:
   `cd apps/backend && supabase secrets set SENTRY_DSN="<paste>" APP_RELEASE="backend@$(git describe --tags --abbrev=0)"`

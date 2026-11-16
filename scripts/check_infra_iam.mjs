@@ -757,7 +757,7 @@ export function parseOidcStack(raw) {
         )) {
           claims.set(m[1], m[2]);
         }
-        // The org-move form (Absence0760/project-mgmt#14): a list of exact
+        // The org-move form (jaredhoward-dev/project-mgmt#14): a list of exact
         // subjects built from `local.github_subject_prefixes`, one per trusted
         // prefix. Recorded under a token the shape check below accepts, so each
         // element is still held to `<prefix>:environment:<name>` and the
@@ -1766,7 +1766,7 @@ export function compareSources(oidc, release, web, oidcVars) {
     } else if (value !== undefined) {
       ok.push(`github_subject_prefix is repo-shaped (${value})`);
     }
-    // The org-move extras (Absence0760/project-mgmt#14) are trusted exactly
+    // The org-move extras (jaredhoward-dev/project-mgmt#14) are trusted exactly
     // like the primary, so they are held to the same shape. Terraform's own
     // validation on the variable says the same thing at plan time.
     const extras = tfvars.match(

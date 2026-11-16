@@ -863,11 +863,14 @@ void main() {
       expect(find.text('Cancel'), findsNothing);
     });
 
-    realtimeWidgetTest('an armed race offers Fire Go and Cancel', (
+    realtimeWidgetTest('an armed race offers GO and Cancel', (
       tester,
     ) async {
       final social = _EventSocial(club: _club('owner'), raceStatus: 'armed');
       await pumpEvent(tester, social);
+      expect(find.text('GO'), findsOneWidget);
+      expect(find.text('Tap GO when the race begins. '
+          "Participants' watches show the armed banner now."), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
     });
 
@@ -885,7 +888,7 @@ void main() {
       expect(find.byKey(const ValueKey('race-mode-start')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-delay')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-cancel')), findsOneWidget);
-      expect(find.text('Fire Go'), findsNothing);
+      expect(find.text('GO'), findsNothing);
 
       await tester.ensureVisible(find.byKey(const ValueKey('race-delay')));
       await tester.tap(find.byKey(const ValueKey('race-delay')));

@@ -372,7 +372,7 @@ class _EventPhotosState extends State<EventPhotos> {
       }
       return;
     }
-    if (file == null) return;
+    if (file == null || !mounted) return;
     setState(() => _uploading = true);
     try {
       final bytes = await file.readAsBytes();

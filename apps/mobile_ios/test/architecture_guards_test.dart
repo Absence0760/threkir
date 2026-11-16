@@ -1380,7 +1380,7 @@ void main() {
       // the mobile race-control card used to fire _raceMutation(end) /
       // _raceMutation(cancel) on a single tap. The fix requires both
       // destructive arms to route through a _confirmRaceAction dialog;
-      // Arm / Fire Go stay one-tap. Catches a regression that drops the
+      // Arm / GO stay one-tap. Catches a regression that drops the
       // confirm or wires a button straight to _raceMutation.
       final source =
           File('lib/screens/event_detail_screen.dart').readAsStringSync();
@@ -1409,7 +1409,7 @@ void main() {
         reason: 'Cancel must go through _confirmRaceAction, not call '
             '_raceMutation(_RaceAction.cancel) directly from a button.',
       );
-      // Arm / Fire Go remain one-tap (non-destructive) — guard that the
+      // Arm / GO remain one-tap (non-destructive) — guard that the
       // confirm wrapper is reserved for the destructive arms by pinning
       // the localized confirm-body keys.
       expect(source, contains('eventRaceEndConfirmBody'));
@@ -6581,14 +6581,17 @@ void main() {
     /// European/Brazilian word pairs that differ by the same one-letter ending
     /// an imperative does and are not verbs at all, so the derived scan below
     /// cannot tell them apart on shape. `equipa`/`equipe` is *team*;
-    /// `este`/`esta` and `deste`/`desta` are demonstratives agreeing with a
-    /// noun whose gender the variants disagree on (`o ecrã` against `a tela`,
-    /// the § 760 rule). `aceite`/`aceita` is the participle *accepted*, not
-    /// an imperative. Each is asserted to still be in use.
+    /// `este`/`esta`, `esse`/`essa` and `deste`/`desta` are demonstratives
+    /// agreeing with a noun whose gender the variants disagree on (`o ecrã`
+    /// against `a tela`, the § 760 rule; `essa comunicação` against `esse
+    /// relato`). `aceite`/`aceita` is the participle *accepted*, not an
+    /// imperative. Each is asserted to still be in use.
     const variantWordPairs = <String, String>{
       'equipa': 'equipe',
       'este': 'esta',
       'esta': 'este',
+      'essa': 'esse',
+      'esse': 'essa',
       'nesta': 'neste',
       'deste': 'desta',
       'aceite': 'aceita',

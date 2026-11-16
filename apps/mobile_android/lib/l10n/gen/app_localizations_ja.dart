@@ -1983,7 +1983,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — スタート待ち';
+    return '$label — GO待ち';
   }
 
   @override
@@ -5929,7 +5929,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備バナーが表示されます。';
+      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備完了バナーが表示されます。';
 
   @override
   String get eventRaceFireGo => 'GO';
@@ -16770,7 +16770,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
+      '遅れスタート：GOから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
 
   @override
   String get eventCoursesTitle => 'コース';
@@ -20372,16 +20372,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
 
   @override
-  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+  String get eventRacePreflightTitle => 'レースを準備する前にコースを確認';
 
   @override
-  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備できません';
 
   @override
   String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
 
   @override
-  String get eventRaceArmAnyway => 'このまま準備完了にする';
+  String get eventRaceArmAnyway => 'このまま準備する';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -20510,7 +20510,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'セルフタイムのレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
+    return 'セルフタイム方式のレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
   }
 
   @override

@@ -17,7 +17,10 @@
 //     says nothing about a callback that runs later;
 //   * a block that escapes (`return` / `throw` / `break` / `continue` as its
 //     last statement) does not hand its awaits to the parent, so
-//     `if (x) { await f(); return; }` followed by a `setState` is not a hit;
+//     `if (x) { await f(); return; }` followed by a `setState` is not a hit —
+//     and neither does its `mounted`, so a guard inside an escaping `catch`
+//     covers nothing after the `try` (a `switch` body never counts as
+//     escaping: its last `return` belongs to the last case alone);
 //   * a `mounted` seen anywhere before the setState in the same chain counts,
 //     so `if (!mounted) return;`, `if (mounted) setState(...)` and
 //     `if (!context.mounted) return;` all read as guarded.
@@ -114,6 +117,50 @@ bool _opensFunctionBody(String src, int braceAt) {
   return !_controlKeywords.contains(_wordBefore(src, open));
 }
 
+/// Whether the `{` at [braceAt] opens a `switch` body. Its last statement is
+/// the last case's, so a `return` there says nothing about the other cases.
+bool _opensSwitchBody(String src, int braceAt) {
+  var j = braceAt - 1;
+  while (j >= 0 && _isSpace(src[j])) {
+    j--;
+  }
+  if (j < 0 || src[j] != ')') return false;
+  final open = _matchOpenParen(src, j);
+  return open >= 0 && _wordBefore(src, open) == 'switch';
+}
+
+/// Words that carry a statement on past a `}`: `} else`, `} catch`,
+/// `} on E catch`, `} finally`, a do-while's `} while`, and a literal used as
+/// the operand of `as` / `is`.
+const _continuesPastBrace = {
+  'else',
+  'catch',
+  'on',
+  'finally',
+  'while',
+  'as',
+  'is',
+};
+
+/// Whether the `}` at [closeAt] ends a statement, so a statement starts right
+/// after it. A `}` followed by `;`, `,`, `.`, `)` or an operator closes a map
+/// or set literal, a closure or a switch expression inside the statement that
+/// follows (`return {...};`, `return switch (x) {...};`), so the scan keeps
+/// walking back through it. One followed by a fresh word ends an if/else, a
+/// loop, a try or a bare block, and that word starts the next statement.
+bool _closesStatement(String src, int closeAt, int limit) {
+  var j = closeAt + 1;
+  while (j < limit && _isSpace(src[j])) {
+    j++;
+  }
+  if (j >= limit || !_isNamePart(src[j])) return false;
+  var w = j;
+  while (w < limit && _isNamePart(src[w])) {
+    w++;
+  }
+  return !_continuesPastBrace.contains(src.substring(j, w));
+}
+
 /// Whether the block spanning [openAt]..[closeAt] ends in an escape statement,
 /// which is what makes its awaits invisible to the code that follows it.
 bool _blockEscapes(String src, int openAt, int closeAt) {
@@ -122,10 +169,12 @@ bool _blockEscapes(String src, int openAt, int closeAt) {
     end--;
   }
   if (end <= openAt || src[end] != ';') return false;
+  if (_opensSwitchBody(src, openAt)) return false;
   var k = end - 1;
   var depth = 0;
   while (k > openAt) {
     final c = src[k];
+    if (c == '}' && depth == 0 && _closesStatement(src, k, end)) break;
     if (c == ')' || c == ']' || c == '}') depth++;
     if (c == '(' || c == '[') depth--;
     if (c == '{') {
@@ -267,6 +316,65 @@ void main() {
     expect(only('Future<void> f() async { await g(); /* setState(() {}); */ }'),
         '',
         reason: 'a commented-out mention is not a call');
+  });
+
+  test('a return after a }-terminated statement still ends its block', () {
+    String only(String body) =>
+        unguardedPostAwaitSetState('class S { $body }', 'x')
+            .map((h) => h.split(' ').first.split(':').last)
+            .join(',');
+
+    expect(
+        only('Future<void> f() async { if (x) { if (y) { await a(); } '
+            'else { await b(); } return; } setState(() {}); }'),
+        '',
+        reason: 'the run detail visibility toggle before 33b75e01e: an '
+            'if/else then return escapes, so its awaits never reach the '
+            'setState below');
+    expect(
+        only('Future<void> f() async { if (x) { try { await g(); } '
+            'catch (e) { h(); } return; } setState(() {}); }'),
+        '',
+        reason: 'a try/catch then return escapes the same way');
+    expect(
+        only('Future<Object?> f() async { if (x) { await g(); '
+            'return {1: 2}; } setState(() {}); return null; }'),
+        '',
+        reason: 'the } of a map literal in `return {...};` does not start '
+            'a new statement');
+    expect(
+        only('Future<int> f() async { if (x) { await g(); '
+            'return switch (y) { 1 => 2, _ => 3 }; } setState(() {}); '
+            'return 0; }'),
+        '',
+        reason: 'nor does the } of a switch expression');
+    expect(
+        only('Future<void> f() async { if (x) { await g(); '
+            'final c = () { return; }; } setState(() {}); }'),
+        '1',
+        reason: 'a closure\'s own return does not end the block holding it');
+    expect(
+        only('Future<void> f() async { if (x) { await g(); '
+            'run(() { return; }); } setState(() {}); }'),
+        '1',
+        reason: 'nor does one passed as an argument');
+    expect(
+        only('Future<void> f() async { if (x) { if (y) { h(); } '
+            'await g(); } setState(() {}); }'),
+        '1',
+        reason: 'a block whose last statement is the await still gaps the '
+            'setState after it');
+    expect(
+        only('Future<void> f() async { switch (x) { case 1: await g(); '
+            'case 2: if (y) { h(); } return; } setState(() {}); }'),
+        '1',
+        reason: 'a switch body\'s last return belongs to its last case only');
+    expect(
+        only('Future<void> f() async { try { await g(); } catch (e) { '
+            'if (!mounted) return; h(); return; } setState(() {}); }'),
+        '1',
+        reason: 'a mounted check inside an escaping catch guards only that '
+            'catch, not the success path out of the try');
   });
 
   test('no setState in lib/ is reached across an unguarded async gap', () {

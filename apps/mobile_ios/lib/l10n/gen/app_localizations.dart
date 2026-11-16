@@ -10111,13 +10111,13 @@ abstract class AppLocalizations {
   /// Hint shown when the race is armed
   ///
   /// In en, this message translates to:
-  /// **'Tap Fire Go when the race begins. Participants\' watches show the armed banner now.'**
+  /// **'Tap GO when the race begins. Participants\' watches show the armed banner now.'**
   String get eventRaceArmedHint;
 
   /// Button to start the race
   ///
   /// In en, this message translates to:
-  /// **'Fire Go'**
+  /// **'GO'**
   String get eventRaceFireGo;
 
   /// Button to cancel the race while armed

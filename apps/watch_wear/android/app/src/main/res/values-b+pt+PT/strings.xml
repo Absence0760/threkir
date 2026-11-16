@@ -96,7 +96,7 @@
     </plurals>
     <string name="offline">Offline</string>
     <string name="not_signed_in">Sem sessão iniciada</string>
-    <string name="race_armed">PROVA PRONTA</string>
+    <string name="race_armed">PROVA PREPARADA</string>
     <string name="race_live">PROVA EM DIRETO</string>
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
@@ -106,12 +106,12 @@
     <string name="race_attempt_ready">Tentativa pronta · toque em Iniciar</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
     <string name="race_finish_short">Fim</string>
-    <string name="cd_finish_race">Terminar corrida</string>
-    <string name="race_ended">Corrida terminada</string>
+    <string name="cd_finish_race">Terminar prova</string>
+    <string name="race_ended">Prova encerrada</string>
     <string name="race_late_start">Partida tardia</string>
-    <string name="race_clock">Corrida %1$s</string>
+    <string name="race_clock">Prova %1$s</string>
     <string name="race_result_finished">Chegada %1$s</string>
-    <string name="race_result_dnf">Corrida DNF</string>
+    <string name="race_result_dnf">Prova DNF</string>
     <string name="race_to_start_line">%1$s até à linha de partida</string>
     <string name="race_start_crossed">Linha de partida atravessada, a cronometrar</string>
     <string name="race_finish_recorded">Chegada registada</string>

@@ -1196,7 +1196,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  /// Arm / Fire Go / End dispatcher. Uses the current `_raceSession`
+  /// Arm / GO / End dispatcher. Uses the current `_raceSession`
   /// state to decide which mutation to run. Errors surface as a
   /// snackbar; successful writes leave the realtime channel to push
   /// the UI back into sync (belt-and-suspenders: we also reload on
@@ -1246,7 +1246,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   /// End / Cancel are irreversible and affect every participant, so they
   /// confirm before firing (mirrors the web ConfirmDialog gate). Arm and
-  /// Fire Go stay one-tap.
+  /// GO stay one-tap.
   Future<void> _confirmRaceAction(_RaceAction action) async {
     final isCancel = action == _RaceAction.cancel;
     final e = _event;

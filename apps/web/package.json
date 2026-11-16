@@ -69,8 +69,8 @@
 		"@zip.js/zip.js": "^2.24.0",
 		"fit-file-parser": "^6.2.6",
 		"html-to-image": "^1.11.13",
-		"isomorphic-dompurify": "^4.6.0",
-		"maplibre-gl": "^6.15.0",
+		"isomorphic-dompurify": "^4.7.0",
+		"maplibre-gl": "^6.17.0",
 		"marked": "^18.1.2",
 		"material-symbols": "^0.48.3"
 	}

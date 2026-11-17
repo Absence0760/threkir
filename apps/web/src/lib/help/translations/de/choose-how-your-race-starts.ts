@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'choose-how-your-race-starts',
 	title: 'Festlegen, wie dein Rennen startet',
-	summary: 'GO durch Veranstalter, Geplanter GO oder Selbstgestoppter Zeitraum: wann du welche Art nutzt, was du am Renntag tust und wie Ergebnisse genehmigt werden.',
+	summary: 'GO durch Veranstalter, Geplanter GO oder Selbstgestoppter Zeitraum: wann du welche Art nutzt, was du am Wettkampftag tust und wie Ergebnisse genehmigt werden.',
 	sections: [
 		{
 			heading: 'Drei Arten zu starten',
@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharf schalten, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt.',
+					text: 'Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Wettkampftag leiten (früher scharf schalten, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt.',
 				},
 			],
 		},
@@ -44,16 +44,16 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Am Renntag: GO durch Veranstalter',
+			heading: 'Am Wettkampftag: GO durch Veranstalter',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du schaltest das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Du schaltest das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Wettkampftag für Veranstalter]].',
 				},
 			],
 		},
 		{
-			heading: 'Am Renntag: Geplanter GO',
+			heading: 'Am Wettkampftag: Geplanter GO',
 			blocks: [
 				{
 					type: 'list',
@@ -68,7 +68,7 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Am Renntag: Selbstgestoppt',
+			heading: 'Am Wettkampftag: Selbstgestoppt',
 			blocks: [
 				{
 					type: 'list',

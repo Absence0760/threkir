@@ -1,6 +1,6 @@
 ---
 title: "Dein erstes Rennen: Finden und Anmelden"
-description: Wie du ein anfängerfreundliches Event findest, was die Anmeldung umfasst und was dich am Renntag erwartet — vom Aussuchen eines Rennens bis zum Überqueren deiner ersten Ziellinie.
+description: Wie du ein anfängerfreundliches Event findest, was die Anmeldung umfasst und was dich am Wettkampftag erwartet — vom Aussuchen eines Rennens bis zum Überqueren deiner ersten Ziellinie.
 category: racing
 slug: your-first-race
 order: 2
@@ -27,7 +27,7 @@ Stöbere durch die Vereine und ihre Events, um zu sehen, was in deiner Nähe los
 
 Die Anmeldung für ein organisiertes Rennen ist meist ein kurzes Online-Formular: dein Name, dein Alter, manchmal eine geschätzte Zielzeit und eine Gebühr für kostenpflichtige Events. Du erhältst in der Regel eine Bestätigung und, näher am Tag, Angaben dazu, wo du deine Startnummer (deine "Startnummer") abholst und wann du da sein musst. Lies die Teilnahmehinweise sorgfältig — Startzeit, Parken und Taschenabgabe vorher zu kennen, nimmt eine Menge Stress am Morgen.
 
-## Was dich am Renntag erwartet
+## Was dich am Wettkampftag erwartet
 
 - **Komm früh.** Gib dir Zeit zum Parken, die Startzone zu finden, die Toilette zu nutzen (die Schlangen sind lang) und dich aufzuwärmen.
 - **Stell dich ehrlich auf.** Stell dich weiter hinten an, wenn du dir bei deinem Tempo unsicher bist — es ist weit angenehmer zu überholen, als überrannt zu werden.

@@ -2,7 +2,7 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
-	title: 'Renntag für Veranstalter',
+	title: 'Wettkampftag für Veranstalter',
 	summary: 'Schalte das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
 	sections: [
 		{
@@ -19,11 +19,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden.',
+					alt: 'Der Wettkampftag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden.',
 				},
 				{
 					type: 'p',
-					text: 'Diese Schritte gelten für ein Rennen im Modus **GO durch Veranstalter**. Ein Rennen im Modus **Geplanter GO** startet von selbst, und ein **Selbstgestoppter Zeitraum** braucht am Renntag nichts von dir; siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]].',
+					text: 'Diese Schritte gelten für ein Rennen im Modus **GO durch Veranstalter**. Ein Rennen im Modus **Geplanter GO** startet von selbst, und ein **Selbstgestoppter Zeitraum** braucht am Wettkampftag nichts von dir; siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]].',
 				},
 			],
 		},

@@ -47,7 +47,7 @@
     <string name="workout_kind_interval">Intervalle</string>
     <string name="workout_kind_marathon_pace">Marathontempo</string>
     <string name="workout_kind_walk_run">Geh-Lauf</string>
-    <string name="workout_kind_race">Wettkampf</string>
+    <string name="workout_kind_race">Rennen</string>
     <string name="workout_kind_short_easy">Lo</string>
     <string name="workout_kind_short_long">LL</string>
     <string name="workout_kind_short_recovery">Erh</string>

@@ -2,18 +2,18 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'drive-a-course',
-	title: "Parcourir un tracé de course en voiture avant le jour J",
+	title: "Reconnaître en voiture le parcours d'une épreuve avant le jour J",
 	summary: "Ouvrez un parcours public dans votre appli de cartes, voyez les tronçons qu'elle ne peut pas suivre et laissez l'appli mobile lire les notes du parcours à voix haute pendant que vous conduisez.",
 	sections: [
 		{
 			heading: "Ce que fait cette fonction",
 			blocks: [
-				{ type: 'p', text: "Sur un itinéraire public ou une course au parcours public, **Parcourir le tracé en voiture** découpe le parcours en étapes que Google Maps, Plans d'Apple ou Waze peuvent suivre. Votre appli de cartes vous guide, y compris sur CarPlay et Android Auto." },
+				{ type: 'p', text: "Sur un itinéraire public ou une épreuve au parcours public, **Parcourir le tracé en voiture** découpe le parcours en étapes que Google Maps, Plans d'Apple ou Waze peuvent suivre. Votre appli de cartes vous guide, y compris sur CarPlay et Android Auto." },
 				{
 					type: 'list',
 					items: [
 						"Google Maps accepte plusieurs arrêts par étape. Plans d'Apple et Waze n'acceptent qu'une destination à la fois, vous ouvrez donc chaque étape l'une après l'autre.",
-						"Les parcours de course empruntent des chemins, des ponts et des routes fermées. La liste sous les étapes indique les tronçons que l'appli de cartes ne peut pas suivre, pour que vous sachiez quelles parties vous ne verrez pas.",
+						"Les parcours des épreuves empruntent des chemins, des ponts et des routes fermées. La liste sous les étapes indique les tronçons que l'appli de cartes ne peut pas suivre, pour que vous sachiez quelles parties vous ne verrez pas.",
 						"L'itinéraire de l'appli de cartes n'est qu'indicatif. Les notes suivent le vrai parcours.",
 					],
 				},
@@ -26,7 +26,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						"Ouvrez l'itinéraire ou la course et sélectionnez **Parcourir le tracé en voiture**.",
+						"Ouvrez l'itinéraire ou l'épreuve et sélectionnez **Parcourir le tracé en voiture**.",
 						"Choisissez votre appli de cartes, puis sélectionnez **Aller au départ**.",
 						"Au départ, ouvrez l'étape 1. Quand une étape se termine, ouvrez la suivante.",
 					],
@@ -40,13 +40,13 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						"Dans l'appli mobile, ouvrez l'itinéraire ou la course et touchez **Parcourir le tracé en voiture**.",
+						"Dans l'appli mobile, ouvrez l'itinéraire ou l'épreuve et touchez **Parcourir le tracé en voiture**.",
 						"Lisez l'avertissement de sécurité et touchez **J'ai compris**. Il n'apparaît qu'une fois par téléphone.",
 						"Touchez **Lancer les notes vocales**, passez à votre appli de cartes et verrouillez le téléphone.",
 					],
 				},
 				{ type: 'p', text: "Chaque ravitaillement, barrière horaire, montée, danger et note est lu environ 15 secondes avant d'y arriver, puis de nouveau quand vous y êtes. Si vous rejoignez le parcours en cours de route, les notes commencent là où vous êtes. Elles s'arrêtent à l'arrivée, ou après 10 minutes hors du parcours. Touchez **Arrêter** pour les arrêter plus tôt." },
-				{ type: 'note', tone: 'caution', text: "Utilisez-la avec un passager ou un téléphone fixé, et ne touchez pas le téléphone en conduisant. Respectez le code de la route et la signalisation, et n'oubliez pas que les routes du parcours peuvent être fermées le jour de la course." },
+				{ type: 'note', tone: 'caution', text: "Utilisez-la avec un passager ou un téléphone fixé, et ne touchez pas le téléphone en conduisant. Respectez le code de la route et la signalisation, et n'oubliez pas que les routes du parcours peuvent être fermées le jour J." },
 			],
 		},
 	],

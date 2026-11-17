@@ -27,7 +27,7 @@ Ein wenig Vorarbeit zahlt sich aus:
 
 - **Kenne das Höhenprofil.** Ein Anstieg bei Kilometer acht verändert, wie du Kilometer eins laufen solltest. Laufe die Anstiege nach Anstrengung, nicht nach Tempo — nimm bergauf zurück und lass es bergab zurückkommen.
 - **Wisse, wo die Kurven und Untergründe wechseln**, damit dich nichts überrascht.
-- **Laufe einen Teil der Strecke vorher ab**, wenn du kannst, oder studiere zumindest den Verlauf. Vertrautheit nimmt eine Schicht Renntags-Stress weg.
+- **Laufe einen Teil der Strecke vorher ab**, wenn du kannst, oder studiere zumindest den Verlauf. Vertrautheit nimmt eine Schicht Stress am Wettkampftag weg.
 
 ## Laufe nach Anstrengung, nicht nur nach der Uhr
 

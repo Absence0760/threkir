@@ -2,7 +2,7 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'drive-a-course',
-	title: "Eine Rennstrecke vor dem Renntag abfahren",
+	title: "Eine Rennstrecke vor dem Wettkampftag abfahren",
 	summary: "Öffne eine öffentliche Strecke in deiner Karten-App, sieh, welchen Abschnitten sie nicht folgen kann, und lass dir die Streckenhinweise während der Fahrt von der Handy-App vorlesen.",
 	sections: [
 		{
@@ -46,7 +46,7 @@ export const translation: GuideTranslation = {
 					],
 				},
 				{ type: 'p', text: "Jede Verpflegungsstation, jeder Zielschluss, jeder Anstieg, jede Gefahrenstelle und jeder Hinweis wird etwa 15 Sekunden vorher vorgelesen und noch einmal, wenn du dort bist. Steigst du unterwegs ein, beginnen die Hinweise dort, wo du bist. Sie enden im Ziel oder nach 10 Minuten abseits der Strecke. Tippe auf **Stopp**, um sie früher zu beenden." },
-				{ type: 'note', tone: 'caution', text: "Nutze es mit Beifahrer oder fest montiertem Handy und bediene das Handy nicht während der Fahrt. Beachte Verkehrsregeln und Schilder, und denk daran, dass Straßen der Strecke am Renntag gesperrt sein können." },
+				{ type: 'note', tone: 'caution', text: "Nutze es mit Beifahrer oder fest montiertem Handy und bediene das Handy nicht während der Fahrt. Beachte Verkehrsregeln und Schilder, und denk daran, dass Straßen der Strecke am Wettkampftag gesperrt sein können." },
 			],
 		},
 	],

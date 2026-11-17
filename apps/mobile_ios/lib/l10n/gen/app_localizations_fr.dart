@@ -17717,15 +17717,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'Actif seulement sur un itinéraire dont les repères portent des temps cibles. À chaque passage, il vous dit si vous êtes en avance ou en retard, et de combien. Exemple : « Ravitaillement 2 : 45 secondes d\'avance sur le plan. »';
 
   @override
-  String get prefsCuePhaseTransitions => 'Phases de course';
+  String get prefsCuePhaseTransitions => 'Phases de la stratégie';
 
   @override
   String get prefsCuePhaseTransitionsSubtitle =>
-      'Un repère au début de chaque phase de votre stratégie de course';
+      'Un repère au début de chaque phase de votre stratégie d\'allure';
 
   @override
   String get prefsCuePhaseTransitionsInfo =>
-      'Actif seulement quand vous choisissez une stratégie de course. Annonce chaque phase et son intention à son début. Exemple : « Phase 2 sur 3. Installez-vous sur votre allure cible. »';
+      'Actif seulement quand vous choisissez une stratégie d\'allure. Annonce chaque phase et son intention à son début. Exemple : « Phase 2 sur 3. Installez-vous sur votre allure cible. »';
 
   @override
   String get prefsCueGuidedRun => 'Courses guidées';
@@ -17753,13 +17753,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get runRaceStrategy => 'Stratégie de course';
+  String get runRaceStrategy => 'Stratégie d\'allure';
 
   @override
   String get runStrategyNone => 'Aucune stratégie';
 
   @override
-  String get runClearRaceStrategyTooltip => 'Retirer la stratégie de course';
+  String get runClearRaceStrategyTooltip => 'Retirer la stratégie d\'allure';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -18986,7 +18986,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get helpSettingsSubtitle =>
-      'Comment fonctionnent les courses, les cours, les clubs et l\'app';
+      'Comment fonctionnent les compétitions, les cours, les clubs et l\'app';
 
   @override
   String get helpSearchHint => 'Rechercher dans l\'aide';
@@ -19019,7 +19019,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get helpAudienceClubAdmin => 'Admins de club';
 
   @override
-  String get helpCategoryRaces => 'Courses';
+  String get helpCategoryRaces => 'Compétitions';
 
   @override
   String get helpCategoryPaidClasses => 'Cours payants';
@@ -20582,7 +20582,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutKindShortWalkRun => 'M/C';
 
   @override
-  String get workoutKindShortRace => 'Crs';
+  String get workoutKindShortRace => 'Épr';
 
   @override
   String get workoutKindShortRest => 'Rep';

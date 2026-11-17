@@ -13,7 +13,7 @@ import { expect, test } from '../fixtures/test';
  * developer accounts (see docs/testing/e2e_dev_accounts.md). What we CAN
  * pin is the post-OAuth callback behaviour:
  *
- *   1. The page mounts and shows "Signing you in..." while the
+ *   1. The page mounts and shows "Signing you in…" while the
  *      exchange is in flight.
  *   2. An invalid / missing code surfaces a visible error message
  *      with a "Back to login" link (the user is not left staring
@@ -62,8 +62,8 @@ test.describe('/auth/callback — anon paths (no valid code)', () => {
 		);
 	});
 
-	test('"Signing you in..." spinner appears in the loading state', async ({ page }) => {
-		// First-render copy. The {#if error}…{:else}<p>Signing you in...</p>
+	test('"Signing you in…" spinner appears in the loading state', async ({ page }) => {
+		// First-render copy. The {#if error}…{:else}<p>Signing you in…</p>
 		// branch is what the user sees while exchangeCodeForSession is
 		// awaiting. A regression that flipped the wording or dropped the
 		// fallback would surface here.
@@ -72,7 +72,7 @@ test.describe('/auth/callback — anon paths (no valid code)', () => {
 		// settles; the rejection then swaps it for the error. Either is a
 		// terminal state the user can read, never a blank card.
 		await expect(
-			page.getByText('Signing you in...').or(page.getByRole('alert').filter({ hasText: DEAD_LINK })),
+			page.getByText('Signing you in…').or(page.getByRole('alert').filter({ hasText: DEAD_LINK })),
 		).toBeVisible();
 	});
 });

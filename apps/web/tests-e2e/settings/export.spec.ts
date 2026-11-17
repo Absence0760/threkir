@@ -260,7 +260,7 @@ test.describe('/settings/account — data export', () => {
 	}) => {
 		// A 500 from the EF must surface as a readable error toast
 		// instead of swallowing the failure, otherwise a user staring
-		// at a stuck "Building zip..." button has no idea why nothing
+		// at a stuck "Building zip…" button has no idea why nothing
 		// happens.
 		await page.route('**/functions/v1/export-data', (route) =>
 			route.fulfill({
@@ -337,7 +337,7 @@ test.describe('/settings/account — data export', () => {
 		page
 	}) => {
 		// Fail-closed: a 500 must not leave the button stuck on
-		// "Building zip..." with no explanation.
+		// "Building zip…" with no explanation.
 		await page.route('**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 500,

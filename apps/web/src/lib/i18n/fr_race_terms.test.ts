@@ -9,9 +9,8 @@ import { messages as fr } from './locales/fr';
 // in general « compétition ». « course » alone is also a run, so the strings
 // that name a race beside runs, or name racing in general, must not fall back
 // to it. A pacing plan is « stratégie d'allure », the name the run page gives
-// it. Each surface is pinned here because the
-// phone, Wear OS and Apple Watch catalogues are separate files that drifted
-// apart before (#1374).
+// it. Each surface is pinned here because the phone, Wear OS and Apple Watch
+// catalogues are separate files that drifted apart before (#1374).
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', '..');
 const WEB = fr as Record<string, string>;

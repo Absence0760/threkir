@@ -71,6 +71,7 @@
       "column_dp": 360,
       "numbers": ["predictor"],
       "claims": ["predicted_half_is_goal", "plan_is_half"],
+      "valign": "center",
       "crops": [
         { "capture": "progress", "from": "predictor-card", "to": "predictor-card", "pad_bottom_dp": 8 }
       ],
@@ -81,6 +82,7 @@
       "ground": "dark",
       "theme": "dark",
       "numbers": [],
+      "valign": "center",
       "crops": [
         { "capture": "coach", "from": "coach-context", "to": "coach-context" },
         { "capture": "coach", "from": "coach-last-exchange", "to": "coach-last-exchange", "gap_px": 24 }

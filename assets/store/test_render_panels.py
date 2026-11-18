@@ -188,7 +188,9 @@ class LayoutTest(unittest.TestCase):
         self.assertIn(">Grade-adj.</text>", svg)
         self.assertEqual(svg.count('fill-opacity="0.55"'), 5)
         _, coach = out[("play-phone", "coach")]
-        self.assertEqual(coach["card"][1], 590)  # three lines move the card one step
+        # Three lines move the card's top bound one step; the coach centres
+        # its card in the room below, so it sits at or under that bound.
+        self.assertGreaterEqual(coach["card"][1], 590)
 
     def test_appstore_scale(self):
         _, report = self.compose_all(target="appstore-6.9")[("appstore-6.9", "slowest-km")]

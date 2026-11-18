@@ -259,6 +259,24 @@ jobs:
       # The template carries no credentials; the debug build bundles it.
       - run: cp apps/mobile_ios/.env.example apps/mobile_ios/.env.development
 
+      # The Intel image defaults to an older Xcode than macos-latest, where
+      # build-mobile-ios (ci.yml) runs, and its SDK lacks APIs the plugins
+      # call (device_info_plus's isiOSAppOnVision failed run 44336274458).
+      # The image carries newer Xcodes beside the default; take the newest
+      # release, and the simulator step then finds its iOS runtime.
+      - name: Select the newest Xcode on the image
+        run: |
+          set -euo pipefail
+          xcode="$(for app in /Applications/Xcode_*.app; do
+            case "$app" in *[Bb]eta*) ;; *) echo "$app" ;; esac
+          done | sort -V | tail -1)"
+          if [ -z "$xcode" ]; then
+            echo "::error::No Xcode_*.app under /Applications on this image."
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+
       # Built before Docker starts, with retries: the Swift packages' binary
       # targets (Sentry, gRPC) download at build time, and in run 44318164666
       # both downloads dropped mid-capture with the Colima VM up. Once

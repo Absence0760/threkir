@@ -287,7 +287,7 @@ Seven apps, each as **Positioning / Strengths / Weaknesses / Verdict**. For the 
 | Web app | ✓ | ✓ | Partial | — | ✓ | ✓ | — | Partial (Training Hub) |
 | Apple Watch | ✓ | ✓ | — | ✓ | Limited | Limited | ✓ | — |
 | Wear OS | ✓ | ✓ | — | — | — | — | — | — |
-| Garmin sync | ✓ | ✓ | Native | ✓ | Partial | ✓ | ✓ | — |
+| Garmin sync | Partial (export-file import on web; no Connect account link until Garmin approves the developer programme, see [parity.md](parity.md)) | ✓ | Native | ✓ | Partial | ✓ | ✓ | — |
 
 > **iOS / Apple Watch caveat:** the iOS and Apple Watch ✓ above reflect code-complete parity (the byte-identical Dart twin + the native watch projects), not verified shipping. [`parity.md`](parity.md) defers both pending Mac-runtime verification — cross-reference it before treating these as live.
 

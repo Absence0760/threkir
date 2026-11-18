@@ -29,11 +29,11 @@ Each capture is the pushed screen's own layer (`RenderRepaintBoundary.toImage`, 
 | `run-zones` | run detail, scrolled to Heart rate zones | 320 dp at 3.0 (Play) / 3.666 (App Store) | dark | `hr-zones` |
 | `run-splits` | run detail, scrolled to Splits | 320 dp, same | dark | `splits-title`, `pacing-card`, `gap-header`, `split-row-<n>`, `splits-hint` |
 | `run-pacing` | the same, at text scale 1.5 | 320 dp, same | dark | `splits-title`, `pacing-card`, `gap-header`, `split-row-1`, `split-row-2` |
-| `progress` | Progress, scrolled to the Race-time predictor | 320 dp, same | light | `predictor-card`, `predictor-row-{5k,10k,half,marathon}` |
+| `progress` | Progress, scrolled to the Race-time predictor | 360 dp at 2.667 / 3.258: its four columns need about 270 dp of row, which 320 cannot give | light | `predictor-card`, `predictor-row-{5k,10k,half,marathon}` |
 | `plan` | plan detail with "Plan progress" open | the device's width and ratio | light | `plan-header`, `plan-week`, `plan-progress` |
 | `coach` | the Coach on the seeded thread | the device's width and ratio | dark | `coach-context`, `coach-last-exchange` |
 
-The 320 dp captures set the test view's size and pixel ratio, so the app lays itself out at that width and the column fills the panel card pixel for pixel (960 px for Play, 1173 px for the App Store). The plan capture's view is 1600 dp tall so the "Plan progress" card is on screen with the header; the panel crops sections, so the height never shows.
+The run-detail (320 dp) and Progress (360 dp) captures set the test view's size and pixel ratio, so the app lays itself out at that width and the column fills the panel card pixel for pixel (960 px for Play, 1173 px for the App Store). The plan capture's view is 1600 dp tall so the "Plan progress" card is on screen with the header; the panel crops sections, so the height never shows.
 
 Each section is a keyed widget in the app (`run-detail-*` in `run_detail_screen.dart`, `race-predictor-*` in `race_predictor_card.dart`, `planDetailHeroCard` and `plan-disclosure-progress` in `plan_detail_screen.dart`, `coach-context-strip` in `coach_screen.dart`), or a widget type, all listed in `store_selectors.dart`. The coach's last exchange runs from the bubble holding the seed's last question to the end of the answer bubble below it, above the answer's action icons. A section that is missing, runs off the screen or is clipped by its list fails the capture with its name.
 
@@ -87,7 +87,7 @@ Before the script exits 0, it checks every PNG for the exact size and for 8-bit 
 - **A store listing rule broken in a headline or kicker.** No Free, Best, Top, New, Sale, call to action, price, other app or platform, miles or feet, "real" or "true" pace, all-caps word or emoji.
 - **A line that only fits below 0.094 of the panel width.** Rewrite the line instead.
 - **Text under 4.5:1 against its ground.** This is measured from the ground's own gradients.
-- **A capture in the wrong theme, or a run-detail capture that isn't 320 dp wide.**
+- **A capture in the wrong theme, or a column capture at the wrong width** (320 dp for the run detail, 360 for Progress).
 
 ### Captions (`captions/<locale>.json`)
 
@@ -153,7 +153,7 @@ A card that still leaves more than 200 px of bare ground is named in the render'
   - `progress`: `predictor-card` and `predictor-row-{5k,10k,half,marathon}`.
   - `plan`: `plan-header`, `plan-week`, and optionally `plan-progress`, which is "Plan progress" expanded.
   - `coach`: `coach-context`, which is the chip row, and `coach-last-exchange`, from the question bubble to the end of the answer bubble.
-- **Width:** the run-detail and progress captures are 320 dp wide.
+- **Width:** the run-detail captures are 320 dp wide and Progress 360, so the predictor's columns never wrap.
 
 `numbers.json` holds the numbers as the app formats them on screen, from the code the screens use:
 

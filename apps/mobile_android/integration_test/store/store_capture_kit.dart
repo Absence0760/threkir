@@ -25,6 +25,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// App Store's 6.9" frame.
 const kColumnDp = 320.0;
 
+/// Progress is laid out wider than the run detail: the Race-time predictor's
+/// four columns need about 270 dp of row, which a 320 dp page (a 256 dp row
+/// once the gutters and card padding are off) cannot give, so "10.00 km"
+/// wrapped and DISTANCE ran into TIME. 360 dp is the commonest Android width.
+const kPredictorColumnDp = 360.0;
+
 /// A captured section, in global logical pixels.
 typedef SectionRects = Map<String, Rect>;
 

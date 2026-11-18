@@ -69,7 +69,7 @@
       "id": "predictor",
       "ground": "light",
       "theme": "light",
-      "column_dp": 320,
+      "column_dp": 360,
       "numbers": ["predictor"],
       "claims": ["predicted_half_is_goal", "plan_is_half"],
       "crops": [

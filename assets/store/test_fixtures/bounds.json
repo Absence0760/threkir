@@ -160,7 +160,7 @@
   "progress": {
    "file": "progress.png",
    "theme": "light",
-   "dpr": 3.0,
+   "dpr": 2.6666666666666665,
    "sections": {
     "predictor-row-5k": [
      96,

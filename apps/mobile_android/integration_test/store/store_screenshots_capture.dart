@@ -46,7 +46,7 @@ import 'store_selectors.dart';
 // (store_capture_kit.dart), so the Android emulator and the iOS simulator
 // produce the same files: the PNGs, bounds.json (where each section sits)
 // and numbers.json (what the screens say, store_numbers.dart). The run
-// detail and Progress are laid out 320 dp wide at the panel's pixel ratio;
+// detail is laid out 320 dp wide and Progress 360 at the panel's pixel ratio;
 // the plan and the coach keep the device's width. The run captures and the
 // coach are dark, the predictor and the plan light, as their panels are.
 
@@ -98,7 +98,7 @@ void main() {
         describe: 'Today to re-read the plan once the server linked the runs');
 
     // The device's own size, for the plan and coach captures, and the
-    // 320 dp column the run-detail and Progress captures are laid out at.
+    // narrower columns the run-detail and Progress captures are laid out at.
     final deviceDpr = tester.view.devicePixelRatio;
     final deviceDp = tester.view.physicalSize / deviceDpr;
     if (Platform.isIOS &&
@@ -106,7 +106,9 @@ void main() {
       fail('the App Store 6.9" set needs a 440 pt @3x simulator (1320 x 2868, '
           'an iPhone Pro Max class); this one is ${deviceDp.width} pt @${deviceDpr}x');
     }
-    final columnDpr = (Platform.isIOS ? 1173.0 : 960.0) / kColumnDp;
+    // A column fills the panel's card pixel for pixel whatever its width.
+    double columnDprFor(double dp) => (Platform.isIOS ? 1173.0 : 960.0) / dp;
+    final columnDpr = columnDprFor(kColumnDp);
 
     final navigator = tester.state<NavigatorState>(
         find.descendant(of: find.byType(MaterialApp), matching: find.byType(Navigator)).first);
@@ -118,12 +120,13 @@ void main() {
     Future<void> open(Widget screen, Finder ready,
         {required ThemeMode theme,
         bool column = false,
+        double columnDp = kColumnDp,
         double textScale = 1,
         double? heightDp,
         Duration settleFor = const Duration(seconds: 3)}) async {
       themeModeNotifier.value = theme;
-      final dpr = column ? columnDpr : deviceDpr;
-      final width = column ? kColumnDp : deviceDp.width;
+      final dpr = column ? columnDprFor(columnDp) : deviceDpr;
+      final width = column ? columnDp : deviceDp.width;
       tester.view.devicePixelRatio = dpr;
       tester.view.physicalSize =
           Size(width, math.max(heightDp ?? 0, deviceDp.height)) * dpr;
@@ -215,9 +218,9 @@ void main() {
         colourAt: {'pacing-card': ('pacing-card', const Offset(40, 4))}));
     await close();
 
-    // ---- Progress, 320 dp, light: the Race-time predictor.
+    // ---- Progress, 360 dp (kPredictorColumnDp), light: the predictor.
     await open(StoreSelectors.progress(app), find.byType(ProgressScreen),
-        theme: ThemeMode.light, column: true);
+        theme: ThemeMode.light, column: true, columnDp: kPredictorColumnDp);
     viewport = await reveal(ProgressScreen, StoreSelectors.predictorCard);
     final predictor = predictorNumbers(
         tester, app.runStore.summaryRuns, DateTime.now(), l10n);
@@ -234,7 +237,7 @@ void main() {
     shots.captures.add(await captureScreen(tester,
         name: 'progress',
         boundary: boundary,
-        pixelRatio: columnDpr,
+        pixelRatio: columnDprFor(kPredictorColumnDp),
         sections: rungSections,
         viewports: inside(viewport, rungSections.keys),
         colourAt: {

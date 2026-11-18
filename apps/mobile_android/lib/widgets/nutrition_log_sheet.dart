@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show FieldColumn, FieldPair, ListCard;
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
+import 'package:ui_kit/ui_kit.dart'
+    show FieldColumn, FieldPair, ListCard, PageHeading;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -656,47 +658,158 @@ class _BarcodeScanScreenState extends State<_BarcodeScanScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.nutritionScanBarcode)),
-      body: _permissionDenied
-          ? _PermissionDeniedBody(l10n: l10n)
-          : Stack(
-              children: [
-                MobileScanner(
-                  controller: _controller,
-                  onDetect: _onDetect,
-                  errorBuilder: (context, error) {
-                    if (error.errorCode ==
-                            MobileScannerErrorCode.permissionDenied &&
-                        !_permissionDenied) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) setState(() => _permissionDenied = true);
-                      });
-                    }
-                    return _PermissionDeniedBody(l10n: l10n);
-                  },
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 32,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        l10n.nutritionScanHint,
-                        style: const TextStyle(color: Colors.white),
+    return BarcodeScanView(
+      permissionDenied: _permissionDenied,
+      camera: MobileScanner(
+        controller: _controller,
+        onDetect: _onDetect,
+        errorBuilder: (context, error) {
+          if (error.errorCode == MobileScannerErrorCode.permissionDenied &&
+              !_permissionDenied) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _permissionDenied = true);
+            });
+          }
+          return _PermissionDeniedBody(l10n: l10n);
+        },
+      ),
+    );
+  }
+}
+
+/// The scanner page around its [camera]. The camera fills the whole screen,
+/// under the status bar and the navigation bar, and the controls over it
+/// keep clear of both: the back button and the title (which wraps, as no app
+/// bar title can at a large text size) sit below the status bar, the hint
+/// above the nav bar. Separate from the scanner's state so the layout can be
+/// pumped without a camera, which a widget test has no platform for.
+class BarcodeScanView extends StatelessWidget {
+  final Widget camera;
+  final bool permissionDenied;
+  const BarcodeScanView({
+    super.key,
+    required this.camera,
+    this.permissionDenied = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final title = l10n.nutritionScanBarcode;
+    final darkTheme = Theme.of(context).brightness == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: permissionDenied && !darkTheme
+          ? SystemUiOverlayStyle.dark
+          : SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: permissionDenied ? null : Colors.black,
+        body: permissionDenied
+            ? Column(
+                children: [
+                  _ScanTopBar(title: title),
+                  Expanded(
+                    child: SafeArea(
+                      top: false,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight),
+                            child: _PermissionDeniedBody(l10n: l10n),
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                ],
+              )
+            : Stack(
+                children: [
+                  Positioned.fill(child: camera),
+                  // One column over the camera, so a title and a hint that
+                  // wrap at a large text size stack rather than overlap, and
+                  // scroll on a screen too short for both.
+                  Positioned.fill(
+                    child: LayoutBuilder(
+                      builder: (context, box) => SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: box.maxHeight),
+                          child: IntrinsicHeight(
+                            child: Column(
+                              children: [
+                                _ScanTopBar(title: title, overCamera: true),
+                                const Spacer(),
+                                SafeArea(
+                                  top: false,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 16, 16, 32),
+                                    child: Container(
+                                      key: const Key('barcode-scan-hint'),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        l10n.nutritionScanHint,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// The scanner's back button and title, below the status bar. Over the
+/// camera it is white on a scrim the preview shows through.
+class _ScanTopBar extends StatelessWidget {
+  final String title;
+  final bool overCamera;
+  const _ScanTopBar({required this.title, this.overCamera = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = overCamera ? Colors.white : null;
+    return ColoredBox(
+      key: const Key('barcode-scan-top-bar'),
+      color: overCamera ? Colors.black54 : Colors.transparent,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+          child: Row(
+            children: [
+              BackButton(color: foreground),
+              const SizedBox(width: 8),
+              Expanded(
+                child: PageHeading(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(color: foreground),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

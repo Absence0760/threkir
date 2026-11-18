@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/widgets/nutrition_log_sheet.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
 import 'worst_case_layout.dart';
 
 /// A temp-dir-backed store plus a `persisted` probe.
@@ -444,5 +445,112 @@ void main() {
     } finally {
       f.dir.deleteSync(recursive: true);
     }
+  });
+
+  // A full-bleed camera page: the camera runs under both system bars, and
+  // every control over it keeps clear of them.
+  group('BarcodeScanView', () {
+    const cameraKey = Key('camera');
+    const statusBar = 24.0;
+    const phone = Size(360, 780);
+    Widget view({bool permissionDenied = false}) => BarcodeScanView(
+          permissionDenied: permissionDenied,
+          camera: const ColoredBox(key: cameraKey, color: Colors.black),
+        );
+    Widget app(Widget home) => MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: home,
+        );
+    void useSystemBars(WidgetTester tester) {
+      tester.view.physicalSize = phone;
+      tester.view.devicePixelRatio = 1;
+      const insets =
+          FakeViewPadding(top: statusBar, bottom: kThreeButtonNavBar);
+      tester.view.viewPadding = insets;
+      tester.view.padding = insets;
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets(
+        'the hint clears the 3-button bar and the back button and title the '
+        'status bar, with the camera under both', (tester) async {
+      useSystemBars(tester);
+      await tester.pumpWidget(app(view()));
+
+      final hint = tester.getRect(find.byKey(const Key('barcode-scan-hint')));
+      expect(hint.bottom,
+          lessThanOrEqualTo(phone.height - kThreeButtonNavBar - 32),
+          reason: 'the hint keeps its 32 dp gap above the nav bar, not above '
+              'the screen edge the bar covers');
+      expect(hint.left, greaterThanOrEqualTo(16));
+      expect(hint.right, lessThanOrEqualTo(phone.width - 16));
+
+      for (final control in [
+        find.text('Scan barcode'),
+        find.byType(BackButton),
+      ]) {
+        expect(tester.getRect(control).top, greaterThanOrEqualTo(statusBar));
+      }
+      expect(
+          tester.getRect(find.byKey(const Key('barcode-scan-top-bar'))).top, 0,
+          reason: 'the scrim runs up under the status bar');
+
+      final camera = tester.getRect(find.byKey(cameraKey));
+      expect(camera, Offset.zero & phone,
+          reason: 'the camera stays full-bleed behind both system bars');
+    });
+
+    testWidgets('a denied camera keeps the title and Open settings clear of '
+        'both system bars', (tester) async {
+      useSystemBars(tester);
+      await tester.pumpWidget(app(view(permissionDenied: true)));
+      expect(tester.getRect(find.text('Scan barcode')).top,
+          greaterThanOrEqualTo(statusBar));
+      expect(tester.getRect(find.byType(OutlinedButton)).bottom,
+          lessThanOrEqualTo(phone.height - kThreeButtonNavBar));
+    });
+
+    testWidgets('Back pops the scanner with no code', (tester) async {
+      String? popped = 'unset';
+      await tester.pumpWidget(app(Builder(
+        builder: (context) => TextButton(
+          onPressed: () async {
+            popped = await Navigator.of(context)
+                .push<String>(MaterialPageRoute(builder: (_) => view()));
+          },
+          child: const Text('open'),
+        ),
+      )));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(popped, isNull);
+    });
+
+    worstCaseTestWidgets('Barcode scanner', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(locale: locale, home: view()));
+      final hint = find.byKey(const Key('barcode-scan-hint'));
+      final title = find.text(l10nFor(locale).nutritionScanBarcode);
+      expect(tester.getRect(hint).top,
+          greaterThanOrEqualTo(tester.getRect(title).bottom),
+          reason: 'the hint and the wrapped title do not overlap');
+      await tester.ensureVisible(hint);
+      await tester.pump();
+      expect(tester.getRect(hint).bottom,
+          lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
+    });
+
+    worstCaseTestWidgets('Barcode scanner without camera permission',
+        (tester, locale) async {
+      await tester.pumpWidget(
+          worstCaseApp(locale: locale, home: view(permissionDenied: true)));
+      final settings = find.text(l10nFor(locale).nutritionScanOpenSettings);
+      await tester.ensureVisible(settings);
+      await tester.pump();
+      expect(tester.getRect(settings).bottom,
+          lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
+    });
   });
 }

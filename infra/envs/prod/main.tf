@@ -39,7 +39,7 @@ data "terraform_remote_state" "dns" {
 # time (sops_file data source needs it). Audit pass 3 found this
 # variable was added in pass 2 but never wired through.
 locals {
-  # Production secrets live in the PRIVATE estate repo Absence0760/infra-secrets
+  # Production secrets live in the PRIVATE estate repo jaredhoward-dev/infra-secrets
   # (../infra-secrets), one subdir per project — NOT in this PUBLIC repo. The
   # ciphertext is encrypted with this env's KMS key (created below) and consumed
   # in-memory by the sops_file data source at apply time. The default assumes the

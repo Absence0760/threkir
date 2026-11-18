@@ -57,10 +57,10 @@
 # reconstruct it from `github_repo` — that is the bug this comment exists
 # to stop someone reintroducing.
 #
-# ── Org move (Absence0760/project-mgmt#14) ──
+# ── Org move (jaredhoward-dev/project-mgmt#14) ──
 #
-# Moving the repo from the `Absence0760` account into a GitHub organization
-# changes the prefix: a repo transferred after 2026-07-15 issues
+# Moving the repo from the `Absence0760` account into the `jaredhoward-dev`
+# organization changed the prefix: a repo transferred after 2026-07-15 issues
 # `repo:<org>@<org_id>/<repo>@<repo_id>`. The roles therefore trust a LIST of
 # exact subjects — `github_subject_prefix` plus `github_extra_subject_prefixes`
 # — still under StringEquals, never StringLike. Before the transfer, add the

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // The route-photo orphan sweep (kind='route_photo_orphan_sweep', migration

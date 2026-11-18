@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/livehub"
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
-	"github.com/Absence0760/threkir/apps/job_worker/internal/supakey"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/livehub"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/supakey"
 )
 
 // SupabaseClient wraps the REST surface the worker needs. All calls

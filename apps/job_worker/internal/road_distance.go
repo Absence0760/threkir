@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // RoadMatch is what a road-aware matcher reports beside the matched

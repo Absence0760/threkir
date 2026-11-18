@@ -24,20 +24,22 @@ function byName(name: string): Platform {
 	return p;
 }
 
-test('Web, iOS and Apple Watch are live; Android and Wear OS wait on Play (#1225)', () => {
+test('Web, Android, iOS and Apple Watch are live; Wear OS waits on its Play opt-in (#1378)', () => {
 	assert.deepEqual(
 		PLATFORMS.map((p) => p.name),
 		['Web', 'Android', 'iOS', 'Wear OS', 'Apple Watch'],
 	);
-	for (const name of ['Web', 'iOS', 'Apple Watch']) assert.equal(isLive(byName(name)), true, name);
-	for (const name of ['Android', 'Wear OS']) assert.equal(isLive(byName(name)), false, name);
+	for (const name of ['Web', 'Android', 'iOS', 'Apple Watch']) assert.equal(isLive(byName(name)), true, name);
+	assert.equal(isLive(byName('Wear OS')), false, 'Wear OS');
+	assert.equal(platformStoreHref(byName('Android')), 'https://play.google.com/store/apps/details?id=com.threkir.app');
 });
 
 test('the status label follows the status, not the platform', () => {
 	assert.equal(platformStatusLabelKey({ name: 'X', status: 'live' }), 'landing.platformLive');
 	assert.equal(platformStatusLabelKey({ name: 'X', status: 'testing' }), 'landing.platformInTesting');
 	assert.equal(tEn(platformStatusLabelKey(byName('iOS'))), 'Live');
-	assert.equal(tEn(platformStatusLabelKey(byName('Android'))), 'In testing');
+	assert.equal(tEn(platformStatusLabelKey(byName('Android'))), 'Live');
+	assert.equal(tEn(platformStatusLabelKey(byName('Wear OS'))), 'In testing');
 });
 
 test('a badge links only when the platform carries a store URL', () => {
@@ -53,7 +55,7 @@ test('a badge links only when the platform carries a store URL', () => {
 test('the note names exactly the platforms still in testing', () => {
 	assert.equal(
 		platformsNote(PLATFORMS, 'en', tEn),
-		'Android and Wear OS are in internal testing and not in the app stores yet. Start on another platform now and your account will be waiting when they land.',
+		'Wear OS is in internal testing and not in the app stores yet. Start on another platform now and your account will be waiting when it lands.',
 	);
 	assert.equal(
 		platformsNote([{ name: 'Android', status: 'testing' }, { name: 'iOS', status: 'live' }], 'en', tEn),

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/supakey"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/supakey"
 )
 
 // SegmentMatchTimeout bounds one call to the `segment-match` Edge Function.

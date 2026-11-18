@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // DistanceRecomputeRun is the projection of `runs` the distance

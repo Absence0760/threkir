@@ -4,7 +4,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/gpsdistance"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/gpsdistance"
 )
 
 // The rolling embedded bests (runs.fastest_{5k,10k,half_marathon,marathon}_s)

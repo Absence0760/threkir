@@ -3085,4 +3085,98 @@ void main() {
       expect(find.text(l10n.messagesNewMessageNobody), findsOneWidget);
     });
   });
+
+  // The thread is a ui_kit ConversationPage, which owns the inset under its
+  // footer (issue #1374): the composer, the blocked bar and the request bar
+  // stay on screen at 2x text on a 320 dp phone above a 3-button bar, and
+  // the composer rises above the keyboard.
+  group('MessageThreadScreen layout', () {
+    Future<void> pumpWorst(WidgetTester tester, _FakeApi api,
+        {double keyboard = 0}) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = FakeViewPadding(bottom: keyboard > 0 ? 0 : 48);
+      tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+      tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: MessageThreadScreen(
+          api: api,
+          partnerId: _partner,
+          partnerName: 'Ada Lovelace-Byron of Ockham',
+          pollInterval: _quiet,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+    }
+
+    void expectOnScreen(WidgetTester tester, Key key, {required double floor}) {
+      expect(tester.takeException(), isNull);
+      final r = tester.getRect(find.byKey(key));
+      expect(r.left, greaterThanOrEqualTo(0));
+      expect(r.right, lessThanOrEqualTo(320 + 0.5));
+      expect(r.top, greaterThan(tester.getRect(find.byType(AppBar)).bottom));
+      expect(r.bottom, lessThanOrEqualTo(floor + 0.5),
+          reason: '$key sits under the system bar or the keyboard');
+    }
+
+    testWidgets('the composer and Send clear a 48 dp bar at 2x on 320 dp',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          for (var i = 0; i < 20; i++) _msg('m$i', minute: i, body: 'hi $i'),
+        ];
+      await pumpWorst(tester, api);
+
+      expectOnScreen(tester, const ValueKey('message-composer'), floor: 592);
+      expectOnScreen(tester, const ValueKey('message-send'), floor: 592);
+      expect(find.byKey(const ValueKey('message-send')).hitTestable(),
+          findsOneWidget);
+    });
+
+    testWidgets('the composer rises above the keyboard', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpWorst(tester, api, keyboard: 280);
+
+      expectOnScreen(tester, const ValueKey('message-composer'), floor: 360);
+      expectOnScreen(tester, const ValueKey('message-send'), floor: 360);
+    });
+
+    testWidgets('the blocked bar keeps Unblock above the 48 dp bar',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..blocked = true;
+      await pumpWorst(tester, api);
+
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expectOnScreen(tester, const ValueKey('message-unblock'), floor: 592);
+    });
+
+    testWidgets('the request bar keeps all three choices above the 48 dp bar',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationState =
+            (muted: false, archivedAt: null, markedUnread: false, request: true);
+      await pumpWorst(tester, api);
+
+      for (final k in const [
+        'message-request-accept',
+        'message-request-decline',
+        'message-request-block',
+      ]) {
+        expectOnScreen(tester, ValueKey(k), floor: 592);
+      }
+    });
+  });
 }

@@ -25,7 +25,6 @@ import '../group_messages.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../widgets/thread_title.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';

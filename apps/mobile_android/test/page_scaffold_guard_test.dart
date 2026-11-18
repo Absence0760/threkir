@@ -56,10 +56,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: the error branch only (MapFirstPage)',
   ),
-  'lib/screens/message_thread_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: a conversation (ConversationPage)',
-  ),
   'lib/screens/parkrun_barcode_screen.dart': (
     count: 1,
     why: 'not migrated yet: PushedPage inside its light theme',

@@ -879,6 +879,7 @@
 	}
 
 	.in-app-note-lead .material-symbols {
+		flex-shrink: 0;
 		font-size: 1.15rem;
 		color: var(--color-primary);
 	}

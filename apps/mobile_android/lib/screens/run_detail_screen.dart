@@ -1698,6 +1698,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       // Splits — only when there's a track to compute them from.
       if (run.track.length >= 2) ...[
         Padding(
+          key: const Key('run-detail-splits-title'),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Text(l10n.runDetailSectionSplits,
               style: theme.textTheme.titleMedium),
@@ -2380,6 +2381,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
     return [
       Padding(
+        key: const Key('run-detail-hr-zones-title'),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
         child: Text(l10n.runDetailSectionHeartRateZones,
             style: theme.textTheme.titleMedium),
@@ -2412,11 +2414,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ),
       const SizedBox(height: 12),
       Padding(
+        key: const Key('run-detail-hr-zones-legend'),
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
             for (final b in buckets)
               Padding(
+                key: ValueKey('run-detail-hr-zone-${b.index + 1}'),
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
                   children: [
@@ -2695,6 +2699,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               : (theme.colorScheme.primary, theme.colorScheme.onPrimary);
 
       return Padding(
+        key: ValueKey('run-detail-split-row-${s.tick}'),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
         child: Row(
           children: [
@@ -2791,6 +2796,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (pacing != null) _buildPacingCard(theme, l10n, unit, pacing),
       if (showGap)
         Padding(
+          key: const Key('run-detail-gap-header'),
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
           child: Row(
             children: [
@@ -2811,6 +2817,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ...rows,
       if (showGap)
         Padding(
+          key: const Key('run-detail-splits-hint'),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Text(
             l10n.runDetailGapColumnHint,
@@ -2863,6 +2870,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Container(
+        key: const Key('run-detail-pacing-card'),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
@@ -3517,12 +3525,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
 
+  /// H:MM:SS or M:SS, as web `formatDuration` writes it: a split reads
+  /// "5:40", matching its own bar label, never "05:40".
   static String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
     final s = d.inSeconds % 60;
     if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return '$m:${s.toString().padLeft(2, '0')}';
   }
 }
 

@@ -1,15 +1,21 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
-import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../../lib/local_run_store.dart';
 import '../../lib/main.dart';
+import '../../lib/screens/plan_detail_screen.dart';
+import '../../lib/screens/progress_screen.dart';
+import '../../lib/screens/run_detail_screen.dart';
+import '../../lib/widgets/disclosure_section.dart';
 import '../app_harness.dart';
 import 'demo_data.dart';
+import 'store_capture_kit.dart';
+import 'store_numbers.dart';
 import 'store_selectors.dart';
 
 // The store-listing screenshots, captured from the real app on seeded demo
@@ -18,28 +24,31 @@ import 'store_selectors.dart';
 // start, so `flutter test integration_test` must not load it. It runs only
 // through `flutter drive` from `.github/workflows/store-screenshots.yml`:
 //
-//   flutter drive --profile -d <device> \
-//     --driver integration_test/store/store_screenshots_driver.dart \
-//     --target integration_test/store/store_screenshots_capture.dart \
-//     --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... \
-//     --dart-define=DEV_USER_EMAIL=store-demo@threkir.test \
-//     --dart-define=DEV_USER_PASSWORD=storedemo \
-//     --dart-define=WEB_BASE_URL=http://10.0.2.2:7777
+//   bash assets/store/capture.sh <device-id> <output dir>
+//
+// which runs `flutter drive` in profile mode on the Android emulator and in
+// debug on an iOS simulator (which cannot run a profile build), with the
+// dart-defines for the local stack listed there.
 //
 // The app signs itself in through its own dev auto-login, which only fires
 // against a loopback SUPABASE_URL (dev_auto_login.dart). The account, its
 // plan and its coach thread come from assets/store/demo/store_demo_seed.sql;
 // the runs are written into the device's run store here, before launch,
 // because their tracks are files the SQL cannot seed. The app pushes them on
-// sign-in, the server links each to its plan session, and the workflow's job
-// worker map-matches them (passthrough, no OSRM), so the capture waits for
-// all three before it photographs anything. WEB_BASE_URL points at
+// sign-in and the server links each to its plan session, so the capture
+// waits for both before it photographs anything. WEB_BASE_URL points at
 // a loopback port where nothing listens, so the capability read the coach
-// makes fails closed instead of reaching production. Every screen is dark
-// (the app's default) except the training plan, which is the one light panel.
+// makes fails closed instead of reaching production.
 //
-// Each capture is named for its panel in assets/store/panels.json, which is
-// what the renderer composes from.
+// Each capture is named for what assets/store/panels.json crops from it
+// (run-zones, run-splits, run-pacing, progress, plan, coach) and is the
+// pushed screen's own layer rather than a platform screenshot
+// (store_capture_kit.dart), so the Android emulator and the iOS simulator
+// produce the same files: the PNGs, bounds.json (where each section sits)
+// and numbers.json (what the screens say, store_numbers.dart). The run
+// detail is laid out 320 dp wide and Progress 360 at the panel's pixel ratio;
+// the plan and the coach keep the device's width. The run captures and the
+// coach are dark, the predictor and the plan light, as their panels are.
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +61,6 @@ void main() {
       await seeded.save(run);
     }
     await seeded.debugWritesSettled();
-    final hero = runs.firstWhere((r) => r.id == kHeroRunId);
 
     await launchApp(onboarded: true);
     await pumpUntilFound(tester, StoreSelectors.shell,
@@ -77,66 +85,234 @@ void main() {
       fail('the device holds $onDevice runs where ${runs.length} were seeded: '
           'every count on Today and Progress would be off');
     }
-    // The record panel's map reads the run's map-match row once, when it
-    // opens, so the row must have left `pending` first or the map carries a
-    // "Snapping to roads" pill. The workflow's job worker settles it.
-    RunMatchInfo? match;
-    await pumpUntilAsync(tester, () async {
-      match = await api.fetchRunMatchedTrack(kHeroRunId);
-      return match != null && match!.status != MatchStatus.pending;
-    }, describe: 'the job worker to map-match the hero run (is it running?)');
-    if (match!.status != MatchStatus.matched) {
-      fail('the hero run was map-matched as ${match!.status.name}, not '
-          'matched: the record panel would show that status on its map');
-    }
 
-    // Android draws Flutter into an image view so the binding can read it
-    // back; iOS reads the layer directly.
-    if (Platform.isAndroid) {
-      await binding.convertFlutterSurfaceToImage();
-    }
-
+    final l10n = l10nOf(tester, StoreSelectors.shell);
     themeModeNotifier.value = ThemeMode.dark;
     for (final ready in StoreSelectors.todayReady) {
-      await pumpUntilFound(tester, ready, describe: 'Today to draw $ready');
+      await pumpUntilFound(tester, ready,
+          describe: 'Today to draw ${ready.toString(describeSelf: true)}');
     }
+    // The plan panel's week grid ticks a session only once the server has
+    // linked its run, which Today shows by dropping its "missed" prompt.
     await pumpUntil(tester, () => StoreSelectors.todayMissedPrompt.evaluate().isEmpty,
         describe: 'Today to re-read the plan once the server linked the runs');
-    await settle(tester);
-    await binding.takeScreenshot('today');
+
+    // The device's own size, for the plan and coach captures, and the
+    // narrower columns the run-detail and Progress captures are laid out at.
+    final deviceDpr = tester.view.devicePixelRatio;
+    final deviceDp = tester.view.physicalSize / deviceDpr;
+    if (Platform.isIOS &&
+        (deviceDp.width.round() != 440 || deviceDpr.round() != 3)) {
+      fail('the App Store 6.9" set needs a 440 pt @3x simulator (1320 x 2868, '
+          'an iPhone Pro Max class); this one is ${deviceDp.width} pt @${deviceDpr}x');
+    }
+    // A column fills the panel's card pixel for pixel whatever its width.
+    double columnDprFor(double dp) => (Platform.isIOS ? 1173.0 : 960.0) / dp;
+    final columnDpr = columnDprFor(kColumnDp);
 
     final navigator = tester.state<NavigatorState>(
         find.descendant(of: find.byType(MaterialApp), matching: find.byType(Navigator)).first);
+    final boundary = GlobalKey();
+    final shots = StoreCaptureSet();
 
-    Future<void> capture(String name, Widget screen, Finder ready,
-        {ThemeMode theme = ThemeMode.dark,
-        Duration settleFor = const Duration(seconds: 3),
-        Finder? absent}) async {
+    /// Push [screen] in [theme], optionally laid out [columnDp] wide at the
+    /// column's pixel ratio, at a text scale, or taller than the device.
+    Future<void> open(Widget screen, Finder ready,
+        {required ThemeMode theme,
+        bool column = false,
+        double columnDp = kColumnDp,
+        double textScale = 1,
+        double? heightDp,
+        Duration settleFor = const Duration(seconds: 3)}) async {
       themeModeNotifier.value = theme;
-      navigator.push(MaterialPageRoute<void>(builder: (_) => screen));
-      await pumpUntilFound(tester, ready, describe: 'the $name screen to load');
-      await settle(tester, settleFor);
-      if (absent != null) {
-        expect(absent, findsNothing,
-            reason: 'the $name screen still shows $absent after settling');
+      final dpr = column ? columnDprFor(columnDp) : deviceDpr;
+      final width = column ? columnDp : deviceDp.width;
+      tester.view.devicePixelRatio = dpr;
+      tester.view.physicalSize =
+          Size(width, math.max(heightDp ?? 0, deviceDp.height)) * dpr;
+      if (textScale != 1) {
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
       }
-      await binding.takeScreenshot(name);
+      navigator.push(MaterialPageRoute<void>(
+          builder: (_) => captureBoundary(boundary, screen)));
+      await pumpUntilFound(tester, ready,
+          describe: 'the screen with ${ready.toString(describeSelf: true)} to load');
+      await settle(tester, settleFor);
+    }
+
+    Future<void> close() async {
       navigator.pop();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
       themeModeNotifier.value = ThemeMode.dark;
       await settle(tester, const Duration(seconds: 1));
     }
 
-    final fullHero = await app.runStore.runById(hero.id) ?? hero;
-    // Map tiles arrive over the network after the map is laid out.
-    await capture('record', StoreSelectors.runDetail(app, fullHero),
-        StoreSelectors.runDetailReady,
-        settleFor: const Duration(seconds: 10),
-        absent: StoreSelectors.matchPill(
-            l10nOf(tester, StoreSelectors.shell)));
-    await capture('train', StoreSelectors.planDetail(app),
-        StoreSelectors.planDetailReady,
-        theme: ThemeMode.light);
-    await capture('coach', StoreSelectors.coach(app), StoreSelectors.coachReady);
+    /// Scroll [target] into the screen's list, then to just below its top.
+    Future<Rect> reveal(Type screen, Finder target) async {
+      await scrollUntilBuilt(tester, verticalListOf(screen), target);
+      await revealNearTop(tester, target);
+      await settle(tester, const Duration(seconds: 1));
+      return viewportOf(tester, target);
+    }
+
+    Map<String, Rect> inside(Rect viewport, Iterable<String> names) =>
+        {for (final n in names) n: viewport};
+
+    // ---- run detail, 320 dp, dark: the zones, then the splits.
+    final hero = (await app.runStore.runById(kHeroRunId)) ??
+        runs.firstWhere((r) => r.id == kHeroRunId);
+    final run = <String, Object?>{};
+    await open(StoreSelectors.runDetail(app, hero), StoreSelectors.runDetailReady,
+        theme: ThemeMode.dark, column: true);
+    var viewport = await reveal(RunDetailScreen, StoreSelectors.hrZonesTitle);
+    run.addAll(zoneNumbers(tester, hero, l10n));
+    shots.captures.add(await captureScreen(tester,
+        name: 'run-zones',
+        boundary: boundary,
+        pixelRatio: columnDpr,
+        sections: {
+          'hr-zones': [StoreSelectors.hrZonesTitle, StoreSelectors.hrZonesLegend],
+        },
+        viewports: inside(viewport, ['hr-zones'])));
+
+    viewport = await reveal(RunDetailScreen, StoreSelectors.splitsTitle);
+    run.addAll(splitNumbers(tester, hero, l10n));
+    final kms = (run['splits']! as List).length;
+    final splitSections = {
+      'splits-title': [StoreSelectors.splitsTitle],
+      'pacing-card': [StoreSelectors.pacingCard],
+      'gap-header': [StoreSelectors.gapHeader],
+      for (var km = 1; km <= kms; km++)
+        'split-row-$km': [StoreSelectors.splitRow(km)],
+      'splits-hint': [StoreSelectors.splitsHint],
+    };
+    shots.captures.add(await captureScreen(tester,
+        name: 'run-splits',
+        boundary: boundary,
+        pixelRatio: columnDpr,
+        sections: splitSections,
+        viewports: inside(viewport, splitSections.keys),
+        colourAt: {'pacing-card': ('pacing-card', const Offset(40, 4))}));
+    await close();
+
+    // ---- run detail at text scale 1.5: the app lays the pacing card out
+    // larger itself (spec C4), rather than the renderer scaling pixels.
+    await open(StoreSelectors.runDetail(app, hero), StoreSelectors.runDetailReady,
+        theme: ThemeMode.dark, column: true, textScale: 1.5);
+    viewport = await reveal(RunDetailScreen, StoreSelectors.splitsTitle);
+    final pacingSections = {
+      'splits-title': [StoreSelectors.splitsTitle],
+      'pacing-card': [StoreSelectors.pacingCard],
+      'gap-header': [StoreSelectors.gapHeader],
+      'split-row-1': [StoreSelectors.splitRow(1)],
+      'split-row-2': [StoreSelectors.splitRow(2)],
+    };
+    shots.captures.add(await captureScreen(tester,
+        name: 'run-pacing',
+        boundary: boundary,
+        pixelRatio: columnDpr,
+        sections: pacingSections,
+        viewports: inside(viewport, pacingSections.keys),
+        colourAt: {'pacing-card': ('pacing-card', const Offset(40, 4))}));
+    await close();
+
+    // ---- Progress, 360 dp (kPredictorColumnDp), light: the predictor.
+    await open(StoreSelectors.progress(app), find.byType(ProgressScreen),
+        theme: ThemeMode.light, column: true, columnDp: kPredictorColumnDp);
+    viewport = await reveal(ProgressScreen, StoreSelectors.predictorCard);
+    final predictor = predictorNumbers(
+        tester, app.runStore.summaryRuns, DateTime.now(), l10n);
+    final rungSections = {
+      'predictor-card': [StoreSelectors.predictorCard],
+      for (final (name, metres) in const [
+        ('5k', 5000.0),
+        ('10k', 10000.0),
+        ('half', 21097.5),
+        ('marathon', 42195.0),
+      ])
+        'predictor-row-$name': [StoreSelectors.predictorRow(metres)],
+    };
+    shots.captures.add(await captureScreen(tester,
+        name: 'progress',
+        boundary: boundary,
+        pixelRatio: columnDprFor(kPredictorColumnDp),
+        sections: rungSections,
+        viewports: inside(viewport, rungSections.keys),
+        colourAt: {
+          'predictor-row-half': ('predictor-row-half', const Offset(1, 3)),
+        }));
+    await close();
+
+    // ---- the plan, device width, light, with "Plan progress" open (spec
+    // open issue 3). Taller than the device, so the progress card is on
+    // screen with the header; the crops take the sections, not the height.
+    await open(StoreSelectors.planDetail(app), StoreSelectors.planDetailReady,
+        theme: ThemeMode.light, heightDp: 1600);
+    await scrollUntilBuilt(
+        tester, verticalListOf(PlanDetailScreen), StoreSelectors.planProgress);
+    if (!tester.widget<DisclosureSection>(StoreSelectors.planProgress).open) {
+      await tester.tap(find.descendant(
+          of: StoreSelectors.planProgress,
+          matching: find.text(l10n.planDetailSectionProgressTitle)));
+      await settle(tester, const Duration(seconds: 1));
+    }
+    await revealNearTop(tester, StoreSelectors.planTitle, marginDp: 0);
+    await settle(tester, const Duration(seconds: 1));
+    viewport = viewportOf(tester, StoreSelectors.planHeroCard);
+    final plan = await planNumbers(tester, app.training, kDemoPlanId);
+    final planSections = {
+      'plan-header': [StoreSelectors.planTitle, StoreSelectors.planHeroCard],
+      'plan-week': [StoreSelectors.planWeek],
+      'plan-progress': [StoreSelectors.planProgress],
+    };
+    shots.captures.add(await captureScreen(tester,
+        name: 'plan',
+        boundary: boundary,
+        pixelRatio: deviceDpr,
+        sections: planSections,
+        viewports: inside(viewport, planSections.keys)));
+    await close();
+
+    // ---- the coach, device width, dark: the context chips and the last
+    // exchange. The usage banner and a typing indicator must sit outside
+    // both crops; the capture fails rather than hide them in the app.
+    await open(StoreSelectors.coach(app), StoreSelectors.coachReady,
+        theme: ThemeMode.dark);
+    final question = tester.getRect(StoreSelectors.coachLastQuestion);
+    final answer = tester.getRect(StoreSelectors.coachLastAnswer);
+    if (answer.top <= question.bottom) {
+      fail('the thread does not end on an answer to "$kDemoCoachPhrase"');
+    }
+    shots.captures.add(await captureScreen(tester,
+        name: 'coach',
+        boundary: boundary,
+        pixelRatio: deviceDpr,
+        sections: {
+          'coach-context': [StoreSelectors.coachContext],
+          'coach-last-exchange': [
+            StoreSelectors.coachLastQuestion,
+            StoreSelectors.coachLastAnswer,
+          ],
+        },
+        viewports: {
+          'coach-last-exchange': viewportOf(tester, StoreSelectors.coachLastAnswer),
+        },
+        forbidden: StoreSelectors.coachForbidden));
+    await close();
+
+    // The same read the coach uses to pick its daily allowance.
+    final tier = await api.isPro() ? 'pro' : 'free';
+
+    binding.reportData = shots.reportData({
+      'schema': 1,
+      'tier': tier,
+      'labels': {'grade_adj': l10n.runDetailGapColumn},
+      'run': run,
+      'predictor': predictor,
+      'plan': plan,
+    });
   });
 }
 
@@ -148,30 +324,6 @@ Future<void> settle(WidgetTester tester,
   final end = DateTime.now().add(duration);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 100));
-  }
-}
-
-/// Pump real frames while polling [condition], an async read such as a
-/// server row, about once a second; fails with [describe] at [timeout].
-Future<void> pumpUntilAsync(
-  WidgetTester tester,
-  Future<bool> Function() condition, {
-  required String describe,
-  Duration timeout = const Duration(seconds: 120),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (true) {
-    var met = false;
-    try {
-      met = await condition();
-    } catch (e) {
-      debugPrint('store capture: waiting for $describe: $e');
-    }
-    if (met) return;
-    if (!DateTime.now().isBefore(deadline)) {
-      fail('timed out after ${timeout.inSeconds} s waiting for $describe');
-    }
-    await settle(tester, const Duration(seconds: 1));
   }
 }
 

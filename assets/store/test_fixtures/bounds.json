@@ -1,0 +1,251 @@
+{
+ "schema": 1,
+ "captures": {
+  "run-splits": {
+   "file": "run-splits.png",
+   "theme": "dark",
+   "dpr": 3.0,
+   "sections": {
+    "splits-title": [
+     0,
+     120,
+     960,
+     144
+    ],
+    "pacing-card": [
+     60,
+     264,
+     840,
+     444
+    ],
+    "gap-header": [
+     0,
+     744,
+     960,
+     66
+    ],
+    "split-row-1": [
+     0,
+     810,
+     960,
+     96
+    ],
+    "split-row-2": [
+     0,
+     906,
+     960,
+     96
+    ],
+    "split-row-3": [
+     0,
+     1002,
+     960,
+     96
+    ],
+    "split-row-4": [
+     0,
+     1098,
+     960,
+     96
+    ],
+    "split-row-5": [
+     0,
+     1194,
+     960,
+     96
+    ],
+    "split-row-6": [
+     0,
+     1290,
+     960,
+     96
+    ],
+    "split-row-7": [
+     0,
+     1386,
+     960,
+     96
+    ],
+    "split-row-8": [
+     0,
+     1482,
+     960,
+     96
+    ],
+    "splits-hint": [
+     0,
+     1578,
+     960,
+     192
+    ]
+   },
+   "size": [
+    960,
+    2106
+   ]
+  },
+  "run-zones": {
+   "file": "run-zones.png",
+   "theme": "dark",
+   "dpr": 3.0,
+   "sections": {
+    "hr-zones": [
+     0,
+     60,
+     960,
+     744
+    ]
+   },
+   "size": [
+    960,
+    1668
+   ]
+  },
+  "run-pacing": {
+   "file": "run-pacing.png",
+   "theme": "dark",
+   "dpr": 3.0,
+   "sections": {
+    "splits-title": [
+     0,
+     120,
+     960,
+     144
+    ],
+    "pacing-card": [
+     60,
+     264,
+     840,
+     932
+    ],
+    "gap-header": [
+     0,
+     1232,
+     960,
+     66
+    ],
+    "split-row-1": [
+     0,
+     1298,
+     960,
+     96
+    ],
+    "split-row-2": [
+     0,
+     1394,
+     960,
+     96
+    ],
+    "split-row-3": [
+     0,
+     1490,
+     960,
+     96
+    ],
+    "split-row-4": [
+     0,
+     1586,
+     960,
+     96
+    ]
+   },
+   "colours": {
+    "pacing-card": "#36323F"
+   },
+   "size": [
+    960,
+    2282
+   ]
+  },
+  "progress": {
+   "file": "progress.png",
+   "theme": "light",
+   "dpr": 2.6666666666666665,
+   "sections": {
+    "predictor-row-5k": [
+     96,
+     372,
+     768,
+     90
+    ],
+    "predictor-row-10k": [
+     96,
+     462,
+     768,
+     90
+    ],
+    "predictor-row-half": [
+     96,
+     552,
+     768,
+     90
+    ],
+    "predictor-row-marathon": [
+     96,
+     642,
+     768,
+     90
+    ],
+    "predictor-card": [
+     48,
+     90,
+     864,
+     822
+    ]
+   },
+   "colours": {
+    "predictor-row-half": "#F2EEF4"
+   },
+   "size": [
+    960,
+    2112
+   ]
+  },
+  "plan": {
+   "file": "plan.png",
+   "theme": "light",
+   "dpr": 2.625,
+   "sections": {
+    "plan-header": [
+     0,
+     290,
+     1080,
+     300
+    ],
+    "plan-week": [
+     0,
+     1350,
+     1080,
+     222
+    ]
+   },
+   "size": [
+    1080,
+    2337
+   ]
+  },
+  "coach": {
+   "file": "coach.png",
+   "theme": "dark",
+   "dpr": 2.625,
+   "sections": {
+    "coach-context": [
+     0,
+     588,
+     1080,
+     104
+    ],
+    "coach-last-exchange": [
+     0,
+     1288,
+     1080,
+     686
+    ]
+   },
+   "size": [
+    1080,
+    2337
+   ]
+  }
+ }
+}

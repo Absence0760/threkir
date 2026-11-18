@@ -2,7 +2,9 @@ name: Store screenshots
 
 # Captures the store-listing screens from the real app on seeded demo data and
 # composes the captioned Play and App Store panels from them (issue #1375,
-# assets/store/README.md). Run it from Actions → Store screenshots → Run
+# assets/store/README.md): the Play set from the Android emulator, the App
+# Store set from an iOS simulator, since an Android screen in an App Store
+# listing breaks Apple's guideline 2.3.10. Run it from Actions → Store screenshots → Run
 # workflow before a listing refresh. It also runs on a PR that touches the
 # pipeline itself, so a broken capture shows up on the change that broke it.
 #
@@ -102,35 +104,6 @@ jobs:
             exit 1
           fi
           echo "anon_key=$ANON_KEY" >> "$GITHUB_OUTPUT"
-      # The record panel's map shows a "Snapping to roads" pill until the
-      # run's map_match job has run, and nothing drains the jobs queue but the
-      # Go worker. Without OSRM_URL it matches by passthrough (the matched
-      # track is the recorded one), which settles the row as `matched` without
-      # an OSRM graph. The capture waits for that row before opening the run.
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: apps/job_worker/go.mod
-          cache-dependency-path: apps/job_worker/go.sum
-      - name: Start the job worker
-        working-directory: apps/job_worker
-        run: |
-          STATUS=$(cd ../backend && supabase status -o env)
-          API_URL=$(printf '%s\n' "$STATUS" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
-          SERVICE_KEY=$(printf '%s\n' "$STATUS" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')
-          go build -o "$RUNNER_TEMP/job_worker" .
-          SUPABASE_URL="$API_URL" SUPABASE_SECRET_KEY="$SERVICE_KEY" OSRM_URL='' \
-            HEALTH_PORT=8088 WORKER_ID=store-screenshots \
-            nohup "$RUNNER_TEMP/job_worker" > "$RUNNER_TEMP/job_worker.log" 2>&1 &
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8088/health > /dev/null; then
-              echo "job worker is up"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "::error::The job worker did not answer on :8088/health within 30 s, so no map_match job would run and the capture would time out waiting for the hero run's match. Its log is in the job-worker-log artifact."
-          exit 1
-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -154,6 +127,33 @@ jobs:
             sleep $((attempt * 15))
           done
           echo "::error::The Android 34 google_apis x86_64 system image did not install after 3 attempts, so no emulator can boot. Nothing here is about the app or its capture."
+          exit 1
+      # The runner image lacks the NDK Flutter's Gradle plugin asks for, and
+      # Gradle's own on-demand install has no retry: one corrupt download from
+      # dl.google.com failed run 44318164666 before the app was built. Same
+      # pattern as the system image: install up front, judged by the files on
+      # disk, at the version flutter.ndkVersion resolves to.
+      - name: Install the NDK Flutter builds with
+        run: |
+          ext="$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
+          version="$(sed -n 's/.*val ndkVersion: String = "\([0-9.]*\)".*/\1/p' "$ext")"
+          if [ -z "$version" ]; then
+            echo "::error::Could not read flutter.ndkVersion from $ext; Flutter moved it. Update this step to read it from its new place."
+            exit 1
+          fi
+          sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          ndk="$ANDROID_SDK_ROOT/ndk/$version"
+          for attempt in 1 2 3; do
+            "$sdkmanager" --install "ndk;$version" --channel=0 > /dev/null || true
+            if [ -s "$ndk/source.properties" ]; then
+              echo "NDK $version installed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::NDK $version missing after attempt $attempt (corrupt download from dl.google.com?); fetching again"
+            rm -rf "$ndk" "$ANDROID_SDK_ROOT/.temp" "$ANDROID_SDK_ROOT/.downloadIntermediates"
+            sleep $((attempt * 15))
+          done
+          echo "::error::NDK $version did not install after 3 attempts, so the app cannot build. Nothing here is about the app or its capture."
           exit 1
       - name: Cache AVD
         id: avd-cache
@@ -193,24 +193,249 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: bash assets/store/capture.sh emulator-5554 build/store-captures
+          script: bash assets/store/capture.sh emulator-5554 build/store-captures/play-phone
       - name: Upload the raw captures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: store-screenshots-raw
-          path: build/store-captures/
+          path: build/store-captures/play-phone/
           if-no-files-found: error
-      - name: Upload the job worker log
+
+  capture-ios:
+    # The App Store set. The same suite as the Android job, from the
+    # byte-identical apps/mobile_ios twin, on an iOS simulator of the 6.9"
+    # class (1320 x 2868, 440 pt at 3x), which the suite checks before it
+    # captures anything. It takes this workflow's path filter like every job
+    # here: a macOS runner is the slow, scarce one (build-mobile-ios in
+    # ci.yml records the cost), so it runs only when the pipeline changes or
+    # on demand.
+    #
+    # The suite signs in to a local Supabase stack, which needs Docker, and
+    # GitHub's macOS images ship none. Docker runs here in a Colima VM, on the
+    # Intel image because the Apple-silicon runners cannot nest a VM. If that
+    # stops being true, the "Start Docker" step fails naming it, and the
+    # compose job still renders the Play set.
+    name: Capture on the iOS simulator
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Cache pub-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      # The same two caches build-mobile-ios keeps (ci.yml), for the same
+      # reason: the plugin graph's pods and Swift packages, cold, are the slow
+      # and flaky half of an iOS build.
+      - name: Cache CocoaPods
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ hashFiles('apps/mobile_ios/ios/Podfile.lock') }}
+          restore-keys: cocoapods-
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/mobile_ios/build/ios/SourcePackages/repositories
+            apps/mobile_ios/build/ios/SourcePackages/checkouts
+            apps/mobile_ios/build/ios/SourcePackages/artifacts
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('apps/mobile_ios/ios/**/Package.resolved') }}
+          restore-keys: swiftpm-${{ runner.os }}-
+      # The template carries no credentials; the debug build bundles it.
+      - run: cp apps/mobile_ios/.env.example apps/mobile_ios/.env.development
+
+      # The Intel image defaults to an older Xcode than macos-latest, where
+      # build-mobile-ios (ci.yml) runs, and its SDK lacks APIs the plugins
+      # call (device_info_plus's isiOSAppOnVision failed run 44336274458).
+      # The image carries newer Xcodes beside the default; take the newest
+      # release, and the simulator step then finds its iOS runtime.
+      - name: Select the newest Xcode on the image
+        run: |
+          set -euo pipefail
+          # The loop stays outside $(...): macOS's bash 3.2 cannot parse a
+          # case pattern's ")" inside a command substitution.
+          candidates=()
+          for app in /Applications/Xcode_*.app; do
+            [ -d "$app" ] || continue
+            case "$app" in
+              *[Bb]eta*) ;;
+              *) candidates+=("$app") ;;
+            esac
+          done
+          if [ "${#candidates[@]}" -eq 0 ]; then
+            echo "::error::No released Xcode_*.app under /Applications on this image."
+            exit 1
+          fi
+          xcode="$(printf '%s\n' "${candidates[@]}" | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+
+      # Built before Docker starts, with retries: the Swift packages' binary
+      # targets (Sentry, gRPC) download at build time, and in run 44318164666
+      # both downloads dropped mid-capture with the Colima VM up. Once
+      # resolved into build/ios/SourcePackages, the capture's own build skips
+      # package updates and only recompiles what its dart-defines change.
+      - name: Build the app for the simulator
+        working-directory: apps/mobile_ios
+        run: |
+          for attempt in 1 2 3; do
+            if flutter build ios --simulator --debug; then
+              exit 0
+            fi
+            echo "::warning::the simulator build failed on attempt $attempt; retrying in case a package download dropped"
+            sleep $((attempt * 20))
+          done
+          echo "::error::apps/mobile_ios did not build for the simulator after 3 attempts. If every attempt failed on a package download, it is the network; otherwise it is the app, and build-mobile-ios in ci.yml should show the same failure."
+          exit 1
+
+      - name: Start Docker (Colima)
+        run: |
+          brew install colima docker libpq
+          if ! colima start --cpu 2 --memory 5 --disk 60; then
+            echo "::error::Colima could not start a Docker VM on this macOS runner (most likely the image no longer allows a nested VM). The iOS capture needs Docker for the local Supabase stack; nothing here is about the app. The compose job still renders the Play set."
+            exit 1
+          fi
+          echo "DOCKER_HOST=unix://$HOME/.colima/default/docker.sock" >> "$GITHUB_ENV"
+          echo "$(brew --prefix libpq)/bin" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/setup-supabase-cli
+        with:
+          version: 2.84.2
+      # Not the start-supabase action: its port-clean retry is built on
+      # Linux's ss, sysctl and /proc, and the problem it solves (a stack port
+      # inside Linux's ephemeral range) does not arise on macOS, whose range
+      # starts at 49152. The services the capture never reaches stay off:
+      # the edge runtime, the log pipeline (vector cannot mount Colima's
+      # socket), Studio and its postgres-meta, imgproxy and the pooler.
+      #
+      # The CLI's own health wait is not used: on a Storage timeout it
+      # removes every container before printing anything (run 44237921645
+      # showed an empty Storage log), so the step waits itself, longer, and
+      # prints each unhealthy container's health probe and log on failure.
+      - name: Start the local Supabase stack
+        working-directory: apps/backend
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || echo "::warning::ghcr.io login failed; pulling anonymously"
+          if ! supabase start --ignore-health-check -x edge-runtime,vector,logflare,studio,postgres-meta,imgproxy,supavisor; then
+            echo "::error::supabase start failed inside Colima on the macOS runner before the containers were up. The Android job starts the same stack on Linux; compare its log before suspecting a migration."
+            exit 1
+          fi
+          deadline=$((SECONDS + 360))
+          while docker ps --filter name=supabase_ --format '{{.Status}}' | grep -q 'health: starting\|unhealthy'; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              for name in $(docker ps --filter name=supabase_ --filter health=unhealthy --filter health=starting --format '{{.Names}}'); do
+                echo "::group::$name"
+                docker inspect --format '{{json .State.Health}}' "$name" | jq .
+                docker logs --tail 200 "$name" 2>&1
+                echo "::endgroup::"
+              done
+              echo "::error::The local Supabase stack inside Colima was not healthy after 6 minutes; the groups above hold each unhealthy container's health probe and log."
+              exit 1
+            fi
+            sleep 10
+          done
+          docker ps --filter name=supabase_ --format '{{.Names}}: {{.Status}}'
+      - name: Load the store demo account
+        id: demo
+        working-directory: apps/backend
+        run: |
+          DB_URL=$(supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '"')
+          ANON_KEY=$(supabase status -o env | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f ../../assets/store/demo/store_demo_seed.sql; then
+            echo "::error::assets/store/demo/store_demo_seed.sql did not load into the local stack. A migration has most likely changed a table it writes; the Android job loads the same file."
+            exit 1
+          fi
+          echo "anon_key=$ANON_KEY" >> "$GITHUB_OUTPUT"
+      # The newest Pro Max the image offers, created fresh: the model names
+      # rotate with every Xcode, and every Pro Max since the 16 is the 6.9"
+      # class the App Store slot wants. The suite fails on any other size.
+      - name: Boot a 6.9-inch iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          devtype="$(xcrun simctl list devicetypes --json \
+            | jq -r '[.devicetypes[] | select(.name | test("^iPhone [0-9]+ Pro Max$"))] | sort_by(.name | capture("(?<n>[0-9]+)").n | tonumber) | last | .identifier // empty')"
+          runtime="$(xcrun simctl list runtimes --json \
+            | jq -r '[.runtimes[] | select(.isAvailable and .platform == "iOS")] | last | .identifier // empty')"
+          if [ -z "$devtype" ] || [ -z "$runtime" ]; then
+            echo "::error::This macOS image offers no iPhone Pro Max simulator or no iOS runtime, so there is nothing of the App Store's 6.9-inch class to capture on."
+            xcrun simctl list devicetypes | grep -i iphone || true
+            xcrun simctl list runtimes || true
+            exit 1
+          fi
+          udid="$(xcrun simctl create store-6-9 "$devtype" "$runtime")"
+          xcrun simctl bootstatus "$udid" -b
+          echo "Booted $devtype on $runtime as $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Capture the store screens
+        env:
+          STORE_APP: mobile_ios
+          SUPABASE_ANON_KEY: ${{ steps.demo.outputs.anon_key }}
+          MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
+          SIM_UDID: ${{ steps.sim.outputs.udid }}
+        # Runs 44352426866 (both attempts) lost this step to "The operation
+        # was canceled" with nothing printed, at the job's heaviest point:
+        # the Colima VM, the simulator and flutter drive's Xcode build at
+        # once. The sampler writes memory, swap and disk to the log every
+        # 20 s, so if the runner is killed again its last lines say why.
+        run: |
+          ( while true; do
+              echo "[resources $(date -u +%T)] $(vm_stat | awk 'NR==1 {ps=$8} /Pages free/ {f=$3} /Pages inactive/ {i=$3} END {printf "free+inactive %.1f GB", (f+i)*ps/1073741824}'), swap $(sysctl -n vm.swapusage | awk '{print $6}'), disk free $(df -h / | awk 'NR==2 {print $4}')"
+              sleep 20
+            done ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          bash assets/store/capture.sh "$SIM_UDID" build/store-captures/appstore-6.9
+      - name: Upload the raw captures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: job-worker-log
-          path: ${{ runner.temp }}/job_worker.log
-          if-no-files-found: ignore
+          name: store-screenshots-raw-ios
+          path: build/store-captures/appstore-6.9/
+          if-no-files-found: error
+
+  renderer-tests:
+    # The renderer's own tests (captions, numbers.json claims, layout, one
+    # Inkscape render from fixtures), so a renderer change gets a verdict in
+    # minutes rather than after the emulator capture.
+    name: Test the panel renderer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Inkscape
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends inkscape
+          inkscape --version
+      - name: Run the renderer tests
+        run: python3 -m unittest discover -s assets/store -p 'test_*.py' -v
 
   compose:
-    needs: capture
+    needs: [capture, capture-ios, renderer-tests]
+    # Renders the Play set whenever its captures exist, even when the iOS job
+    # failed, so a macOS-only problem never costs the Play panels. The run
+    # still fails at the end in that case, naming the missing App Store set.
+    if: ${{ !cancelled() && needs.capture.result == 'success' && needs.renderer-tests.result == 'success' }}
     name: Compose the captioned panels
     # Pinned to a release rather than ubuntu-latest so the apt Inkscape is a
     # known one (1.2.x on 24.04): the renderer needs 1.2+ for
@@ -224,16 +449,41 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: store-screenshots-raw
-          path: build/store-captures
+          path: build/store-captures/play-phone
+      - if: ${{ needs.capture-ios.result == 'success' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: store-screenshots-raw-ios
+          path: build/store-captures/appstore-6.9
       - name: Install Inkscape
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends inkscape
           inkscape --version
       - name: Render the panels
-        run: bash assets/store/gen-store-screenshots.sh --captures build/store-captures --out build/store-panels
+        env:
+          IOS_CAPTURED: ${{ needs.capture-ios.result == 'success' }}
+        run: |
+          if [ "$IOS_CAPTURED" = true ]; then
+            bash assets/store/gen-store-screenshots.sh \
+              --captures play-phone=build/store-captures/play-phone \
+              --captures appstore-6.9=build/store-captures/appstore-6.9 \
+              --captures appstore-6.3=build/store-captures/appstore-6.9 \
+              --out build/store-panels
+          else
+            bash assets/store/gen-store-screenshots.sh \
+              --captures play-phone=build/store-captures/play-phone \
+              --target play-phone --out build/store-panels
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: store-screenshots-panels
           path: build/store-panels/
           if-no-files-found: error
+      - name: The App Store set was rendered
+        if: ${{ needs.capture-ios.result != 'success' }}
+        env:
+          IOS_RESULT: ${{ needs.capture-ios.result }}
+        run: |
+          echo "::error::The iOS capture did not succeed ($IOS_RESULT), so store-screenshots-panels holds the Play set only. The App Store set comes from the iOS simulator and nowhere else (guideline 2.3.10); see the 'Capture on the iOS simulator' job."
+          exit 1

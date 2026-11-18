@@ -22,13 +22,32 @@ import (
 // Excused, because no reader sees them:
 //   - struct field tags;
 //   - literals inside fmt.Errorf / errors.New, which reach logs, never copy;
-//   - literals inside a logger call (.Debug / .Info / .Warn / .Error and their
-//     Context forms).
+//   - literals inside a logger call: .Debug / .Info / .Warn / .Error and their
+//     Context forms on a receiver named log, logger or slog, or on a .Log /
+//     .log field. The receiver is checked too, so another package's New or
+//     Error (http.Error, a renderer's New) is still read.
 
-var ellipsisExcusedCalls = map[string]bool{
-	"Errorf": true, "New": true,
+var ellipsisLoggerMethods = map[string]bool{
 	"Debug": true, "Info": true, "Warn": true, "Error": true,
 	"DebugContext": true, "InfoContext": true, "WarnContext": true, "ErrorContext": true,
+}
+
+var ellipsisLoggerNames = map[string]bool{"log": true, "logger": true, "slog": true, "Log": true}
+
+func ellipsisExcusedCall(sel *ast.SelectorExpr) bool {
+	switch x := sel.X.(type) {
+	case *ast.Ident:
+		switch {
+		case x.Name == "fmt" && sel.Sel.Name == "Errorf":
+			return true
+		case x.Name == "errors" && sel.Sel.Name == "New":
+			return true
+		}
+		return ellipsisLoggerMethods[sel.Sel.Name] && ellipsisLoggerNames[x.Name]
+	case *ast.SelectorExpr:
+		return ellipsisLoggerMethods[sel.Sel.Name] && ellipsisLoggerNames[x.Sel.Name]
+	}
+	return false
 }
 
 func ellipsisOffenders(t *testing.T, fset *token.FileSet, file *ast.File) []string {
@@ -45,7 +64,7 @@ func ellipsisOffenders(t *testing.T, fset *token.FileSet, file *ast.File) []stri
 		case *ast.ImportSpec:
 			return false
 		case *ast.CallExpr:
-			if sel, ok := v.Fun.(*ast.SelectorExpr); ok && ellipsisExcusedCalls[sel.Sel.Name] {
+			if sel, ok := v.Fun.(*ast.SelectorExpr); ok && ellipsisExcusedCall(sel) {
 				return false
 			}
 		case *ast.BasicLit:
@@ -119,7 +138,10 @@ func TestEllipsisGuard_CatchesTheSlipsItExistsFor(t *testing.T) {
 		{`package p; // see the docs...` + "\nvar s = 1", 0},
 		{`package p; import "errors"; var e = errors.New("bad input...")`, 0},
 		{`package p; import "fmt"; func f() error { return fmt.Errorf("read %s...", "x") }`, 0},
-		{`package p; func f(l interface{ Info(string, ...any) }) { l.Info("draining...") }`, 0},
+		{`package p; func f(logger interface{ Info(string, ...any) }) { logger.Info("draining...") }`, 0},
+		{`package p; type W struct{ Log interface{ Warn(string, ...any) } }; func (w W) f() { w.Log.Warn("retrying...") }`, 0},
+		{`package p; import "net/http"; func f(w http.ResponseWriter) { http.Error(w, "Try again...", 503) }`, 1},
+		{`package p; func f(r interface{ New(string) }) { r.New("Loading...") }`, 1},
 		{"package p; type T struct { A string `json:\"a,omitempty\" x:\"...\"` }", 0},
 	}
 	for _, c := range cases {

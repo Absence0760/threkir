@@ -606,7 +606,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outra app ligada à Conexão Saúde';
+      'Importe os treinos que o Samsung Health, a Garmin, a Fitbit e outras apps guardam na Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9771,7 +9771,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'O Pro desbloqueia o Coach de IA — em breve. Ainda pode apoiar a app abaixo.';
+      'O Pro chega em breve: mais mensagens por dia ao Coach de IA e processamento prioritário. Ainda pode apoiar a app abaixo.';
 
   @override
   String get proRegionalNote =>
@@ -24789,7 +24789,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outro app conectado à Conexão Saúde';
+      'Importe os treinos que o Samsung Health, a Garmin, a Fitbit e outros apps salvam na Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
@@ -33941,7 +33941,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proComingSoon =>
-      'O Pro desbloqueia o Coach de IA — em breve. Você ainda pode apoiar o app abaixo.';
+      'O Pro chega em breve: mais mensagens por dia para o Coach de IA e processamento prioritário. Você ainda pode apoiar o app abaixo.';
 
   @override
   String get proRegionalNote =>

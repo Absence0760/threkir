@@ -320,7 +320,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el Entrenador IA: próximamente.**, todavía no se puede comprar Pro."
+            "text": "Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice que Pro llega pronto, todavía no se puede comprar Pro."
           }
         ]
       },

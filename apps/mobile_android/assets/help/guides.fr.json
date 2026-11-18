@@ -320,7 +320,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Certaines de ces fonctionnalités dépendent de services qui ne sont peut-être pas encore activés. La carte Pro dans [[route:/settings/upgrade|Pro et soutien]] ne liste que ce qui fonctionne aujourd'hui ; si elle indique **Pro débloque le coach IA — bientôt disponible.**, Pro ne peut pas encore être acheté."
+            "text": "Certaines de ces fonctionnalités dépendent de services qui ne sont peut-être pas encore activés. La carte Pro dans [[route:/settings/upgrade|Pro et soutien]] ne liste que ce qui fonctionne aujourd'hui ; si elle indique que Pro arrive bientôt, Pro ne peut pas encore être acheté."
           }
         ]
       },

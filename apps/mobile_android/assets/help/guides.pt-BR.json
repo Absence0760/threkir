@@ -320,7 +320,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Alguns desses recursos dependem de serviços que talvez ainda não estejam ativados. O cartão do Pro em [[route:/settings/upgrade|Pro e apoio]] lista apenas o que funciona hoje; se ele disser **O Pro desbloqueia o Coach de IA — em breve.**, o Pro ainda não pode ser comprado."
+            "text": "Alguns desses recursos dependem de serviços que talvez ainda não estejam ativados. O cartão do Pro em [[route:/settings/upgrade|Pro e apoio]] lista apenas o que funciona hoje; se ele disser que o Pro chega em breve, o Pro ainda não pode ser comprado."
           }
         ]
       },

@@ -403,6 +403,16 @@ jobs:
             echo "Reproduce with: node --test .github/actions/start-supabase/start_stack.test.mjs (drives the ladder with stub ss/docker/supabase/sudo on PATH)."
             exit 1
           fi
+      # config.toml says [local_smtp] (the only name CLI 3.x loads); the
+      # pinned 2.84.2 predates it, so setup-supabase-cli renames it back to
+      # [inbucket] for a pre-2.108.0 CLI. Pins the rename and its retirement.
+      - name: Supabase Mailpit section matches the CLI pin
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test .github/actions/setup-supabase-cli/local_smtp_compat.test.mjs; then
+            echo "::error::setup-supabase-cli's [local_smtp] -> [inbucket] shim regressed, or every CLI pin now reads [local_smtp] and the shim should be retired. Reproduce with: node --test .github/actions/setup-supabase-cli/local_smtp_compat.test.mjs."
+            exit 1
+          fi
       # bin/watch-sim.sh draws a per-run Renode monitor port. Drawn inside the
       # 32768-60999 ephemeral range and probed for LISTEN sockets only, it
       # collided with an outbound connection's source port and aborted the
@@ -1133,6 +1143,11 @@ jobs:
       # it, it costs ~1 s, and it must not sit behind a Docker stack start that
       # can fail first and take the signal with it.
       #
+      # It fails on the section's shape (a dependency added or removed, the
+      # root overrides moved) and only notes a version-only difference: that is
+      # all a Dependabot bump changes, and Dependabot cannot run deno, so a
+      # strict compare turned every web bump PR red (decisions § 2576).
+      #
       # deno is what writes the section (it canonicalizes the ranges), so the
       # guard needs the same toolchain the edge-functions job uses — but no
       # network and no node_modules: it stages the package.json files in a temp
@@ -1166,12 +1181,12 @@ jobs:
         if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.deno.outcome == 'success' }}
         run: |
           if ! npm run sync:deno-lock:check; then
-            echo "::error::The 'workspace' section of deno.lock has drifted from the npm workspace's package.json files. Nothing here is about the Edge Functions' integrity pins, the migrations, or the generated row types."
+            echo "::error::The 'workspace' section of deno.lock no longer lists the dependencies the npm workspace's package.json files declare (one added or removed, or the root overrides moved). A version-only bump does not fail this. Nothing here is about the Edge Functions' integrity pins, the migrations, or the generated row types."
             echo "Run 'pnpm sync:deno-lock' locally and commit the result — deno rewrites the section, because it canonicalizes 0.x ranges and a hand-edit does not stick."
             exit 1
           fi
           if ! node --test scripts/sync_deno_lock.test.mjs; then
-            echo "::error::The deno.lock sync tool's own unit tests failed. The lockfile itself is in sync — the check above just passed — so this is a defect in scripts/sync_deno_lock.mjs, not drift."
+            echo "::error::The deno.lock sync tool's own unit tests failed. The lockfile itself matches package.json in shape — the check above just passed — so this is a defect in scripts/sync_deno_lock.mjs, not drift."
             echo "Fix scripts/sync_deno_lock.mjs (or its tests); reproduce with: node --test scripts/sync_deno_lock.test.mjs (needs deno on PATH, two cases skip without it)."
             exit 1
           fi
@@ -4276,7 +4291,7 @@ jobs:
           # container with `--add-host host.docker.internal:host-gateway`,
           # so this is the same pair the committed
           # supabase/functions/.env uses for local dev, and 24325 is the
-          # host-published smtp_port from config.toml's [inbucket].
+          # host-published smtp_port from config.toml's [local_smtp].
           SMTP_HOST=host.docker.internal
           SMTP_PORT=24325
           SMTP_FROM="Threkir <noreply@threkir.com>"

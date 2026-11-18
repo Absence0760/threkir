@@ -23,7 +23,9 @@ it stops the release managing it.
 
 `signoff` is required whenever `enabled` is `true`. It is the URL of the GitHub
 issue, PR or comment that records the approval (for example the #1097
-checkpoint comment), or a `reviews/` or `docs/` `.md` path. A `docs/` path must
+checkpoint comment), in a `jaredhoward-dev` repo (a link under the old
+`Absence0760` owner is refused, decisions § 2575), or a `reviews/` or `docs/`
+`.md` path. A `docs/` path must
 exist; `reviews/` is gitignored, so prefer a link.
 
 ```json

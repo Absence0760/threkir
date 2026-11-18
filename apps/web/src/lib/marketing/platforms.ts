@@ -17,10 +17,12 @@ export interface Platform {
 export type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 // iPhone and Apple Watch share one App Store listing (released 26 Oct 2026).
-// Android and Wear OS stay in testing until Play grants production access (#1225).
+// Android is public on Google Play (production access, #1225). Wear OS ships on
+// the same Play listing as a form factor and stays in testing until its Wear OS
+// opt-in and first production release (#1378).
 export const PLATFORMS: readonly Platform[] = [
 	{ name: 'Web', status: 'live' },
-	{ name: 'Android', status: 'testing' },
+	{ name: 'Android', status: 'live', storeUrl: 'https://play.google.com/store/apps/details?id=com.threkir.app' },
 	{ name: 'iOS', status: 'live', storeUrl: 'https://apps.apple.com/app/id6819364574' },
 	{ name: 'Wear OS', status: 'testing' },
 	{ name: 'Apple Watch', status: 'live', storeUrl: 'https://apps.apple.com/app/id6819364574' },

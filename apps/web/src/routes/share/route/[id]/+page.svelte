@@ -31,6 +31,7 @@
 	let loading = $state(true);
 	let notFound = $state(false);
 	let loadFailed = $state(false);
+	let mapLoaded = $state(false);
 
 	async function load() {
 		loading = true;
@@ -144,16 +145,24 @@
 					<span class="surface-tag">{routeSurfaceLabel(route.surface)}</span>
 				{/if}
 			</p>
+			{#if !auth.loading && !auth.loggedIn}
+				<div class="signup-ask" data-testid="share-route-signup-ask">
+					<p>{m('shareRoute.askBody')}</p>
+					<a class="btn btn-primary btn-sm" href="/login?signup=1">{m('shareRoute.askButton')}</a>
+				</div>
+			{/if}
 		</section>
 
 		<main class="content" id="main-content">
 			{#if waypoints.length > 0}
-				<div class="map-container">
+				<div class="map-container" class:sketch={!mapLoaded}>
 					<RunMap
 						track={waypoints}
 						totalDistanceM={route.distance_m}
 						officialDistanceM={route.official_distance_m}
 						requireExplicitConsent
+						sketchBeforeLoad
+						bind:loaded={mapLoaded}
 					/>
 				</div>
 				{#if hasPreviewableCourse(previewPoints)}
@@ -265,6 +274,36 @@
 		overflow: hidden;
 		margin-bottom: var(--space-md);
 		border: 1px solid var(--color-border);
+	}
+
+	/* Before "Load map" the box takes the course drawing's own height. */
+	.map-container.sketch {
+		height: auto;
+	}
+
+	.signup-ask {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm) var(--space-md);
+		margin: var(--space-md) auto 0;
+		max-width: 36rem;
+		padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+		border-radius: var(--radius-lg);
+		background: var(--color-primary-light);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+		text-align: start;
+	}
+
+	.signup-ask p {
+		margin: 0;
+		font-size: 0.88rem;
+		line-height: 1.4;
+		color: var(--color-text);
+	}
+
+	.signup-ask .btn {
+		flex-shrink: 0;
 	}
 
 	.preview-action {

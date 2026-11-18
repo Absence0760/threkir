@@ -36,10 +36,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: needs a non-scrolling EditorPage',
   ),
-  'lib/screens/live_spectator_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: the error branch only (MapFirstPage)',
-  ),
 };
 
 final _raw = RegExp(r'(?<![\w.])Scaffold\(');

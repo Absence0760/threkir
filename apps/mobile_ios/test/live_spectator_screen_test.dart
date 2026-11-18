@@ -1,9 +1,10 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, SkeletonBlock;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -12,6 +13,8 @@ import '../lib/screens/live_spectator_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 /// Test seam: returns a canned public-run row + ping backlog so the
 /// terminal-state branch in `_hydrate` can be driven without a backend.
@@ -19,10 +22,22 @@ import 'supabase_test_init.dart';
 class _FakeApi extends ApiClient {
   final RunRow? run;
   final List<Map<String, dynamic>> pings;
-  _FakeApi({this.run, this.pings = const []});
+
+  /// How many run reads fail before one succeeds, to drive the error state
+  /// and its Retry without a backend.
+  int failures;
+  int runReads = 0;
+  _FakeApi({this.run, this.pings = const [], this.failures = 0});
 
   @override
-  Future<RunRow?> fetchPublicRunById(String runId) async => run;
+  Future<RunRow?> fetchPublicRunById(String runId) async {
+    runReads++;
+    if (failures > 0) {
+      failures--;
+      throw Exception('simulated outage');
+    }
+    return run;
+  }
 
   @override
   Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId,
@@ -47,6 +62,12 @@ RunRow _run({
   isDnf: isDnf,
   followersOnly: false,
   concludedAt: concludedAt,
+);
+
+RunRow _concludedRun() => _run(
+  durationS: 3600,
+  startedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 3)),
+  concludedAt: DateTime.now().toUtc(),
 );
 
 Map<String, dynamic> _ping(
@@ -121,11 +142,21 @@ void main() {
   // it's the cheapest smoke test — confirms the screen mounts at all,
   // routes the constructor args, and wires the AppBar.
   group('LiveSpectatorScreen — initial render', () {
-    realtimeWidgetTest('renders the Live tracking app-bar title', (
+    realtimeWidgetTest('names the page in a heading over the map', (
       tester,
     ) async {
+      // The heading says the title in full; the bar repeats it, hidden while
+      // the heading is in view.
       await _pump(tester);
-      expect(find.text('Live tracking'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(PageHeading),
+              matching: find.text('Live tracking')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar), matching: find.text('Live tracking')),
+          findsOneWidget);
     });
 
     realtimeWidgetTest('shows the spinner before _hydrate resolves', (
@@ -213,6 +244,24 @@ void main() {
         );
       },
     );
+
+    realtimeWidgetTest('Retry reads the run again and leaves the error',
+        (tester) async {
+      // A concluded run opens no realtime feed, so the retry's success is
+      // the Finished badge rather than a channel this test cannot back.
+      final api = _FakeApi(run: _concludedRun(), failures: 1);
+      await _pumpApi(tester, api);
+      await tester.pumpAndSettle();
+      expect(find.byType(ErrorState), findsOneWidget);
+      expect(api.runReads, 1);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Retry'));
+      await tester.pumpAndSettle();
+      expect(api.runReads, 2);
+      expect(find.byType(ErrorState), findsNothing);
+      expect(find.text('Finished'), findsOneWidget);
+      expect(find.byKey(const Key('runner-timer')), findsOneWidget);
+    });
   });
 
   // ──────────────────────── Formatter unit tests ────────────────────
@@ -777,21 +826,13 @@ void main() {
   // and clears a side bar in landscape (issue #1374 IK-5, IK-10).
   group('LiveSpectatorScreen — insets', () {
     Future<void> pumpOn(WidgetTester tester, Size size, FakeViewPadding bar,
-        {double textScale = 1}) async {
+        {double textScale = 1, _FakeApi? api}) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       tester.view.viewPadding = bar;
       tester.view.padding = bar;
       addTearDown(tester.view.reset);
-      final api = _FakeApi(
-        run: _run(
-          durationS: 3600,
-          startedAt: DateTime.now().toUtc().subtract(
-            const Duration(minutes: 3),
-          ),
-          concludedAt: DateTime.now().toUtc(),
-        ),
-      );
+      api ??= _FakeApi(run: _concludedRun());
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -830,5 +871,64 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getRect(timer).right, lessThanOrEqualTo(780 - 48));
     });
+
+    realtimeWidgetTest('320 dp, 2x text, 3-button bar: the error state\'s '
+        'Retry sits above the bar', (tester) async {
+      await pumpOn(tester, const Size(320, 640),
+          const FakeViewPadding(bottom: 48),
+          textScale: 2, api: _FakeApi(failures: 1));
+      expect(tester.takeException(), isNull);
+      final retry = find.widgetWithText(FilledButton, 'Retry');
+      await tester.dragUntilVisible(retry,
+          find.byType(SingleChildScrollView).first, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(retry).bottom, lessThanOrEqualTo(640 - 48));
+    });
+  });
+
+  // The error state is what a spectator opening a link in a dead zone sees
+  // first, so it is laid out at the worst case in every locale, title and
+  // all. The finished state shares the caption, so the title check runs
+  // there too.
+  void expectHeadingWhole(WidgetTester tester, Locale locale) {
+    final heading = find.descendant(
+        of: find.byType(PageHeading),
+        matching: find.text(l10nFor(locale).liveSpectatorTitle));
+    expect(
+        tester.renderObject<RenderParagraph>(heading).didExceedMaxLines,
+        isFalse);
+    expect(tester.getRect(heading).right,
+        lessThanOrEqualTo(kWorstCasePhone.width));
+  }
+
+  worstCaseTestWidgets('Live tracking, the error state',
+      (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: LiveSpectatorScreen(
+          api: _FakeApi(failures: 1), runId: 'fake-run-id'),
+    ));
+    await tester.pumpAndSettle();
+    final l10n = l10nFor(locale);
+    expect(find.text(l10n.liveSpectatorConnectError), findsOneWidget);
+    expectHeadingWhole(tester, locale);
+    final retry = find.text(l10n.errorStateRetry);
+    await tester.ensureVisible(retry);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(retry).bottom,
+        lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
+  });
+
+  worstCaseTestWidgets('Live tracking, a finished run',
+      (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: LiveSpectatorScreen(
+          api: _FakeApi(run: _concludedRun()), runId: 'fake-run-id'),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text(l10nFor(locale).liveSpectatorBadgeFinished),
+        findsOneWidget);
+    expectHeadingWhole(tester, locale);
   });
 }

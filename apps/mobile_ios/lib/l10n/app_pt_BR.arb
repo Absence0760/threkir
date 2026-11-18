@@ -380,7 +380,7 @@
   "safetyContactOfSmsNoChange": "Esse pedido não está mais ativo — a pessoa pode tê-lo removido.",
   "safetyContactOfSmsFailed": "Não foi possível mudar sua preferência de SMS: {error}",
   "safetyContactOfWithdraw": "Sair",
-  "safetyContactOfWithdrawConfirm": "Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e precisaria enviar um novo pedido.",
+  "safetyContactOfWithdrawConfirm": "Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e, para voltar a contar com você, precisaria enviar um novo pedido.",
   "safetyContactOfWithdrawnToast": "Você não é mais contato de segurança.",
   "safetyContactOfWithdrawFailed": "Não foi possível sair: {error}",
   "safetyAddButton": "Adicionar contato",

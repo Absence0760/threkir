@@ -58,6 +58,38 @@ test('the race workout short label abbreviates « Épreuve », the same on every
 	assert.equal(new Set(Object.values(shorts)).size, 1, JSON.stringify(shorts));
 });
 
+// The pre-run race banners are two catalogues, one per watch, and the Apple
+// Watch had drifted to « COURSE PRÊTE » (and « CARRERA LISTA », « PROVA
+// PRONTA ») while Wear OS and every glossary say the race is armed. Every
+// locale is held here, not only French, because the drift was in four.
+const WEAR_LOCALE_DIRS: Record<string, string> = {
+	de: 'values-de',
+	es: 'values-es',
+	fr: 'values-fr',
+	ja: 'values-ja',
+	'pt-BR': 'values-b+pt+BR',
+	'pt-PT': 'values-b+pt+PT',
+};
+
+function wearIn(dir: string, name: string): string | undefined {
+	const xml = readFileSync(join(REPO_ROOT, 'apps/watch_wear/android/app/src/main/res', dir, 'strings.xml'), 'utf8');
+	return xml.match(new RegExp(`<string name="${name}">([^<]*)</string>`))?.[1];
+}
+
+test('the armed race banner is « COURSE ARMÉE » on both watches', () => {
+	assert.deepEqual({ wear: wear('race_armed'), appleWatch: appleWatch('RACE ARMED') }, { wear: 'COURSE ARMÉE', appleWatch: 'COURSE ARMÉE' });
+});
+
+test('the Apple Watch race banners read as Wear OS does, in every locale', () => {
+	for (const [locale, dir] of Object.entries(WEAR_LOCALE_DIRS)) {
+		for (const [key, name] of [['RACE ARMED', 'race_armed'], ['RACE LIVE', 'race_live']]) {
+			const apple = XCSTRINGS.strings[key]?.localizations?.[locale]?.stringUnit?.value;
+			assert.ok(apple !== undefined, `${locale} ${key} missing on the Apple Watch`);
+			assert.equal(apple, wearIn(dir, name), `${locale} ${key}`);
+		}
+	}
+});
+
 test('the share card names the race the run finished « Épreuve »', () => {
 	assert.equal(WEB['runShare.kindRace'], 'Épreuve');
 	assert.equal(phone('shareCardKindRace'), 'Épreuve');

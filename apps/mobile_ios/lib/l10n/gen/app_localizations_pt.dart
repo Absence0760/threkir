@@ -25703,7 +25703,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyContactOfWithdrawConfirm =>
-      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e precisaria enviar um novo pedido.';
+      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e, para voltar a contar com você, precisaria enviar um novo pedido.';
 
   @override
   String get safetyContactOfWithdrawnToast =>

@@ -130,7 +130,7 @@
 set -uo pipefail
 
 # Host ports config.toml pins: shadow db 24320 (db diff only), api 24321, db
-# 24322, studio 24323, inbucket web 24324 / SMTP 24325 / POP3 24326,
+# 24322, studio 24323, Mailpit ([local_smtp]) web 24324 / SMTP 24325 / POP3 24326,
 # analytics 24327, pooler 24329 (disabled, pinned so enabling it cannot fall
 # back to the CLI default inside the ephemeral range). A partial start can
 # strand any of them, so clear them all. This list MUST be exactly the ports

@@ -15,11 +15,11 @@
       "crops": {
         "play-phone": [
           { "capture": "run-splits", "from": "gap-header", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
-            "window": { "max": 9, "before": 4, "after": 2 } }
+            "window": { "max": 7, "before": 3, "after": 3 } }
         ],
         "appstore-6.9": [
           { "capture": "run-splits", "from": "pacing-card", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
-            "window": { "max": 9, "before": 4, "after": 2 } }
+            "window": { "max": 7, "before": 3, "after": 3 } }
         ]
       },
       "callout": { "kind": "split", "section": "split-row-{slowest.km}", "scale": 2.5 },
@@ -60,10 +60,9 @@
       "claims": ["raw_positive_gap_even"],
       "crops": [
         { "capture": "run-pacing", "from": "splits-title", "to": "splits-title" },
-        { "capture": "run-pacing", "from": "pacing-card", "lift": true },
-        { "capture": "run-pacing", "from": "gap-header", "to": "split-row-2" }
+        { "capture": "run-pacing", "from": "pacing-card", "lift": true }
       ],
-      "fade": "always"
+      "valign": "center"
     },
     {
       "id": "predictor",
@@ -73,7 +72,7 @@
       "numbers": ["predictor"],
       "claims": ["predicted_half_is_goal", "plan_is_half"],
       "crops": [
-        { "capture": "progress", "from": "predictor-card", "to": "predictor-card", "pad_top_dp": 8, "pad_bottom_dp": 8 }
+        { "capture": "progress", "from": "predictor-card", "to": "predictor-card", "pad_bottom_dp": 8 }
       ],
       "callout": { "kind": "predictor", "section": "predictor-row-half", "scale": 1.6 }
     },
@@ -98,7 +97,7 @@
       "claims": ["slowest_km_uphill", "slowest_gap_near_median"],
       "crops": [
         { "capture": "run-splits", "from": "gap-header", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
-          "window": { "max": 9, "before": 4, "after": 2 } }
+          "window": { "max": 7, "before": 3, "after": 3 } }
       ],
       "callout": { "kind": "split", "section": "split-row-{slowest.km}", "scale": 2.5 },
       "dim": ["split-row-"]

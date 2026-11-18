@@ -182,9 +182,11 @@ class LayoutTest(unittest.TestCase):
         self.assertEqual(report["card"][:3], [60, 470, 960])
         self.assertGreaterEqual(min(report["contrast"].values()), 4.5)
         self.assertIn('fill="#EC8B7A">5:55</tspan>', svg)
-        # The callout replaces the captured row and the other rows are dimmed.
+        # The callout replaces the captured row and the other rows are dimmed:
+        # the fixture's 8 rows exceed the 7-row window, which keeps km 3-8
+        # around the slowest (km 6), so 5 rows are dimmed.
         self.assertIn(">Grade-adj.</text>", svg)
-        self.assertEqual(svg.count('fill-opacity="0.55"'), 7)
+        self.assertEqual(svg.count('fill-opacity="0.55"'), 5)
         _, coach = out[("play-phone", "coach")]
         self.assertEqual(coach["card"][1], 590)  # three lines move the card one step
 

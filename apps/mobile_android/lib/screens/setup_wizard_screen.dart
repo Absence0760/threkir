@@ -789,8 +789,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
             ],
           ),
           // Weight is health data as much as gender is, so typing one alone
-          // asks for the consent too. The weight is a typed field, so the
-          // checkbox listens to it rather than rebuilding the step per key.
+          // asks for the consent too.
           ListenableBuilder(
             listenable: _weightCtl.value,
             builder: (context, _) {

@@ -56,8 +56,9 @@ class EditorSave {
 /// dots). [bar] replaces the standard Save bar with a page's own band (a gym
 /// session's execution controls); it keeps the standard bar's place in the
 /// body's column, so it rises with the keyboard and clears the system
-/// navigation bar, and is held to half the body's height. [EditorPage.fixed] lays out one child that does not scroll
-/// and gets the body's bounded height (a crop stage with pan and zoom).
+/// navigation bar, and is held to [maxBarShare] of the body's height.
+/// [EditorPage.fixed] lays out one child that does not scroll and gets the
+/// body's bounded height (a crop stage with pan and zoom).
 ///
 /// Strings come from the caller; ui_kit has no catalogue.
 class EditorPage extends StatelessWidget {
@@ -232,7 +233,7 @@ class EditorPage extends StatelessWidget {
                       ?bottom,
                       // The standard bar paints under the navigation bar and
                       // pads inside itself; a page's own band is only kept
-                      // clear of it, and never takes more than half the body,
+                      // clear of it, and never takes more than [maxBarShare] of the body,
                       // so the fields keep room above it at large text with
                       // the keyboard up.
                       if (bar != null)

@@ -1,0 +1,147 @@
+{
+ "schema": 1,
+ "tier": "free",
+ "labels": {
+  "grade_adj": "Grade-adj."
+ },
+ "run": {
+  "splits": [
+   {
+    "km": 1,
+    "raw": "5:14",
+    "gap": "5:10",
+    "elev_delta_m": 1.0
+   },
+   {
+    "km": 2,
+    "raw": "5:09",
+    "gap": "5:10",
+    "elev_delta_m": 1.0
+   },
+   {
+    "km": 3,
+    "raw": "5:12",
+    "gap": "5:07",
+    "elev_delta_m": 1.0
+   },
+   {
+    "km": 4,
+    "raw": "5:06",
+    "gap": "5:08",
+    "elev_delta_m": 1.0
+   },
+   {
+    "km": 5,
+    "raw": "5:18",
+    "gap": "5:09",
+    "elev_delta_m": 1.0
+   },
+   {
+    "km": 6,
+    "raw": "5:55",
+    "gap": "5:08",
+    "elev_delta_m": 24.0
+   },
+   {
+    "km": 7,
+    "raw": "4:58",
+    "gap": "5:11",
+    "elev_delta_m": -3.0
+   },
+   {
+    "km": 8,
+    "raw": "5:11",
+    "gap": "5:09",
+    "elev_delta_m": 1.0
+   }
+  ],
+  "slowest_km": 6,
+  "pacing": {
+   "raw": {
+    "first": "5:10",
+    "second": "5:21",
+    "delta_s": 11,
+    "verdict": "positive"
+   },
+   "grade_adjusted": {
+    "delta_s": 1,
+    "verdict": "even"
+   }
+  },
+  "hr": {
+   "avg": 149,
+   "min": 116,
+   "max": 181
+  },
+  "zones": [
+   {
+    "zone": 1,
+    "time": "2m 40s",
+    "pct": 6
+   },
+   {
+    "zone": 2,
+    "time": "14m 20s",
+    "pct": 33
+   },
+   {
+    "zone": 3,
+    "time": "16m 5s",
+    "pct": 37
+   },
+   {
+    "zone": 4,
+    "time": "8m 40s",
+    "pct": 20
+   },
+   {
+    "zone": 5,
+    "time": "1m 45s",
+    "pct": 4
+   }
+  ]
+ },
+ "predictor": {
+  "anchor": {
+   "distance": "10 km",
+   "time": "49:58"
+  },
+  "rungs": {
+   "5k": {
+    "distance": "5 km",
+    "time": "23:58",
+    "pace": "4:48/km",
+    "confidence": "high",
+    "confidence_label": "High"
+   },
+   "10k": {
+    "distance": "10 km",
+    "time": "49:58",
+    "pace": "5:00/km",
+    "confidence": "high",
+    "confidence_label": "High"
+   },
+   "half": {
+    "distance": "21.1 km",
+    "time": "1:45:12",
+    "pace": "4:59/km",
+    "confidence": "moderate",
+    "confidence_label": "Moderate"
+   },
+   "marathon": {
+    "distance": "42.2 km",
+    "time": "3:39:40",
+    "pace": "5:12/km",
+    "confidence": "low",
+    "confidence_label": "Low"
+   }
+  }
+ },
+ "plan": {
+  "weeks": 12,
+  "goal": "1:45:00",
+  "goal_distance_m": 21097.5,
+  "vdot": "42.6",
+  "race_name": "Fixture Half"
+ }
+}

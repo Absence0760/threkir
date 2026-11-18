@@ -1,12 +1,110 @@
 {
   "targets": {
-    "play-phone": { "width": 1080, "height": 1920 },
-    "appstore-6.9": { "width": 1320, "height": 2868 }
+    "play-phone": { "width": 1080, "height": 1920, "platform": "android" },
+    "appstore-6.9": { "width": 1320, "height": 2868, "platform": "ios", "fallback_from": "play-phone" }
   },
+  "claims": ["free_tier"],
   "panels": [
-    { "id": "record", "capture": "record.png" },
-    { "id": "train", "capture": "train.png" },
-    { "id": "coach", "capture": "coach.png" },
-    { "id": "today", "capture": "today.png" }
+    {
+      "id": "slowest-km",
+      "ground": "dark",
+      "theme": "dark",
+      "column_dp": 320,
+      "numbers": ["slowest"],
+      "claims": ["slowest_km_uphill", "slowest_gap_at_least_30"],
+      "crops": {
+        "play-phone": [
+          { "capture": "run-splits", "from": "gap-header", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
+            "window": { "max": 9, "before": 4, "after": 2 } }
+        ],
+        "appstore-6.9": [
+          { "capture": "run-splits", "from": "pacing-card", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
+            "window": { "max": 9, "before": 4, "after": 2 } }
+        ]
+      },
+      "callout": { "kind": "split", "section": "split-row-{slowest.km}", "scale": 2.5 },
+      "dim": ["split-row-"]
+    },
+    {
+      "id": "splits-zones",
+      "ground": "ramp",
+      "theme": "dark",
+      "column_dp": 320,
+      "numbers": [],
+      "claims": ["zones_all_five"],
+      "crops": [
+        { "capture": "run-zones", "from": "hr-zones", "to": "hr-zones" },
+        { "capture": "run-splits", "from": "splits-title", "to": "splits-title" },
+        { "capture": "run-splits", "from": "gap-header", "to": "split-row-4" }
+      ],
+      "dim": ["split-row-"]
+    },
+    {
+      "id": "plan",
+      "ground": "light",
+      "theme": "light",
+      "numbers": ["plan"],
+      "claims": ["plan_is_half", "vdot_matches_goal"],
+      "crops": [
+        { "capture": "plan", "from": "plan-header", "to": "plan-week" },
+        { "capture": "plan", "from": "plan-progress", "to": "plan-progress", "optional": true }
+      ],
+      "valign": "center"
+    },
+    {
+      "id": "pacing",
+      "ground": "ramp",
+      "theme": "dark",
+      "column_dp": 320,
+      "numbers": [],
+      "claims": ["raw_positive_gap_even"],
+      "crops": [
+        { "capture": "run-pacing", "from": "splits-title", "to": "splits-title" },
+        { "capture": "run-pacing", "from": "pacing-card", "lift": true },
+        { "capture": "run-pacing", "from": "gap-header", "to": "split-row-2" }
+      ],
+      "fade": "always"
+    },
+    {
+      "id": "predictor",
+      "ground": "light",
+      "theme": "light",
+      "column_dp": 320,
+      "numbers": ["predictor"],
+      "claims": ["predicted_half_is_goal", "plan_is_half"],
+      "crops": [
+        { "capture": "progress", "from": "predictor-card", "to": "predictor-card", "pad_top_dp": 8, "pad_bottom_dp": 8 }
+      ],
+      "callout": { "kind": "predictor", "section": "predictor-row-half", "scale": 1.6 }
+    },
+    {
+      "id": "coach",
+      "ground": "dark",
+      "theme": "dark",
+      "numbers": [],
+      "crops": [
+        { "capture": "coach", "from": "coach-context", "to": "coach-context" },
+        { "capture": "coach", "from": "coach-last-exchange", "to": "coach-last-exchange", "gap_px": 24 }
+      ]
+    }
+  ],
+  "alternates": [
+    {
+      "id": "slowest-km-alt",
+      "ground": "dark",
+      "theme": "dark",
+      "column_dp": 320,
+      "numbers": [],
+      "claims": ["slowest_km_uphill", "slowest_gap_near_median"],
+      "crops": [
+        { "capture": "run-splits", "from": "gap-header", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
+          "window": { "max": 9, "before": 4, "after": 2 } }
+      ],
+      "callout": { "kind": "split", "section": "split-row-{slowest.km}", "scale": 2.5 },
+      "dim": ["split-row-"]
+    }
+  ],
+  "variants": [
+    { "name": "variant-b", "targets": ["play-phone"], "replace": { "slowest-km": "slowest-km-alt" } }
   ]
 }

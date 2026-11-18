@@ -249,7 +249,12 @@ jobs:
       # inside Linux's ephemeral range) does not arise on macOS, whose range
       # starts at 49152. The services the capture never reaches stay off:
       # the edge runtime, the log pipeline (vector cannot mount Colima's
-      # socket) and Studio.
+      # socket), Studio and its postgres-meta, imgproxy and the pooler.
+      #
+      # The CLI's own health wait is not used: on a Storage timeout it
+      # removes every container before printing anything (run 44237921645
+      # showed an empty Storage log), so the step waits itself, longer, and
+      # prints each unhealthy container's health probe and log on failure.
       - name: Start the local Supabase stack
         working-directory: apps/backend
         env:
@@ -257,10 +262,25 @@ jobs:
           GHCR_USER: ${{ github.actor }}
         run: |
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || echo "::warning::ghcr.io login failed; pulling anonymously"
-          if ! supabase start -x edge-runtime,vector,logflare,studio; then
-            echo "::error::supabase start failed inside Colima on the macOS runner. The Android job starts the same stack on Linux; compare its log before suspecting a migration."
+          if ! supabase start --ignore-health-check -x edge-runtime,vector,logflare,studio,postgres-meta,imgproxy,supavisor; then
+            echo "::error::supabase start failed inside Colima on the macOS runner before the containers were up. The Android job starts the same stack on Linux; compare its log before suspecting a migration."
             exit 1
           fi
+          deadline=$((SECONDS + 360))
+          while docker ps --filter name=supabase_ --format '{{.Status}}' | grep -q 'health: starting\|unhealthy'; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              for name in $(docker ps --filter name=supabase_ --filter health=unhealthy --filter health=starting --format '{{.Names}}'); do
+                echo "::group::$name"
+                docker inspect --format '{{json .State.Health}}' "$name" | jq .
+                docker logs --tail 200 "$name" 2>&1
+                echo "::endgroup::"
+              done
+              echo "::error::The local Supabase stack inside Colima was not healthy after 6 minutes; the groups above hold each unhealthy container's health probe and log."
+              exit 1
+            fi
+            sleep 10
+          done
+          docker ps --filter name=supabase_ --format '{{.Names}}: {{.Status}}'
       - name: Load the store demo account
         id: demo
         working-directory: apps/backend

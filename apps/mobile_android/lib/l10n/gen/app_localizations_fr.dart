@@ -599,7 +599,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Récupérez les séances depuis Google Fit, Samsung Health, Garmin, Fitbit et toute autre app Santé Connect';
+      'Récupérez les séances que Samsung Health, Garmin, Fitbit et d\'autres apps enregistrent dans Santé Connect';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9790,7 +9790,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'Pro débloque le coach IA — bientôt disponible. Vous pouvez tout de même soutenir l\'app ci-dessous.';
+      'Pro arrive bientôt : plus de messages par jour au Coach IA et un traitement prioritaire. Vous pouvez tout de même soutenir l\'app ci-dessous.';
 
   @override
   String get proRegionalNote =>

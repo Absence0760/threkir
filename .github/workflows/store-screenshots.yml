@@ -306,7 +306,7 @@ jobs:
       - name: Start Docker (Colima)
         run: |
           brew install colima docker libpq
-          if ! colima start --cpu 3 --memory 6 --disk 60; then
+          if ! colima start --cpu 2 --memory 5 --disk 60; then
             echo "::error::Colima could not start a Docker VM on this macOS runner (most likely the image no longer allows a nested VM). The iOS capture needs Docker for the local Supabase stack; nothing here is about the app. The compose job still renders the Play set."
             exit 1
           fi
@@ -390,7 +390,19 @@ jobs:
           SUPABASE_ANON_KEY: ${{ steps.demo.outputs.anon_key }}
           MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
           SIM_UDID: ${{ steps.sim.outputs.udid }}
-        run: bash assets/store/capture.sh "$SIM_UDID" build/store-captures/appstore-6.9
+        # Runs 44352426866 (both attempts) lost this step to "The operation
+        # was canceled" with nothing printed, at the job's heaviest point:
+        # the Colima VM, the simulator and flutter drive's Xcode build at
+        # once. The sampler writes memory, swap and disk to the log every
+        # 20 s, so if the runner is killed again its last lines say why.
+        run: |
+          ( while true; do
+              echo "[resources $(date -u +%T)] $(vm_stat | awk 'NR==1 {ps=$8} /Pages free/ {f=$3} /Pages inactive/ {i=$3} END {printf "free+inactive %.1f GB", (f+i)*ps/1073741824}'), swap $(sysctl -n vm.swapusage | awk '{print $6}'), disk free $(df -h / | awk 'NR==2 {print $4}')"
+              sleep 20
+            done ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          bash assets/store/capture.sh "$SIM_UDID" build/store-captures/appstore-6.9
       - name: Upload the raw captures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -5044,7 +5044,7 @@ export const messages = {
 	"upgrade.youreOnFree": "Du nutzt die kostenlose Version.",
 	"upgrade.mostPopular": "Am beliebtesten",
 	"upgrade.comingSoonFlag": "Demnächst",
-	"upgrade.proComingSoon": "Pro schaltet den KI-Coach frei – demnächst verfügbar.",
+	"upgrade.proComingSoon": "Pro kommt bald: mehr KI-Coach-Nachrichten pro Tag und priorisierte Verarbeitung.",
 	"upgrade.proInIosApp": "Pro gibt es jetzt als Abo in der Threkir-App für iPhone. Schließ es dort ab, dann ist Pro auch hier im Web freigeschaltet – mit demselben Konto.",
 	"upgrade.webCheckoutComingSoon": "Ein Abo direkt im Web kommt bald.",
 	"upgrade.appPriceNote": "Preis in US-Dollar angegeben. Der App Store berechnet den Preis, der für dein Land gilt.",

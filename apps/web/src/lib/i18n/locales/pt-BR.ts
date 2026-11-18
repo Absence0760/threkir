@@ -5043,7 +5043,7 @@ export const messages = {
 	"upgrade.youreOnFree": "Você está no plano grátis.",
 	"upgrade.mostPopular": "Mais popular",
 	"upgrade.comingSoonFlag": "Em breve",
-	"upgrade.proComingSoon": "O Pro desbloqueia o Coach de IA — em breve.",
+	"upgrade.proComingSoon": "O Pro chega em breve: mais mensagens por dia para o Coach de IA e processamento prioritário.",
 	"upgrade.proInIosApp": "O Pro já está disponível como assinatura no app Threkir para iPhone. Assine por lá e o Pro também é liberado aqui na web, com a mesma conta.",
 	"upgrade.webCheckoutComingSoon": "A assinatura pela web chega em breve.",
 	"upgrade.appPriceNote": "Preço exibido em dólares americanos. A App Store cobra o preço definido para o seu país.",

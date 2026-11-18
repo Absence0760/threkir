@@ -5039,7 +5039,7 @@ export const messages = {
 	"upgrade.youreOnFree": "無料プランをご利用中です。",
 	"upgrade.mostPopular": "一番人気",
 	"upgrade.comingSoonFlag": "近日公開",
-	"upgrade.proComingSoon": "Pro は AI コーチを解放します — 近日公開。",
+	"upgrade.proComingSoon": "Pro は近日公開予定です。AI コーチへのメッセージを1日により多く送れて、優先処理も受けられます。",
 	"upgrade.proInIosApp": "Pro は現在、iPhone 版 Threkir アプリでサブスクリプションとしてご利用いただけます。アプリで登録すると、同じアカウントでWebでも Pro が有効になります。",
 	"upgrade.webCheckoutComingSoon": "Webでの登録は近日公開予定です。",
 	"upgrade.appPriceNote": "価格は米ドルで表示しています。App Store ではお住まいの国の価格が請求されます。",

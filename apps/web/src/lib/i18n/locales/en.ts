@@ -5059,7 +5059,7 @@ export const en = {
 	"upgrade.youreOnFree": "You're on Free.",
 	"upgrade.mostPopular": "Most popular",
 	"upgrade.comingSoonFlag": "Coming soon",
-	"upgrade.proComingSoon": "Pro unlocks the AI Coach — coming soon.",
+	"upgrade.proComingSoon": "Pro is coming soon: more AI Coach messages a day and priority processing.",
 	"upgrade.proInIosApp": "Pro is available now as a subscription in the Threkir app for iPhone. Subscribe there and Pro unlocks here on the web as well, on the same account.",
 	"upgrade.webCheckoutComingSoon": "Subscribing on the web is coming soon.",
 	"upgrade.appPriceNote": "Price shown in US dollars. The App Store charges the price set for your country.",

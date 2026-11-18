@@ -32,7 +32,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'これらの一部は、まだ有効になっていない可能性のあるサービスに依存しています。[[route:/settings/upgrade|Proとサポート]]のProカードには、現在使える機能だけが表示されます。**Pro は AI コーチを解放します — 近日公開。**と表示されている場合、Proはまだ購入できません。',
+					text: 'これらの一部は、まだ有効になっていない可能性のあるサービスに依存しています。[[route:/settings/upgrade|Proとサポート]]のProカードには、現在使える機能だけが表示されます。Pro が近日公開予定と表示されている場合、Proはまだ購入できません。',
 				},
 			],
 		},
@@ -88,7 +88,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i4': 'abbb1f922ffbfa10',
 		's1.b0.i5': 'a5b09d8e626e04b0',
 		's1.b0.i6': '0d98bcce46d47d2f',
-		's1.b1': '076479f3bd42d0b5',
+		's1.b1': '4db3dc4017b43959',
 		's2.heading': '912eb19f965419db',
 		's2.b0': 'ee79a267ee574aa9',
 		's2.b1.i0': 'd455f1337a2fbaed',

@@ -226,6 +226,9 @@ class Capture:
     theme: str
     sections: dict[str, tuple[float, float, float, float]]
     colours: dict[str, str] = field(default_factory=dict)
+    # Widgets that must never show in a crop (the coach's usage banner),
+    # recorded by the capture suite wherever they were on screen.
+    forbidden: dict[str, tuple[float, float, float, float]] = field(default_factory=dict)
 
     def section(self, name: str):
         return self.sections.get(name)
@@ -246,17 +249,20 @@ def load_capture_dir(directory: Path) -> tuple[dict[str, Capture], Numbers]:
         if not path.is_file():
             raise RenderError(f"{bounds_path} names {path.name}, which is not in {directory}")
         w, h, _, _ = png_header(path)
-        sections = {}
-        for sname, r in entry.get("sections", {}).items():
-            if len(r) != 4 or r[2] <= 0 or r[3] <= 0:
-                raise RenderError(f"{bounds_path}: {name}.{sname} should be [x, y, w, h] with a positive size")
-            if r[0] < 0 or r[1] < 0 or r[0] + r[2] > w + 0.5 or r[1] + r[3] > h + 0.5:
-                raise RenderError(f"{bounds_path}: {name}.{sname} {r} runs outside the {w}x{h} capture")
-            sections[sname] = tuple(float(v) for v in r)
+        boxes = {}
+        for key in ("sections", "forbidden"):
+            boxes[key] = {}
+            for sname, r in entry.get(key, {}).items():
+                if len(r) != 4 or r[2] <= 0 or r[3] <= 0:
+                    raise RenderError(f"{bounds_path}: {name}.{sname} should be [x, y, w, h] with a positive size")
+                if r[0] < 0 or r[1] < 0 or r[0] + r[2] > w + 0.5 or r[1] + r[3] > h + 0.5:
+                    raise RenderError(f"{bounds_path}: {name}.{sname} {r} runs outside the {w}x{h} capture")
+                boxes[key][sname] = tuple(float(v) for v in r)
+        sections = boxes["sections"]
         if entry.get("theme") not in THEMES:
             raise RenderError(f"{bounds_path}: {name}.theme should be dark or light")
         captures[name] = Capture(name, path.resolve(), w, h, float(entry["dpr"]), entry["theme"], sections,
-                                 entry.get("colours", {}))
+                                 entry.get("colours", {}), boxes["forbidden"])
     try:
         numbers = Numbers(json.loads(numbers_path.read_text()), str(numbers_path))
     except DataError as e:
@@ -317,9 +323,10 @@ def _crop_rect(crop: dict, cap: Capture, target: str, dpr_px):
     if first and last:
         top, bottom = first[1], last[1] + last[3]
         # A pad stops at a neighbouring section, so it never shows a sliver
-        # of the card above or the title below.
-        above = [r[1] + r[3] for r in cap.sections.values() if r[1] + r[3] <= top + 0.5]
-        below = [r[1] for r in cap.sections.values() if r[1] >= bottom - 0.5]
+        # of the card above or the title below, or reaches a forbidden widget.
+        stops = list(cap.sections.values()) + list(cap.forbidden.values())
+        above = [r[1] + r[3] for r in stops if r[1] + r[3] <= top + 0.5]
+        below = [r[1] for r in stops if r[1] >= bottom - 0.5]
         y0 = max([top - crop.get("pad_top_dp", 0) * dpr_px, 0.0] + above)
         y1 = min([bottom + crop.get("pad_bottom_dp", 0) * dpr_px, float(cap.height)] + below)
         return 0.0, y0, float(cap.width), y1
@@ -367,6 +374,11 @@ def build_stack(panel: dict, target: str, captures: dict[str, Capture], values: 
         if r is None:
             continue
         x0, y0, x1, y1 = r
+        for fname, f in cap.forbidden.items():
+            if f[1] < y1 - 0.5 and f[1] + f[3] > y0 + 0.5 and f[0] < x1 and f[0] + f[2] > x0:
+                raise RenderError(f"{panel['id']}: the crop of {cap.name!r} ({crop.get('from')} to "
+                                  f"{crop.get('to', crop.get('from'))}) shows {fname}; crop it out, never "
+                                  f"hide it in the app (spec, demo data item 2)")
         if crop.get("gap_px") and pieces:
             pieces.append(GapPiece(crop["gap_px"] * k))
         scale = card_w / (x1 - x0)

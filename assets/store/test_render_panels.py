@@ -237,6 +237,30 @@ class LayoutTest(unittest.TestCase):
         with self.assertRaisesRegex(rp.RenderError, "366 dp wide"):
             self.compose_all(bounds=bounds)
 
+    def test_forbidden_widget_inside_a_crop_fails(self):
+        bounds = json.loads((FIXTURES / "bounds.json").read_text())
+        coach = bounds["captures"]["coach"]
+        ctx, last = coach["sections"]["coach-context"], coach["sections"]["coach-last-exchange"]
+        # Below the chips and above the thread, as the app draws it: no crop
+        # reaches it, so the panel renders.
+        coach["forbidden"] = {"coach-limit-banner": [0, ctx[1] + ctx[3], 1080, 40]}
+        self.compose_all(bounds=bounds)
+        # Inside the last exchange: refused.
+        coach["forbidden"] = {"coach-limit-banner": [0, last[1] + 100, 1080, 40]}
+        with self.assertRaisesRegex(rp.RenderError, "shows coach-limit-banner"):
+            self.compose_all(bounds=bounds)
+
+    def test_pad_stops_at_a_forbidden_widget(self):
+        bounds = json.loads((FIXTURES / "bounds.json").read_text())
+        card = bounds["captures"]["progress"]["sections"]["predictor-card"]
+        bounds["captures"]["progress"]["forbidden"] = {"banner": [0, card[1] + card[3] + 6, 960, 30]}
+        config = rp.load_config()
+        panel = next(p for p in config["panels"] if p["id"] == "predictor")
+        with CaptureDir(bounds=bounds) as d:
+            captures, _ = rp.load_capture_dir(d)
+            r = rp._crop_rect(panel["crops"][0], captures["progress"], "play-phone", 3.0)
+        self.assertEqual(r[3], card[1] + card[3] + 6)
+
     def test_too_long_headline_fails(self):
         caption = {"headline": ["A coach that reads your plan and runs."], "accent": []}
         with self.assertRaisesRegex(rp.RenderError, "rewrite the line"):

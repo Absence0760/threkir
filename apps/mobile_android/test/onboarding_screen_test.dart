@@ -7,6 +7,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/help_screen.dart';
 import '../lib/screens/onboarding_screen.dart';
+import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
 import 'worst_case_layout.dart';
 
 /// Stub the geolocator platform channel so the final-page "Grant
@@ -188,6 +189,33 @@ void main() {
       // The privacy chooser now follows, so location is no longer final.
       expect(find.text('Next'), findsOneWidget);
       expect(find.text('Grant permission'), findsNothing);
+    });
+
+    // A raw full-bleed Scaffold: the footer's dots and button must not sit
+    // under Android's 3-button bar, nor the page under the status bar.
+    testWidgets('the footer clears a 3-button bar and the page the status bar',
+        (tester) async {
+      const phone = Size(360, 780);
+      tester.view.physicalSize = phone;
+      tester.view.devicePixelRatio = 1;
+      const insets = FakeViewPadding(top: 24, bottom: kThreeButtonNavBar);
+      tester.view.viewPadding = insets;
+      tester.view.padding = insets;
+      addTearDown(tester.view.reset);
+      final prefs = await _makePrefs();
+      await _pump(tester, prefs: prefs);
+      final floor = phone.height - kThreeButtonNavBar;
+      expect(tester.getRect(find.widgetWithText(FilledButton, 'Next')).bottom,
+          lessThanOrEqualTo(floor));
+      final dots = find.byType(AnimatedContainer);
+      expect(dots, findsNWidgets(4));
+      for (final dot in dots.evaluate()) {
+        final box = dot.renderObject! as RenderBox;
+        final bottom = box.localToGlobal(Offset.zero).dy + box.size.height;
+        expect(bottom, lessThanOrEqualTo(floor));
+      }
+      expect(tester.getRect(find.byType(PageView)).top,
+          greaterThanOrEqualTo(24));
     });
 
     // Issue #1374: each privacy choice is a ListCard around its radio row.

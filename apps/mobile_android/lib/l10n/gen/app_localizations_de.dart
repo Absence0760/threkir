@@ -598,7 +598,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Hole Workouts aus Google Fit, Samsung Health, Garmin, Fitbit und jeder anderen Health-Connect-App';
+      'Hole Workouts, die Samsung Health, Garmin, Fitbit und andere Apps in Health Connect speichern';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9768,7 +9768,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'Pro schaltet den KI-Coach frei – demnächst verfügbar. Du kannst die App unten trotzdem unterstützen.';
+      'Pro kommt bald: mehr KI-Coach-Nachrichten pro Tag und priorisierte Verarbeitung. Du kannst die App unten trotzdem unterstützen.';
 
   @override
   String get proRegionalNote =>

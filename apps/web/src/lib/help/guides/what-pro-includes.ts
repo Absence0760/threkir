@@ -37,7 +37,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Some of these depend on services that may not be switched on yet. The Pro card in [[route:/settings/upgrade|Pro & support]] only lists what is working today; if it says **Pro unlocks the AI Coach — coming soon.**, Pro can\'t be bought yet.',
+					text: 'Some of these depend on services that may not be switched on yet. The Pro card in [[route:/settings/upgrade|Pro & support]] only lists what is working today; if it says Pro is coming soon, Pro can\'t be bought yet.',
 				},
 			],
 		},

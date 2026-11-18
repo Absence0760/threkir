@@ -598,7 +598,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app compatible con Salud conectada';
+      'Importa los entrenamientos que Samsung Health, Garmin, Fitbit y otras apps guardan en Salud conectada';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9750,7 +9750,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'Pro desbloquea el Entrenador IA: próximamente. Aún puedes apoyar la app más abajo.';
+      'Pro llega pronto: más mensajes al día al Entrenador IA y procesamiento prioritario. Aún puedes apoyar la app más abajo.';
 
   @override
   String get proRegionalNote =>

@@ -6521,7 +6521,7 @@ export const messages = {
 	"safety.contactOfSmsNoChange": "Esse vínculo não está mais ativo — a pessoa pode tê-lo removido.",
 	"safety.contactOfSmsFailed": "Não foi possível mudar sua preferência de SMS: {error}",
 	"safety.contactOfWithdraw": "Sair",
-	"safety.contactOfWithdrawConfirm": "Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e precisaria enviar um novo pedido.",
+	"safety.contactOfWithdrawConfirm": "Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e, para voltar a contar com você, precisaria enviar um novo pedido.",
 	"safety.contactOfWithdrawnToast": "Você não é mais contato de segurança.",
 	"safety.contactOfWithdrawFailed": "Não foi possível sair: {error}",
 	"safety.expectedReturnTitle": "Sem retorno até…",

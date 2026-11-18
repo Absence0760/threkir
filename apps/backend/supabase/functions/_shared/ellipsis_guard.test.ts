@@ -25,6 +25,13 @@ const CATALOGUES: Record<string, { file: string; table: unknown }> = {
   KIND_LABELS: { file: 'plan-calendar/lib.ts', table: KIND_LABELS },
 };
 
+function strings(node: unknown): string[] {
+  if (typeof node === 'string') return [node];
+  if (Array.isArray(node)) return node.flatMap(strings);
+  if (node && typeof node === 'object') return Object.values(node).flatMap(strings);
+  return [];
+}
+
 function offenders(path: string, node: unknown): string[] {
   if (typeof node === 'string') return node.includes('...') ? [`${path}: ${node}`] : [];
   if (Array.isArray(node)) return node.flatMap((v, i) => offenders(`${path}[${i}]`, v));
@@ -46,6 +53,19 @@ async function* sources(dir: URL, rel = ''): AsyncGenerator<string> {
 }
 
 Deno.test('Edge Function catalogues write the one-character ellipsis', () => {
+  // Positive control: every registered catalogue must hand the guard real
+  // copy, so an emptied or missing table fails instead of passing as clean.
+  const empty = Object.entries(CATALOGUES)
+    .filter(([, { table }]) => !strings(table).some((v) => v.trim().length > 0))
+    .map(([name]) => name);
+  assertEquals(empty, [], 'a registered catalogue holds no copy, so the guard would read nothing');
+
+  // The guard's own probes ride on the same test, so they share its control.
+  assertEquals(offenders('x', { en: { subject: 'Signing you in...' } }).length, 1);
+  assertEquals(offenders('x', { ja: { body: ['送信中...'] } }).length, 1);
+  assertEquals(offenders('x', { en: { subject: 'Signing you in…' } }).length, 0);
+  assertEquals(offenders('x', { en: { subject: 'Wait. Then go.' } }).length, 0);
+
   const found = Object.entries(CATALOGUES).flatMap(([name, { table }]) => offenders(name, table));
   assertEquals(found, []);
 });
@@ -61,11 +81,4 @@ Deno.test('every locale-keyed copy table is in the ellipsis registry', async () 
     [...registered].sort(),
     'a file holding a locale-keyed table must be registered in CATALOGUES, and a registered file must still hold one',
   );
-});
-
-Deno.test('the guard catches the slips it exists for', () => {
-  assertEquals(offenders('x', { en: { subject: 'Signing you in...' } }).length, 1);
-  assertEquals(offenders('x', { ja: { body: ['送信中...'] } }).length, 1);
-  assertEquals(offenders('x', { en: { subject: 'Signing you in…' } }).length, 0);
-  assertEquals(offenders('x', { en: { subject: 'Wait. Then go.' } }).length, 0);
 });

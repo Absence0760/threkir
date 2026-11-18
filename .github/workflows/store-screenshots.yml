@@ -209,8 +209,27 @@ jobs:
           path: ${{ runner.temp }}/job_worker.log
           if-no-files-found: ignore
 
+  renderer-tests:
+    # The renderer's own tests (captions, numbers.json claims, layout, one
+    # Inkscape render from fixtures), so a renderer change gets a verdict in
+    # minutes rather than after the emulator capture.
+    name: Test the panel renderer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Inkscape
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends inkscape
+          inkscape --version
+      - name: Run the renderer tests
+        run: python3 -m unittest discover -s assets/store -p 'test_*.py' -v
+
   compose:
-    needs: capture
+    needs: [capture, renderer-tests]
     name: Compose the captioned panels
     # Pinned to a release rather than ubuntu-latest so the apt Inkscape is a
     # known one (1.2.x on 24.04): the renderer needs 1.2+ for
@@ -230,8 +249,11 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends inkscape
           inkscape --version
+      # Until the iOS capture suite runs, the App Store set is drawn from the
+      # Android captures and the renderer warns that it must not be uploaded.
+      # Drop --appstore-from-android once an appstore-6.9 capture dir exists.
       - name: Render the panels
-        run: bash assets/store/gen-store-screenshots.sh --captures build/store-captures --out build/store-panels
+        run: bash assets/store/gen-store-screenshots.sh --captures play-phone=build/store-captures --appstore-from-android --out build/store-panels
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: store-screenshots-panels

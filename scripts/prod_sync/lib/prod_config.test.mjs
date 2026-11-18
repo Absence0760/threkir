@@ -23,7 +23,7 @@ import {
 } from './prod_config.mjs';
 
 const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [], retired_functions: [], retired_function_env: [] };
-const ISSUE = 'https://github.com/Absence0760/threkir/issues/1097#issuecomment-1234567';
+const ISSUE = 'https://github.com/jaredhoward-dev/threkir/issues/1097#issuecomment-1234567';
 
 /** @param {Record<string, unknown>} over */
 const parse = (over) => parseProdConfig({ ...EMPTY, ...over });
@@ -80,11 +80,9 @@ test('enabling needs a sign-off that links the approval', () => {
 	assert.deepEqual(parse({ feature_flags: { live_overlay: { enabled: true, signoff: ISSUE } } }).problems, []);
 	for (const ok of [
 		ISSUE,
-		'https://github.com/Absence0760/threkir/issues/1097',
-		'https://github.com/Absence0760/threkir/pull/1351',
-		'https://github.com/Absence0760/project-mgmt/issues/10#issuecomment-99',
-		'https://github.com/jaredhoward-dev/threkir/issues/1097#issuecomment-1234567',
+		'https://github.com/jaredhoward-dev/threkir/issues/1097',
 		'https://github.com/jaredhoward-dev/threkir/pull/1351',
+		'https://github.com/jaredhoward-dev/project-mgmt/issues/10#issuecomment-99',
 		'reviews/legal-live-overlay.md',
 		'docs/features/clubs.md#signoff',
 	]) {
@@ -92,9 +90,11 @@ test('enabling needs a sign-off that links the approval', () => {
 	}
 	for (const bad of [
 		'https://github.com/someone/threkir/issues/1',
+		'https://github.com/Absence0760/threkir/issues/1097#issuecomment-1234567',
+		'https://github.com/Absence0760/threkir/pull/1351',
 		'https://github.com/jaredhoward/threkir/issues/1',
 		'https://github.com/jaredhoward-devx/threkir/issues/1',
-		'http://github.com/Absence0760/threkir/issues/1',
+		'http://github.com/jaredhoward-dev/threkir/issues/1',
 		'https://example.com/approval',
 		'docs/../secrets.md',
 		'reviews/memo.txt',

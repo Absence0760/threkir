@@ -2,24 +2,48 @@
 
 The Play and App Store screenshots are made from the real app on seeded demo data, not by hand (issue #1375). There are two stages: CI captures the app's screens, and a renderer composes the captioned panels from those captures.
 
-## 1. Capture (CI, Android emulator)
+## 1. Capture (CI: Android emulator and iOS simulator)
 
-`.github/workflows/store-screenshots.yml` runs on demand (Actions → Store screenshots → Run workflow) and on any PR that touches this pipeline. It does the following:
+`.github/workflows/store-screenshots.yml` runs on demand (Actions → Store screenshots → Run workflow) and on any PR that touches this pipeline. Its `capture` job makes the Play set on an Android emulator and its `capture-ios` job makes the App Store set on an iOS simulator, from the same suite. The Android job does the following:
 
 1. Starts the local Supabase stack (`.github/actions/start-supabase`) and loads `demo/store_demo_seed.sql`. That file creates a dedicated demo account (`store-demo@threkir.test`, "Sam Rivera") on the free tier with health-data consent and no sex set, an active plan for the fictional Wrenfield Half Marathon and a coach thread on that plan. Free, because the listing says the analysis is not locked, so nothing in it may come from a paid state; consent, because per-point heart rate is kept only with it. The plan is what the app's generator writes for that profile and a 1:45:00 half with no recent 5K (a female profile would take a 3% slower pace calibration): VDOT 42.64 (`vdotFromRace`), tempo 4:50/km (Daniels' threshold pace at that VDOT) and the other paces `resolveTrainingPaces` gives for that goal. Its latest quality session before today is a 10K tune-up. Every date is relative to the run day, so a capture made on any day shows today in week 6 of 12 with the race six weeks out. The plan's Monday-to-Saturday sessions are rotated so that today is always the tempo (Sunday stays the long run, and on a Sunday today is the long run), because the Today panel's caption promises a run one tap away and a rest day would contradict it. `demoSlotFor` in `demo_data.dart` is the same rotation. No session is ticked off by hand: the app pushes a run for every past session and the server's run-to-workout matcher links each one, as it does for a real runner. A hand tick on top of a run counts the session twice in the week's distance.
-2. Builds and starts the Go job worker (`apps/job_worker`) against the stack. It is there for one job: the hero run's `map_match`. Until that row leaves `pending`, the run map carries a "Snapping to roads…" pill. Without `OSRM_URL` the worker matches by passthrough, so the row settles as `matched` with no OSRM graph. Its log is uploaded as `job-worker-log`.
-3. Boots an API 34 Pixel 6 emulator and runs `apps/mobile_android/integration_test/store/store_screenshots_capture.dart` with `flutter drive --profile` through `capture.sh`, which also works by hand against any booted device and local stack. The suite does the following:
+2. Boots an API 34 Pixel 6 emulator and runs `apps/mobile_android/integration_test/store/store_screenshots_capture.dart` with `flutter drive --profile` through `capture.sh`, which also works by hand against any booted device and local stack. The suite does the following:
    - writes six weeks of base running and the plan's runs into the device's run store (`demo_data.dart`). Without the base, five weeks of history from nothing reads as heavy fatigue on Today's readiness line. Two runs are written by hand rather than from the session's target:
      - the hero run, the most recent run that is not a long run: one counter-clockwise lap of Central Park's full loop of drives from Columbus Circle (6.1 miles; 9.76 km traced), over a real line and real elevations (`hero_route.dart`, below). It is run at an even effort that tires a little, so raw pace fades up Harlem Hill in the sixth km while the grade-adjusted pace holds, and it carries a heart rate on every point;
      - the 10K tune-up, raced in 47:50, which the Race-time predictor anchors on, so its Half row reads 1:45:19. The coach thread quotes that tune-up and a 1:45 to 1:46 half.
 
      `apps/mobile_android/test/store_demo_hero_run_test.dart` pins what the app makes of both, through the run detail's and the predictor's own helpers: a positive raw split with an even grade-adjusted one, the slowest km being the climb and at least 30 s/km slower raw than grade-adjusted, heart rate in all five zones, and the predicted half on every weekday a capture can run.
    - starts the real `main()`, which signs in through the app's own dev auto-login (loopback only)
-   - waits for every seeded run to reach the server (and fails if the device holds a different number of runs), then for the hero run's map-match row to settle as `matched`, and for Today to show today's session with no "missed" prompt, which it does once the plan re-reads after the server linked the runs
-   - captures `today`, `record` (the run detail, failing if any map-match pill is still on the map), `train` (the plan, in the light theme) and `coach`. The coach capture waits for the seeded thread's last question to be on screen, which it is only once the Coach has scrolled the thread to its latest exchange; that scroll waits for the frame that lays the thread out (`ChatStickToBottom`), so the capture no longer depends on how quickly the local stack answers
-4. Uploads the raw captures (`store-screenshots-raw`). A second job then renders the panels and uploads them as `store-screenshots-panels`.
+   - waits for every seeded run to reach the server (and fails if the device holds a different number of runs), and for Today to show today's session with no "missed" prompt, which it does once the plan re-reads after the server linked the runs
+   - captures what the panels crop (below), and writes `bounds.json` and `numbers.json` beside the PNGs
+3. Uploads the raw captures (`store-screenshots-raw`). The compose job then renders the panels and uploads them as `store-screenshots-panels`.
 
-Nothing in the capture reaches production. The stack and the job worker are local. `WEB_BASE_URL` points at a loopback port where nothing listens, and the only outside request is for MapTiler map tiles. Those use the `PUBLIC_MAPTILER_KEY` secret, and a fork PR without it falls back to OSM tiles.
+The `capture-ios` job runs the same suite from `apps/mobile_ios` (the byte-identical twin) through `STORE_APP=mobile_ios bash assets/store/capture.sh <udid> <dir>`, in debug mode because a simulator cannot run a profile build. It boots the newest iPhone Pro Max simulator the image offers, since every Pro Max since the 16 is the 6.9" class (1320 x 2868, 440 pt at 3x); the suite fails on any other size. GitHub's macOS images have no Docker, so the job starts one in a Colima VM on the Intel image (`macos-15-intel`; the Apple-silicon runners cannot nest a VM) and runs `supabase start` without the edge runtime, the log pipeline and Studio, which the capture never reaches. It uploads `store-screenshots-raw-ios`. If that job fails, compose still renders and uploads the Play set and then fails, naming the missing App Store set.
+
+### What the suite captures
+
+Each capture is the pushed screen's own layer (`RenderRepaintBoundary.toImage`, in `integration_test/store/store_capture_kit.dart`), not a platform screenshot. So the Android and iOS captures are made the same way, carry no status bar, navigation bar or home indicator, and can be laid out at a width the device doesn't have:
+
+| Capture | Screen | Width, pixel ratio | Theme | Sections |
+|---|---|---|---|---|
+| `run-zones` | run detail, scrolled to Heart rate zones | 320 dp at 3.0 (Play) / 3.666 (App Store) | dark | `hr-zones` |
+| `run-splits` | run detail, scrolled to Splits | 320 dp, same | dark | `splits-title`, `pacing-card`, `gap-header`, `split-row-<n>`, `splits-hint` |
+| `run-pacing` | the same, at text scale 1.5 | 320 dp, same | dark | `splits-title`, `pacing-card`, `gap-header`, `split-row-1`, `split-row-2` |
+| `progress` | Progress, scrolled to the Race-time predictor | 320 dp, same | light | `predictor-card`, `predictor-row-{5k,10k,half,marathon}` |
+| `plan` | plan detail with "Plan progress" open | the device's width and ratio | light | `plan-header`, `plan-week`, `plan-progress` |
+| `coach` | the Coach on the seeded thread | the device's width and ratio | dark | `coach-context`, `coach-last-exchange` |
+
+The 320 dp captures set the test view's size and pixel ratio, so the app lays itself out at that width and the column fills the panel card pixel for pixel (960 px for Play, 1173 px for the App Store). The plan capture's view is 1600 dp tall so the "Plan progress" card is on screen with the header; the panel crops sections, so the height never shows.
+
+Each section is a keyed widget in the app (`run-detail-*` in `run_detail_screen.dart`, `race-predictor-*` in `race_predictor_card.dart`, `planDetailHeroCard` and `plan-disclosure-progress` in `plan_detail_screen.dart`, `coach-context-strip` in `coach_screen.dart`), or a widget type, all listed in `store_selectors.dart`. The coach's last exchange runs from the bubble holding the seed's last question to the end of the answer bubble below it, above the answer's action icons. A section that is missing, runs off the screen or is clipped by its list fails the capture with its name.
+
+The coach's usage banner (`coach-limit-banner`) and the typing indicator are never shown in a crop. If either is on screen, the suite records its rect under `forbidden` in `bounds.json`, fails if it overlaps a section, and the renderer refuses any crop that reaches it. That means it is cropped out, as the spec asks, and never hidden in the app. The seeded thread has no timestamps for a "now" to show in.
+
+`numbers.json` is read off the screens as they are captured. Each display string is the text the screen shows, and each is recomputed through the helpers that screen calls: `computeSplitDurations`, `gradeAdjustedSplitPaces` and `analysePacing` for the splits and pacing, `predictRaceLadder` over `qualifyingRuns` for the predictor, and the plan row behind the header card. A mismatch fails the capture. The helpers also supply what the screen doesn't print: each km's climb, the pacing verdicts and the confidence grades. The tier is the coach's own `is_pro` read. The driver (`store_screenshots_driver.dart`) writes the PNGs and both JSON files from the suite's report data, and only when the run passed.
+
+`test/store_capture_kit_test.dart` checks, without a device, the arithmetic from widget box to capture pixels, the colour sampling, and the forbidden-widget and clipped-section failures.
+
+Nothing in the capture reaches production. The stack is local. `WEB_BASE_URL` points at a loopback port where nothing listens, and the only outside request is for MapTiler map tiles. Those use the `PUBLIC_MAPTILER_KEY` secret, and a fork PR without it falls back to OSM tiles.
 
 Every place the suite depends on the app's layout is in `store_selectors.dart`. The hero screens are pushed with the app's own constructors, so a renamed screen or a changed constructor fails `dart analyze` rather than the emulator run. The suite is not a `*_test.dart` file, so the backend-free `mobile-android-e2e` job never loads it.
 
@@ -42,7 +66,7 @@ It writes `<out>/<locale>/<target>/<NN>-<panel>.png`, plus `<out>/<locale>/play-
 | `play-phone` | 1080 x 1920 | Android suite | Play Console → Store listing → Phone screenshots |
 | `appstore-6.9` | 1320 x 2868 | iOS suite | App Store Connect → 6.9" Display |
 
-The App Store set must come from the iOS captures, since an Android screen in an App Store listing breaks Apple's rule 2.3.10. Without `--captures appstore-6.9=<dir>` the render fails. While the iOS suite isn't running yet, `--appstore-from-android` draws that set from the Android captures and prints a warning that it must not be uploaded. The workflow passes this flag until the iOS captures exist.
+The App Store set must come from the iOS captures, since an Android screen in an App Store listing breaks Apple's rule 2.3.10. Without `--captures appstore-6.9=<dir>` the render fails. `--appstore-from-android` draws that set from the Android captures for a local look only, and prints a warning that it must not be uploaded. The workflow never passes it: it passes the iOS job's captures, or renders `--target play-phone` alone when that job failed.
 
 Before the script exits 0, it checks every PNG for the exact size and for 8-bit RGB with no alpha, which is what Play's "24-bit PNG" means. It needs `inkscape` (1.2 or later, for `--export-png-color-mode`) and `python3`, and nothing else. It runs the same on a Mac (Homebrew `inkscape`) as on the CI runner (`ubuntu-24.04`'s packaged Inkscape).
 
@@ -119,7 +143,8 @@ A card that still leaves more than 200 px of bare ground is named in the render'
 }
 ```
 
-- **`dpr`** converts dp pads to pixels.
+- **`dpr`** converts dp pads to pixels. **`size`** is the PNG's own size, for reading the file by eye.
+- **`forbidden`** (optional) gives the rect of a widget that must never show in a crop, such as `coach-limit-banner`. A crop that overlaps one is refused, and a pad stops at one as it does at a neighbouring section.
 - **`colours`** (optional) gives the fill behind a section that becomes a callout or a lift: `pacing-card` and `predictor-row-half`. Without it the renderer uses the theme's container colour (for a lift) or the page background (for a callout).
 - **Captures and sections the panels use:**
   - `run-splits`: `splits-title`, `pacing-card`, `gap-header`, `split-row-<n>` for every km, and `splits-hint`.
@@ -189,4 +214,4 @@ The workflow's `renderer-tests` job runs it on every PR that touches this direct
 
 ## Uploading (owner)
 
-Download `store-screenshots-panels` from the workflow run and look through every panel. Then upload `en/play-phone/*` in Play Console and `en/appstore-6.9/*` in App Store Connect, in file-name order. Only upload the App Store set if the run log has no `--appstore-from-android` warning. `en/play-phone-variant-b/*` is variant B of the Play store listing experiment. Store uploads are manual. No workflow holds store-listing write access.
+Download `store-screenshots-panels` from the workflow run and look through every panel. Then upload `en/play-phone/*` in Play Console and `en/appstore-6.9/*` in App Store Connect, in file-name order. Only upload the App Store set from a run whose `Capture on the iOS simulator` job passed; a run where it failed has no `en/appstore-6.9/` folder at all. `en/play-phone-variant-b/*` is variant B of the Play store listing experiment. Store uploads are manual. No workflow holds store-listing write access.

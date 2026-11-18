@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { browserDate } from '../fixtures/dates';
+import { browserDate, pastBrowserInstant } from '../fixtures/dates';
 import { readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -35,7 +35,9 @@ interface Seeded {
 	taperF: string;
 }
 
-async function seed(withNext: boolean): Promise<Seeded> {
+/// `day0` is the browser day the block starts on, as an offset from today.
+async function seed(withNext: boolean, day0 = 0): Promise<Seeded> {
+	const day = (offset: number) => browserDate(day0 + offset);
 	const s: Seeded = {
 		planId: crypto.randomUUID(),
 		nextId: crypto.randomUUID(),
@@ -56,8 +58,8 @@ async function seed(withNext: boolean): Promise<Seeded> {
 			name: 'e2e chat edit block',
 			goal_event: 'distance_half',
 			goal_distance_m: 21097,
-			start_date: browserDate(0),
-			end_date: browserDate(13),
+			start_date: day(0),
+			end_date: day(13),
 			status: 'active',
 			days_per_week: 4,
 		},
@@ -69,8 +71,8 @@ async function seed(withNext: boolean): Promise<Seeded> {
 						name: 'e2e chat edit next block',
 						goal_event: 'distance_half',
 						goal_distance_m: 21097,
-						start_date: browserDate(14),
-						end_date: browserDate(27),
+						start_date: day(14),
+						end_date: day(27),
 						status: 'active',
 						days_per_week: 4,
 					},
@@ -91,13 +93,13 @@ async function seed(withNext: boolean): Promise<Seeded> {
 	]);
 	expect(weekErr).toBeNull();
 	const { error: woErr } = await admin.from('plan_workouts').insert([
-		{ id: s.easyA, week_id: s.weekA0, scheduled_date: browserDate(1), kind: 'easy', target_distance_m: 8_000 },
-		{ id: s.longA, week_id: s.weekA0, scheduled_date: browserDate(5), kind: 'long', target_distance_m: 16_000 },
-		{ id: s.laterA, week_id: weekA1, scheduled_date: browserDate(12), kind: 'long', target_distance_m: 18_000 },
+		{ id: s.easyA, week_id: s.weekA0, scheduled_date: day(1), kind: 'easy', target_distance_m: 8_000 },
+		{ id: s.longA, week_id: s.weekA0, scheduled_date: day(5), kind: 'long', target_distance_m: 16_000 },
+		{ id: s.laterA, week_id: weekA1, scheduled_date: day(12), kind: 'long', target_distance_m: 18_000 },
 		...(withNext
 			? [
-					{ id: s.easyF, week_id: s.weekF0, scheduled_date: browserDate(15), kind: 'easy', target_distance_m: 10_000 },
-					{ id: s.taperF, week_id: weekF1, scheduled_date: browserDate(22), kind: 'easy', target_distance_m: 6_000 },
+					{ id: s.easyF, week_id: s.weekF0, scheduled_date: day(15), kind: 'easy', target_distance_m: 10_000 },
+					{ id: s.taperF, week_id: weekF1, scheduled_date: day(22), kind: 'easy', target_distance_m: 6_000 },
 				]
 			: []),
 	]);
@@ -149,7 +151,11 @@ async function askForEdit(
 	);
 	const bodies: Array<Record<string, unknown>> = [];
 	await mockRoute(page, '**/api/coach/plan-edit', async (route) => {
-		bodies.push(route.request().postDataJSON() as Record<string, unknown>);
+		const sent = route.request().postDataJSON() as Record<string, unknown>;
+		bodies.push(sent);
+		// The real handler answers with the page's own day (resolveToday keeps
+		// a client day within one of the server's), so the stub echoes it
+		// rather than reading the runner's clock, which a pinned page ignores.
 		await route.fulfill({
 			status: 200,
 			contentType: 'application/json',
@@ -157,7 +163,7 @@ async function askForEdit(
 				ops: [{ op: 'scale_week', weekIndex: 0, factor }],
 				dropped: 0,
 				notes: [],
-				today: browserDate(0),
+				today: sent.today,
 			}),
 		});
 	});
@@ -281,9 +287,13 @@ test.describe('/coach — plan edit card', () => {
 		page,
 		mockRoute,
 	}) => {
-		seeded = await seed(false);
-		// The browser runs in UTC (playwright.config.ts): a minute to midnight.
-		await page.clock.install({ time: new Date(`${browserDate(0)}T23:59:00Z`) });
+		// A minute to midnight on the browser's YESTERDAY (it runs in UTC,
+		// playwright.config.ts), with the block starting that day: pinned
+		// behind the real clock, the session's token still reads as valid
+		// (fixtures/dates.ts § pastBrowserInstant), and the day it turns into
+		// is the server's own today, which is the p_today the RPC then gets.
+		seeded = await seed(false, -1);
+		await page.clock.install({ time: pastBrowserInstant(-1, 23, 59) });
 		const card = await askForEdit(page, mockRoute, seeded.planId);
 
 		await page.clock.fastForward('02:00');

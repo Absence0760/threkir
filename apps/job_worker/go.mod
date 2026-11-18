@@ -1,4 +1,4 @@
-module github.com/Absence0760/threkir/apps/job_worker
+module github.com/jaredhoward-dev/threkir/apps/job_worker
 
 // Patch-level floor, not a bare `go 1.27`: the stdlib CVEs Trivy raised
 // against 1.27.1 (CVE-2026-78667, -78669, -97031 and ten more) are fixed in

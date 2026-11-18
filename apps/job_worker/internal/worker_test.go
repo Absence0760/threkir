@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/nativepush"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // fakeBackend records every call so tests can pin the worker's

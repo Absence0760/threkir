@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // HealthHrErasePayload is what private.erase_health_records enqueues for

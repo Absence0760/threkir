@@ -64,6 +64,31 @@ export function noonOnBrowserDay(offsetDays = 0): string {
 	return browserDayAt(offsetDays, 12);
 }
 
+/// An instant to pin the page clock to (`page.clock.install({ time })`,
+/// `setFixedTime`, `setSystemTime`): a wall-clock time on a browser calendar
+/// day, refused unless it is already in the past.
+///
+/// The signed-in session the spec inherits carries an access token the auth
+/// server issued against the REAL clock, an hour long. A page clock pinned
+/// ahead of that expiry reads the token as expired, so supabase-js refreshes
+/// it on every request — dozens a second, each rotating the refresh token the
+/// shared storageState was saved with. The page works only while every one of
+/// those refreshes succeeds; when one does not, the page is signed out
+/// mid-test, and a Playwright retry presents the saved refresh token, by then
+/// used, and starts signed out. Pinned behind the real clock, the token stays
+/// valid and nothing refreshes. Decisions § 2574.
+export function pastBrowserInstant(offsetDays: number, hour: number, minute = 0): Date {
+	const instant = dayInstant(offsetDays, hour, minute);
+	if (instant.getTime() > Date.now()) {
+		throw new Error(
+			`pastBrowserInstant(${offsetDays}, ${hour}, ${minute}) is ${instant.toISOString()}, ahead of the ` +
+				'real clock: the session token would read as expired in the page. Pin a day in the past ' +
+				'(a negative offset) and step the page clock forward with page.clock.fastForward.'
+		);
+	}
+	return instant;
+}
+
 /// Offset in days from today to the most recent browser calendar day that
 /// falls on `weekday` (0 = Sunday … 6 = Saturday), strictly before today —
 /// always -1 … -7. A spec that pins the page clock to that day for a

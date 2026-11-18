@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/gpsdistance"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/gpsdistance"
 )
 
 const drSidecar = drUserID + "/" + drRunID + ".smoothed.json.gz"

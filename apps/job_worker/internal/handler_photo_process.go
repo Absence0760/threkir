@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/exif"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/exif"
 )
 
 // handlePhotoProcess strips identifying metadata from a newly-uploaded

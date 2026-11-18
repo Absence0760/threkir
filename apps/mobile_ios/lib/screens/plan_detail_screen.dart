@@ -3119,6 +3119,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             key: const Key('planDetailPaused'), icon: Icons.pause),
     ];
     return Container(
+      key: const Key('planDetailHeroCard'),
       padding: const EdgeInsets.all(16),
       decoration: planCardDecoration(theme),
       child: Column(

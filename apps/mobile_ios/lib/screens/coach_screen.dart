@@ -1565,6 +1565,7 @@ class _CoachScreenState extends State<CoachScreen> {
     // window at the right edge on a 360 dp phone, with nothing saying more
     // of the strip was off screen.
     return Padding(
+      key: const Key('coach-context-strip'),
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,

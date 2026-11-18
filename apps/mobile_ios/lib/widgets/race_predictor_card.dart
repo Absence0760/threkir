@@ -43,6 +43,7 @@ class RacePredictorCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return ListCard(
+      key: const Key('race-predictor-card'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -97,6 +98,16 @@ class RacePredictorCard extends StatelessWidget {
   }
 }
 
+/// A rung's stable name in its row key (`race-predictor-row-<slug>`), which
+/// the store-screenshot capture locates the rows by.
+String raceLadderSlug(double distanceM) => switch (distanceM) {
+      5000.0 => '5k',
+      10000.0 => '10k',
+      21097.5 => 'half',
+      42195.0 => 'marathon',
+      _ => '${distanceM.round()}m',
+    };
+
 /// MM:SS or H:MM:SS, mirroring web `formatDuration`.
 String _clock(double seconds) {
   final total = seconds.round();
@@ -140,6 +151,7 @@ class _LadderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
+      key: ValueKey('race-predictor-row-${raceLadderSlug(rung.distanceM)}'),
       padding: const EdgeInsets.only(top: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

@@ -259,6 +259,24 @@ jobs:
       # The template carries no credentials; the debug build bundles it.
       - run: cp apps/mobile_ios/.env.example apps/mobile_ios/.env.development
 
+      # Built before Docker starts, with retries: the Swift packages' binary
+      # targets (Sentry, gRPC) download at build time, and in run 44318164666
+      # both downloads dropped mid-capture with the Colima VM up. Once
+      # resolved into build/ios/SourcePackages, the capture's own build skips
+      # package updates and only recompiles what its dart-defines change.
+      - name: Build the app for the simulator
+        working-directory: apps/mobile_ios
+        run: |
+          for attempt in 1 2 3; do
+            if flutter build ios --simulator --debug; then
+              exit 0
+            fi
+            echo "::warning::the simulator build failed on attempt $attempt; retrying in case a package download dropped"
+            sleep $((attempt * 20))
+          done
+          echo "::error::apps/mobile_ios did not build for the simulator after 3 attempts. If every attempt failed on a package download, it is the network; otherwise it is the app, and build-mobile-ios in ci.yml should show the same failure."
+          exit 1
+
       - name: Start Docker (Colima)
         run: |
           brew install colima docker libpq

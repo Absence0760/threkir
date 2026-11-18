@@ -267,13 +267,21 @@ jobs:
       - name: Select the newest Xcode on the image
         run: |
           set -euo pipefail
-          xcode="$(for app in /Applications/Xcode_*.app; do
-            case "$app" in *[Bb]eta*) ;; *) echo "$app" ;; esac
-          done | sort -V | tail -1)"
-          if [ -z "$xcode" ]; then
-            echo "::error::No Xcode_*.app under /Applications on this image."
+          # The loop stays outside $(...): macOS's bash 3.2 cannot parse a
+          # case pattern's ")" inside a command substitution.
+          candidates=()
+          for app in /Applications/Xcode_*.app; do
+            [ -d "$app" ] || continue
+            case "$app" in
+              *[Bb]eta*) ;;
+              *) candidates+=("$app") ;;
+            esac
+          done
+          if [ "${#candidates[@]}" -eq 0 ]; then
+            echo "::error::No released Xcode_*.app under /Applications on this image."
             exit 1
           fi
+          xcode="$(printf '%s\n' "${candidates[@]}" | sort -V | tail -1)"
           sudo xcode-select -s "$xcode/Contents/Developer"
           xcodebuild -version
 

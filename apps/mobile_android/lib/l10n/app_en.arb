@@ -772,7 +772,7 @@
   "@importHealthSubtitleIos": {
     "description": "iOS subtitle naming apps that write to Apple Health"
   },
-  "importHealthSubtitleAndroid": "Pull workouts from Google Fit, Samsung Health, Garmin, Fitbit, and any other Health Connect app",
+  "importHealthSubtitleAndroid": "Pull workouts that Samsung Health, Garmin, Fitbit and other apps save to Health Connect",
   "@importHealthSubtitleAndroid": {
     "description": "Android subtitle naming apps that write to Health Connect"
   },
@@ -12732,7 +12732,7 @@
   "@proComingSoonTitle": {
     "description": "Pro tile title when the deploy has no live Pro perk to sell"
   },
-  "proComingSoon": "Pro unlocks the AI Coach — coming soon. You can still support the app below.",
+  "proComingSoon": "Pro is coming soon: more AI Coach messages a day and priority processing. You can still support the app below.",
   "@proComingSoon": {
     "description": "Pro tile subtitle shown instead of a purchase CTA when no Pro perk is live"
   },
@@ -23834,6 +23834,10 @@
   "avatarCropLoadFailed": "This image couldn't be opened. Try a JPEG, PNG, or WebP.",
   "@avatarCropLoadFailed": {
     "description": "Shown when the picked profile photo cannot be decoded"
+  },
+  "avatarCropPreparing": "Preparing photo…",
+  "@avatarCropPreparing": {
+    "description": "Label on the Use photo button while the cropped photo is being encoded"
   },
   "dashboardLeadTitle": "Your week",
   "@dashboardLeadTitle": {

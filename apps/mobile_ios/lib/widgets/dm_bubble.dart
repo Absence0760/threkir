@@ -122,21 +122,22 @@ class DmBubble extends StatelessWidget {
               onOpenLink: onOpenLink,
             ),
           const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          // Wraps, not a Row: at 2x text a date-and-time stamp beside the
+          // edited and AI marks is wider than the bubble on a 320 dp phone.
+          Wrap(
+            alignment: mine ? WrapAlignment.end : WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
             children: [
-              if (sending) ...[
+              if (sending)
                 Icon(Icons.schedule,
                     size: AppIconSize.dense, color: fg.withValues(alpha: 0.7)),
-                const SizedBox(width: 4),
-              ],
               Text(
                 time,
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: fg.withValues(alpha: 0.7)),
               ),
-              if (aiAssisted != null) ...[
-                const SizedBox(width: 6),
+              if (aiAssisted != null)
                 Semantics(
                   key: const ValueKey('dm-ai-assisted'),
                   label: aiAssisted!.title,
@@ -150,27 +151,26 @@ class DmBubble extends StatelessWidget {
                             size: AppIconSize.dense,
                             color: fg.withValues(alpha: 0.7)),
                         const SizedBox(width: 2),
-                        Text(
-                          aiAssisted!.label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: fg.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            aiAssisted!.label,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: fg.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-              if (editedLabel != null) ...[
-                const SizedBox(width: 6),
+              if (editedLabel != null)
                 Text(
                   editedLabel!,
                   key: const ValueKey('dm-edited'),
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: fg.withValues(alpha: 0.7)),
                 ),
-              ],
             ],
           ),
         ],

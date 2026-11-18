@@ -154,6 +154,143 @@ void main() {
             tester, find.byType(Scrollable).first, 'Setup wizard step $i');
         await _forward(tester, l10n);
       }
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Setup wizard done step');
+      // The last step has a second layout once a goal is picked (the plan CTA
+      // pinned, Open dashboard in the body): walk back, pick one, walk it.
+      final goalStep = setupWizardSteps.indexOf('goal');
+      for (var i = _tapsToDone; i > goalStep; i--) {
+        await tester.tap(find.widgetWithText(OutlinedButton, l10n.setupBack));
+        await tester.pumpAndSettle();
+      }
+      await tester.ensureVisible(find.text(l10n.setupGoal5k));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.setupGoal5k));
+      await tester.pumpAndSettle();
+      for (var i = goalStep; i < _tapsToDone; i++) {
+        await _forward(tester, l10n);
+      }
+      expect(find.widgetWithText(FilledButton, l10n.setupCreatePlanCta),
+          findsOneWidget);
+      await walkScrollable(tester, find.byType(Scrollable).first,
+          'Setup wizard done step with a goal');
+    });
+
+    // The fail-safe exit sits in the pinned bar over Back and the forward
+    // action, so it is the bar's tallest state.
+    worstCaseTestWidgets('Setup wizard offline exit', (tester, locale) async {
+      final api = _FakeApi()..failWrites = true;
+      final prefs = await _prefs();
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: SetupWizardScreen(
+          apiClient: api,
+          preferences: prefs,
+          importScreenBuilder: (_) => const _StubScreen('import'),
+          isIOS: false,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final l10n = l10nFor(locale);
+      await _forward(tester, l10n);
+      await tester.ensureVisible(find.text(l10n.setupSkip));
+      await tester.tap(find.text(l10n.setupSkip));
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+      expect(find.text(l10n.setupFinishLater).hitTestable(), findsOneWidget);
+      expect(find.text(l10n.setupBack).hitTestable(), findsOneWidget);
+      expect(find.text(l10n.setupOfflineHint), findsOneWidget);
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Setup wizard offline');
+    });
+
+    group('page chrome (EditorPage, #1374)', () {
+      const nav = 48.0;
+      final dots = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_ProgressDots');
+
+      void phone(WidgetTester tester,
+          {Size size = const Size(360, 740), double keyboard = 0}) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.view.viewPadding = const FakeViewPadding(bottom: nav);
+        // The engine reports `padding` net of the keyboard over the bar.
+        tester.view.padding = FakeViewPadding(bottom: keyboard > 0 ? 0 : nav);
+        tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+        addTearDown(tester.view.reset);
+      }
+
+      testWidgets('pushed as a route it draws no close or back button',
+          (tester) async {
+        await _pump(tester, _FakeApi(), await _prefs());
+        expect(find.byType(CloseButton), findsNothing);
+        expect(find.byType(BackButton), findsNothing);
+        expect(find.byIcon(Icons.close), findsNothing);
+        expect(find.byIcon(Icons.arrow_back), findsNothing);
+      });
+
+      testWidgets('step 1 offers no Back; step 2 does, and it steps back',
+          (tester) async {
+        await _pump(tester, _FakeApi(), await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.setupBack), findsNothing);
+        await _forward(tester, l10n);
+        await tester.tap(find.widgetWithText(OutlinedButton, l10n.setupBack));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.setupNameTitle), findsOneWidget);
+      });
+
+      testWidgets('the progress dots stay put while the step scrolls',
+          (tester) async {
+        phone(tester, size: const Size(320, 480));
+        await _pump(tester, _FakeApi(), await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        // The privacy step's three described options outgrow 480 dp.
+        for (var i = 0; i < setupWizardSteps.indexOf('run-privacy'); i++) {
+          await _forward(tester, l10n);
+        }
+        final before = tester.getRect(dots);
+        final appBar = tester.getRect(find.byType(AppBar));
+        expect(before.top, greaterThanOrEqualTo(appBar.bottom));
+        final title = tester.getRect(find.text(l10n.setupPrivacyTitle)).top;
+        await tester.drag(
+            find.byType(SingleChildScrollView), const Offset(0, -300));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(find.text(l10n.setupPrivacyTitle)).top,
+            lessThan(title));
+        expect(tester.getRect(dots), before);
+        expect(tester.getRect(find.byType(SingleChildScrollView)).top,
+            greaterThanOrEqualTo(before.bottom));
+      });
+
+      testWidgets('Back and the forward action clear a 48 dp nav bar',
+          (tester) async {
+        phone(tester);
+        await _pump(tester, _FakeApi(), await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await _forward(tester, l10n);
+        for (final b in [
+          find.widgetWithText(OutlinedButton, l10n.setupBack),
+          find.widgetWithText(FilledButton, l10n.setupContinue),
+        ]) {
+          expect(b.hitTestable(), findsOneWidget);
+          expect(tester.getRect(b).bottom, lessThanOrEqualTo(740 - nav));
+        }
+      });
+
+      testWidgets('with the keyboard up the forward action sits above it',
+          (tester) async {
+        phone(tester, keyboard: 300);
+        await _pump(tester, _FakeApi(), await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await tester.enterText(find.byType(TextField).first, 'Alex');
+        await tester.pump();
+        final next = find.widgetWithText(FilledButton, l10n.setupContinue);
+        expect(next.hitTestable(), findsOneWidget);
+        final rect = tester.getRect(next);
+        expect(rect.bottom, lessThanOrEqualTo(740 - 300));
+        expect(rect.bottom, greaterThan(740 - 300 - 48));
+        expect(tester.takeException(), isNull);
+      });
     });
 
     testWidgets('renders the first step + a Skip header action', (tester) async {

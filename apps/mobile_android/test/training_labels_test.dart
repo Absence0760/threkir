@@ -23,7 +23,7 @@ void main() {
   test('labels follow the active locale (de)', () async {
     final de = await AppLocalizations.delegate.load(const Locale('de'));
     expect(workoutKindLabel(de, WorkoutKind.easy), 'Locker');
-    expect(workoutKindLabel(de, WorkoutKind.race), 'Wettkampf');
+    expect(workoutKindLabel(de, WorkoutKind.race), 'Rennen');
     expect(planPhaseLabel(de, PlanPhase.base), 'Grundlage');
   });
 }

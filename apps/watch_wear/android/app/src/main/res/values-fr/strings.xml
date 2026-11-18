@@ -47,7 +47,7 @@
     <string name="workout_kind_interval">Fractionné</string>
     <string name="workout_kind_marathon_pace">Allure marathon</string>
     <string name="workout_kind_walk_run">Marche-course</string>
-    <string name="workout_kind_race">Course</string>
+    <string name="workout_kind_race">Épreuve</string>
     <string name="workout_kind_short_easy">EF</string>
     <string name="workout_kind_short_long">SL</string>
     <string name="workout_kind_short_recovery">Réc</string>
@@ -55,7 +55,7 @@
     <string name="workout_kind_short_interval">Fr</string>
     <string name="workout_kind_short_marathon_pace">AM</string>
     <string name="workout_kind_short_walk_run">M/C</string>
-    <string name="workout_kind_short_race">Crs</string>
+    <string name="workout_kind_short_race">Épr</string>
 
     <string name="notif_recording_run">Enregistrement de la course</string>
     <string name="notif_paused">En pause</string>

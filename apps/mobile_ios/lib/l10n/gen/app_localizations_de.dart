@@ -598,7 +598,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Hole Workouts aus Google Fit, Samsung Health, Garmin, Fitbit und jeder anderen Health-Connect-App';
+      'Hole Workouts, die Samsung Health, Garmin, Fitbit und andere Apps in Health Connect speichern';
 
   @override
   String get importHealthDescriptionIos =>
@@ -1257,7 +1257,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get homeRaceDay => 'Renntag';
+  String get homeRaceDay => 'Wettkampftag';
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -7286,7 +7286,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNewRaceAnchored(int weeks) {
-    return 'Auf dein Rennen zugeschnitten: ein $weeks-Wochen-Plan, dessen letzte Woche die Rennwoche ist. Passe unten alles an, bevor du ihn erstellst.';
+    return 'Auf dein Rennen zugeschnitten: ein $weeks-Wochen-Plan, dessen letzte Woche die Wettkampfwoche ist. Passe unten alles an, bevor du ihn erstellst.';
   }
 
   @override
@@ -7346,7 +7346,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewAiRaceTooSoon =>
-      'Der Wettkampf ist weniger als vier Wochen entfernt, daher wurde das Startdatum nicht geändert — ein Plan braucht mindestens vier Wochen.';
+      'Das Rennen ist weniger als vier Wochen entfernt, daher wurde das Startdatum nicht geändert — ein Plan braucht mindestens vier Wochen.';
 
   @override
   String get planNewAiRaceInvalid =>
@@ -7841,11 +7841,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planImportPreviewRace(String name, String date) {
-    return 'Wettkampf: $name, $date';
+    return 'Rennen: $name, $date';
   }
 
   @override
-  String get planImportPreviewRaceUnnamed => 'Unbenannter Wettkampf';
+  String get planImportPreviewRaceUnnamed => 'Unbenanntes Rennen';
 
   @override
   String get planImportCreate => 'Plan erstellen';
@@ -7887,7 +7887,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planDetailPublishTooltip => 'Als Club-Vorlage veröffentlichen';
 
   @override
-  String get planDetailRacesTitle => 'Wettkämpfe in diesem Plan';
+  String get planDetailRacesTitle => 'Rennen in diesem Plan';
 
   @override
   String planDetailRacePriority(String priority) {
@@ -7932,7 +7932,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailMissedLongTaper =>
-      'Du hast einen Long Run verpasst, aber du tapest — lass ihn aus und bleib frisch für den Wettkampf.';
+      'Du hast einen Long Run verpasst, aber du tapest — lass ihn aus und bleib frisch für das Rennen.';
 
   @override
   String get planDetailMissedLongRecovery =>
@@ -7994,7 +7994,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailHeroNextRace(String name) {
-    return 'Nächster Wettkampf: $name';
+    return 'Nächstes Rennen: $name';
   }
 
   @override
@@ -9768,7 +9768,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'Pro schaltet den KI-Coach frei – demnächst verfügbar. Du kannst die App unten trotzdem unterstützen.';
+      'Pro kommt bald: mehr KI-Coach-Nachrichten pro Tag und priorisierte Verarbeitung. Du kannst die App unten trotzdem unterstützen.';
 
   @override
   String get proRegionalNote =>
@@ -12182,7 +12182,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutEditNotesLabel => 'Notizen';
 
   @override
-  String get workoutEditRaceNameLabel => 'Name des Wettkampfs';
+  String get workoutEditRaceNameLabel => 'Name des Rennens';
 
   @override
   String get workoutEditRacePriorityLabel => 'Rennpriorität';
@@ -13155,7 +13155,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutKindWalkRun => 'Geh-Lauf';
 
   @override
-  String get workoutKindRace => 'Wettkampf';
+  String get workoutKindRace => 'Rennen';
 
   @override
   String get workoutKindRest => 'Ruhe';
@@ -16441,7 +16441,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String racesDetailImportAfterRace(String date) {
-    return 'Dein offizielles Ergebnis kannst du ab dem Renntag, $date, importieren.';
+    return 'Dein offizielles Ergebnis kannst du ab dem Wettkampftag, $date, importieren.';
   }
 
   @override
@@ -16461,7 +16461,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get racesDetailNoRuns =>
-      'Noch keine Läufe mit diesem Rennen verknüpft. Importiere nach dem Renntag hier dein Ergebnis oder öffne den aufgezeichneten Lauf und ordne ihn diesem Rennen zu.';
+      'Noch keine Läufe mit diesem Rennen verknüpft. Importiere nach dem Wettkampftag hier dein Ergebnis oder öffne den aufgezeichneten Lauf und ordne ihn diesem Rennen zu.';
 
   @override
   String get racesViewResults => 'Ergebnisse ansehen';
@@ -18021,7 +18021,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get watchMetricRouteElevTotal => 'Streckenhöhenmeter';
 
   @override
-  String get watchMetricRaceDayDays => 'Tage bis zum Wettkampf';
+  String get watchMetricRaceDayDays => 'Tage bis zum Rennen';
 
   @override
   String get watchMetricSleepBudget => 'Schlafbudget';
@@ -18652,7 +18652,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get metricRiegelDefinition =>
-      'Ein gängiges Verfahren, um deine Zeit auf einer Renndistanz aus einer Zeit auf einer anderen zu schätzen.';
+      'Ein gängiges Verfahren, um deine Zeit auf einer Wettkampfdistanz aus einer Zeit auf einer anderen zu schätzen.';
 
   @override
   String get metricE1rmLabel => 'Gesch. 1RM';
@@ -18775,6 +18775,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.';
+
+  @override
+  String get avatarCropPreparing => 'Foto wird vorbereitet…';
 
   @override
   String get dashboardLeadTitle => 'Deine Woche';
@@ -20341,7 +20344,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get seasonPlanReviewDisclosure => 'KI-Hinweise ansehen';
 
   @override
-  String get seasonPlanRaceDatePick => 'Renntag wählen';
+  String get seasonPlanRaceDatePick => 'Wettkampftag wählen';
 
   @override
   String get seasonPlanRaceGoalHint =>
@@ -20349,7 +20352,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String seasonPlanRowInvalid(int n) {
-    return 'Rennen $n braucht einen Namen, einen Renntag, eine Distanz und entweder keine Zielzeit oder eine im Format h:mm:ss.';
+    return 'Rennen $n braucht einen Namen, einen Wettkampftag, eine Distanz und entweder keine Zielzeit oder eine im Format h:mm:ss.';
   }
 
   @override
@@ -20647,14 +20650,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewStartingPointBuildingHint =>
-      'Kein Wettkampf geplant: Wähle eine Distanz als Ziel, ohne Zielzeit.';
+      'Kein Rennen geplant: Wähle eine Distanz als Ziel, ohne Zielzeit.';
 
   @override
-  String get planNewStartingPointRace => 'Ich trainiere für einen Wettkampf';
+  String get planNewStartingPointRace => 'Ich trainiere für ein Rennen';
 
   @override
   String get planNewStartingPointRaceHint =>
-      'Ein Zielwettkampf und, wenn du eine hast, eine Zielzeit.';
+      'Ein Zielrennen und, wenn du eine hast, eine Zielzeit.';
 
   @override
   String get planNewStartDateHintWalkRun =>
@@ -20678,7 +20681,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewOverrideHelp =>
-      'Leer lassen für die übliche Länge deines Zielwettkampfs. Setze einen Wert, wenn du von einem näher oder weiter entfernten Renntag zurückrechnest.';
+      'Leer lassen für die übliche Länge deines Zielrennens. Setze einen Wert, wenn du von einem näher oder weiter entfernten Wettkampftag zurückrechnest.';
 
   @override
   String get planNewNameHelp =>
@@ -20953,7 +20956,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailShiftMessage =>
-      'Damit verschieben sich alle Einheiten und dein Wettkampftermin. Du kannst erneut verschieben, um es rückgängig zu machen.';
+      'Damit verschieben sich alle Einheiten und dein Wettkampfdatum. Du kannst erneut verschieben, um es rückgängig zu machen.';
 
   @override
   String get planDetailShiftDaysLabel => 'Tage verschieben (negativ = früher)';
@@ -21078,7 +21081,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailCycleAdjustConfirmPregnancy =>
-      'Kommende Einheiten werden an die Schwangerschaft angepasst: harte Einheiten und Wettkämpfe werden zu lockeren Läufen und der Umfang wird nach Trimester reduziert. Dies ist keine medizinische Beratung — folge deiner Ärztin oder deinem Arzt. Vergangene Einheiten bleiben unverändert.';
+      'Kommende Einheiten werden an die Schwangerschaft angepasst: harte Einheiten und Rennen werden zu lockeren Läufen und der Umfang wird nach Trimester reduziert. Dies ist keine medizinische Beratung — folge deiner Ärztin oder deinem Arzt. Vergangene Einheiten bleiben unverändert.';
 
   @override
   String get planDetailCycleAdjustDone => 'Kommende Wochen angepasst.';
@@ -21148,12 +21151,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailRestartRaceAhead(String date) {
-    return 'Der Wettkampf dieses Plans am $date steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.';
+    return 'Das Rennen dieses Plans am $date steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.';
   }
 
   @override
   String get planDetailRestartRaceAheadError =>
-      'Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.';
+      'Dieser Plan hat noch ein bevorstehendes Rennen und kann daher nicht neu gestartet werden.';
 
   @override
   String get planDetailRestartBeforeTodayError =>
@@ -21185,9 +21188,9 @@ class AppLocalizationsDe extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Dein Wettkampf rückt auf den $date. $n Aufbauwochen kommen vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+          'Dein Rennen rückt auf den $date. $n Aufbauwochen kommen vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
       one:
-          'Dein Wettkampf rückt auf den $date. $n Aufbauwoche kommt vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+          'Dein Rennen rückt auf den $date. $n Aufbauwoche kommt vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
     );
     return '$_temp0';
   }
@@ -21198,16 +21201,16 @@ class AppLocalizationsDe extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Dein Wettkampf rückt auf den $date. $n Aufbauwochen fallen weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+          'Dein Rennen rückt auf den $date. $n Aufbauwochen fallen weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
       one:
-          'Dein Wettkampf rückt auf den $date. $n Aufbauwoche fällt weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+          'Dein Rennen rückt auf den $date. $n Aufbauwoche fällt weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
     );
     return '$_temp0';
   }
 
   @override
   String planDetailRaceDateConfirmSameWeek(String date) {
-    return 'Dein Wettkampf rückt auf den $date, in derselben Woche. Es kommen keine Wochen hinzu oder fallen weg, das Tapering bleibt, wie es ist.';
+    return 'Dein Rennen rückt auf den $date, in derselben Woche. Es kommen keine Wochen hinzu oder fallen weg, das Tapering bleibt, wie es ist.';
   }
 
   @override
@@ -21231,19 +21234,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailRaceDateUnchanged =>
-      'Dein Wettkampf ist bereits an diesem Tag.';
+      'Dein Rennen ist bereits an diesem Tag.';
 
   @override
   String get planDetailRaceDateNoRace =>
-      'Dieser Plan hat keinen bevorstehenden Wettkampf, der sich verlegen ließe.';
+      'Dieser Plan hat kein bevorstehendes Rennen, das sich verlegen ließe.';
 
   @override
   String get planDetailRaceDateWeekStarted =>
-      'Die Wettkampfwoche hat begonnen, davor können keine Wochen mehr hinzukommen. Wähle einen Tag in dieser Woche oder starte einen neuen Plan für den späteren Wettkampf.';
+      'Die Wettkampfwoche hat begonnen, davor können keine Wochen mehr hinzukommen. Wähle einen Tag in dieser Woche oder starte einen neuen Plan für das spätere Rennen.';
 
   @override
   String get planDetailRaceDateTooFar =>
-      'Das liegt mehr als ein Jahr weiter in der Zukunft. Starte stattdessen einen neuen Plan für diesen Wettkampf.';
+      'Das liegt mehr als ein Jahr weiter in der Zukunft. Starte stattdessen einen neuen Plan für dieses Rennen.';
 
   @override
   String get planDetailRaceDateNoBuild =>
@@ -21251,7 +21254,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailRaceDateInTheWay =>
-      'In den Wochen, die sich verschieben würden, liegt ein anderer Wettkampf oder eine erledigte Einheit. Ändere das zuerst.';
+      'In den Wochen, die sich verschieben würden, liegt ein anderes Rennen oder eine erledigte Einheit. Ändere das zuerst.';
 
   @override
   String get planDetailRaceDateOverlap =>
@@ -21502,7 +21505,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String start,
     String race,
   ) {
-    return 'Woche $n läuft ab dem $start noch einmal als Woche $copy. Damit dein Wettkampf am $race bleibt, fällt eine spätere Woche vor dem Tapering weg. Erledigte Trainings bleiben, wie sie sind.';
+    return 'Woche $n läuft ab dem $start noch einmal als Woche $copy. Damit dein Rennen am $race bleibt, fällt eine spätere Woche vor dem Tapering weg. Erledigte Trainings bleiben, wie sie sind.';
   }
 
   @override
@@ -21519,7 +21522,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekInTheWay =>
-      'Eine Woche, die sich verschieben würde, enthält einen Wettkampf oder ein erledigtes Training, deshalb lässt sich diese Woche nicht wiederholen.';
+      'Eine Woche, die sich verschieben würde, enthält ein Rennen oder ein erledigtes Training, deshalb lässt sich diese Woche nicht wiederholen.';
 
   @override
   String get planDetailRepeatWeekLastWeek =>
@@ -21713,7 +21716,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planRecapNextPlanSeeded(String date, String time) {
-    return 'Dein nächster Plan kann am $date beginnen, mit Tempos aus einer 5-km-Zeit von $time, dem Gegenwert deines Wettkampfs. Du bestätigst ihn im Assistenten.';
+    return 'Dein nächster Plan kann am $date beginnen, mit Tempos aus einer 5-km-Zeit von $time, dem Gegenwert deines Rennens. Du bestätigst ihn im Assistenten.';
   }
 
   @override
@@ -22147,7 +22150,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardKindStreak => 'Serie';
 
   @override
-  String get shareCardKindRace => 'Wettkampf';
+  String get shareCardKindRace => 'Rennen';
 
   @override
   String get shareCardKindBadge => 'Abzeichen';
@@ -22443,7 +22446,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get courseDriveNoticeBody =>
-      'Nutze das nur mit Beifahrer oder fest montiertem Handy und bediene es nicht während der Fahrt. Beachte Verkehrsregeln und Schilder. Straßen der Strecke können am Renntag gesperrt sein, und die Route der Karten-App kann von der Strecke abweichen.';
+      'Nutze das nur mit Beifahrer oder fest montiertem Handy und bediene es nicht während der Fahrt. Beachte Verkehrsregeln und Schilder. Straßen der Strecke können am Wettkampftag gesperrt sein, und die Route der Karten-App kann von der Strecke abweichen.';
 
   @override
   String get courseDriveNoticeAccept => 'Verstanden';

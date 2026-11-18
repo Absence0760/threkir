@@ -27,7 +27,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/digesttoken"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/digesttoken"
 )
 
 // Backend is the Supabase surface the endpoint exercises. Leaf interface so

@@ -52,6 +52,13 @@ inputs:
   version:
     description: Supabase CLI version to install, without a leading "v".
     required: true
+  config:
+    description: >
+      The backend's config.toml, relative to the workspace. For a CLI older
+      than 2.108.0 its `[local_smtp]` section is renamed to `[inbucket]`
+      (local_smtp_compat.sh says why).
+    required: false
+    default: apps/backend/supabase/config.toml
 
 # The verified binary is installed into /usr/local/bin, which every runner
 # already has on PATH, rather than its directory appended to GITHUB_PATH: an
@@ -150,3 +157,13 @@ runs:
 
         echo "::error::Could not install the Supabase CLI ${ver} after 5 attempts. Every attempt either failed to download ${tarball} or failed its sha256 against the release checksums -- this is the install step, so no test has run yet."
         exit 1
+
+    # CLI 3.x loads only `[local_smtp]`; the 2.84.2 pin predates it and
+    # would ignore it. local_smtp_compat.sh renames the section back for a
+    # pre-2.108.0 CLI in this job's checkout only.
+    - name: Match config.toml's Mailpit section to the CLI
+      shell: bash
+      env:
+        SUPABASE_CLI_VERSION: ${{ inputs.version }}
+        SUPABASE_CONFIG: ${{ inputs.config }}
+      run: bash "${GITHUB_ACTION_PATH}/local_smtp_compat.sh" "$SUPABASE_CLI_VERSION" "$SUPABASE_CONFIG"

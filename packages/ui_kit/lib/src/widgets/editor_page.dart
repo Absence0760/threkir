@@ -46,31 +46,78 @@ class EditorSave {
 /// stacks when the two do not fit.
 ///
 /// There is no Cancel: the close button is the way out, and it goes through
-/// `Navigator.maybePop`, so a discard guard above the page is asked first.
+/// `Navigator.maybePop`, so a discard guard above the page is asked first. A
+/// gate the person may not leave this way (age confirmation, setup) passes
+/// `dismissible: false` and draws none; a page mid-way through work it cannot
+/// abandon (encoding an upload) passes `closeEnabled: false` and the button
+/// is drawn disabled, so it still says where the way out will be.
+///
+/// [header] is fixed between the app bar and the fields (a wizard's progress
+/// dots). [bar] replaces the standard Save bar with a page's own band (a gym
+/// session's execution controls); it keeps the standard bar's place in the
+/// body's column, so it rises with the keyboard and clears the system
+/// navigation bar, and is held to [maxBarShare] of the body's height.
+/// [EditorPage.fixed] lays out one child that does not scroll and gets the
+/// body's bounded height (a crop stage with pan and zoom).
 ///
 /// Strings come from the caller; ui_kit has no catalogue.
 class EditorPage extends StatelessWidget {
   const EditorPage({
     super.key,
     required this.title,
-    required this.fields,
+    required List<Widget> this.fields,
     this.save,
     this.secondary,
     this.status,
+    this.bar,
+    this.header,
     this.actions = const [],
     this.placeholder,
+    this.dismissible = true,
+    this.closeEnabled = true,
     this.padding = const EdgeInsets.fromLTRB(
       AppInsets.gutter,
       AppSpace.md,
       AppInsets.gutter,
       AppSpace.lg,
     ),
-  });
+  }) : child = null,
+       assert(
+         bar == null || (save == null && secondary == null && status == null),
+         'A custom bar replaces save, secondary and status.',
+       );
+
+  /// A page whose body does not scroll: [child] fills the space between the
+  /// app bar (and [header]) and the bar, with bounded constraints. It has no
+  /// heading in the body, so the app bar says [title] from the start.
+  const EditorPage.fixed({
+    super.key,
+    required this.title,
+    required Widget this.child,
+    this.save,
+    this.secondary,
+    this.status,
+    this.bar,
+    this.header,
+    this.actions = const [],
+    this.placeholder,
+    this.dismissible = true,
+    this.closeEnabled = true,
+    this.padding = EdgeInsets.zero,
+  }) : fields = null,
+       assert(
+         bar == null || (save == null && secondary == null && status == null),
+         'A custom bar replaces save, secondary and status.',
+       );
 
   final String title;
 
-  /// The form, top to bottom, stretched to the page width.
-  final List<Widget> fields;
+  /// The form, top to bottom, stretched to the page width. Null on an
+  /// [EditorPage.fixed].
+  final List<Widget>? fields;
+
+  /// The non-scrolling body of an [EditorPage.fixed]; null otherwise.
+  final Widget? child;
 
   /// The page's one primary action. Null when the page has none right now (a
   /// stage whose action is a tap in the body); the bar then shows only
@@ -84,69 +131,121 @@ class EditorPage extends StatelessWidget {
   /// a failure the person must see without scrolling.
   final Widget? status;
 
+  /// The page's own bottom band in place of the standard bar. Exclusive with
+  /// [save], [secondary] and [status]. The page keeps it clear of the system
+  /// navigation bar and above the keyboard; it should not pad for either.
+  ///
+  /// It gets at most [maxBarShare] of the body's height, bounded, so a band
+  /// that can grow taller (large text, keyboard up) scrolls its own content
+  /// and keeps its commit control in view.
+  final Widget? bar;
+
+  /// The largest share of the body's height a custom [bar] may take.
+  static const double maxBarShare = 0.6;
+
+  /// Fixed between the app bar and the fields; the fields scroll under it.
+  final Widget? header;
+
   /// App bar actions (help, overflow). Never a second Save.
   final List<Widget> actions;
 
-  /// Replaces the fields and the bar while the form cannot be shown: loading,
-  /// or a failed read with its retry.
+  /// Replaces the header, the fields and the bar while the form cannot be
+  /// shown: loading, or a failed read with its retry.
   final Widget? placeholder;
 
-  /// Around the fields.
+  /// False draws no close button: a gate pushed as a full-screen dialog that
+  /// the person finishes rather than leaves. Pair it with a `PopScope` that
+  /// says what Back does.
+  final bool dismissible;
+
+  /// False draws the close button disabled, while the page is doing work the
+  /// person cannot walk away from. Ignored when not [dismissible].
+  final bool closeEnabled;
+
+  /// Around the fields, or around [child].
   final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     final route = ModalRoute.of(context);
     final placeholder = this.placeholder;
-    final hasBar =
+    final header = this.header;
+    final bar = this.bar;
+    final fields = this.fields;
+    final hasStandardBar =
         placeholder == null &&
+        bar == null &&
         (save != null || secondary != null || status != null);
+    final Widget? leading = !dismissible
+        ? null
+        : !(route?.impliesAppBarDismissal ?? false)
+        ? null
+        : closeEnabled
+        ? const CloseButton()
+        : IconButton(
+            icon: const CloseButtonIcon(),
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            onPressed: null,
+          );
+    final Widget? bottom = placeholder != null || bar != null
+        ? null
+        : hasStandardBar
+        ? EditorActionBar(save: save, secondary: secondary, status: status)
+        : null;
+    final Widget content = fields == null
+        ? Padding(padding: padding, child: child)
+        : SingleChildScrollView(
+            padding: padding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PageHeader(
+                  title: title,
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                ),
+                ...fields,
+              ],
+            ),
+          );
     // The title is said in full at the top of the form, where it wraps; the
-    // bar repeats it once that heading has scrolled away (TO-12).
+    // bar repeats it once that heading has scrolled away (TO-12). The body
+    // edge it scrolls under is the bottom of [header], so PageBody wraps only
+    // the scrolling part.
     return PageTitleScope(
       child: Scaffold(
         appBar: AppBar(
-          leading: (route?.impliesAppBarDismissal ?? false)
-              ? const CloseButton()
-              : null,
+          automaticallyImplyLeading: dismissible,
+          leading: leading,
           title: PageBarTitle(title),
           actions: actions,
         ),
-        body: PageBody(
-          child: SafeArea(
-            top: false,
-            bottom: !hasBar,
-            child:
-                placeholder ??
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: padding,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            PageHeader(
-                              title: title,
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpace.sm,
-                              ),
-                            ),
-                            ...fields,
-                          ],
+        body: SafeArea(
+          top: false,
+          bottom: bottom == null && bar == null,
+          child: placeholder != null
+              ? PageBody(child: placeholder)
+              : LayoutBuilder(
+                  builder: (context, box) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ?header,
+                      Expanded(child: PageBody(child: content)),
+                      ?bottom,
+                      // The standard bar paints under the navigation bar and
+                      // pads inside itself; a page's own band is only kept
+                      // clear of it, and never takes more than [maxBarShare] of the body,
+                      // so the fields keep room above it at large text with
+                      // the keyboard up.
+                      if (bar != null)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: box.maxHeight * maxBarShare,
+                          ),
+                          child: SafeArea(top: false, child: bar),
                         ),
-                      ),
-                    ),
-                    if (hasBar)
-                      EditorActionBar(
-                        save: save,
-                        secondary: secondary,
-                        status: status,
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-          ),
         ),
       ),
     );

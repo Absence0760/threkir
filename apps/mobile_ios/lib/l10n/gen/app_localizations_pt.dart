@@ -606,7 +606,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outra app ligada à Conexão Saúde';
+      'Importe os treinos que o Samsung Health, a Garmin, a Fitbit e outras apps guardam na Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9771,7 +9771,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'O Pro desbloqueia o Coach de IA — em breve. Ainda pode apoiar a app abaixo.';
+      'O Pro chega em breve: mais mensagens por dia ao Coach de IA e processamento prioritário. Ainda pode apoiar a app abaixo.';
 
   @override
   String get proRegionalNote =>
@@ -18807,6 +18807,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP.';
 
   @override
+  String get avatarCropPreparing => 'A preparar a fotografia…';
+
+  @override
   String get dashboardLeadTitle => 'A sua semana';
 
   @override
@@ -24786,7 +24789,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outro app conectado à Conexão Saúde';
+      'Importe os treinos que o Samsung Health, a Garmin, a Fitbit e outros apps salvam na Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
@@ -25700,7 +25703,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyContactOfWithdrawConfirm =>
-      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e precisaria enviar um novo pedido.';
+      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e, para voltar a contar com você, precisaria enviar um novo pedido.';
 
   @override
   String get safetyContactOfWithdrawnToast =>
@@ -33938,7 +33941,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proComingSoon =>
-      'O Pro desbloqueia o Coach de IA — em breve. Você ainda pode apoiar o app abaixo.';
+      'O Pro chega em breve: mais mensagens por dia para o Coach de IA e processamento prioritário. Você ainda pode apoiar o app abaixo.';
 
   @override
   String get proRegionalNote =>
@@ -42967,6 +42970,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get avatarCropLoadFailed =>
       'Não foi possível abrir esta imagem. Tente JPEG, PNG ou WebP.';
+
+  @override
+  String get avatarCropPreparing => 'Preparando a foto…';
 
   @override
   String get dashboardLeadTitle => 'Sua semana';

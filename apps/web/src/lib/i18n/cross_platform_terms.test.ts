@@ -24,6 +24,23 @@ const PAIRS: [web: string, arb: string][] = [
 	['prefs.withdrawConsentMessage', 'bodyMetricsWithdrawBody'],
 	['nutrition.targets.metricsHint', 'nutritionTargetsMetricsHint'],
 	['nutrition.targets.emptyBody', 'nutritionTargetsEmptyBody'],
+	// The pt reader-gender and ja rank fixes landed on the phone a round before
+	// web caught up (#1374 round 4, decisions § 2553).
+	['dash.readinessReason_fresh', 'readinessReasonFresh'],
+	['prefs.activity_sedentary', 'activitySedentary'],
+	['prefs.activity_light', 'activityLight'],
+	['prefs.activity_moderate', 'activityModerate'],
+	['prefs.activity_active', 'activityVeryActive'],
+	['prefs.activity_very_active', 'activityExtraActive'],
+	['messages.mutedToast', 'messagesMutedToast'],
+	['guidedRuns.tempo25.cue5', 'guidedTempo25Cue5'],
+	['safety.contactOfIntro', 'safetyContactOfIntro'],
+	['safety.contactOfWithdrawConfirm', 'safetyContactOfWithdrawConfirm'],
+	['runDetail.parkCourseRank', 'runDetailParkCourseRank'],
+	['runDetail.parkCourseMonthRank', 'runDetailParkCourseMonthRank'],
+	['runDetail.parkCourseRanks', 'runDetailParkCourseRanks'],
+	['runShare.courseMonthRank', 'shareCardCourseMonthRank'],
+	['runShare.courseRanks', 'shareCardCourseRanks'],
 ];
 
 const ARB_FILE: Record<Locale, string> = {

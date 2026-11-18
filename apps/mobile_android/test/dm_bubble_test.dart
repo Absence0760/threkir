@@ -97,6 +97,42 @@ void main() {
     expect(find.text('Edited'), findsOneWidget);
   });
 
+  for (final mine in const [false, true]) {
+    testWidgets('at 2x on 320 dp the stamp and its marks wrap inside the '
+        'bubble (mine: $mine)', (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 640),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Scaffold(
+            body: ListView(children: [
+              DmBubble(
+                mine: mine,
+                body: 'Fixed typo',
+                time: '14 Oct 2026, 09:05',
+                editedLabel: 'Bearbeitet',
+                aiAssisted: (label: 'KI-unterstützt', title: 'KI'),
+              ),
+            ]),
+          ),
+        ),
+      ));
+      expect(tester.takeException(), isNull);
+      for (final f in [
+        find.text('14 Oct 2026, 09:05'),
+        find.byKey(const ValueKey('dm-edited')),
+        find.byKey(const ValueKey('dm-ai-assisted')),
+      ]) {
+        expect(tester.getRect(f).right, lessThanOrEqualTo(320));
+      }
+    });
+  }
+
   testWidgets('no edited mark on a message never edited', (tester) async {
     await _mount(
       tester,

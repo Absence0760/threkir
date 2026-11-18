@@ -30,6 +30,7 @@ class PushedPage extends StatelessWidget {
     super.key,
     required this.title,
     required Widget this.body,
+    this.leading,
     this.actions = const [],
     this.pinned = const [],
     this.moreTooltip,
@@ -53,6 +54,7 @@ class PushedPage extends StatelessWidget {
     this.pinned = const [],
     this.moreTooltip,
   })  : placeholder = child,
+        leading = null,
         moreKey = null,
         body = null,
         busyLabel = null,
@@ -72,6 +74,11 @@ class PushedPage extends StatelessWidget {
   final Widget? body;
 
   final Widget? placeholder;
+
+  /// Replaces the bar's back button: a page whose way out does more than pop
+  /// (a close that confirms abandoning a live session) passes its own.
+  /// Null keeps the route's automatic back or close button.
+  final Widget? leading;
 
   /// Toolbar actions, most used first. At most two show beside the overflow
   /// (three when every action fits without one); a destructive action is
@@ -111,6 +118,7 @@ class PushedPage extends StatelessWidget {
         builder: (context) => Scaffold(
           resizeToAvoidBottomInset: resizeToAvoidBottomInset,
           appBar: AppBar(
+            leading: leading,
             title: PageBarTitle(title),
             actions: hasActions
                 ? [
@@ -157,6 +165,7 @@ class DetailPage extends PushedPage {
     super.key,
     required super.title,
     required super.body,
+    super.leading,
     super.actions,
     super.pinned,
     super.moreTooltip,

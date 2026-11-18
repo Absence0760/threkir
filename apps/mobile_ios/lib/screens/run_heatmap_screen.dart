@@ -5,6 +5,8 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show MapFirstPage, PageBarTitle, PageBody, PageHeading, PageTitleScope;
 
 import '../l10n/gen/app_localizations.dart';
 import '../local_run_store.dart';
@@ -273,11 +275,122 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
     final theme = Theme.of(context);
     final darkBasemap = currentBasemapIsDark(context);
     final ramp = mapHeatRamp(darkBasemap: darkBasemap);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.runHeatmapTitle)),
-      body: Stack(
-        children: [
-          FlutterMap(
+    // The pill names the map in every state, so the page says its title in
+    // full where it wraps; the bar repeats it only if that heading leaves
+    // view, and a bar title cut at a large text size is never the only one.
+    final heading = PageHeading(
+      l10n.runHeatmapLegendTitle,
+      style: theme.textTheme.labelLarge,
+    );
+    final Widget pill;
+    if (_loading) {
+      pill = _Pill(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            heading,
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _trackCount > 0
+                        ? l10n.runHeatmapLoadingProgress(
+                            _trackCount,
+                            _totalWithTracks,
+                          )
+                        : l10n.runHeatmapLoading,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    } else if (_errored || _empty) {
+      pill = _Pill(child: heading);
+    } else {
+      pill = _Pill(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            heading,
+            Text(
+              l10n.runHeatmapLegendSummary(_trackCount),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _LegendScale(ramp: ramp),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    l10n.runHeatmapScaleLess,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    l10n.runHeatmapScaleMore,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    // The error and empty states explain an empty map, so they sit in the
+    // panel under it rather than over it; the template keeps the panel's
+    // retry above a 3-button nav bar.
+    final Widget? panel = _loading
+        ? null
+        : _errored
+        ? _StateMessage(
+            icon: Icons.cloud_off,
+            title: l10n.runHeatmapErrorTitle,
+            body: l10n.runHeatmapErrorBody,
+            action: FilledButton(
+              onPressed: () => unawaited(_build()),
+              child: Text(l10n.runHeatmapRetry),
+            ),
+          )
+        : _empty
+        // Signed out with nothing local, "No mapped runs yet" would
+        // be a claim we can't make — the server rows we can't read
+        // may well exist (issue #239).
+        ? _StateMessage(
+            icon: Icons.local_fire_department,
+            title: _signedIn
+                ? l10n.runHeatmapEmptyTitle
+                : l10n.runHeatmapSignedOutTitle,
+            body: _signedIn
+                ? l10n.runHeatmapEmptyBody
+                : l10n.runHeatmapSignedOutBody,
+          )
+        : null;
+    return PageTitleScope(
+      child: MapFirstPage(
+        appBar: AppBar(title: PageBarTitle(l10n.runHeatmapTitle)),
+        map: PageBody(
+          child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
@@ -316,144 +429,68 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                       Polyline(
                         points: line,
                         strokeWidth: 2.5,
-                        color: mapTrackLine(darkBasemap: darkBasemap)
-                            .withValues(alpha: _lineOpacity),
+                        color: mapTrackLine(
+                          darkBasemap: darkBasemap,
+                        ).withValues(alpha: _lineOpacity),
                       ),
                   ],
                 ),
-              // The map runs under the system navigation bar, and a credit
-              // drawn there is covered by it.
-              SafeArea(
-                top: false,
-                child: MapAttribution(darkBasemap: darkBasemap),
-              ),
             ],
           ),
-          if (_loading)
-            Positioned(
-              top: 12,
-              left: 12,
-              child: _Pill(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _trackCount > 0
-                            ? l10n.runHeatmapLoadingProgress(
-                                _trackCount, _totalWithTracks)
-                            : l10n.runHeatmapLoading,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (_errored)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.cloud_off,
-                        size: 48, color: theme.colorScheme.outline),
-                    const SizedBox(height: 8),
-                    Text(l10n.runHeatmapErrorTitle,
-                        style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.runHeatmapErrorBody,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: () => unawaited(_build()),
-                      child: Text(l10n.runHeatmapRetry),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (_empty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.local_fire_department,
-                        size: 48, color: theme.colorScheme.outline),
-                    const SizedBox(height: 8),
-                    // Signed out with nothing local, "No mapped runs yet"
-                    // would be a claim we can't make — the server rows we
-                    // can't read may well exist (issue #239).
-                    Text(
-                        _signedIn
-                            ? l10n.runHeatmapEmptyTitle
-                            : l10n.runHeatmapSignedOutTitle,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      _signedIn
-                          ? l10n.runHeatmapEmptyBody
-                          : l10n.runHeatmapSignedOutBody,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Positioned(
-              top: 12,
-              left: 12,
-              child: _Pill(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l10n.runHeatmapLegendTitle,
-                        style: theme.textTheme.labelLarge),
-                    Text(
-                      l10n.runHeatmapLegendSummary(_trackCount),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 6),
-                    _LegendScale(ramp: ramp),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(l10n.runHeatmapScaleLess,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall),
-                        ),
-                        Flexible(
-                          child: Text(l10n.runHeatmapScaleMore,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+        ),
+        overlays: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Align(alignment: AlignmentDirectional.topStart, child: pill),
+          ),
+        ],
+        attribution: MapAttribution(darkBasemap: darkBasemap),
+        panel: panel,
+      ),
+    );
+  }
+}
+
+class _StateMessage extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget? action;
+
+  const _StateMessage({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: theme.colorScheme.outline),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
+          ),
+          if (action case final action?) ...[
+            const SizedBox(height: 12),
+            action,
+          ],
         ],
       ),
     );
@@ -495,9 +532,7 @@ class _LegendScale extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         gradient: LinearGradient(
-          colors: [
-            for (final c in ramp) c.withValues(alpha: mapHeatOpacity),
-          ],
+          colors: [for (final c in ramp) c.withValues(alpha: mapHeatOpacity)],
         ),
       ),
     );

@@ -27,7 +27,6 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
-import '../widgets/thread_title.dart';
 import '../widgets/coach_share_card.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';
@@ -1078,154 +1077,143 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.api.userId != null;
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        toolbarHeight: ThreadTitle.toolbarHeight(context, subtitle: false),
-        title: ThreadTitle(
-          avatar: IdentityAvatar(
-            seed: widget.partnerId ?? widget.deletedPartnerKey!,
-            name: _partnerName,
-            imageUrl: widget.partnerAvatarUrl,
-            size: 32,
-          ),
-          title: widget.partnerId == null
-              ? l10n.messagesDeletedAccount
-              : _partnerName ?? l10n.profileRunnerFallback,
+    final barReady = _loadError == null && !_loading && !_deleted;
+    return ConversationPage(
+      titleSpacing: 0,
+      toolbarHeight: ThreadTitle.toolbarHeight(context, subtitle: false),
+      title: ThreadTitle(
+        avatar: IdentityAvatar(
+          seed: widget.partnerId ?? widget.deletedPartnerKey!,
+          name: _partnerName,
+          imageUrl: widget.partnerAvatarUrl,
+          size: 32,
         ),
-        actions: [
-          if (signedIn && widget.partnerId != null)
-            IconButton(
-              tooltip: l10n.messagesViewProfile,
-              icon: const Icon(Icons.person_outline),
-              onPressed: _openProfile,
-            ),
-          if (signedIn &&
-              !_deleted &&
-              (widget.partnerId != null || _conversationId != null))
-            PopupMenuButton<String>(
-              key: const ValueKey('message-thread-more'),
-              tooltip: l10n.commonMore,
-              onSelected: _onMenu,
-              itemBuilder: (context) => [
-                if (_conversationId != null && widget.partnerId != null)
-                  PopupMenuItem(
-                    key: const ValueKey('message-thread-mute'),
-                    value: 'mute',
-                    enabled: !_conversationBusy,
-                    child: ListTile(
-                      leading: Icon(_muted
-                          ? Icons.notifications_outlined
-                          : Icons.notifications_off_outlined),
-                      title: Text(
-                          _muted ? l10n.messagesUnmute : l10n.messagesMute),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                if (_conversationId != null)
-                  PopupMenuItem(
-                    key: const ValueKey('message-thread-archive'),
-                    value: 'archive',
-                    enabled: !_conversationBusy,
-                    child: ListTile(
-                      leading: Icon(_archived
-                          ? Icons.unarchive_outlined
-                          : Icons.archive_outlined),
-                      title: Text(_archived
-                          ? l10n.messagesUnarchive
-                          : l10n.messagesArchive),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                if (_conversationId != null)
-                  PopupMenuItem(
-                    key: const ValueKey('message-thread-mark-unread'),
-                    value: 'unread',
-                    enabled: !_conversationBusy,
-                    child: ListTile(
-                      leading: const Icon(Icons.mark_chat_unread_outlined),
-                      title: Text(l10n.messagesMarkUnread),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                if (_conversationId != null && _messages.isNotEmpty)
-                  PopupMenuItem(
-                    key: const ValueKey('message-thread-delete'),
-                    value: 'delete',
-                    child: ListTile(
-                      leading: const Icon(Icons.delete_outline),
-                      title: Text(l10n.messagesDeleteConversation),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                if (widget.partnerId != null)
-                  PopupMenuItem(
-                    key: const ValueKey('message-thread-block'),
-                    value: 'block',
-                    enabled: !_blockBusy,
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.block,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      title: Text(
-                        _blocked ? l10n.messagesUnblock : l10n.messagesBlock,
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-              ],
-            ),
-        ],
+        title: widget.partnerId == null
+            ? l10n.messagesDeletedAccount
+            : _partnerName ?? l10n.profileRunnerFallback,
       ),
+      actions: [
+        if (signedIn && widget.partnerId != null)
+          IconButton(
+            tooltip: l10n.messagesViewProfile,
+            icon: const Icon(Icons.person_outline),
+            onPressed: _openProfile,
+          ),
+        if (signedIn &&
+            !_deleted &&
+            (widget.partnerId != null || _conversationId != null))
+          PopupMenuButton<String>(
+            key: const ValueKey('message-thread-more'),
+            tooltip: l10n.commonMore,
+            onSelected: _onMenu,
+            itemBuilder: (context) => [
+              if (_conversationId != null && widget.partnerId != null)
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-mute'),
+                  value: 'mute',
+                  enabled: !_conversationBusy,
+                  child: ListTile(
+                    leading: Icon(_muted
+                        ? Icons.notifications_outlined
+                        : Icons.notifications_off_outlined),
+                    title: Text(
+                        _muted ? l10n.messagesUnmute : l10n.messagesMute),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              if (_conversationId != null)
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-archive'),
+                  value: 'archive',
+                  enabled: !_conversationBusy,
+                  child: ListTile(
+                    leading: Icon(_archived
+                        ? Icons.unarchive_outlined
+                        : Icons.archive_outlined),
+                    title: Text(_archived
+                        ? l10n.messagesUnarchive
+                        : l10n.messagesArchive),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              if (_conversationId != null)
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-mark-unread'),
+                  value: 'unread',
+                  enabled: !_conversationBusy,
+                  child: ListTile(
+                    leading: const Icon(Icons.mark_chat_unread_outlined),
+                    title: Text(l10n.messagesMarkUnread),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              if (_conversationId != null && _messages.isNotEmpty)
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-delete'),
+                  value: 'delete',
+                  child: ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: Text(l10n.messagesDeleteConversation),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              if (widget.partnerId != null)
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-block'),
+                  value: 'block',
+                  enabled: !_blockBusy,
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.block,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      _blocked ? l10n.messagesUnblock : l10n.messagesBlock,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+            ],
+          ),
+      ],
+      // A suggested change to a coach-assigned plan is a system card above
+      // the conversation, merged in the UI only (decisions § 2382): it is not
+      // a direct message.
+      header: signedIn && widget.partnerId != null && !_deleted
+          ? PlanChangeRequestsSection(
+              api: widget.api,
+              partnerId: widget.partnerId,
+            )
+          : null,
+      headerMaxFraction: 0.45,
       body: !signedIn
           ? SignInRequiredState(api: widget.api)
-          : Column(
-              children: [
-                // A suggested change to a coach-assigned plan is a system
-                // card above the conversation, merged in the UI only
-                // (decisions § 2382): it is not a direct message.
-                if (widget.partnerId != null && !_deleted)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height * 0.45,
-                    ),
-                    child: SingleChildScrollView(
-                      child: PlanChangeRequestsSection(
-                        api: widget.api,
-                        partnerId: widget.partnerId,
+          : _deleted
+              ? EmptyState(
+                  key: const ValueKey('message-thread-deleted'),
+                  icon: Icons.delete_outline,
+                  title: l10n.messagesConversationDeleted,
+                  body: widget.deletedPartnerKey != null
+                      ? l10n.messagesConversationDeletedNoticeDeletedAccount
+                      : l10n.messagesConversationDeletedNotice,
+                )
+              : _body(l10n),
+      footer: !signedIn || !barReady
+          ? null
+          : widget.partnerId == null
+              ? _closedBar(l10n.messagesDeletedAccountClosed)
+              : _blocked
+                  ? _closedBar(
+                      l10n.messagesBlockedNotice(_displayName(l10n)),
+                      action: TextButton(
+                        key: const ValueKey('message-unblock'),
+                        onPressed: _blockBusy ? null : _unblock,
+                        child: Text(l10n.messagesUnblock),
                       ),
-                    ),
-                  ),
-                Expanded(
-                  child: _deleted
-                      ? EmptyState(
-                          key: const ValueKey('message-thread-deleted'),
-                          icon: Icons.delete_outline,
-                          title: l10n.messagesConversationDeleted,
-                          body: widget.deletedPartnerKey != null
-                              ? l10n.messagesConversationDeletedNoticeDeletedAccount
-                              : l10n.messagesConversationDeletedNotice,
-                        )
-                      : _body(l10n),
-                ),
-                if (_loadError == null && !_loading && !_deleted)
-                  widget.partnerId == null
-                      ? _closedBar(l10n.messagesDeletedAccountClosed)
-                      : _blocked
-                          ? _closedBar(
-                              l10n.messagesBlockedNotice(_displayName(l10n)),
-                              action: TextButton(
-                                key: const ValueKey('message-unblock'),
-                                onPressed: _blockBusy ? null : _unblock,
-                                child: Text(l10n.messagesUnblock),
-                              ),
-                            )
-                          : _request
-                              ? _requestBar(l10n)
-                              : _composerBar(l10n),
-              ],
-            ),
+                    )
+                  : _request
+                      ? _requestBar(l10n)
+                      : _composerBar(l10n),
     );
   }
 
@@ -1358,26 +1346,28 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// partner deleted their account, or the viewer has blocked them.
   Widget _closedBar(String message, {Widget? action}) {
     final theme = Theme.of(context);
-    return SafeArea(
-      top: false,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ),
-            if (action != null) ...[const SizedBox(width: 8), action],
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      padding: const EdgeInsets.all(12),
+      // A Wrap, not a Row: at 2x text on a narrow phone the action took the
+      // width and the notice stood one word to a line, taller than the
+      // screen. Here the action drops under the notice when both do not fit.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          Text(
+            message,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          ?action,
+        ],
       ),
     );
   }
@@ -1385,48 +1375,45 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   Widget _requestBar(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final canDecline = !_requestBusy && _requestThrough != null;
-    return SafeArea(
-      top: false,
-      child: Container(
-        key: const ValueKey('message-request-bar'),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l10n.messagesRequestNotice(_displayName(l10n)),
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                  key: const ValueKey('message-request-accept'),
-                  onPressed: _requestBusy ? null : _acceptRequest,
-                  child: Text(l10n.messagesRequestAccept),
-                ),
-                OutlinedButton(
-                  key: const ValueKey('message-request-decline'),
-                  onPressed: canDecline ? _confirmDecline : null,
-                  child: Text(l10n.messagesRequestDecline),
-                ),
-                OutlinedButton(
-                  key: const ValueKey('message-request-block'),
-                  onPressed: canDecline ? _toggleBlock : null,
-                  child: Text(l10n.messagesBlock),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      key: const ValueKey('message-request-bar'),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            l10n.messagesRequestNotice(_displayName(l10n)),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton(
+                key: const ValueKey('message-request-accept'),
+                onPressed: _requestBusy ? null : _acceptRequest,
+                child: Text(l10n.messagesRequestAccept),
+              ),
+              OutlinedButton(
+                key: const ValueKey('message-request-decline'),
+                onPressed: canDecline ? _confirmDecline : null,
+                child: Text(l10n.messagesRequestDecline),
+              ),
+              OutlinedButton(
+                key: const ValueKey('message-request-block'),
+                onPressed: canDecline ? _toggleBlock : null,
+                child: Text(l10n.messagesBlock),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1437,46 +1424,43 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     final canSend = !_sending &&
         !_preparingPhoto &&
         (_composer.text.trim().isNotEmpty || photo != null);
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (photo != null) ...[
-              Row(
-                key: const ValueKey('dm-photo-draft'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Image.memory(
-                      photo,
-                      height: 96,
-                      fit: BoxFit.cover,
-                      semanticLabel: l10n.messagesPhotoDraftAlt,
-                    ),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (photo != null) ...[
+            Row(
+              key: const ValueKey('dm-photo-draft'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Image.memory(
+                    photo,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    semanticLabel: l10n.messagesPhotoDraftAlt,
                   ),
-                  IconButton(
-                    key: const ValueKey('dm-photo-remove'),
-                    tooltip: l10n.messagesPhotoRemove,
-                    icon: const Icon(Icons.close),
-                    onPressed: _sending
-                        ? null
-                        : () => setState(() => _photoDraft = null),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-            _composerRow(l10n, canSend),
+                ),
+                IconButton(
+                  key: const ValueKey('dm-photo-remove'),
+                  tooltip: l10n.messagesPhotoRemove,
+                  icon: const Icon(Icons.close),
+                  onPressed: _sending
+                      ? null
+                      : () => setState(() => _photoDraft = null),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
           ],
-        ),
+          _composerRow(l10n, canSend),
+        ],
       ),
     );
   }

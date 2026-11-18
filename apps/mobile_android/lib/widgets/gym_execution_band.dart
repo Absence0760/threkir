@@ -7,8 +7,10 @@ import '../gym_prs.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 
-/// Top-of-screen overlay that surfaces the current [GymWorkoutRunner] step
-/// while a guided gym session is running. Mirrors
+/// The bottom band that surfaces the current [GymWorkoutRunner] step while a
+/// guided gym session is running, passed as `EditorPage.bar` so the page keeps
+/// it above the keyboard and clear of the system navigation bar; the band pads
+/// for neither. Mirrors
 /// [widgets/workout_execution_band.dart] for runs (and the web
 /// `GymExecutionBand.svelte`): driven through a [ValueListenable] of
 /// [GymBandState] snapshots so the rest-countdown tick and per-set entry don't
@@ -118,110 +120,128 @@ class _Band extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    // Only Log set is pinned: when the page holds the band under its natural
+    // height (large text, keyboard up), the step and the lesser controls
+    // scroll above it.
     return _shell(
       theme,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              namesAnExercise(step.exerciseName)
+                                  ? step.exerciseName
+                                  : '—',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              l10n.gymSessionStep(
+                                step.exerciseName,
+                                state.currentIndex + 1,
+                                state.total,
+                              ),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              l10n.gymSessionTarget,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _fmtTarget(l10n, step),
+                              textAlign: TextAlign.end,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _SetPip(
+                        entered: state.entered,
+                        targetHit: state.targetHit,
+                      ),
+                    ],
+                  ),
+                  if (state.restRemainingS > 0) ...[
+                    const SizedBox(height: 6),
                     Text(
-                      namesAnExercise(step.exerciseName)
-                          ? step.exerciseName
-                          : '—',
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      l10n.gymSessionRestRemaining(state.restRemainingS),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.gymSessionStep(
-                        step.exerciseName,
-                        state.currentIndex + 1,
-                        state.total,
-                      ),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    l10n.gymSessionTarget,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _fmtTarget(l10n, step),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const SizedBox(height: 8),
+                  // Side by side when the three fit, stacked when they do not
+                  // (large text on a narrow phone), rather than squeezing
+                  // each label.
+                  OverflowBar(
+                    alignment: MainAxisAlignment.spaceBetween,
+                    spacing: 8,
+                    overflowSpacing: 8,
+                    overflowAlignment: OverflowBarAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: state.currentIndex == 0 ? null : onRewind,
+                        icon: const Icon(Icons.skip_previous, size: 16),
+                        label: Text(l10n.gymSessionRewind),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: onSkip,
+                        icon: const Icon(Icons.skip_next, size: 16),
+                        label: Text(l10n.gymSessionSkipSet),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: onAbandon,
+                        icon: const Icon(Icons.cancel_outlined, size: 16),
+                        label: Text(l10n.gymSessionAbandon),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor: theme.colorScheme.error,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(width: 8),
-              _SetPip(entered: state.entered, targetHit: state.targetHit),
-            ],
-          ),
-          if (state.restRemainingS > 0) ...[
-            const SizedBox(height: 6),
-            Text(
-              l10n.gymSessionRestRemaining(state.restRemainingS),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
             ),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: state.currentIndex == 0 ? null : onRewind,
-                  icon: const Icon(Icons.skip_previous, size: 16),
-                  label: Text(l10n.gymSessionRewind),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onSkip,
-                  icon: const Icon(Icons.skip_next, size: 16),
-                  label: Text(l10n.gymSessionSkipSet),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onAbandon,
-                  icon: const Icon(Icons.cancel_outlined, size: 16),
-                  label: Text(l10n.gymSessionAbandon),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: theme.colorScheme.error,
-                  ),
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
@@ -236,7 +256,7 @@ class _Band extends StatelessWidget {
 
   Widget _shell(ThemeData theme, {required Widget child}) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.95),

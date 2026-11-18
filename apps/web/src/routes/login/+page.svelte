@@ -25,6 +25,13 @@
 	import { browserReturnStore, stashPendingReturn } from '#lib/core/pending_return.ts';
 	import { signupShareFor } from '#lib/share/share_attribution.ts';
 	import { signupSourceFor } from '#lib/core/signup_source_attribution.ts';
+	import { browserSessionStore, readFirstTouch } from '#lib/core/signup_source.ts';
+	import {
+		detectInAppBrowser,
+		externalBrowserLink,
+		inAppBrowserName,
+		type InAppBrowser,
+	} from '#lib/core/in_app_browser.ts';
 	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import { googleAuthEnabled } from '#lib/core/google_auth_flag.ts';
 	import { appleAuthEnabled } from '#lib/core/apple_auth_flag.ts';
@@ -39,6 +46,15 @@
 	// opaque provider error.
 	const googleEnabled = googleAuthEnabled();
 	const appleEnabled = appleAuthEnabled();
+
+	// Google answers OAuth from an embedded webview with `403
+	// disallowed_useragent`, and the Facebook / Instagram / Threads apps open
+	// a tapped link in one. Read from the UA on mount (the page is
+	// prerendered), so the server markup keeps the plain Google button.
+	let inApp = $state<InAppBrowser | null>(null);
+	let googleBlocked = $derived(googleEnabled && inApp !== null);
+	let externalLink = $state('');
+	let copyFailed = $state(false);
 
 	function gateMessage(reason: SignUpGateReason): string {
 		return reason === 'adult' ? m('login.gateAdult') : m('login.gateTerms');
@@ -74,6 +90,7 @@
 	let returnToOnMount = $state<string>('/dashboard');
 	onMount(() => {
 		hydrated = true;
+		inApp = detectInAppBrowser(navigator.userAgent);
 		returnToOnMount = resolveReturnTo(page.url.searchParams.get('return_to'));
 	});
 
@@ -138,6 +155,21 @@
 			// mapping as mobile's friendlyAuthError (auth_error.dart).
 			error = m(authErrorMessageKey(classifyAuthError(err)), { min: PASSWORD_MIN_LENGTH });
 			loading = false;
+		}
+	}
+
+	async function copyExternalLink() {
+		if (!inApp) return;
+		error = '';
+		externalLink = externalBrowserLink(window.location.href, readFirstTouch(browserSessionStore()), inApp);
+		try {
+			await navigator.clipboard.writeText(externalLink);
+			copyFailed = false;
+			info = m('login.inAppLinkCopied');
+		} catch (e) {
+			console.error('copy login link failed', e);
+			copyFailed = true;
+			info = m('login.inAppCopyFailed');
 		}
 	}
 
@@ -389,24 +421,54 @@
 
 		{#if !isReset}
 			<div class="login-buttons">
-				<button
-					class="btn btn-google"
-					onclick={googleEnabled
-						? () => startOAuthSignIn('google')
-						: () => showProviderSoon('login.googleSoon')}
-					disabled={loading}
-				>
-					<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
-						<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-						<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-						<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-						<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-					</svg>
-					{m('login.continueGoogle')}
-					{#if !googleEnabled}
-						<span class="soon-pill">{m('login.soon')}</span>
-					{/if}
-				</button>
+				{#if googleBlocked && inApp}
+					{@const appName = inAppBrowserName(inApp)}
+					<div class="in-app-note" data-testid="login-in-app-note">
+						<p class="in-app-note-lead">
+							<span class="material-symbols" aria-hidden="true">info</span>
+							<span>
+								{appName
+									? m('login.inAppGoogleNamed', { app: appName })
+									: m('login.inAppGoogleUnnamed')}
+							</span>
+						</p>
+						<p>{appleEnabled ? m('login.inAppUseAppleOrEmail') : m('login.inAppUseEmail')}</p>
+						<button type="button" class="btn btn-outline btn-sm" onclick={copyExternalLink}>
+							<span class="material-symbols" aria-hidden="true">content_copy</span>
+							{m('login.inAppCopyLink')}
+						</button>
+						{#if copyFailed && externalLink}
+							<label for="in-app-link" class="visually-hidden">{m('login.inAppLinkLabel')}</label>
+							<input
+								id="in-app-link"
+								class="in-app-link"
+								type="text"
+								readonly
+								value={externalLink}
+								onfocus={(e) => e.currentTarget.select()}
+							/>
+						{/if}
+					</div>
+				{:else}
+					<button
+						class="btn btn-google"
+						onclick={googleEnabled
+							? () => startOAuthSignIn('google')
+							: () => showProviderSoon('login.googleSoon')}
+						disabled={loading}
+					>
+						<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
+							<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+							<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+							<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+							<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+						</svg>
+						{m('login.continueGoogle')}
+						{#if !googleEnabled}
+							<span class="soon-pill">{m('login.soon')}</span>
+						{/if}
+					</button>
+				{/if}
 
 				<button
 					class="btn btn-apple"
@@ -788,6 +850,58 @@
 
 	.oauth-icon {
 		flex-shrink: 0;
+	}
+
+	.in-app-note {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-lg);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		text-align: start;
+		font-size: 0.85rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
+
+	.in-app-note p {
+		margin: 0;
+	}
+
+	.in-app-note .in-app-note-lead {
+		display: flex;
+		gap: var(--space-xs);
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.in-app-note-lead .material-symbols {
+		flex-shrink: 0;
+		font-size: 1.15rem;
+		color: var(--color-primary);
+	}
+
+	.in-app-note .btn {
+		margin-top: var(--space-2xs);
+		gap: 0.3rem;
+	}
+
+	.in-app-note .btn .material-symbols {
+		font-size: 1.05rem;
+	}
+
+	.in-app-link {
+		width: 100%;
+		padding: 0.5rem var(--space-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		font: inherit;
+		font-size: 0.8rem;
+		background: var(--color-surface);
+		color: var(--color-text);
 	}
 
 	.divider {

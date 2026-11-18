@@ -866,7 +866,7 @@ abstract class AppLocalizations {
   /// Android subtitle naming apps that write to Health Connect
   ///
   /// In en, this message translates to:
-  /// **'Pull workouts from Google Fit, Samsung Health, Garmin, Fitbit, and any other Health Connect app'**
+  /// **'Pull workouts that Samsung Health, Garmin, Fitbit and other apps save to Health Connect'**
   String get importHealthSubtitleAndroid;
 
   /// iOS body copy explaining what is imported from Apple Health and the no-track caveat
@@ -14999,7 +14999,7 @@ abstract class AppLocalizations {
   /// Pro tile subtitle shown instead of a purchase CTA when no Pro perk is live
   ///
   /// In en, this message translates to:
-  /// **'Pro unlocks the AI Coach — coming soon. You can still support the app below.'**
+  /// **'Pro is coming soon: more AI Coach messages a day and priority processing. You can still support the app below.'**
   String get proComingSoon;
 
   /// Honesty note about billing currency and regional availability
@@ -29412,6 +29412,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.'**
   String get avatarCropLoadFailed;
+
+  /// Label on the Use photo button while the cropped photo is being encoded
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing photo…'**
+  String get avatarCropPreparing;
 
   /// Heading of the dashboard's opening this-week card
   ///

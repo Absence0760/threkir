@@ -594,7 +594,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Pull workouts from Google Fit, Samsung Health, Garmin, Fitbit, and any other Health Connect app';
+      'Pull workouts that Samsung Health, Garmin, Fitbit and other apps save to Health Connect';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9658,7 +9658,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proComingSoon =>
-      'Pro unlocks the AI Coach — coming soon. You can still support the app below.';
+      'Pro is coming soon: more AI Coach messages a day and priority processing. You can still support the app below.';
 
   @override
   String get proRegionalNote =>
@@ -18599,6 +18599,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.';
+
+  @override
+  String get avatarCropPreparing => 'Preparing photo…';
 
   @override
   String get dashboardLeadTitle => 'Your week';

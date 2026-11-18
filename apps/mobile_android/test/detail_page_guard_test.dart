@@ -78,11 +78,6 @@ const _barsLeft = <String, ({int count, String why})>{
     count: 1,
     why: 'a full-screen map: the map is the body, with no heading to hold',
   ),
-  'lib/screens/setup_wizard_screen.dart': (
-    count: 1,
-    why: 'the wizard has no Back; it is in a PageTitleScope and says its '
-        'title in the step, the bar repeating it as a PushedPage would',
-  ),
   'lib/widgets/collapsing_tab_host.dart': (
     count: 1,
     why: 'the pinned zero-height bar that holds the club and profile tabs',

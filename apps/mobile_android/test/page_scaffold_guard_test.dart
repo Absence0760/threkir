@@ -64,10 +64,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: PushedPage inside its light theme',
   ),
-  'lib/screens/run_heatmap_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: MapFirstPage',
-  ),
   'lib/screens/session_detail_screen.dart': (
     count: 1,
     why: 'not migrated yet: PushedPage with a close that abandons the session',

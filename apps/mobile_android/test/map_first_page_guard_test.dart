@@ -34,6 +34,7 @@ const _migrated = <String>{
   'lib/screens/privacy_zones_screen.dart',
   'lib/screens/route_builder_screen.dart',
   'lib/screens/routes_heatmap_screen.dart',
+  'lib/screens/run_heatmap_screen.dart',
 };
 
 int _close(String s, int open) {

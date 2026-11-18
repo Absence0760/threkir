@@ -6,6 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading, PushedPage;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/parkrun_barcode_cache.dart';
@@ -57,10 +58,14 @@ void main() {
     WidgetTester tester,
     _FakeApi api, {
     Map<String, Object> prefs = const {},
+    bool dark = false,
   }) async {
     SharedPreferences.setMockInitialValues(prefs);
     final brightness = _FakeBrightness();
     await tester.pumpWidget(MaterialApp(
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: dark ? ThemeMode.dark : ThemeMode.light,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ParkrunBarcodeScreen(api: api, brightness: brightness),
@@ -194,6 +199,101 @@ void main() {
     expect(brightness.calls, ['setMax']);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(brightness.calls, ['setMax', 'restore']);
+  });
+
+  group('the page', () {
+    void worstCase(WidgetTester tester) {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(320, 640)
+        ..padding = const FakeViewPadding(bottom: 48)
+        ..viewPadding = const FakeViewPadding(bottom: 48);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    }
+
+    testWidgets('a PushedPage whose title is in the bar, not the body',
+        (tester) async {
+      await pump(tester, _FakeApi(number: 'A1'));
+      await pumpUntil(
+        tester,
+        () => find.byType(ParkrunBarcodeView).evaluate().isNotEmpty,
+        describe: 'the barcode',
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(PushedPage), findsOneWidget);
+      expect(find.byType(PageHeading), findsNothing);
+      final title = find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('parkrun barcode'),
+      );
+      expect(title, findsOneWidget);
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.ancestor(of: title, matching: find.byType(AnimatedOpacity)),
+      );
+      expect(opacity.opacity, 1);
+    });
+
+    testWidgets('under the dark app theme the code still sits on light',
+        (tester) async {
+      await pump(tester, _FakeApi(number: 'A1'), dark: true);
+      await pumpUntil(
+        tester,
+        () => find.byType(ParkrunBarcodeView).evaluate().isNotEmpty,
+        describe: 'the barcode',
+      );
+      final scaffold = tester.element(find.byType(Scaffold));
+      final theme = Theme.of(scaffold);
+      expect(theme.brightness, Brightness.light);
+      expect(theme.scaffoldBackgroundColor, Colors.white);
+      expect(theme.colorScheme.onSurface, Colors.black);
+      final material = tester.widget<Material>(find
+          .descendant(of: find.byType(Scaffold), matching: find.byType(Material))
+          .first);
+      expect(material.color, Colors.white);
+    });
+
+    testWidgets('320 dp, 2x text, 3-button bar: nothing cut, the last '
+        'action scrolls clear of the bar', (tester) async {
+      worstCase(tester);
+      await pump(tester, _FakeApi(number: 'A1234567'));
+      await pumpUntil(
+        tester,
+        () => find.byType(ParkrunBarcodeView).evaluate().isNotEmpty,
+        describe: 'the barcode',
+      );
+      expect(tester.takeException(), isNull);
+      // The code is the first thing under the bar, whole and in view.
+      final code = tester.getRect(find.byType(ParkrunBarcodeView));
+      expect(code.top, lessThanOrEqualTo(56 + 16));
+      expect(code.bottom, lessThanOrEqualTo(640 - 48));
+      final edit = find.widgetWithText(TextButton, 'Change athlete number');
+      await tester.scrollUntilVisible(edit, 100,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(edit).bottom, lessThanOrEqualTo(640 - 48));
+      await tester.tap(edit);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('parkrun-barcode-field')),
+          findsOneWidget);
+    });
+
+    testWidgets('320 dp, 2x text, 3-button bar: the empty state fits',
+        (tester) async {
+      worstCase(tester);
+      await pump(tester, _FakeApi());
+      final add = find.byKey(const ValueKey('parkrun-barcode-add'));
+      await pumpUntil(
+        tester,
+        () => add.evaluate().isNotEmpty,
+        describe: 'the add button',
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(add).bottom, lessThanOrEqualTo(640 - 48));
+    });
   });
 
   group('a bad device copy', () {

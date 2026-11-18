@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
+import 'package:ui_kit/ui_kit.dart' show PushedPage, SkeletonBlock;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../auth_error.dart';
@@ -158,9 +158,11 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
         textTheme: Theme.of(context).textTheme,
       ),
       child: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: Text(l10n.parkrunBarcodeTitle)),
-          body: SafeArea(child: _body(context, l10n)),
+        // The title stays in the bar and nothing sits above the code, so it
+        // is in view the moment the page opens at the scanner.
+        builder: (context) => PushedPage(
+          title: l10n.parkrunBarcodeTitle,
+          body: _body(context, l10n),
         ),
       ),
     );
@@ -212,13 +214,9 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
       case ParkrunBarcodeLoadKind.ready:
         content = ListView(
           padding: const EdgeInsets.all(16),
+          // The code first: at large text the hint above it pushed it below
+          // the fold, where the scanner cannot see it.
           children: [
-            Text(
-              l10n.parkrunBarcodeHint,
-              style: text.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
             ParkrunBarcodeView(number: load.number!, barHeight: 140),
             if (load.fromCache) ...[
               const SizedBox(height: 12),
@@ -229,6 +227,12 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
                 textAlign: TextAlign.center,
               ),
             ],
+            const SizedBox(height: 24),
+            Text(
+              l10n.parkrunBarcodeHint,
+              style: text.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             Text(
               l10n.parkrunBarcodePaperNote,
@@ -248,16 +252,25 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     return content;
   }
 
-  Widget _message(TextTheme text, String body, Widget action) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(body, style: text.bodyLarge, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          action,
-        ],
+  // Centred while it fits, scrolling once large text makes it taller than
+  // the page, as EmptyState does.
+  Widget _message(TextTheme text, String body, Widget action) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(body, style: text.bodyLarge, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                action,
+              ],
+            ),
+          ),
+        ),
       ),
     ),
   );

@@ -18,7 +18,7 @@ Until 2026-09-18 neither had one: the wrist asked for HealthKit and location in
 English in all seven locales (#951), and the phone did the same for eleven
 prompts (#964).
 
-Seven claims, in order:
+Eight claims, in order:
 
   1. The shipped locale set is DERIVED from the catalogs, not restated here.
      A hand-written list is a second place a locale has to be added, and the
@@ -57,6 +57,11 @@ Seven claims, in order:
      path. A catalog on disk that the target does not copy is never in the
      bundle, so every claim above would pass over translations no device can
      load -- the same silent English, one level further out.
+  8. No string a person reads writes three full stops for an ellipsis: every
+     stringUnit value, and the key of a UI entry whose source language is
+     implicit (that key IS the English text), writes the one character "…"
+     (U+2026). Three dots can wrap between them and read as three sentences
+     to a screen reader (decisions § 2539, § 2556, § 2571).
 """
 
 import argparse
@@ -161,6 +166,26 @@ for rel, (name, source, strings) in catalogs.items():
                     errors.append(f"{name} [{key}] {loc}: missing translation")
                 continue
             check_localization(name, key, loc, locs[loc])
+
+# (8) The one-character ellipsis, in every value and every implicit-source key.
+def string_units(node):
+    if isinstance(node, dict):
+        unit = node.get("stringUnit")
+        if isinstance(unit, dict):
+            yield unit.get("value", "")
+        for k, v in node.items():
+            if k != "stringUnit":
+                yield from string_units(v)
+
+
+for rel, (name, source, strings) in catalogs.items():
+    for key, entry in strings.items():
+        locs = entry.get("localizations", {})
+        if rel != plist_catalog_rel and source not in locs and "..." in key:
+            errors.append(f'{name} [{key}] {source}: write "…", not three full stops')
+        for loc, block in locs.items():
+            if any("..." in v for v in string_units(block)):
+                errors.append(f'{name} [{key}] {loc}: write "…", not three full stops')
 
 # (4) Both declaration sites agree with the derived set. Neither is parsed
 # with a real plist/pbxproj reader on purpose: this has to run under a bare

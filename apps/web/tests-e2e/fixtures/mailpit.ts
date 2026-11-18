@@ -1,6 +1,6 @@
 /**
  * Local Supabase ships an embedded Mailpit instance on
- * http://localhost:24324 (config.toml inbucket section). Auth flows
+ * http://localhost:24324 (config.toml `[local_smtp]` section). Auth flows
  * that send email — sign-up confirmations, password recovery, magic
  * links — deliver into Mailpit instead of a real SMTP relay. These
  * helpers give Playwright specs a way to read those mails without

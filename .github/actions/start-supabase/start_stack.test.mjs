@@ -24,9 +24,9 @@ const PUBLISHED = [
 	['db', 'shadow_port'],
 	['db.pooler', 'port'],
 	['studio', 'port'],
-	['inbucket', 'port'],
-	['inbucket', 'smtp_port'],
-	['inbucket', 'pop3_port'],
+	['local_smtp', 'port'],
+	['local_smtp', 'smtp_port'],
+	['local_smtp', 'pop3_port'],
 	['analytics', 'port'],
 ];
 

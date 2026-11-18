@@ -403,6 +403,16 @@ jobs:
             echo "Reproduce with: node --test .github/actions/start-supabase/start_stack.test.mjs (drives the ladder with stub ss/docker/supabase/sudo on PATH)."
             exit 1
           fi
+      # config.toml says [local_smtp] (the only name CLI 3.x loads); the
+      # pinned 2.84.2 predates it, so setup-supabase-cli renames it back to
+      # [inbucket] for a pre-2.108.0 CLI. Pins the rename and its retirement.
+      - name: Supabase Mailpit section matches the CLI pin
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test .github/actions/setup-supabase-cli/local_smtp_compat.test.mjs; then
+            echo "::error::setup-supabase-cli's [local_smtp] -> [inbucket] shim regressed, or every CLI pin now reads [local_smtp] and the shim should be retired. Reproduce with: node --test .github/actions/setup-supabase-cli/local_smtp_compat.test.mjs."
+            exit 1
+          fi
       # bin/watch-sim.sh draws a per-run Renode monitor port. Drawn inside the
       # 32768-60999 ephemeral range and probed for LISTEN sockets only, it
       # collided with an outbound connection's source port and aborted the
@@ -4281,7 +4291,7 @@ jobs:
           # container with `--add-host host.docker.internal:host-gateway`,
           # so this is the same pair the committed
           # supabase/functions/.env uses for local dev, and 24325 is the
-          # host-published smtp_port from config.toml's [inbucket].
+          # host-published smtp_port from config.toml's [local_smtp].
           SMTP_HOST=host.docker.internal
           SMTP_PORT=24325
           SMTP_FROM="Threkir <noreply@threkir.com>"

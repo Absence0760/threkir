@@ -549,7 +549,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Google Fit、Samsung Health、Garmin、Fitbit など、ヘルスコネクト対応アプリからワークアウトを取り込みます';
+      'Samsung Health、Garmin、Fitbit などのアプリがヘルスコネクトに保存したワークアウトを取り込みます';
 
   @override
   String get importHealthDescriptionIos =>
@@ -9038,7 +9038,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get proComingSoonTitle => 'Pro — 近日公開';
 
   @override
-  String get proComingSoon => 'Pro は AI コーチを解放します — 近日公開。下からアプリを支援することはできます。';
+  String get proComingSoon =>
+      'Pro は近日公開予定です。AI コーチへのメッセージを1日により多く送れて、優先処理も受けられます。下からアプリを支援することはできます。';
 
   @override
   String get proRegionalNote =>

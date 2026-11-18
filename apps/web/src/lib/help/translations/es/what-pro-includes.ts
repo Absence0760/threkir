@@ -32,7 +32,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el Entrenador IA: próximamente.**, todavía no se puede comprar Pro.',
+					text: 'Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice que Pro llega pronto, todavía no se puede comprar Pro.',
 				},
 			],
 		},
@@ -88,7 +88,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i4': 'abbb1f922ffbfa10',
 		's1.b0.i5': 'a5b09d8e626e04b0',
 		's1.b0.i6': '0d98bcce46d47d2f',
-		's1.b1': '076479f3bd42d0b5',
+		's1.b1': '4db3dc4017b43959',
 		's2.heading': '912eb19f965419db',
 		's2.b0': 'ee79a267ee574aa9',
 		's2.b1.i0': 'd455f1337a2fbaed',

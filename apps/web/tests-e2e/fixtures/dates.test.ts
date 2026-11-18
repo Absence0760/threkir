@@ -439,7 +439,7 @@ test('every page clock pin sits behind the real clock', () => {
 test('the clock-pin scan reaches every pin form, and spares the real clock', () => {
 	// Probed rather than read, for § 738's reason.
 	for (const probe of [
-		'await page.clock.install({ time: new Date(`${browserDate(0)}T23:59:00Z`) });',
+		'await page.clock.install({ time: new Date(`' + '$' + '{browserDate(0)}T23:59:00Z`) });',
 		'await page.clock.install({ time: browserDayAt(0, 23, 59) });',
 		'await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));',
 		"await page.clock.setSystemTime(new Date('2030-01-01T00:00:00Z'));",

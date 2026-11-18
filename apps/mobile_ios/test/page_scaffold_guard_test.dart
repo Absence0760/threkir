@@ -60,10 +60,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: a conversation (ConversationPage)',
   ),
-  'lib/screens/parkrun_barcode_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: PushedPage inside its light theme',
-  ),
   'lib/screens/setup_wizard_screen.dart': (
     count: 1,
     why: 'not migrated yet: EditorPage with progress dots, not dismissible',

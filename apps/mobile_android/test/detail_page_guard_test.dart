@@ -67,11 +67,6 @@ const _barsLeft = <String, ({int count, String why})>{
     why: 'a conversation: its name stays in the bar (ThreadTitle, with a '
         'tooltip holding the whole name) above the messages',
   ),
-  'lib/screens/parkrun_barcode_screen.dart': (
-    count: 1,
-    why: 'a barcode held up to a scanner on a fixed light surface: the code '
-        'must stay in view, so nothing sits above it',
-  ),
   'lib/screens/privacy_zones_screen.dart': (
     count: 1,
     why: 'a MapFirstPage, which takes its bar as a slot over the map',

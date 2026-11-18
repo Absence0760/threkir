@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
-import { browserDayAt, lastBrowserWeekday } from '../fixtures/dates';
+import { browserDayAt, lastBrowserWeekday, pastBrowserInstant } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
@@ -69,7 +69,7 @@ test.describe('/dashboard/progress week lead vs mileage chart', () => {
 			const ctx = await browser.newContext({ storageState: runner.storageStatePath });
 			const page = await ctx.newPage();
 			try {
-				await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));
+				await page.clock.setFixedTime(pastBrowserInstant(SATURDAY, 22));
 				await page.goto('/dashboard/progress');
 
 				await expect(page.getByTestId('dash-week-lead-distance')).toContainText(expected, {

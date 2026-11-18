@@ -92,7 +92,7 @@
 		"gen:edge-segment-matcher": "node scripts/gen_edge_segment_matcher.mjs",
 		"gen:park-course-runs": "node scripts/gen_park_course_runs.mjs",
 
-    "//-- sync --": "deno.lock's `workspace` section is generated from the npm workspace's package.json files — re-sync it after any npm dep bump. Needs deno, but no network, no node_modules and no Docker. CI's parity-types job runs the :check half.",
+    "//-- sync --": "deno.lock's `workspace` section is generated from the npm workspace's package.json files — re-sync it after adding or removing an npm dependency (a version-only bump is tolerated by the check, decisions § 2576). Needs deno, but no network, no node_modules and no Docker. CI's parity-types job runs the :check half.",
     "sync:deno-lock": "node scripts/sync_deno_lock.mjs",
     "refresh:deno-lock-remote": "node scripts/refresh_deno_lock_remote.mjs",
     "sync:deno-lock:check": "node scripts/sync_deno_lock.mjs --check",

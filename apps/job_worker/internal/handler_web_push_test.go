@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/webpush"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/webpush"
 )
 
 type fakeWebPushSender struct {

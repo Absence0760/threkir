@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/digesttoken"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/digesttoken"
 )
 
 type fakeBackend struct {

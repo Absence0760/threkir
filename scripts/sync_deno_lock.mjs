@@ -33,6 +33,14 @@
 // Fail-closed on the load-bearing half: if a run comes back with a changed
 // `remote`/`redirects`, this refuses to write rather than quietly moving a
 // supply-chain pin, which is not this script's business to touch.
+//
+// `--check` fails on the section's SHAPE, not on its version ranges: a
+// dependency added or removed, or the root `overrides` moved. A range that
+// differs only in version is reported and tolerated, because that is exactly
+// what a Dependabot bump produces and Dependabot cannot run deno — every web
+// bump PR went red on an inert line pair until a human pushed a sync
+// (decisions § 2576). A plain run still writes the full regeneration, so the
+// next sync folds the stale ranges in.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -49,7 +57,7 @@ import { fileURLToPath } from 'node:url';
  * @typedef {{ packageJson?: LockPackageJson, members?: Record<string, { packageJson?: LockPackageJson }> }} WorkspaceSection
  * @typedef {{ version?: unknown, redirects?: unknown, remote?: unknown, workspace?: WorkspaceSection }} DenoLock
  * @typedef {{ scope: string, spec: string }} ScopedSpec
- * @typedef {{ changed: { scope: string, from: string, to: string }[], added: ScopedSpec[], removed: ScopedSpec[], overridesMoved: boolean, inSync: boolean }} WorkspaceDiff
+ * @typedef {{ changed: { scope: string, from: string, to: string }[], added: ScopedSpec[], removed: ScopedSpec[], overridesMoved: boolean, inSync: boolean, shapeInSync: boolean }} WorkspaceDiff
  */
 
 export const PROBE = 'probe.ts';
@@ -140,6 +148,7 @@ export function diffWorkspaceSections(before, after) {
     removed,
     overridesMoved,
     inSync: !changed.length && !added.length && !removed.length && !overridesMoved,
+    shapeInSync: !added.length && !removed.length && !overridesMoved,
   };
 }
 
@@ -280,13 +289,26 @@ export function verdict(before, after, check) {
       err: [],
     };
   }
+  if (check && diff.shapeInSync) {
+    return {
+      code: 0,
+      write: false,
+      out: [
+        `deno.lock workspace section matches package.json in shape (${specCount} specs); ` +
+          `${diff.changed.length} version-only difference(s) tolerated — a dependency bump, which ` +
+          '`pnpm sync:deno-lock` folds in on any later run:',
+        formatDrift(diff),
+      ],
+      err: [],
+    };
+  }
   if (check) {
     return {
       code: 1,
       write: false,
       out: [],
       err: [
-        "deno.lock's workspace section has drifted from package.json:",
+        "deno.lock's workspace section has drifted from package.json — a dependency was added or removed, or the root overrides moved:",
         formatDrift(diff),
         '\nrun `pnpm sync:deno-lock` and commit the result.',
       ],

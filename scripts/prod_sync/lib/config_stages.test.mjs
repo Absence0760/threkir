@@ -26,7 +26,7 @@ import {
 
 const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [], retired_functions: [], retired_function_env: [] };
 const REF = 'abcdefghijklmnopqrst';
-const ISSUE = 'https://github.com/Absence0760/threkir/issues/1097#issuecomment-1';
+const ISSUE = 'https://github.com/jaredhoward-dev/threkir/issues/1097#issuecomment-1';
 
 /**
  * @param {{ sql?: (script: string) => { ok: boolean, stdout: string, stderr: string },
@@ -70,12 +70,12 @@ test('feature flags: each declared flag goes through the definer function as ser
 		...EMPTY,
 		feature_flags: {
 			signup_source: { enabled: false, signoff: null },
-			live_overlay: { enabled: true, signoff: "https://github.com/Absence0760/threkir/issues/1#it's" },
+			live_overlay: { enabled: true, signoff: "https://github.com/jaredhoward-dev/threkir/issues/1#it's" },
 		},
 	});
 	const sql = stage.sql ?? '';
 	assert.ok(sql.startsWith('set local role service_role;\n'));
-	assert.ok(sql.includes("('live_overlay', true, 'https://github.com/Absence0760/threkir/issues/1#it''s'),\n  ('signup_source', false, null)"));
+	assert.ok(sql.includes("('live_overlay', true, 'https://github.com/jaredhoward-dev/threkir/issues/1#it''s'),\n  ('signup_source', false, null)"));
 	assert.ok(sql.includes('private.apply_feature_flag(f.name, f.enabled) as action'));
 	assert.ok(sql.trimEnd().endsWith('order by flag;'));
 });

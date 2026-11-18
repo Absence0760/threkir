@@ -47,37 +47,53 @@ var sweepTargets = []float64{400, 600, 800, 1000, 1200, 1600, 2000, 2400}
 func TestPreferenceSteersOntoPreferredEdges(t *testing.T) {
 	// The same lattice with the preferred half mirrored, so nothing about the
 	// geometry can favour one answer. The unweighted search is blind to the
-	// attribution and must pick the same loops on both; the weighted one must
-	// end up on more preferred road than it does.
+	// attribution and picks the same loops on both mirrors, so on one of them
+	// it can land wholly on preferred road by chance (it does on arm64, where
+	// a tie between mirrored loops rounds the other way). The claim is
+	// therefore made over the pair: the weighted search never does worse on
+	// either mirror, and over both together it ends up on more preferred road.
+	type mirror struct {
+		g        *Graph
+		lat, lng float64
+	}
+	var mirrors []mirror
 	for _, preferEast := range []bool{true, false} {
 		g, _ := BuildTestSplitGrid(13, 13, 100, 40.0, -77.0, preferEast)
-		lat := 40.0 + 6*metresToDegLat(100)
-		lng := -77.0 + 6*metresToDegLng(100, 40.0)
+		mirrors = append(mirrors, mirror{g, 40.0 + 6*metresToDegLat(100), -77.0 + 6*metresToDegLng(100, 40.0)})
+	}
 
-		for _, pref := range []Preference{PrefQuiet, PrefScenic} {
+	for _, pref := range []Preference{PrefQuiet, PrefScenic} {
+		plainTotal, prefTotal := 0.0, 0.0
+		for mi, m := range mirrors {
 			plainShare, prefShare := 0.0, 0.0
 			for _, target := range sweepTargets {
-				plain := g.SearchCycle(context.Background(), lat, lng, target, PrefNone)
-				res := g.SearchCycle(context.Background(), lat, lng, target, pref)
+				plain := m.g.SearchCycle(context.Background(), m.lat, m.lng, target, PrefNone)
+				res := m.g.SearchCycle(context.Background(), m.lat, m.lng, target, pref)
 				if plain.Best == nil || res.Best == nil {
-					t.Fatalf("east=%v pref=%d target=%.0f: expected a loop on a dense grid", preferEast, pref, target)
+					t.Fatalf("mirror %d pref=%d target=%.0f: expected a loop on a dense grid", mi, pref, target)
 				}
 				if plain.Applied != PrefNone || plain.PreferredShare != 0 {
 					t.Fatalf("unpreferenced result claimed applied=%d share=%v", plain.Applied, plain.PreferredShare)
 				}
 				if res.Applied != pref {
-					t.Fatalf("east=%v pref=%d: applied = %d", preferEast, pref, res.Applied)
+					t.Fatalf("mirror %d pref=%d: applied = %d", mi, pref, res.Applied)
 				}
 				if math.Abs(res.PreferredShare-res.Best.share) > 1e-12 {
 					t.Fatalf("reported share %.6f != the winner %.6f", res.PreferredShare, res.Best.share)
 				}
-				plainShare += g.preferredShare(plain.Best, pref)
+				plainShare += m.g.preferredShare(plain.Best, pref)
 				prefShare += res.PreferredShare
 			}
-			if prefShare <= plainShare {
-				t.Fatalf("east=%v pref=%d: preferred share over the sweep %.3f did not beat the unpreferenced %.3f",
-					preferEast, pref, prefShare, plainShare)
+			if prefShare < plainShare-1e-9 {
+				t.Fatalf("mirror %d pref=%d: preferred share over the sweep %.3f fell below the unpreferenced %.3f",
+					mi, pref, prefShare, plainShare)
 			}
+			plainTotal += plainShare
+			prefTotal += prefShare
+		}
+		if prefTotal <= plainTotal {
+			t.Fatalf("pref=%d: preferred share over both mirrors %.3f did not beat the unpreferenced %.3f",
+				pref, prefTotal, plainTotal)
 		}
 	}
 }

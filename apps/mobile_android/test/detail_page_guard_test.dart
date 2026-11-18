@@ -34,11 +34,6 @@ const _hosts = <String>{
 };
 
 const _handBuilt = <String, ({int count, String why})>{
-  'lib/screens/session_detail_screen.dart': (
-    count: 1,
-    why: 'the follow-along runner is a full-screen execution page whose '
-        'close button abandons the session, not a detail page',
-  ),
 };
 
 /// Hand-built app bars left anywhere in lib/, and why each page is not a
@@ -92,11 +87,6 @@ const _barsLeft = <String, ({int count, String why})>{
   'lib/screens/run_heatmap_screen.dart': (
     count: 1,
     why: 'a full-screen map: the map is the body, with no heading to hold',
-  ),
-  'lib/screens/session_detail_screen.dart': (
-    count: 1,
-    why: 'the follow-along runner is a full-screen execution page whose '
-        'close button abandons the session',
   ),
   'lib/screens/setup_wizard_screen.dart': (
     count: 1,

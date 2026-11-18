@@ -547,33 +547,30 @@ class _SessionRunnerPageState extends State<_SessionRunnerPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final title = widget.title ?? l10n.sessionTitle;
-    // Not a PushedPage: its close button abandons the session. It says the
-    // plan's name above the step, and the bar repeats it once that heading
-    // has scrolled away.
-    return PageTitleScope(
-      child: Scaffold(
-        appBar: AppBar(
-          title: PageBarTitle(title),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: l10n.sessionRunAbandon,
-            onPressed: _confirmAbandon,
-          ),
+    // The close button and the system back both abandon the session, so
+    // both ask first; finishing pops past the guard with the results.
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmAbandon();
+      },
+      child: PushedPage(
+        title: title,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: l10n.sessionRunAbandon,
+          onPressed: _confirmAbandon,
         ),
-        body: PageBody(
-          child: SafeArea(
-            child: ValueListenableBuilder<SessionBandState>(
-              valueListenable: _band,
-              builder: (_, state, child) => _SessionExecutionBand(
-                title: title,
-                state: state,
-                paused: _paused,
-                onDone: () => _advance(SessionStepStatus.completed),
-                onSkip: () => _advance(SessionStepStatus.skipped),
-                onPause: _togglePause,
-                onAbandon: _confirmAbandon,
-              ),
-            ),
+        body: ValueListenableBuilder<SessionBandState>(
+          valueListenable: _band,
+          builder: (_, state, child) => _SessionExecutionBand(
+            title: title,
+            state: state,
+            paused: _paused,
+            onDone: () => _advance(SessionStepStatus.completed),
+            onSkip: () => _advance(SessionStepStatus.skipped),
+            onPause: _togglePause,
+            onAbandon: _confirmAbandon,
           ),
         ),
       ),

@@ -68,10 +68,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: MapFirstPage',
   ),
-  'lib/screens/session_detail_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: PushedPage with a close that abandons the session',
-  ),
   'lib/screens/setup_wizard_screen.dart': (
     count: 1,
     why: 'not migrated yet: EditorPage with progress dots, not dismissible',

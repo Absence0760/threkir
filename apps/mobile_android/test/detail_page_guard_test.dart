@@ -39,10 +39,6 @@ const _handBuilt = <String, ({int count, String why})>{
 /// Hand-built app bars left anywhere in lib/, and why each page is not a
 /// `PushedPage`. The counts may only shrink.
 const _barsLeft = <String, ({int count, String why})>{
-  'lib/screens/avatar_crop_screen.dart': (
-    count: 1,
-    why: 'a full-screen crop with a close button; the image takes the body',
-  ),
   'lib/screens/live_spectator_screen.dart': (
     count: 1,
     why: 'a MapFirstPage, which takes its bar as a slot over the map',

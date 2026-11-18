@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import '../avatar_crop.dart';
 import '../avatar_crop_image.dart';
@@ -181,15 +182,12 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
     final l10n = AppLocalizations.of(context);
     final crop = _crop;
     final ready = _status == _Status.ready && crop != null;
-    return Scaffold(
-      appBar: AppBar(
-        leading: CloseButton(
-          onPressed: _encoding ? null : () => Navigator.of(context).pop(),
-        ),
-        title: Text(l10n.avatarCropTitle),
-      ),
-      body: SafeArea(
-        child: _status == _Status.failed
+    return PopScope(
+      canPop: !_encoding,
+      child: EditorPage.fixed(
+        title: l10n.avatarCropTitle,
+        closeEnabled: !_encoding,
+        placeholder: _status == _Status.failed
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -200,73 +198,85 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
                   ),
                 ),
               )
-            : Column(
-                children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, box) {
-                        final side = math.max(
-                          1.0,
-                          math.min(box.maxWidth, box.maxHeight) - 32,
-                        );
-                        return Center(child: _stage(side));
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      l10n.avatarCropHint,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          key: const Key('avatar-crop-rotate-left'),
-                          tooltip: l10n.avatarCropRotateLeft,
-                          icon: const Icon(Icons.rotate_left),
-                          onPressed: ready ? () => _turn(-1) : null,
-                        ),
-                        Expanded(
-                          child: Slider(
-                            key: const Key('avatar-crop-zoom'),
-                            label: l10n.avatarCropZoom,
-                            semanticFormatterCallback: (v) =>
-                                '${l10n.avatarCropZoom} ${v.toStringAsFixed(1)}x',
-                            min: avatarMinZoom,
-                            max: avatarMaxZoom,
-                            value: crop?.zoom ?? avatarMinZoom,
-                            onChanged: crop != null && ready
-                                ? (v) => setState(() => _crop = rezoom(crop, v))
-                                : null,
-                          ),
-                        ),
-                        IconButton(
-                          key: const Key('avatar-crop-rotate-right'),
-                          tooltip: l10n.avatarCropRotateRight,
-                          icon: const Icon(Icons.rotate_right),
-                          onPressed: ready ? () => _turn(1) : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        key: const Key('avatar-crop-confirm'),
-                        onPressed: ready && !_encoding ? _confirm : null,
-                        child: Text(l10n.avatarCropConfirm),
-                      ),
-                    ),
-                  ),
-                ],
+            : null,
+        save: EditorSave(
+          key: const Key('avatar-crop-confirm'),
+          label: _encoding ? l10n.avatarCropPreparing : l10n.avatarCropConfirm,
+          busy: _encoding,
+          onPressed: ready ? _confirm : null,
+        ),
+        // The stage takes what the controls leave; on a short body (landscape,
+        // large text) the controls stop at half of it and scroll, so the stage
+        // keeps room to pan rather than the column overflowing.
+        child: LayoutBuilder(
+          builder: (context, body) => Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    final side = math.max(
+                      1.0,
+                      math.min(box.maxWidth, box.maxHeight) - 32,
+                    );
+                    return Center(child: _stage(side));
+                  },
+                ),
               ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: body.maxHeight / 2),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          l10n.avatarCropHint,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              key: const Key('avatar-crop-rotate-left'),
+                              tooltip: l10n.avatarCropRotateLeft,
+                              icon: const Icon(Icons.rotate_left),
+                              onPressed: ready ? () => _turn(-1) : null,
+                            ),
+                            Expanded(
+                              child: Slider(
+                                key: const Key('avatar-crop-zoom'),
+                                label: l10n.avatarCropZoom,
+                                semanticFormatterCallback: (v) =>
+                                    '${l10n.avatarCropZoom} ${v.toStringAsFixed(1)}x',
+                                min: avatarMinZoom,
+                                max: avatarMaxZoom,
+                                value: crop?.zoom ?? avatarMinZoom,
+                                onChanged: crop != null && ready
+                                    ? (v) => setState(
+                                        () => _crop = rezoom(crop, v),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            IconButton(
+                              key: const Key('avatar-crop-rotate-right'),
+                              tooltip: l10n.avatarCropRotateRight,
+                              icon: const Icon(Icons.rotate_right),
+                              onPressed: ready ? () => _turn(1) : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

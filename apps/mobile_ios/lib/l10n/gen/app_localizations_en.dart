@@ -18601,6 +18601,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.';
 
   @override
+  String get avatarCropPreparing => 'Preparing photo…';
+
+  @override
   String get dashboardLeadTitle => 'Your week';
 
   @override

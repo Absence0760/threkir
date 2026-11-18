@@ -18777,6 +18777,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.';
 
   @override
+  String get avatarCropPreparing => 'Foto wird vorbereitet…';
+
+  @override
   String get dashboardLeadTitle => 'Deine Woche';
 
   @override

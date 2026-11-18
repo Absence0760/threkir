@@ -18828,6 +18828,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible d\'ouvrir cette image. Essayez un JPEG, PNG ou WebP.';
 
   @override
+  String get avatarCropPreparing => 'Préparation de la photo…';
+
+  @override
   String get dashboardLeadTitle => 'Votre semaine';
 
   @override

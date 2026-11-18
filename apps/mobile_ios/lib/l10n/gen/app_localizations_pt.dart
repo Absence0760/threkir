@@ -18807,6 +18807,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP.';
 
   @override
+  String get avatarCropPreparing => 'A preparar a fotografia…';
+
+  @override
   String get dashboardLeadTitle => 'A sua semana';
 
   @override
@@ -42967,6 +42970,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get avatarCropLoadFailed =>
       'Não foi possível abrir esta imagem. Tente JPEG, PNG ou WebP.';
+
+  @override
+  String get avatarCropPreparing => 'Preparando a foto…';
 
   @override
   String get dashboardLeadTitle => 'Sua semana';

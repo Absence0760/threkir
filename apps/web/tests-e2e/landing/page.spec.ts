@@ -198,12 +198,12 @@ test.describe('/ (landing)', () => {
 		await page.goto('/');
 		const pills = page.locator('section#apps li.platform');
 		await expect(pills).toHaveCount(5);
-		for (const name of ['Web', 'iOS', 'Apple Watch']) {
+		for (const name of ['Web', 'Android', 'iOS', 'Apple Watch']) {
 			await expect(pills.filter({ hasText: name }).first()).not.toHaveClass(/pending/);
 		}
-		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(2);
+		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(1);
 		await expect(page.locator('section#apps .platforms-note')).toHaveText(
-			/^Android and Wear OS are in internal testing/
+			/^Wear OS is in internal testing/
 		);
 	});
 

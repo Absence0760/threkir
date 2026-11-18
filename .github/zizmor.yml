@@ -17,3 +17,4 @@ rules:
       - security.yml
       - secret-scan-sweep.yml
       - release-backend.yml
+      - store-screenshots.yml

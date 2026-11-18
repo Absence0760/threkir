@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/dataexport"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/dataexport"
 )
 
 type fakeExportBuilder struct {

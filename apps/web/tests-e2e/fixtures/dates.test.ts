@@ -18,6 +18,7 @@ import {
 	browserYear,
 	lastBrowserWeekday,
 	noonOnBrowserDay,
+	pastBrowserInstant,
 	waterStorageKey
 } from './dates';
 
@@ -42,6 +43,12 @@ test('lastBrowserWeekday names a past day of the asked-for weekday, within a wee
 		assert.ok(offset <= -1 && offset >= -7, `offset ${offset} for weekday ${weekday}`);
 		assert.equal(new Date(browserDayStart(offset)).getUTCDay(), weekday);
 	}
+});
+
+test('pastBrowserInstant pins a past instant and refuses one ahead of the real clock', () => {
+	assert.equal(pastBrowserInstant(-1, 23, 59).toISOString(), browserDayAt(-1, 23, 59));
+	assert.ok(pastBrowserInstant(-1, 23, 59).getTime() < Date.now());
+	assert.throws(() => pastBrowserInstant(1, 0, 0), /ahead of the real clock/);
 });
 
 test('offsets step whole calendar days, in both directions', () => {
@@ -362,5 +369,93 @@ test('every allowed local-zone site still exists and still matches', () => {
 			`${rel} no longer derives a day in the runner zone (${reason}) — drop it from LOCAL_ZONE_ALLOWED ` +
 				'so the guard covers it.'
 		);
+	}
+});
+
+/**
+ * A page clock pin: `clock.install` with a `time`, `clock.setFixedTime` or
+ * `clock.setSystemTime`. Each must take its instant from `pastBrowserInstant`,
+ * which refuses one ahead of the real clock — the auth token the spec signed
+ * in with was issued against the real clock, and a page that reads it as
+ * expired refreshes it on every request (decisions § 2574). Whether an
+ * arbitrary expression is in the past cannot be read from the source; that
+ * the helper which checks it at run time was called can.
+ *
+ * `clock.install()` with no `time` starts from the real clock and is spared.
+ */
+const CLOCK_PIN = /\.clock\.(install|setFixedTime|setSystemTime)\(/g;
+
+/// `install()` with no options keeps the real clock. With an options object,
+/// only its `time` key pins anything, in whatever position it is written; a
+/// shorthand `{ time }` is a value the scan cannot see, so it counts as a pin.
+function installPinIsGuarded(rest: string): boolean {
+	if (/^\s*\)/.test(rest)) return true;
+	const options = /^\s*\{([\s\S]*?)\}\s*\)/.exec(rest);
+	if (!options) return false;
+	const body = options[1];
+	if (!/(^|[{,\s])time\s*(:|,|$)/.test(body)) return true;
+	return /(^|[{,\s])time\s*:\s*pastBrowserInstant\(/.test(body);
+}
+
+function unguardedClockPins(source: string): string[] {
+	const found: string[] = [];
+	for (const m of source.matchAll(CLOCK_PIN)) {
+		const rest = source.slice((m.index ?? 0) + m[0].length);
+		const ok = m[1] === 'install' ? installPinIsGuarded(rest) : /^\s*pastBrowserInstant\(/.test(rest);
+		if (!ok) {
+			const line = source.slice(0, m.index).split('\n').length;
+			found.push(`${m[1]}@${line}`);
+		}
+	}
+	return found;
+}
+
+test('every page clock pin sits behind the real clock', () => {
+	const pinners: string[] = [];
+	const offenders: string[] = [];
+	for (const file of scannedSources(E2E_ROOT)) {
+		const rel = relative(E2E_ROOT, file);
+		if (rel === 'fixtures/dates.ts' || rel === 'fixtures/dates.test.ts') continue;
+		const source = stripComments(readFileSync(file, 'utf8'));
+		if (source.match(CLOCK_PIN)) pinners.push(rel);
+		const hits = unguardedClockPins(source);
+		if (hits.length) offenders.push(`${rel}:${hits.join(',')}`);
+	}
+	assert.ok(
+		pinners.length >= 3,
+		`expected the clock-pinning specs, found ${pinners.join(', ') || 'none'} — ` +
+			'the scan stopped matching rather than the rule stopped applying'
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		'These specs pin the page clock to an instant not built by pastBrowserInstant. A pin ahead ' +
+			"of the real clock makes the session's access token read as expired, so supabase-js " +
+			'refreshes it on every request and the spec signs out when one refresh fails ' +
+			`(fixtures/dates.ts, decisions § 2574): ${offenders.join(' ')}`
+	);
+});
+
+test('the clock-pin scan reaches every pin form, and spares the real clock', () => {
+	// Probed rather than read, for § 738's reason.
+	for (const probe of [
+		'await page.clock.install({ time: new Date(`${browserDate(0)}T23:59:00Z`) });',
+		'await page.clock.install({ time: browserDayAt(0, 23, 59) });',
+		'await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));',
+		"await page.clock.setSystemTime(new Date('2030-01-01T00:00:00Z'));",
+		'await page.clock.install({ shouldAdvanceTime: true, time: browserDayAt(0, 23, 59) });',
+		'await page.clock.install({ time });'
+	]) {
+		assert.equal(unguardedClockPins(probe).length, 1, `the clock-pin scan misses: ${probe}`);
+	}
+	for (const probe of [
+		'await page.clock.install();',
+		'await page.clock.install({ time: pastBrowserInstant(-1, 23, 59) });',
+		'await page.clock.setFixedTime(pastBrowserInstant(SATURDAY, 22));',
+		"await page.clock.fastForward('02:00');",
+		'await page.clock.install({ shouldAdvanceTime: true, time: pastBrowserInstant(-1, 23, 59) });',
+		'await page.clock.install({ shouldAdvanceTime: true });'
+	]) {
+		assert.deepEqual(unguardedClockPins(probe), [], `the clock-pin scan wrongly accuses: ${probe}`);
 	}
 });

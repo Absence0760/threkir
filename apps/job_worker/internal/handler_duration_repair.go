@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
 )
 
 // DurationRepairPayload is what migration 20271218000002 enqueues for

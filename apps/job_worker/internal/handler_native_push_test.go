@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/nativepush"
 )
 
 type fakeNativePushSender struct {

@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
-	"github.com/Absence0760/threkir/apps/job_worker/internal/supakey"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/schema"
+	"github.com/jaredhoward-dev/threkir/apps/job_worker/internal/supakey"
 )
 
 // DmImage is the slice of a direct_message_images row the dm_image_process

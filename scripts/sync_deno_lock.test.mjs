@@ -113,6 +113,18 @@ test('the same package moving in a member is not confused with the root copy', (
   assert.deepEqual(diff.changed, [{ scope: 'apps/web', from: 'npm:svelte@5.56.7', to: 'npm:svelte@5.56.9' }]);
 });
 
+test('a version bump leaves the shape in sync; an addition, removal or overrides move does not', () => {
+  const bump = diffWorkspaceSections(section({ root: ['npm:svelte@5.56.7'] }), section({ root: ['npm:svelte@5.56.9'] }));
+  assert.equal(bump.inSync, false);
+  assert.equal(bump.shapeInSync, true);
+  const added = diffWorkspaceSections(section({ root: [] }), section({ root: ['npm:svelte@5.56.9'] }));
+  assert.equal(added.shapeInSync, false);
+  const removed = diffWorkspaceSections(section({ root: ['npm:svelte@5.56.9'] }), section({ root: [] }));
+  assert.equal(removed.shapeInSync, false);
+  const moved = diffWorkspaceSections(section({ overrides: { a: '1' } }), section({ overrides: { a: '2' } }));
+  assert.equal(moved.shapeInSync, false);
+});
+
 test('an overrides change alone is drift', () => {
   const diff = diffWorkspaceSections(
     section({ root: ['npm:svelte@5.56.9'], overrides: { cookie: '^1.0.2' } }),
@@ -158,18 +170,45 @@ test('verdict refuses to write when the regeneration moved a pinned section', ()
   assert.match(v.err[0], /refusing to write/);
 });
 
-test('verdict reports drift under --check and writes under a plain run', () => {
+// What a Dependabot bump produces, and all it produces: the same packages in
+// the same scopes at new ranges. Dependabot cannot run deno, so failing on
+// this turned every web bump PR red over an inert line pair (decisions § 2576).
+test('verdict tolerates version-only drift under --check and still writes it under a plain run', () => {
   const before = { workspace: section({ root: ['npm:svelte@5.56.7'] }) };
   const after = { workspace: POPULATED };
   const checked = verdict(before, after, true);
-  assert.equal(checked.code, 1);
+  assert.equal(checked.code, 0);
   assert.equal(checked.write, false);
-  assert.match(checked.err[0], /has drifted from package\.json/);
+  assert.deepEqual(checked.err, []);
+  assert.match(checked.out[0], /matches package\.json in shape \(1 specs\); 1 version-only difference/);
+  assert.match(checked.out[1], /- npm:svelte@5\.56\.7\n {2}\+ npm:svelte@5\.56\.9/);
 
   const written = verdict(before, after, false);
   assert.equal(written.code, 0);
   assert.equal(written.write, true);
   assert.match(written.out[1], /- npm:svelte@5\.56\.7\n {2}\+ npm:svelte@5\.56\.9/);
+});
+
+test('verdict fails --check on a dependency added or removed, even beside a version bump', () => {
+  const before = { workspace: section({ root: ['npm:svelte@5.56.7'] }) };
+  const after = { workspace: section({ root: ['npm:svelte@5.56.9', 'npm:vite@8.3.7'] }) };
+  const checked = verdict(before, after, true);
+  assert.equal(checked.code, 1);
+  assert.equal(checked.write, false);
+  assert.match(checked.err[0], /has drifted from package\.json — a dependency was added or removed/);
+  assert.match(checked.err[1], /\+ npm:vite@8\.3\.7/);
+
+  const dropped = verdict(after, before, true);
+  assert.equal(dropped.code, 1);
+  assert.match(dropped.err[1], /- npm:vite@8\.3\.7/);
+});
+
+test('verdict fails --check when the root overrides moved', () => {
+  const before = { workspace: section({ root: ['npm:svelte@5.56.9'], overrides: { cookie: '^1.0.2' } }) };
+  const after = { workspace: section({ root: ['npm:svelte@5.56.9'], overrides: { cookie: '^1.0.3' } }) };
+  const checked = verdict(before, after, true);
+  assert.equal(checked.code, 1);
+  assert.match(checked.err[1], /overrides" changed/);
 });
 
 // The floor under the comparison itself. Two empty sections diff as identical,
@@ -278,12 +317,12 @@ test('regenerate lets deno write the section, in deno\'s canonical range form', 
   }
 });
 
-test('the committed deno.lock is in sync with package.json', { skip: !denoAvailable }, () => {
+test('the committed deno.lock matches package.json in shape', { skip: !denoAvailable }, () => {
   const rootDir = path.resolve(import.meta.dirname, '..');
   const lockText = fs.readFileSync(path.join(rootDir, 'deno.lock'), 'utf8');
   const after = JSON.parse(regenerate(rootDir, lockText));
   const before = JSON.parse(lockText);
   assert.ok(pinnedSectionsMatch(before, after));
   const diff = diffWorkspaceSections(before.workspace, after.workspace);
-  assert.equal(diff.inSync, true, `run \`pnpm sync:deno-lock\`:\n${formatDrift(diff)}`);
+  assert.equal(diff.shapeInSync, true, `run \`pnpm sync:deno-lock\`:\n${formatDrift(diff)}`);
 });

@@ -48,11 +48,6 @@ const _barsLeft = <String, ({int count, String why})>{
     why: 'the chat is a conversation, with its history drawer opened from '
         'the bar; its signed-out and consent states are PushedPages',
   ),
-  'lib/screens/group_thread_screen.dart': (
-    count: 1,
-    why: 'a conversation: its name stays in the bar (ThreadTitle, with a '
-        'tooltip holding the whole name) above the messages',
-  ),
   'lib/screens/gym_session_screen.dart': (
     count: 1,
     why: 'a live execution screen: the room goes to the entry fields and '

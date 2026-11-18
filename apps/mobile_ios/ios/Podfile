@@ -1,5 +1,7 @@
-# Uncomment this line to define a global platform for your project
-platform :ios, '15.0'
+# The app's floor. post_install raises every pod to it: Xcode 27 refuses to
+# build a pod that still targets iOS 13 or 14 (Flutter, health, workmanager).
+MIN_IOS = '15.0'
+platform :ios, MIN_IOS
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -39,5 +41,10 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      if Gem::Version.new(config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] || MIN_IOS) < Gem::Version.new(MIN_IOS)
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = MIN_IOS
+      end
+    end
   end
 end

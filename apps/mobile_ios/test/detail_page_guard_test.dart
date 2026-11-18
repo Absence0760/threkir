@@ -59,10 +59,6 @@ const _barsLeft = <String, ({int count, String why})>{
     count: 1,
     why: 'the pinned zero-height bar that holds the club and profile tabs',
   ),
-  'lib/widgets/nutrition_log_sheet.dart': (
-    count: 1,
-    why: 'the barcode scanner: a full-screen camera preview',
-  ),
 };
 
 /// Pushed pages whose app-bar titles were cut in fr/de (TO-12, and the pages

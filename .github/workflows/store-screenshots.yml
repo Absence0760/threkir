@@ -128,6 +128,33 @@ jobs:
           done
           echo "::error::The Android 34 google_apis x86_64 system image did not install after 3 attempts, so no emulator can boot. Nothing here is about the app or its capture."
           exit 1
+      # The runner image lacks the NDK Flutter's Gradle plugin asks for, and
+      # Gradle's own on-demand install has no retry: one corrupt download from
+      # dl.google.com failed run 44318164666 before the app was built. Same
+      # pattern as the system image: install up front, judged by the files on
+      # disk, at the version flutter.ndkVersion resolves to.
+      - name: Install the NDK Flutter builds with
+        run: |
+          ext="$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
+          version="$(sed -n 's/.*val ndkVersion: String = "\([0-9.]*\)".*/\1/p' "$ext")"
+          if [ -z "$version" ]; then
+            echo "::error::Could not read flutter.ndkVersion from $ext; Flutter moved it. Update this step to read it from its new place."
+            exit 1
+          fi
+          sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          ndk="$ANDROID_SDK_ROOT/ndk/$version"
+          for attempt in 1 2 3; do
+            "$sdkmanager" --install "ndk;$version" --channel=0 > /dev/null || true
+            if [ -s "$ndk/source.properties" ]; then
+              echo "NDK $version installed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::NDK $version missing after attempt $attempt (corrupt download from dl.google.com?); fetching again"
+            rm -rf "$ndk" "$ANDROID_SDK_ROOT/.temp" "$ANDROID_SDK_ROOT/.downloadIntermediates"
+            sleep $((attempt * 15))
+          done
+          echo "::error::NDK $version did not install after 3 attempts, so the app cannot build. Nothing here is about the app or its capture."
+          exit 1
       - name: Cache AVD
         id: avd-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

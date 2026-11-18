@@ -62,7 +62,7 @@
 		/* A faint dot grid so the drawing reads as a plan, not a stray line. */
 		background-color: var(--color-bg-secondary);
 		background-image: radial-gradient(
-			color-mix(in srgb, var(--color-border) 35%, transparent) 1px,
+			var(--color-fill-subtle) 1px,
 			transparent 1.2px
 		);
 		background-size: 1.25rem 1.25rem;
@@ -115,7 +115,6 @@
 		padding: 0.2rem 0.55rem;
 		border-radius: var(--radius-pill);
 		background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
 		font-size: 0.78rem;
 		font-weight: 600;
 		color: var(--color-text-secondary);

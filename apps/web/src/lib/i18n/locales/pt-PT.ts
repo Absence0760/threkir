@@ -110,7 +110,7 @@ export const messages = {
 	'login.continueApple': 'Continuar com a Apple',
 	'login.soon': 'Em breve',
 	"login.inAppGoogleNamed": "O início de sessão com a Google não funciona no navegador da app {app}.",
-	"login.inAppGoogleUnnamed": "O início de sessão com a Google não funciona no navegador desta app.",
+	"login.inAppGoogleUnnamed": "O início de sessão com a Google não funciona no navegador integrado da aplicação.",
 	"login.inAppUseAppleOrEmail": "Use a Apple ou o e-mail abaixo, ou copie a ligação e abra-a no Safari ou no Chrome.",
 	"login.inAppUseEmail": "Use o e-mail abaixo, ou copie a ligação e abra-a no Safari ou no Chrome.",
 	"login.inAppCopyLink": "Copiar ligação",

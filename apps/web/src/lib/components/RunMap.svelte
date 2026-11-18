@@ -1123,7 +1123,7 @@
 		align-items: center;
 		gap: var(--space-sm) var(--space-md);
 		padding: var(--space-sm) var(--space-md);
-		border-top: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+		border-top: 1px solid var(--color-border);
 	}
 	.run-map-consent-strip p {
 		flex: 1;

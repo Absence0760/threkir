@@ -98,6 +98,15 @@
 		/// every tile fetch (decisions § 2298 amendment). Other callers
 		/// leave it false and auto-load once the banner was accepted.
 		requireExplicitConsent?: boolean;
+		/// When `true`, the placeholder shown before the map loads is the
+		/// course itself, drawn from `track` with no basemap (CourseSketch),
+		/// over a compact form of the consent note. Nothing third-party loads
+		/// until "Load map", as without it. /share/route/[id] passes it so a
+		/// visitor's first screen shows the course (decisions § 2580).
+		sketchBeforeLoad?: boolean;
+		/// Bindable: true once the map has mounted, so a host can size its
+		/// box to the sketch first and to the map after.
+		loaded?: boolean;
 		/// Course markers (aid stations, cutoffs, …) to paint along the
 		/// route line as coloured pins with a label. Each carries its own
 		/// shared hex `color` (from ROUTE_MARKER_KINDS). Empty / absent =
@@ -138,6 +147,8 @@
 		hoverIdx = null,
 		previewLngLat = null,
 		requireExplicitConsent = false,
+		sketchBeforeLoad = false,
+		loaded = $bindable(false),
 		markers = [],
 		markerEditable = false,
 		onMarkerPlace,
@@ -149,6 +160,8 @@
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	import { isTrackRenderable } from '#lib/routes/track_projection.ts';
+	import CourseSketch from './CourseSketch.svelte';
 	// Drives the placeholder ↔ map swap, and is decided once, here, so the
 	// container is in the DOM by the time onMount reads it. MapTiler logs
 	// the requester IP per tile fetch, so nothing loads before the banner
@@ -156,6 +169,10 @@
 	// `requireExplicitConsent`, before this view's tap. The only later
 	// flip is `loadMapNow`, which waits for the container to mount.
 	let mapConsented = $state(untrack(() => (requireExplicitConsent ? false : hasAcceptedConsent())));
+	$effect.pre(() => {
+		loaded = mapConsented;
+	});
+	let showSketch = $derived(sketchBeforeLoad && !mapConsented && isTrackRenderable(track));
 
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -1032,6 +1049,19 @@
 				{/if}
 			</div>
 		{/if}
+	{:else if showSketch}
+		<div class="run-map-sketch">
+			<CourseSketch points={track} />
+			<div class="run-map-consent-strip">
+				<p>
+					{m('runMap.consentPrefix')}<strong>MapTiler</strong>{m('runMap.consentMiddle')}<strong>{m('runMap.loadMap')}</strong>{m('runMap.consentBeforeLink')}<a href="/cookie-notice">{m('runMap.cookieNotice')}</a>{m('runMap.consentSuffix')}
+				</p>
+				<button type="button" class="btn btn-outline btn-sm" onclick={loadMapNow}>
+					<span class="material-symbols" aria-hidden="true">map</span>
+					{m('runMap.loadMap')}
+				</button>
+			</div>
+		</div>
 	{:else}
 		<!--
 			audit/cookie-consent (2026-05-25): MapTiler logs the
@@ -1083,6 +1113,32 @@
 		text-align: start;
 	}
 	.run-map-consent-card h2 { margin: 0 0 var(--space-sm); font-size: 1.1rem; }
+	.run-map-sketch {
+		display: flex;
+		flex-direction: column;
+		background: var(--color-surface);
+	}
+	.run-map-consent-strip {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm) var(--space-md);
+		padding: var(--space-sm) var(--space-md);
+		border-top: 1px solid var(--color-border);
+	}
+	.run-map-consent-strip p {
+		flex: 1;
+		margin: 0;
+		font-size: 0.78rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
+	.run-map-consent-strip .btn {
+		flex-shrink: 0;
+		gap: 0.3rem;
+	}
+	.run-map-consent-strip .material-symbols {
+		font-size: 1.1rem;
+	}
 	.run-map-consent-card p {
 		margin: 0 0 var(--space-md);
 		color: var(--color-text-secondary);

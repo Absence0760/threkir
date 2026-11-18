@@ -1,18 +1,27 @@
 {
-  "record": {
-    "headline": ["Every run,", "mapped"],
-    "subline": "Pace, heart rate and elevation for every kilometre."
+  "slowest-km": {
+    "kicker": "Your slowest km",
+    "headline": ["{slowest.raw} up the hill.", "{slowest.gap} on the flat."],
+    "accent": ["{slowest.raw}"]
   },
-  "train": {
-    "headline": ["A plan built", "for race day"],
-    "subline": "Week by week, toward the race you picked."
+  "slowest-km-alt": {
+    "headline": ["Your slowest km", "wasn’t slow."]
+  },
+  "splits-zones": {
+    "headline": ["Splits and zones.", "Nothing locked."]
+  },
+  "plan": {
+    "headline": ["{plan.weeks} weeks to a", "{plan.goal_hm} half."],
+    "accent": ["{plan.goal_hm}"]
+  },
+  "pacing": {
+    "headline": ["Did you fade,", "or was it the hill?"]
+  },
+  "predictor": {
+    "headline": ["Your runs predict", "a {predictor.half_hm} half."],
+    "accent": ["{predictor.half_hm}"]
   },
   "coach": {
-    "headline": ["An AI coach that", "knows your training"],
-    "subline": "Ask anything. Answers draw on your plan and runs."
-  },
-  "today": {
-    "headline": ["Today's run,", "one tap away"],
-    "subline": "Your workout, your week and your progress."
+    "headline": ["A coach that", "reads your plan", "and your runs."]
   }
 }

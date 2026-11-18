@@ -3,7 +3,9 @@
 # Compose the captioned Play and App Store screenshots from the raw captures
 # the store-screenshots workflow uploads (see README.md beside this file).
 #
-#   bash assets/store/gen-store-screenshots.sh --captures DIR --out DIR [--locale en]
+#   bash assets/store/gen-store-screenshots.sh --captures play-phone=DIR \
+#     [--captures appstore-6.9=DIR | --appstore-from-android] --out DIR \
+#     [--locale en] [--target T] [--keep-svg]
 #
 # Requires: inkscape, python3, and the Manrope TTFs in packages/ui_kit/fonts.
 #

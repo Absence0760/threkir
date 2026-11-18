@@ -789,6 +789,14 @@ TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, de
 
 The synthetic `straightTrack` helper builds a meridian-aligned sequence of `(lat, lng, ts)` so haversine cumulative distance matches `(i * stepM)` to within ~0.5m.
 
+### `apps/web/src/lib/core/in_app_browser.test.ts` — 11 tests (new file)
+
+Run with `npx tsx --test src/lib/core/in_app_browser.test.ts` from `apps/web`. Web-only (no Dart twin). `detectInAppBrowser` against real-shaped UAs: plain iOS Safari, Android Chrome and desktop Firefox read as no in-app browser; Facebook on iOS (`FBAN/FBIOS`) and Android (`FB_IAB/FB4A`), Messenger told apart from Facebook, Instagram, Threads (`Barcelona`, also when the UA carries Instagram's token too), LinkedIn, TikTok (`musical_ly`, `trill_` + `BytedanceWebview`), X (`Twitter for iPhone`, `TwitterAndroid`), and any other Android WebView (`; wv)`) unnamed; a bare iOS WKWebView is left alone. `externalBrowserLink` carries the first touch as UTM params, falls back to the detected app as `utm_source`, leaves an already-tagged link alone and returns an unparseable href unchanged ([decisions § 2580](../architecture/decisions.md)).
+
+### `apps/web/src/lib/routes/course_sketch.test.ts` — 7 tests (new file)
+
+Run with `npx tsx --test src/lib/routes/course_sketch.test.ts` from `apps/web`. Web-only. `trackBoundsAspect` reads an equal-distance square at 60 N as square (the cos(midLat) correction), an east-west course as wide, has no aspect below two distinct points, and spans an antimeridian crossing by its own width; `sketchAspect` clamps to [1.1, 2] and takes the widest box for a zero-height line; `startMeetsFinish` merges a loop's markers and keeps a point-to-point course's two ([decisions § 2580](../architecture/decisions.md)).
+
 ### `apps/web/src/lib/learn/*.test.ts` — 59 tests across 4 files (Learn/guides, `learn.md`, decisions §161)
 
 Run with `npx tsx --test src/lib/learn/guides.test.ts src/lib/learn/learn_meta.test.ts` from `apps/web`. Web-only (no Dart twin).

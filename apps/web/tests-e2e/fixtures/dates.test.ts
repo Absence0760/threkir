@@ -385,14 +385,23 @@ test('every allowed local-zone site still exists and still matches', () => {
  */
 const CLOCK_PIN = /\.clock\.(install|setFixedTime|setSystemTime)\(/g;
 
+/// `install()` with no options keeps the real clock. With an options object,
+/// only its `time` key pins anything, in whatever position it is written; a
+/// shorthand `{ time }` is a value the scan cannot see, so it counts as a pin.
+function installPinIsGuarded(rest: string): boolean {
+	if (/^\s*\)/.test(rest)) return true;
+	const options = /^\s*\{([\s\S]*?)\}\s*\)/.exec(rest);
+	if (!options) return false;
+	const body = options[1];
+	if (!/(^|[{,\s])time\s*(:|,|$)/.test(body)) return true;
+	return /(^|[{,\s])time\s*:\s*pastBrowserInstant\(/.test(body);
+}
+
 function unguardedClockPins(source: string): string[] {
 	const found: string[] = [];
 	for (const m of source.matchAll(CLOCK_PIN)) {
 		const rest = source.slice((m.index ?? 0) + m[0].length);
-		const ok =
-			m[1] === 'install'
-				? /^\s*\)/.test(rest) || /^\s*\{\s*time:\s*pastBrowserInstant\(/.test(rest)
-				: /^\s*pastBrowserInstant\(/.test(rest);
+		const ok = m[1] === 'install' ? installPinIsGuarded(rest) : /^\s*pastBrowserInstant\(/.test(rest);
 		if (!ok) {
 			const line = source.slice(0, m.index).split('\n').length;
 			found.push(`${m[1]}@${line}`);
@@ -433,7 +442,9 @@ test('the clock-pin scan reaches every pin form, and spares the real clock', () 
 		'await page.clock.install({ time: new Date(`${browserDate(0)}T23:59:00Z`) });',
 		'await page.clock.install({ time: browserDayAt(0, 23, 59) });',
 		'await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));',
-		"await page.clock.setSystemTime(new Date('2030-01-01T00:00:00Z'));"
+		"await page.clock.setSystemTime(new Date('2030-01-01T00:00:00Z'));",
+		'await page.clock.install({ shouldAdvanceTime: true, time: browserDayAt(0, 23, 59) });',
+		'await page.clock.install({ time });'
 	]) {
 		assert.equal(unguardedClockPins(probe).length, 1, `the clock-pin scan misses: ${probe}`);
 	}
@@ -441,7 +452,9 @@ test('the clock-pin scan reaches every pin form, and spares the real clock', () 
 		'await page.clock.install();',
 		'await page.clock.install({ time: pastBrowserInstant(-1, 23, 59) });',
 		'await page.clock.setFixedTime(pastBrowserInstant(SATURDAY, 22));',
-		"await page.clock.fastForward('02:00');"
+		"await page.clock.fastForward('02:00');",
+		'await page.clock.install({ shouldAdvanceTime: true, time: pastBrowserInstant(-1, 23, 59) });',
+		'await page.clock.install({ shouldAdvanceTime: true });'
 	]) {
 		assert.deepEqual(unguardedClockPins(probe), [], `the clock-pin scan wrongly accuses: ${probe}`);
 	}

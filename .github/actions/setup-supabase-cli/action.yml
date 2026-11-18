@@ -24,9 +24,11 @@ description: >
   corrupt body stops being indistinguishable from a valid one -- which is
   what made the old failure so confusing to read.
 
-  Linux x86_64 only, which is every caller today (all ten `ci.yml` jobs and
-  `release-backend` run on `ubuntu-latest`). A macOS or arm64 caller should
-  add its asset here rather than reach past this action.
+  Linux x86_64 for every `ci.yml` job and `release-backend`, plus macOS
+  (the App Store capture in `store-screenshots.yml`), whose asset is
+  `_darwin_<arch>` and whose digest tool is `shasum -a 256` where the image
+  has no `sha256sum`. Another platform should add its asset here rather than
+  reach past this action.
 
   The retry + checksum above fixed INTEGRITY: a corrupt download is detected
   instead of silently poisoning the job. It cannot fix AVAILABILITY, and on
@@ -65,7 +67,8 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/supabase-cli
-        key: supabase-cli-${{ runner.os }}-x64-${{ inputs.version }}
+        # Linux keeps the key it always had, so this change re-uses its cache.
+        key: supabase-cli-${{ runner.os }}-${{ runner.os == 'Linux' && 'x64' || runner.arch }}-${{ inputs.version }}
 
     - name: Put a cached CLI on PATH
       id: cached
@@ -75,6 +78,7 @@ runs:
         SUPABASE_CLI_VERSION: ${{ inputs.version }}
       run: |
         set -uo pipefail
+        sha256sum() { if type -P sha256sum >/dev/null; then command sha256sum "$@"; else shasum -a 256 "$@"; fi; }
         dest="$HOME/.cache/supabase-cli"
         # A restore that lost bytes, or an entry written by an older layout,
         # is a miss rather than a failure -- fall through to the download.
@@ -96,6 +100,13 @@ runs:
         SUPABASE_CLI_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
+        sha256sum() { if type -P sha256sum >/dev/null; then command sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64) asset=linux_amd64 ;;
+          macOS/X64) asset=darwin_amd64 ;;
+          macOS/ARM64) asset=darwin_arm64 ;;
+          *) echo "::error::setup-supabase-cli has no Supabase CLI asset for $RUNNER_OS/$RUNNER_ARCH; add it to the case in .github/actions/setup-supabase-cli/action.yml."; exit 1 ;;
+        esac
         ver="$SUPABASE_CLI_VERSION"
         dest="$HOME/.cache/supabase-cli"
         base="https://github.com/supabase/cli/releases/download/v${ver}"
@@ -105,7 +116,7 @@ runs:
         # Upstream renamed both halves of this between 2.84.2 and 2.109.1: the
         # checksums asset went `supabase_<ver>_checksums.txt` -> `checksums.txt`,
         # and the tarball it lists went `supabase_linux_amd64.tar.gz` ->
-        # `supabase_<ver>_linux_amd64.tar.gz`. Both names still resolve as
+        # `supabase_<ver>_linux_amd64.tar.gz` (and the darwin assets alike). Both names still resolve as
         # download URLs, so pinning either one keeps working until the day the
         # checksum line stops matching and the verify fails instead. Fetch
         # whichever checksums asset exists, then take the tarball's name FROM it
@@ -116,7 +127,7 @@ runs:
                 -o "$dest/checksums.txt" "$base/checksums.txt" \
             || curl -fsSL --connect-timeout 20 --max-time 60 \
                 -o "$dest/checksums.txt" "$base/supabase_${ver}_checksums.txt"; } \
-            && tarball="$(awk '$2 ~ /_linux_amd64\.tar\.gz$/ { print $2; exit }' "$dest/checksums.txt")" \
+            && tarball="$(awk -v a="_${asset}.tar.gz" 'length($2) >= length(a) && substr($2, length($2) - length(a) + 1) == a { print $2; exit }' "$dest/checksums.txt")" \
             && [ -n "$tarball" ] \
             && curl -fsSL --connect-timeout 20 --max-time 300 \
                 -o "$dest/$tarball" "$base/$tarball" \

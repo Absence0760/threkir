@@ -148,11 +148,7 @@ void main() {
 
     /// Scroll [target] into the screen's list, then to just below its top.
     Future<Rect> reveal(Type screen, Finder target) async {
-      await tester.scrollUntilVisible(target, 300,
-          scrollable: find
-              .descendant(of: find.byType(screen), matching: find.byType(Scrollable))
-              .first,
-          maxScrolls: 200);
+      await scrollUntilBuilt(tester, verticalListOf(screen), target);
       await revealNearTop(tester, target);
       await settle(tester, const Duration(seconds: 1));
       return viewportOf(tester, target);
@@ -251,11 +247,8 @@ void main() {
     // screen with the header; the crops take the sections, not the height.
     await open(StoreSelectors.planDetail(app), StoreSelectors.planDetailReady,
         theme: ThemeMode.light, heightDp: 1600);
-    await tester.scrollUntilVisible(StoreSelectors.planProgress, 300,
-        scrollable: find
-            .descendant(
-                of: find.byType(PlanDetailScreen), matching: find.byType(Scrollable))
-            .first);
+    await scrollUntilBuilt(
+        tester, verticalListOf(PlanDetailScreen), StoreSelectors.planProgress);
     if (!tester.widget<DisclosureSection>(StoreSelectors.planProgress).open) {
       await tester.tap(find.descendant(
           of: StoreSelectors.planProgress,

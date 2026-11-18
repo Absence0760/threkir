@@ -112,6 +112,35 @@ Rect unionRect(WidgetTester tester, String section, List<Finder> finders) {
   return out!;
 }
 
+/// The first vertical scrollable inside [screen]: its page list, never a
+/// horizontal chip row or carousel that happens to come first.
+Finder verticalListOf(Type screen) => find
+    .descendant(
+        of: find.byType(screen),
+        matching: find.byWidgetPredicate((w) =>
+            w is Scrollable &&
+            axisDirectionToAxis(w.axisDirection) == Axis.vertical))
+    .first;
+
+/// Scroll [scrollable] down until [target] is built, by moving its position
+/// rather than dragging: a drag starts at the list's centre, where a screen's
+/// map can take it as a pan and leave the list where it was (run 44312432462
+/// spent all 200 drags of `scrollUntilVisible` that way at text scale 1.5).
+Future<void> scrollUntilBuilt(
+    WidgetTester tester, Finder scrollable, Finder target,
+    {double stepDp = 300}) async {
+  final position = tester.state<ScrollableState>(scrollable).position;
+  while (target.evaluate().isEmpty) {
+    if (position.pixels >= position.maxScrollExtent) {
+      fail('scrolled to the end of the list (${position.pixels.round()} dp) '
+          'without building ${target.toString(describeSelf: true)}');
+    }
+    position.jumpTo(
+        math.min(position.pixels + stepDp, position.maxScrollExtent));
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 /// Scroll the nearest scrollable so [target] sits [marginDp] below its top,
 /// leaving room for a crop's top pad without reaching the app bar.
 Future<void> revealNearTop(WidgetTester tester, Finder target,

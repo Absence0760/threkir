@@ -140,4 +140,62 @@ void main() {
       throwsA(isA<TestFailure>()),
     );
   });
+
+  // A lazy list whose centre is a widget that takes vertical drags, as the
+  // run detail's map does: a drag-based scroll never moves the list.
+  Widget pannedList({required bool withTarget}) => MaterialApp(
+        home: Scaffold(
+          body: _PannedList(withTarget: withTarget),
+        ),
+      );
+
+  testWidgets('scrollUntilBuilt reaches a lazy row past a pan-absorbing widget',
+      (tester) async {
+    await tester.pumpWidget(pannedList(withTarget: true));
+    expect(find.byKey(const Key('target')), findsNothing);
+
+    await scrollUntilBuilt(
+        tester, verticalListOf(_PannedList), find.byKey(const Key('target')));
+
+    expect(find.byKey(const Key('target')), findsOneWidget);
+  });
+
+  testWidgets('scrollUntilBuilt fails at the end of a list without the target',
+      (tester) async {
+    await tester.pumpWidget(pannedList(withTarget: false));
+
+    TestFailure? failure;
+    try {
+      await scrollUntilBuilt(
+          tester, verticalListOf(_PannedList), find.byKey(const Key('target')));
+    } on TestFailure catch (e) {
+      failure = e;
+    }
+    expect(failure?.message, contains('scrolled to the end of the list'));
+  });
+}
+
+class _PannedList extends StatelessWidget {
+  const _PannedList({required this.withTarget});
+
+  final bool withTarget;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        children: [
+          SizedBox(
+            height: 140,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: const [SizedBox(width: 2000)],
+            ),
+          ),
+          GestureDetector(
+            onVerticalDragUpdate: (_) {},
+            child: const SizedBox(height: 2000),
+          ),
+          for (var i = 0; i < 40; i++) SizedBox(height: 100, child: Text('row $i')),
+          if (withTarget) const SizedBox(key: Key('target'), height: 50),
+        ],
+      );
 }

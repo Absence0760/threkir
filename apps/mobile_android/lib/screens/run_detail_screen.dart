@@ -3525,12 +3525,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
 
+  /// H:MM:SS or M:SS, as web `formatDuration` writes it: a split reads
+  /// "5:40", matching its own bar label, never "05:40".
   static String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
     final s = d.inSeconds % 60;
     if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return '$m:${s.toString().padLeft(2, '0')}';
   }
 }
 

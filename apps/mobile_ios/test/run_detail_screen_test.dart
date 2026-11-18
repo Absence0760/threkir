@@ -2424,8 +2424,8 @@ void main() {
 
     testWidgets('the split lanes scale with the text they hold',
         (tester) async {
-      // 30 s per 100 m makes every split 05:00, which in Roboto wants 72.3
-      // px of the 54 px lane at 2x and was cropped with no overflow stripe.
+      // 30 s per 100 m makes every split 5:00. Its lane was once cropped at
+      // 2x with no overflow stripe (the time wanted 72.3 px of 54 in Roboto).
       // The assertion is the derivation, not an absolute fit: this harness
       // renders in a fixed-advance test font, so only the ratio between the
       // lane and the text it holds is a font-independent claim.
@@ -2436,13 +2436,15 @@ void main() {
 
       await _pump(tester, run);
       final tickAt1x = _lane(tester, '1');
-      final durationAt1x = _lane(tester, '05:00');
+      // Written as web formatDuration writes it, with no leading zero.
+      expect(find.text('05:00'), findsNothing);
+      final durationAt1x = _lane(tester, '5:00');
       expect(tickAt1x.lane, 36);
       expect(durationAt1x.lane, 54);
 
       await _pump(tester, run, textScale: 2.0);
       final tick = _lane(tester, '1');
-      final duration = _lane(tester, '05:00');
+      final duration = _lane(tester, '5:00');
       for (final (before, after) in [
         (tickAt1x, tick),
         (durationAt1x, duration),

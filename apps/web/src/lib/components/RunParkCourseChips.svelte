@@ -21,16 +21,25 @@
 	let failed = $state(false);
 	let loading = $state(false);
 
+	/// The page's scorer can start a reload while a Retry is in flight. Only
+	/// the latest read lands, and the error line stays mounted until a read
+	/// succeeds, so a Retry press never lands on a button that is unmounting.
+	let latest = 0;
+
 	async function load() {
+		const seq = ++latest;
 		loading = true;
-		failed = false;
 		try {
-			times = await fetchRunParkCourseTimes(runId);
+			const next = await fetchRunParkCourseTimes(runId);
+			if (seq !== latest) return;
+			times = next;
+			failed = false;
 		} catch (e) {
+			if (seq !== latest) return;
 			console.warn('run park course times read failed', e);
 			failed = true;
 		} finally {
-			loading = false;
+			if (seq === latest) loading = false;
 		}
 	}
 
@@ -68,10 +77,10 @@
 </script>
 
 {#if isOwner}
-	{#if failed && !loading}
+	{#if failed}
 		<p class="park-course-error" role="status" data-testid="run-park-courses-error">
 			<span>{m('runDetail.parkCoursesLoadFailed')}</span>
-			<button type="button" class="retry" onclick={load}>{m('runs.retry')}</button>
+			<button type="button" class="retry" onclick={load} disabled={loading} aria-busy={loading}>{m('runs.retry')}</button>
 		</p>
 	{:else if times.length > 0}
 		<ul class="park-course-chips" aria-label={m('runDetail.parkCourses')} data-testid="run-park-courses">

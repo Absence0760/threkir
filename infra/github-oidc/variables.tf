@@ -31,7 +31,7 @@ variable "github_extra_subject_prefixes" {
     `github_subject_prefix`, same shape and same exact match (StringEquals).
 
     Exists for the move of this repo into a GitHub organization
-    (Absence0760/project-mgmt#14): a repo transferred after 2026-07-15 issues
+    (jaredhoward-dev/project-mgmt#14): a repo transferred after 2026-07-15 issues
     `repo:<org>@<org_id>/<repo>@<repo_id>`, so before the transfer the roles
     must trust both the current and the post-transfer prefix. Empty outside a
     migration. Read each value, never guess it:

@@ -229,6 +229,52 @@ Future<void> _pump(WidgetTester tester, {ApiClient? api}) {
   );
 }
 
+/// Push the screen over a launcher page, as the app does, so the bar has a
+/// route to go back to: a conversation keeps Back only on a pushed route.
+Future<void> _pushCoach(WidgetTester tester, ApiClient api,
+    {double textScale = 1}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  CoachScreen(api: api, training: TrainingService()),
+            ),
+          ),
+          child: const Text('open'),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('open'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// A 320 x 640 dp phone with a 3-button navigation bar of [navBar] dp, and
+/// a soft keyboard of [keyboard] dp (which takes the bar's padding, as the
+/// platform reports it).
+void _phone(WidgetTester tester, {double navBar = 0, double keyboard = 0}) {
+  tester.view.physicalSize = const Size(320, 640);
+  tester.view.devicePixelRatio = 1;
+  tester.view.padding = FakeViewPadding(bottom: keyboard > 0 ? 0 : navBar);
+  tester.view.viewPadding = FakeViewPadding(bottom: navBar);
+  tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+  addTearDown(tester.view.reset);
+}
+
+final _composer = find.widgetWithText(TextField, 'Ask Coach…');
+
 void main() {
   setUpAll(_ensureSupabase);
   // The consent memo is process-wide; a grant one case records must not open
@@ -310,19 +356,11 @@ void main() {
 
     testWidgets('the consented view renders an explicit back button (the left '
         'drawer used to swallow it)', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: CoachScreen(api: _ConsentedApi(), training: TrainingService()),
-        ),
-      );
-      // Let the consent lookup resolve so the main Scaffold mounts.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await _pushCoach(tester, _ConsentedApi());
       // The archive drawer is reachable from an explicit history action
       // instead, so the leading slot stays a real back affordance.
       expect(find.byType(BackButton), findsOneWidget);
+      expect(find.byType(DrawerButton), findsNothing);
       await _drain(tester);
     });
 
@@ -611,6 +649,73 @@ void main() {
         find.descendant(of: bylines, matching: find.byType(AiTag)),
         findsNWidgets(2),
       );
+      await _drain(tester);
+    });
+  });
+
+  group('CoachScreen — ConversationPage layout (#1374)', () {
+    testWidgets('the composer clears a 48 dp navigation bar', (tester) async {
+      _phone(tester, navBar: 48);
+      await _pushCoach(tester, _ThreadApi());
+      // Let the scroll to the newest message finish its animation.
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+
+      final composer = tester.getRect(_composer);
+      expect(composer.bottom, lessThanOrEqualTo(640 - 48));
+      expect(tester.getRect(find.text('Second reply')).bottom,
+          lessThanOrEqualTo(composer.top),
+          reason: 'the newest message sits above the composer');
+      await _drain(tester);
+    });
+
+    testWidgets('the composer rises above the keyboard', (tester) async {
+      _phone(tester, navBar: 48, keyboard: 300);
+      await _pushCoach(tester, _ThreadApi());
+      expect(tester.takeException(), isNull);
+
+      final composer = tester.getRect(_composer);
+      expect(composer.bottom, lessThanOrEqualTo(640 - 300));
+      expect(composer.top, greaterThan(0));
+      await _drain(tester);
+    });
+
+    testWidgets('the history drawer opens from its action and Back stays',
+        (tester) async {
+      _phone(tester);
+      final api = _ArchivesApi();
+      await _pushCoach(tester, api);
+
+      expect(find.byType(BackButton), findsOneWidget);
+      expect(find.byType(Drawer), findsNothing);
+      await tester.tap(find.byTooltip('Chat history'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(Drawer), findsOneWidget);
+      expect(find.byKey(ValueKey(api.archivedAt.toIso8601String())),
+          findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget,
+          reason: "the drawer's implied menu button must not replace Back");
+      expect(find.byType(DrawerButton), findsNothing);
+      await _drain(tester);
+    });
+
+    testWidgets('at 2x text on a 320 dp phone the header keeps to its cap and '
+        'the composer stays on screen', (tester) async {
+      _phone(tester, navBar: 48);
+      await _pushCoach(tester, _ThreadApi(), textScale: 2);
+      expect(tester.takeException(), isNull);
+
+      final bar = tester.getRect(find.byType(AppBar));
+      final composer = tester.getRect(_composer);
+      expect(composer.bottom, lessThanOrEqualTo(640 - 48));
+      expect(composer.top, greaterThan(bar.bottom));
+      final header = tester.getRect(find.ancestor(
+        of: find.byType(SurfacePeerStrip),
+        matching: find.byType(SingleChildScrollView),
+      ));
+      expect(header.height,
+          lessThanOrEqualTo((composer.top - 8 - bar.bottom) * 0.4 + 0.5));
       await _drain(tester);
     });
   });

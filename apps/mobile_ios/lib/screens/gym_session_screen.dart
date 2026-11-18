@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:run_recorder/run_recorder.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSpace, EditorPage;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../entry_field_fit.dart';
@@ -61,8 +62,8 @@ class GymSessionScreen extends StatefulWidget {
   State<GymSessionScreen> createState() => _GymSessionScreenState();
 }
 
-/// The user's choice at the leave-session prompt (system back, the AppBar
-/// back button, or the band's Abandon control). Mirrors the run screen's
+/// The user's choice at the leave-session prompt (system back, the app bar's
+/// close button, or the band's Abandon control). Mirrors the run screen's
 /// `_ResumeChoice` shape: stay, exit keeping the recoverable state, or
 /// destroy it.
 enum _LeaveChoice { keep, leave, discard }
@@ -781,38 +782,27 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
   }
 
   Widget _buildScaffold(AppLocalizations l10n, String title) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title.isEmpty ? l10n.gymRoutineTitle : title),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _finished
-                  ? _finishView(l10n)
-                  : (_abandoned
-                      ? const SizedBox.shrink()
-                      : _entryView(l10n)),
-            ),
-            // The band ends with Log set, which commits the entry fields — so
-            // the whole band sits BELOW them. Above, the commit read as the
-            // heading of a section it actually closes, and the athlete had to
-            // reach back up past the fields to log a set they had just typed.
-            GymExecutionBand(
-              state: _band,
-              onComplete: _onComplete,
-              onSkip: _onSkip,
-              onRewind: _onRewind,
-              onAbandon: _onAbandon,
-            ),
-          ],
-        ),
+    // The close button goes through maybePop, so the PopScope above asks
+    // before a session with logged sets is left.
+    return EditorPage(
+      title: title.isEmpty ? l10n.gymRoutineTitle : title,
+      fields: _finished
+          ? [_finishView(l10n)]
+          : (_abandoned ? const [] : [_entryGrid(l10n)]),
+      // The band ends with Log set, which commits the entry fields, so it
+      // sits below them as the page's bar: above, the commit read as the
+      // heading of a section it actually closes.
+      bar: GymExecutionBand(
+        state: _band,
+        onComplete: _onComplete,
+        onSkip: _onSkip,
+        onRewind: _onRewind,
+        onAbandon: _onAbandon,
       ),
     );
   }
 
-  Widget _entryView(AppLocalizations l10n) {
+  Widget _entryGrid(AppLocalizations l10n) {
     final step = _runner.currentStep;
     final fields = <Widget>[
       _field(_reps, l10n.gymReps, false),
@@ -823,17 +813,12 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
       if (step?.targetDistanceM != null)
         _field(_distance, l10n.gymDistance, true),
     ];
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) => _fieldGrid(
-            fields,
-            constraints.maxWidth,
-            MediaQuery.textScalerOf(context).scale(_kFieldMinWidth),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) => _fieldGrid(
+        fields,
+        constraints.maxWidth,
+        MediaQuery.textScalerOf(context).scale(_kFieldMinWidth),
+      ),
     );
   }
 
@@ -889,9 +874,9 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
   Widget _finishView(AppLocalizations l10n) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.flag_outlined, size: 48, color: theme.colorScheme.primary),
           const SizedBox(height: 12),

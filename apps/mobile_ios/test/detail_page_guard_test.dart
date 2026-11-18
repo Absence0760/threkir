@@ -43,11 +43,6 @@ const _barsLeft = <String, ({int count, String why})>{
     count: 1,
     why: 'a full-screen crop with a close button; the image takes the body',
   ),
-  'lib/screens/gym_session_screen.dart': (
-    count: 1,
-    why: 'a live execution screen: the room goes to the entry fields and '
-        'the band pinned under them, like the session runner',
-  ),
   'lib/screens/live_spectator_screen.dart': (
     count: 1,
     why: 'a MapFirstPage, which takes its bar as a slot over the map',

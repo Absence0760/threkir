@@ -375,6 +375,38 @@ void main() {
       expect(find.text('Log set').hitTestable(), findsOneWidget);
     });
 
+    testWidgets('a bar taller than the room is held to its share of the body, '
+        'leaving the fields room above it', (tester) async {
+      await _open(
+        tester,
+        keyboard: 300,
+        page: EditorPage(
+          title: 'Session',
+          fields: const [TextField(key: Key('reps'))],
+          bar: Column(
+            key: bandKey,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Flexible(
+                child: SingleChildScrollView(child: SizedBox(height: 1000)),
+              ),
+              TextButton(onPressed: () {}, child: const Text('Log set')),
+            ],
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final appBar = tester.getRect(find.byType(AppBar)).bottom;
+      final body = 740 - 300 - appBar;
+      final band = tester.getRect(find.byKey(bandKey));
+      expect(band.height, closeTo(body * EditorPage.maxBarShare, 0.01));
+      expect(band.bottom, 740 - 300);
+      expect(find.text('Log set').hitTestable(), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const Key('reps')));
+      await tester.pump();
+      expect(find.byKey(const Key('reps')).hitTestable(), findsOneWidget);
+    });
+
     testWidgets('at 320 dp and 2x text it does not overflow', (tester) async {
       await _open(
         tester,

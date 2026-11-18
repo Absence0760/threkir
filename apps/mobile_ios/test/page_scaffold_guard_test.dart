@@ -32,10 +32,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'the barcode camera, a full-bleed camera surface',
   ),
-  'lib/screens/live_spectator_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: the error branch only (MapFirstPage)',
-  ),
 };
 
 final _raw = RegExp(r'(?<![\w.])Scaffold\(');

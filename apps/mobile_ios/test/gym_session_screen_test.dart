@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_routine_store.dart';
 import '../lib/screens/gym_session_screen.dart';
+import 'editor_layout.dart';
 import 'pump_until.dart';
 
 /// No-op so the session screen's `WakelockPlus.enable()` / `.disable()` don't
@@ -157,8 +158,12 @@ Widget _screen(LocalGymStore store, StoredRoutine routine) => MaterialApp(
       home: GymSessionScreen(api: null, routine: routine, gymStore: store),
     );
 
+/// Taps the page's close button, the app-bar way out the PopScope guards.
+Future<void> _close(WidgetTester tester) =>
+    tester.tap(find.byType(CloseButton));
+
 /// Hosts the session behind a launcher route so the pushed screen carries a
-/// real AppBar back button — the surface the PopScope guard intercepts.
+/// real close button — the surface the PopScope guard intercepts.
 Widget _launcher(LocalGymStore store, StoredRoutine routine,
         {StoredGymWorkout? resumeDraft}) =>
     MaterialApp(
@@ -215,8 +220,8 @@ void main() {
     await tester.pumpWidget(_screen(g.store, _routine()));
     await tester.pump();
 
-    // AppBar shows the routine title.
-    expect(find.text('Bench routine'), findsOneWidget);
+    // The page heads with the routine title (the bar repeats it on scroll).
+    expect(find.text('Bench routine'), findsWidgets);
     // The three per-set entry fields.
     expect(find.widgetWithText(TextField, 'Reps'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'kg'), findsOneWidget);
@@ -422,7 +427,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(FilledButton, 'Complete set'), findsOneWidget);
 
-    await tester.pageBack();
+    await _close(tester);
     await tester.pumpAndSettle();
     expect(find.text('Leave workout?'), findsNothing);
     expect(find.text('open session'), findsOneWidget);
@@ -441,7 +446,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.pageBack();
+    await _close(tester);
     await tester.pumpAndSettle();
     expect(find.text('Leave workout?'), findsOneWidget);
 
@@ -462,7 +467,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.pageBack();
+    await _close(tester);
     await tester.pumpAndSettle();
 
     // Leave writes the draft file before popping; poll the pop through.
@@ -493,7 +498,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.pageBack();
+    await _close(tester);
     await tester.pumpAndSettle();
 
     await tester.tap(_inDialog('Leave — keep draft'));
@@ -520,7 +525,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.pageBack();
+    await _close(tester);
     await tester.pumpAndSettle();
 
     await tester.tap(_inDialog('Discard'));
@@ -665,7 +670,7 @@ void main() {
     await tester.pump();
 
     // Blank title → the localised "Routines" fallback, never an empty AppBar.
-    expect(find.text('Routines'), findsOneWidget);
+    expect(find.text('Routines'), findsWidgets);
   });
 
   group('the set-entry row', () {
@@ -725,6 +730,78 @@ void main() {
       expect(rpe.top, reps.top);
       expect(weight.left, greaterThan(reps.right));
       expect(rpe.left, greaterThan(weight.right));
+    });
+  });
+
+  group('on a small phone', () {
+    testWidgets(
+        'Log set clears a 3-button nav bar and rises above the keyboard, '
+        'and every entry field still scrolls into reach', (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+
+      await expectEditorSaveReachable(
+        tester,
+        page: () =>
+            GymSessionScreen(api: null, routine: _routine(), gymStore: g.store),
+        save: find.widgetWithText(FilledButton, 'Complete set'),
+      );
+
+      // Still keyboard-up at 2.0x: each field scrolls into the room the band
+      // leaves, above it, and takes focus there.
+      final logSet = find.widgetWithText(FilledButton, 'Complete set');
+      for (final label in ['Reps', 'kg', 'RPE']) {
+        final field = find.widgetWithText(TextField, label);
+        await tester.ensureVisible(field);
+        await tester.pump();
+        expect(field.hitTestable(), findsOneWidget,
+            reason: '$label is covered by the band or the keyboard');
+        expect(tester.getRect(field).bottom,
+            lessThanOrEqualTo(tester.getRect(logSet).top));
+        await tester.tap(field);
+        await tester.pump();
+        final editable = tester.widget<EditableText>(
+            find.descendant(of: field, matching: find.byType(EditableText)));
+        expect(editable.focusNode.hasFocus, isTrue,
+            reason: '$label did not take focus');
+      }
+      expect(logSet.hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('nothing overflows at 2.0x on 320 dp, through to Finish',
+        (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+      tester.view.physicalSize = kSmallPhone;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery.withClampedTextScaling(
+          minScaleFactor: 2,
+          maxScaleFactor: 2,
+          child: child!,
+        ),
+        home:
+            GymSessionScreen(api: null, routine: _routine(), gymStore: g.store),
+      ));
+      await tester.pump();
+      // The lesser controls scroll inside the band; Log set stays pinned.
+      final skip = find.widgetWithText(OutlinedButton, 'Skip set');
+      await tester.ensureVisible(skip);
+      await tester.pump();
+      expect(skip.hitTestable(), findsOneWidget);
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
+        await tester.pump();
+      }
+      final finish = find.widgetWithText(FilledButton, 'Finish');
+      await tester.ensureVisible(finish);
+      await tester.pump();
+      expect(finish.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

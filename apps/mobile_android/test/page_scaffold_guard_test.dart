@@ -44,10 +44,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: the error branch only (MapFirstPage)',
   ),
-  'lib/screens/setup_wizard_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: EditorPage with progress dots, not dismissible',
-  ),
 };
 
 final _raw = RegExp(r'(?<![\w.])Scaffold\(');

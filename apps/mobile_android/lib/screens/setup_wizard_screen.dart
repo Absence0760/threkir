@@ -4,13 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show
-        FieldColumn,
-        ListCard,
-        PageBarTitle,
-        PageBody,
-        PageHeader,
-        PageTitleScope;
+    show EditorPage, EditorSave, FieldColumn, ListCard;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -336,8 +330,9 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       // the database refuses the bag key without it (decisions § 2542).
       // Without it the calorie estimate uses its 70 kg default.
       final w = parseTypedDecimal(_weightCtl.value.text);
-      final consentedWeight =
-          _healthDataConsent.value && w != null && w > 0 ? w : null;
+      final consentedWeight = _healthDataConsent.value && w != null && w > 0
+          ? w
+          : null;
       if (consentedWeight != null) {
         bag[SettingsKeys.bodyWeightKg] = consentedWeight;
       }
@@ -405,59 +400,68 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       // on the first step it offers the same exit the header does.
       canPop: false,
       onPopInvokedWithResult: _onPopInvoked,
-      // Not a PushedPage: the wizard has no Back. It says its title in the
-      // step's scroll all the same, and the bar repeats it once that heading
-      // has scrolled away.
-      child: PageTitleScope(
-        child: Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: PageBarTitle(l10n.setupPageTitle),
-          ),
-          body: PageBody(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  _ProgressDots(step: _stepIndex.value, total: _steps.length),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // At the top of the step rather than an app-bar
-                          // action: "Einrichtung überspringen" at 2x text is
-                          // wider than a 320 dp app bar, and an action cannot
-                          // wrap. In the scroll, so it never costs the step's
-                          // fixed chrome a line.
-                          Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: TextButton(
-                              onPressed: _saving ? null : _skip,
-                              child:
-                                  Text(l10n.setupSkip, textAlign: TextAlign.end),
-                            ),
-                          ),
-                          PageHeader(
-                            title: l10n.setupPageTitle,
-                            padding: const EdgeInsets.only(bottom: 8),
-                          ),
-                          _buildStep(theme, l10n),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (_saveFailed) _buildOfflineExit(theme, l10n),
-                  _buildNav(l10n),
-                ],
+      // The two text fields are the only answers typed rather than tapped,
+      // and the forward label says whether this step is answered, so the
+      // page follows them as well as setState.
+      child: ListenableBuilder(
+        listenable: Listenable.merge([_displayNameCtl.value, _weightCtl.value]),
+        builder: (context, _) => EditorPage(
+          title: l10n.setupPageTitle,
+          // A gate, not a form to abandon: Skip and the back gesture are the
+          // ways out, and both stamp onboarded_at.
+          dismissible: false,
+          header: _ProgressDots(step: _stepIndex.value, total: _steps.length),
+          fields: [
+            if (_saveFailed) _buildOfflineHint(theme, l10n),
+            // At the top of the step rather than an app-bar action:
+            // "Einrichtung überspringen" at 2x text is wider than a 320 dp
+            // app bar, and an action cannot wrap. In the scroll, so it never
+            // costs the step's fixed chrome a line.
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: _saving ? null : _skip,
+                child: Text(l10n.setupSkip, textAlign: TextAlign.end),
               ),
             ),
-          ),
+            _buildStep(theme, l10n),
+          ],
+          status: _saveFailed ? _buildOfflineExit(l10n) : null,
+          secondary: _stepIndex.value > 0
+              ? OutlinedButton(
+                  onPressed: _saving ? null : _back,
+                  child: Text(l10n.setupBack),
+                )
+              : null,
+          save: _forwardAction(l10n),
         ),
       ),
+    );
+  }
+
+  /// The bar's one primary action. Before the last step it advances, and its
+  /// label names whether this press is a Continue or a Skip. On the last
+  /// step it finishes: into the plan wizard when a goal was picked (the body
+  /// then offers Open dashboard as the lesser way out), else to the
+  /// dashboard.
+  EditorSave _forwardAction(AppLocalizations l10n) {
+    if (!_isLastStep) {
+      return EditorSave(
+        label: _currentStepAnswered ? l10n.setupContinue : l10n.setupSkipStep,
+        onPressed: _saving ? null : _next,
+      );
+    }
+    if (_primaryGoal.value == null) {
+      return EditorSave(
+        label: _saving ? l10n.setupSaving : l10n.setupOpenDashboard,
+        busy: _saving,
+        onPressed: _finish,
+      );
+    }
+    return EditorSave(
+      label: _saving ? l10n.setupSaving : l10n.setupCreatePlanCta,
+      busy: _saving,
+      onPressed: () => _finish(createPlan: true),
     );
   }
 
@@ -606,23 +610,20 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
         return _stepShell(
           theme,
           title: l10n.setupDoneTitle,
-          // When a goal was picked the body hosts the primary "Create my
-          // training plan" CTA, so the hint names that action; otherwise
-          // "Open dashboard" in the nav is the primary and the hint names it.
+          // When a goal was picked the bar's primary is the goal-keyed
+          // "Create my training plan" (a runner-new discoverability nudge into
+          // the plan wizard), so the hint names it and Open dashboard is the
+          // lesser action here; otherwise Open dashboard is the primary.
           hint: _primaryGoal.value == null
               ? l10n.setupDoneHint
               : l10n.setupDoneHintGoal,
-          // A goal-keyed CTA into the plan wizard (runner-new discoverability
-          // nudge) when the runner picked a goal; a plain finish otherwise.
           child: _primaryGoal.value == null
               ? const SizedBox.shrink()
               : Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton(
-                    onPressed: _saving ? null : () => _finish(createPlan: true),
-                    child: Text(
-                      _saving ? l10n.setupSaving : l10n.setupCreatePlanCta,
-                    ),
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton(
+                    onPressed: _saving ? null : _finish,
+                    child: Text(l10n.setupOpenDashboard),
                   ),
                 ),
         );
@@ -640,8 +641,10 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
             leading: const Icon(Icons.directions_run),
             title: l10n.setupTrackRunning,
             subtitle: l10n.setupTrackRunningAlwaysOn,
-            trailing:
-                Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            trailing: Icon(
+              Icons.check_circle,
+              color: theme.colorScheme.primary,
+            ),
           ),
           ListCard.flush(
             child: SwitchListTile(
@@ -699,8 +702,9 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   /// health platform's own permission sheet, and every consent the import
   /// screen asks for, run there exactly as they do from Settings.
   Future<void> _openImport(String source) async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: widget.importScreenBuilder));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: widget.importScreenBuilder));
     if (!mounted) return;
     setState(() => _importOpened.value = true);
   }
@@ -732,54 +736,58 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          FieldColumn(children: [
-            // isExpanded: at 2x on a 320 dp phone the longest choice is wider
-            // than the field, and an unexpanded dropdown overflows instead of
-            // ellipsizing it.
-            DropdownButtonFormField<String>(
-              initialValue: _gender.value,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: l10n.setupGenderLabel),
-              items: [
-                DropdownMenuItem(
-                  value: '',
-                  child: Text(l10n.setupGenderPreferNot),
+          FieldColumn(
+            children: [
+              // isExpanded: at 2x on a 320 dp phone the longest choice is wider
+              // than the field, and an unexpanded dropdown overflows instead of
+              // ellipsizing it.
+              DropdownButtonFormField<String>(
+                initialValue: _gender.value,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: l10n.setupGenderLabel),
+                items: [
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(l10n.setupGenderPreferNot),
+                  ),
+                  DropdownMenuItem(
+                    value: 'female',
+                    child: Text(l10n.setupGenderFemale),
+                  ),
+                  DropdownMenuItem(
+                    value: 'male',
+                    child: Text(l10n.setupGenderMale),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _gender.value = v ?? ''),
+              ),
+              InkWell(
+                onTap: _pickDob,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: l10n.setupDobLabel,
+                    helperText: l10n.setupDobNote,
+                    helperMaxLines: 3,
+                  ),
+                  child: Text(
+                    _dateOfBirth.value == null
+                        ? l10n.setupDobPlaceholder
+                        : ApiClient.dateOnly(_dateOfBirth.value!),
+                  ),
                 ),
-                DropdownMenuItem(
-                  value: 'female',
-                  child: Text(l10n.setupGenderFemale),
+              ),
+              TextField(
+                controller: _weightCtl.value,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                DropdownMenuItem(
-                  value: 'male',
-                  child: Text(l10n.setupGenderMale),
-                ),
-              ],
-              onChanged: (v) => setState(() => _gender.value = v ?? ''),
-            ),
-            InkWell(
-              onTap: _pickDob,
-              child: InputDecorator(
                 decoration: InputDecoration(
-                  labelText: l10n.setupDobLabel,
-                  helperText: l10n.setupDobNote,
-                  helperMaxLines: 3,
-                ),
-                child: Text(
-                  _dateOfBirth.value == null
-                      ? l10n.setupDobPlaceholder
-                      : ApiClient.dateOnly(_dateOfBirth.value!),
+                  labelText: l10n.setupWeightLabel,
+                  hintText: l10n.setupWeightPlaceholder,
                 ),
               ),
-            ),
-            TextField(
-              controller: _weightCtl.value,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: l10n.setupWeightLabel,
-                hintText: l10n.setupWeightPlaceholder,
-              ),
-            ),
-          ]),
+            ],
+          ),
           // Weight is health data as much as gender is, so typing one alone
           // asks for the consent too. The weight is a typed field, so the
           // checkbox listens to it rather than rebuilding the step per key.
@@ -855,25 +863,28 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     );
   }
 
-  Widget _buildOfflineExit(ThemeData theme, AppLocalizations l10n) {
+  /// The offline fail-safe exit, split in two: the button sits in the pinned
+  /// bar, where it is in reach whatever the step's scroll; the hint saying
+  /// why opens the step. At 2x text the hint runs to eight lines, which in
+  /// the bar left the fields no height on a 320 dp phone.
+  Widget _buildOfflineHint(ThemeData theme, AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              l10n.setupOfflineHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: _saving ? null : _finishLater,
-            child: Text(l10n.setupFinishLater),
-          ),
-        ],
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        l10n.setupOfflineHint,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineExit(AppLocalizations l10n) {
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: TextButton(
+        onPressed: _saving ? null : _finishLater,
+        child: Text(l10n.setupFinishLater, textAlign: TextAlign.end),
       ),
     );
   }
@@ -894,65 +905,6 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     setupWizardImportStep => _importOpened.value,
     _ => true,
   };
-
-  Widget _buildNav(AppLocalizations l10n) {
-    // An OverflowBar rather than Back beside an Expanded: at 2x text the
-    // forward label ("Ouvrir le tableau de bord") was squeezed into what Back
-    // left and wrapped to six lines, pushing the wizard's chrome 152 dp past
-    // a 320 dp phone. Here the two share a line when they fit and stack,
-    // each at full width, when they do not.
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: OverflowBar(
-        alignment: MainAxisAlignment.end,
-        overflowAlignment: OverflowBarAlignment.end,
-        spacing: 8,
-        overflowSpacing: 4,
-        children: [
-          if (_stepIndex.value > 0)
-            OutlinedButton(
-              onPressed: _saving ? null : _back,
-              child: Text(l10n.setupBack),
-            ),
-          if (!_isLastStep)
-            // The two text fields are the only answers typed rather
-            // than tapped, so the label tracks them directly instead
-            // of rebuilding the whole wizard on every keystroke.
-            ListenableBuilder(
-              listenable: Listenable.merge([
-                _displayNameCtl.value,
-                _weightCtl.value,
-              ]),
-              builder: (context, _) => FilledButton(
-                onPressed: _saving ? null : _next,
-                child: Text(
-                  _currentStepAnswered
-                      ? l10n.setupContinue
-                      : l10n.setupSkipStep,
-                ),
-              ),
-            )
-          // On the final step, when the runner picked a goal the body
-          // hosts the primary "Create my training plan" CTA — so "Open
-          // dashboard" demotes to a secondary action here to avoid two
-          // competing primary buttons. With no goal, finishing is the
-          // one primary action.
-          else if (_primaryGoal.value == null)
-            FilledButton(
-              onPressed: _saving ? null : _finish,
-              child: Text(
-                _saving ? l10n.setupSaving : l10n.setupOpenDashboard,
-              ),
-            )
-          else
-            OutlinedButton(
-              onPressed: _saving ? null : _finish,
-              child: Text(l10n.setupOpenDashboard),
-            ),
-        ],
-      ),
-    );
-  }
 
   String _goalLabel(AppLocalizations l10n, String g) => switch (g) {
     'weight_loss' => l10n.setupGoalWeightLoss,

@@ -89,7 +89,8 @@ void main() {
     final l10n = l10nOf(tester, StoreSelectors.shell);
     themeModeNotifier.value = ThemeMode.dark;
     for (final ready in StoreSelectors.todayReady) {
-      await pumpUntilFound(tester, ready, describe: 'Today to draw $ready');
+      await pumpUntilFound(tester, ready,
+          describe: 'Today to draw ${ready.toString(describeSelf: true)}');
     }
     // The plan panel's week grid ticks a session only once the server has
     // linked its run, which Today shows by dropping its "missed" prompt.
@@ -131,7 +132,8 @@ void main() {
       }
       navigator.push(MaterialPageRoute<void>(
           builder: (_) => captureBoundary(boundary, screen)));
-      await pumpUntilFound(tester, ready, describe: 'the screen with $ready to load');
+      await pumpUntilFound(tester, ready,
+          describe: 'the screen with ${ready.toString(describeSelf: true)} to load');
       await settle(tester, settleFor);
     }
 

@@ -1416,10 +1416,10 @@ packages:
     dependency: transitive
     description:
       name: purchases_flutter
-      sha256: be377ba740a650b64ecbb418ea24cc36a91bf13d61db2f9552c8d2b20ca3d670
+      sha256: ff809cd3e0d25d955c8ea25afe1b95c71a426ab901de9c2950ee1c327f12ef62
       url: "https://pub.dev"
     source: hosted
-    version: "10.2.2"
+    version: "10.19.1"
   reactive_ble_mobile:
     dependency: transitive
     description:

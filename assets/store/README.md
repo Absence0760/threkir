@@ -65,6 +65,7 @@ It writes `<out>/<locale>/<target>/<NN>-<panel>.png`, plus `<out>/<locale>/play-
 |---|---|---|---|
 | `play-phone` | 1080 x 1920 | Android suite | Play Console → Store listing → Phone screenshots |
 | `appstore-6.9` | 1320 x 2868 | iOS suite | App Store Connect → 6.9" Display |
+| `appstore-6.3` | 1206 x 2622 | iOS suite (the same captures) | App Store Connect → "iPhone with Dynamic Island (medium display)", which since late 2026 takes only 6.1"/6.3" sizes (1179 x 2556, 1206 x 2622) |
 
 The App Store set must come from the iOS captures, since an Android screen in an App Store listing breaks Apple's rule 2.3.10. Without `--captures appstore-6.9=<dir>` the render fails. `--appstore-from-android` draws that set from the Android captures for a local look only, and prints a warning that it must not be uploaded. The workflow never passes it: it passes the iOS job's captures, or renders `--target play-phone` alone when that job failed.
 
@@ -214,4 +215,4 @@ The workflow's `renderer-tests` job runs it on every PR that touches this direct
 
 ## Uploading (owner)
 
-Download `store-screenshots-panels` from the workflow run and look through every panel. Then upload `en/play-phone/*` in Play Console and `en/appstore-6.9/*` in App Store Connect, in file-name order. Only upload the App Store set from a run whose `Capture on the iOS simulator` job passed; a run where it failed has no `en/appstore-6.9/` folder at all. `en/play-phone-variant-b/*` is variant B of the Play store listing experiment. Store uploads are manual. No workflow holds store-listing write access.
+Download `store-screenshots-panels` from the workflow run and look through every panel. Then upload `en/play-phone/*` in Play Console and in App Store Connect `en/appstore-6.3/*` (or `en/appstore-6.9/*`, whichever size the iPhone slot accepts), in file-name order. App Store screenshots belong to an app version: an approved version's media is locked, so upload them to the next version and they ship with its build. Only upload the App Store set from a run whose `Capture on the iOS simulator` job passed; a run where it failed has no `en/appstore-6.9/` folder at all. `en/play-phone-variant-b/*` is variant B of the Play store listing experiment. Store uploads are manual. No workflow holds store-listing write access.

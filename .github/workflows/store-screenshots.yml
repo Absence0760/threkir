@@ -468,6 +468,7 @@ jobs:
             bash assets/store/gen-store-screenshots.sh \
               --captures play-phone=build/store-captures/play-phone \
               --captures appstore-6.9=build/store-captures/appstore-6.9 \
+              --captures appstore-6.3=build/store-captures/appstore-6.9 \
               --out build/store-panels
           else
             bash assets/store/gen-store-screenshots.sh \

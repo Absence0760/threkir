@@ -1,7 +1,8 @@
 {
   "targets": {
     "play-phone": { "width": 1080, "height": 1920, "platform": "android" },
-    "appstore-6.9": { "width": 1320, "height": 2868, "platform": "ios", "fallback_from": "play-phone" }
+    "appstore-6.9": { "width": 1320, "height": 2868, "platform": "ios", "fallback_from": "play-phone" },
+    "appstore-6.3": { "width": 1206, "height": 2622, "platform": "ios", "fallback_from": "play-phone" }
   },
   "claims": ["free_tier"],
   "panels": [
@@ -18,6 +19,10 @@
             "window": { "max": 7, "before": 3, "after": 3 } }
         ],
         "appstore-6.9": [
+          { "capture": "run-splits", "from": "pacing-card", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
+            "window": { "max": 7, "before": 3, "after": 3 } }
+        ],
+        "appstore-6.3": [
           { "capture": "run-splits", "from": "pacing-card", "to": "splits-hint", "pad_top_dp": 16, "pad_bottom_dp": 16,
             "window": { "max": 7, "before": 3, "after": 3 } }
         ]

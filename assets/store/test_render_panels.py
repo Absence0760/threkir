@@ -296,7 +296,8 @@ class RenderTest(unittest.TestCase):
                  "--appstore-from-android", "--out", out], capture_output=True, text=True, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             files = sorted(p.relative_to(out).as_posix() for p in Path(out).rglob("*.png"))
-            self.assertEqual(len(files), 18)
+            self.assertEqual(len(files), 24)
+            self.assertIn("en/appstore-6.3/01-slowest-km.png", files)
             self.assertIn("en/play-phone-variant-b/01-slowest-km-alt.png", files)
             self.assertIn("::warning::appstore-6.9", result.stderr)
 

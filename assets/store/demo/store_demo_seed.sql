@@ -60,6 +60,8 @@ INSERT INTO auth.identities (
 -- the current version. Free tier, because the listing says the analysis is not
 -- locked, so nothing in it may come from a paid state; health-data consent,
 -- because per-point heart rate is kept only with it and the zones need it.
+-- Sex unset, so the plan below is exactly what the generator writes for this
+-- profile (a female profile takes a 3% slower pace calibration).
 INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
                            age_confirmed_at, terms_accepted_at, onboarded_at,
                            coach_consent_at, ai_disclosure_version, health_data_consent_at,
@@ -67,13 +69,14 @@ INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
 VALUES ('5d000000-0000-4000-8000-000000000001', 'Sam Rivera', 'km', 'free',
         now(), now(), now(),
         now(), ai_disclosure_current_version(), now(),
-        170.0, '1991-04-18', 'female')
+        170.0, '1991-04-18', NULL)
 ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   subscription_tier = EXCLUDED.subscription_tier,
   coach_consent_at = EXCLUDED.coach_consent_at,
   ai_disclosure_version = EXCLUDED.ai_disclosure_version,
-  health_data_consent_at = EXCLUDED.health_data_consent_at;
+  health_data_consent_at = EXCLUDED.health_data_consent_at,
+  gender = EXCLUDED.gender;
 
 INSERT INTO user_settings (user_id, prefs) VALUES (
   '5d000000-0000-4000-8000-000000000001',
@@ -114,7 +117,8 @@ DECLARE
 BEGIN
   DELETE FROM training_plans WHERE id = v_plan;
 
-  -- The plan the app writes for a 1:45:00 half goal with no recent 5K: VDOT
+  -- The plan the app's generator writes for this profile and a 1:45:00 half
+  -- goal with no recent 5K (store_demo_hero_run_test.dart checks it): VDOT
   -- vdotFromRace(21097.5, 6300) to two places (plan_detail_screen.dart), and
   -- the paces resolveTrainingPaces derives from that goal, which planPaceBag
   -- also hands the phone's workout runner: easy 6:04, marathon 5:17, tempo

@@ -7,6 +7,7 @@ import '../lib/pace_analysis.dart';
 import '../lib/race_predictor.dart';
 import '../lib/run_altitude.dart';
 import '../lib/run_stats.dart';
+import '../lib/training.dart';
 
 // The store listing's record panel shows the demo account's hero run, so what
 // its caption and the coach thread say about it has to be what the app
@@ -100,4 +101,36 @@ void main() {
       }
     },
   );
+
+  // The seeded plan (store_demo_seed.sql) must be the one the app's own
+  // generator writes for the demo profile, whose sex is unset, and a 1:45:00
+  // half with no recent 5K. Change the seed and these numbers together.
+  test('the seeded plan is the generator\'s plan for the demo profile', () {
+    final plan = generatePlan(
+      GeneratePlanInput(
+        goalEvent: GoalEvent.distanceHalf,
+        goalTimeSec: 6300,
+        startDate: DateTime(2026, 10, 12),
+        daysPerWeek: 5,
+        weeks: 12,
+      ),
+    );
+    // The VDOT chip: plan_detail_screen.dart stores it to two places.
+    expect((plan.vdot! * 100).round() / 100, 42.64);
+    final paces = <WorkoutKind, Set<int?>>{};
+    final structured = <int?>{};
+    for (final w in plan.weeks.expand((w) => w.workouts)) {
+      paces.putIfAbsent(w.kind, () => {}).add(w.targetPaceSecPerKm);
+      structured
+        ..add(w.structure?.steady?['pace_sec_per_km'] as int?)
+        ..add(w.structure?.repeats?['pace_sec_per_km'] as int?);
+    }
+    expect(paces[WorkoutKind.tempo], {290});
+    expect(paces[WorkoutKind.easy], {364});
+    expect(paces[WorkoutKind.long], {364});
+    expect(paces[WorkoutKind.recovery], {364});
+    expect(paces[WorkoutKind.interval], {269});
+    expect(paces[WorkoutKind.race], {299});
+    expect(structured.whereType<int>().toSet(), containsAll([290, 269]));
+  });
 }

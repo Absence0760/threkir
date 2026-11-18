@@ -5056,6 +5056,7 @@
   "avatarCropConfirm": "Foto verwenden",
   "avatarCropLoading": "Foto wird geladen…",
   "avatarCropLoadFailed": "Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.",
+  "avatarCropPreparing": "Foto wird vorbereitet…",
   "dashboardLeadTitle": "Deine Woche",
   "dashboardLeadEmpty": "Noch keine Läufe",
   "dashboardLeadVsPlan": "{done} von {target} geplant",

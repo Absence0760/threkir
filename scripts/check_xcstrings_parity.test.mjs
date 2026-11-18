@@ -198,6 +198,55 @@ test('a plural entry missing its singular category is refused', () => {
 	assert.match(out, /de: missing\/empty plural 'one'/);
 });
 
+// Claim (8): three full stops for an ellipsis, in a value, a plural form, or
+// the key of an entry whose English is implicit, so the key is the text.
+test('three full stops in a translated value are refused', () => {
+	const { status, out } = runMutated((dir) => {
+		const cat = readCatalog(dir);
+		const key = Object.keys(cat.strings).find(
+			(k) => cat.strings[k].localizations?.ja?.stringUnit,
+		);
+		assert.ok(key, 'no entry carries a plain ja stringUnit');
+		cat.strings[key].localizations.ja.stringUnit.value += '...';
+		writeCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /ja: write "…", not three full stops/);
+});
+
+test('three full stops in a plural form are refused', () => {
+	const { status, out } = runMutated((dir) => {
+		const cat = readCatalog(dir);
+		const key = Object.keys(cat.strings).find(
+			(k) => cat.strings[k].localizations?.de?.variations?.plural?.other?.stringUnit,
+		);
+		assert.ok(key, 'no entry carries a de plural');
+		cat.strings[key].localizations.de.variations.plural.other.stringUnit.value += '...';
+		writeCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /de: write "…", not three full stops/);
+});
+
+test('three full stops in an implicit-source key are refused, and the character passes', () => {
+	/** @param {string} suffix */
+	const withKey = (suffix) =>
+		runMutated((dir) => {
+			const cat = readCatalog(dir);
+			const key = Object.keys(cat.strings).find(
+				(k) => !cat.strings[k].localizations?.en && cat.strings[k].localizations?.de,
+			);
+			assert.ok(key, 'no entry leaves its English implicit');
+			cat.strings[`Syncing${suffix}`] = cat.strings[key];
+			writeCatalog(dir, cat);
+		});
+	const dots = withKey('...');
+	assert.equal(dots.status, 1, dots.out);
+	assert.match(dots.out, /\[Syncing\.\.\.\] en: write "…", not three full stops/);
+	const one = withKey('…');
+	assert.equal(one.status, 0, one.out);
+});
+
 test('ja keeps its exemption from the singular category', () => {
 	// Japanese has no singular/plural distinction, so the catalog declares
 	// only "other" for it. If the exemption were dropped the guard would

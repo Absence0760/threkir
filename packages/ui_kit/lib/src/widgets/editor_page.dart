@@ -56,7 +56,7 @@ class EditorSave {
 /// dots). [bar] replaces the standard Save bar with a page's own band (a gym
 /// session's execution controls); it keeps the standard bar's place in the
 /// body's column, so it rises with the keyboard and clears the system
-/// navigation bar. [EditorPage.fixed] lays out one child that does not scroll
+/// navigation bar, and is held to half the body's height. [EditorPage.fixed] lays out one child that does not scroll
 /// and gets the body's bounded height (a crop stage with pan and zoom).
 ///
 /// Strings come from the caller; ui_kit has no catalogue.
@@ -133,7 +133,14 @@ class EditorPage extends StatelessWidget {
   /// The page's own bottom band in place of the standard bar. Exclusive with
   /// [save], [secondary] and [status]. The page keeps it clear of the system
   /// navigation bar and above the keyboard; it should not pad for either.
+  ///
+  /// It gets at most [maxBarShare] of the body's height, bounded, so a band
+  /// that can grow taller (large text, keyboard up) scrolls its own content
+  /// and keeps its commit control in view.
   final Widget? bar;
+
+  /// The largest share of the body's height a custom [bar] may take.
+  static const double maxBarShare = 0.6;
 
   /// Fixed between the app bar and the fields; the fields scroll under it.
   final Widget? header;
@@ -179,12 +186,8 @@ class EditorPage extends StatelessWidget {
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: null,
           );
-    final Widget? bottom = placeholder != null
+    final Widget? bottom = placeholder != null || bar != null
         ? null
-        : bar != null
-        // The standard bar paints under the navigation bar and pads inside
-        // itself; a page's own band is only kept clear of it.
-        ? SafeArea(top: false, child: bar)
         : hasStandardBar
         ? EditorActionBar(save: save, secondary: secondary, status: status)
         : null;
@@ -217,16 +220,30 @@ class EditorPage extends StatelessWidget {
         ),
         body: SafeArea(
           top: false,
-          bottom: bottom == null,
+          bottom: bottom == null && bar == null,
           child: placeholder != null
               ? PageBody(child: placeholder)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ?header,
-                    Expanded(child: PageBody(child: content)),
-                    ?bottom,
-                  ],
+              : LayoutBuilder(
+                  builder: (context, box) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ?header,
+                      Expanded(child: PageBody(child: content)),
+                      ?bottom,
+                      // The standard bar paints under the navigation bar and
+                      // pads inside itself; a page's own band is only kept
+                      // clear of it, and never takes more than half the body,
+                      // so the fields keep room above it at large text with
+                      // the keyboard up.
+                      if (bar != null)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: box.maxHeight * maxBarShare,
+                          ),
+                          child: SafeArea(top: false, child: bar),
+                        ),
+                    ],
+                  ),
                 ),
         ),
       ),

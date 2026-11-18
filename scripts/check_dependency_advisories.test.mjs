@@ -548,10 +548,10 @@ test('an unchanged far-out waiver and a removed one do not fail the cap', () => 
 	assert.deepEqual(judgeIgnores([far], [], [], null, today).errors, []);
 });
 
-test('both committed waivers sit inside the 180-day cap as of 2026-11-10', () => {
+test('both committed waivers sit inside the 180-day cap as of 2026-11-17', () => {
 	const entries = ['osv-scanner.toml', 'apps/custom_watch/osv-scanner.toml'].flatMap((f) =>
 		parseIgnores(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), f),
 	);
 	assert.equal(entries.length, 2);
-	assert.deepEqual(judgeIgnores(entries, [], [], new Set(entries.map((e) => e.file)), '2026-11-10').errors, []);
+	assert.deepEqual(judgeIgnores(entries, [], [], new Set(entries.map((e) => e.file)), '2026-11-17').errors, []);
 });

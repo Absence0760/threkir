@@ -7,9 +7,8 @@
 //
 // Four checks:
 //   * Every file that hosts a detail page (`*_detail_screen.dart` and the
-//     files in `_hosts`) builds a `DetailPage`, and counts the `AppBar(` /
-//     `SliverAppBar(` it still builds by hand. The counts left are pinned in
-//     `_handBuilt`, each with why; the list may only shrink.
+//     files in `_hosts`) builds a `DetailPage` and no `AppBar(` /
+//     `SliverAppBar(` of its own.
 //   * Nowhere in lib/ is a page title hand-built: a `Semantics(header: true`
 //     around a `headline` style is what `PageHeading` is for.
 //   * The pushed pages whose titles were cut in fr/de (TO-12) and the root
@@ -31,9 +30,6 @@ const _hosts = <String>{
   'lib/screens/public_route_screen.dart',
   'lib/screens/public_run_screen.dart',
   'lib/screens/routine_public_library_screen.dart',
-};
-
-const _handBuilt = <String, ({int count, String why})>{
 };
 
 /// Hand-built app bars left anywhere in lib/, and why each page is not a
@@ -119,35 +115,26 @@ List<File> _lib() => Directory('lib')
     .toList();
 
 void main() {
-  test('every detail page is a DetailPage; hand-built bars only shrink', () {
+  test('every detail page is a DetailPage and builds no bar of its own', () {
     final hosts = {
       for (final f in Directory('lib/screens').listSync().whereType<File>())
         if (f.path.endsWith('_detail_screen.dart')) f.path.replaceAll(r'\', '/'),
       ..._hosts,
     };
     final notDetailPage = <String>[];
-    final grew = <String>[];
-    final stale = <String>[];
+    final handBuilt = <String>[];
     for (final path in hosts) {
       final s = File(path).readAsStringSync();
       if (!RegExp(r'\bDetailPage(?:\.placeholder)?\(').hasMatch(_code(s))) {
         notDetailPage.add(path);
       }
       final n = appBarsIn(s);
-      final allowed = _handBuilt[path]?.count ?? 0;
-      if (n > allowed) grew.add('$path: $n (allowed $allowed)');
-      if (n < allowed) stale.add('$path: $allowed -> $n');
-    }
-    for (final path in _handBuilt.keys) {
-      if (!hosts.contains(path)) stale.add('$path is no longer a host');
+      if (n > 0) handBuilt.add('$path: $n');
     }
     expect(notDetailPage, isEmpty,
         reason: 'lay the page out with DetailPage and a DetailHero');
-    expect(grew, isEmpty,
+    expect(handBuilt, isEmpty,
         reason: 'a detail page takes its app bar from DetailPage');
-    expect(stale, isEmpty,
-        reason: 'a hand-built bar went away; lower its count in _handBuilt '
-            '(drop the entry at zero)');
   });
 
   test('no page title is hand-built outside PageHeading', () {

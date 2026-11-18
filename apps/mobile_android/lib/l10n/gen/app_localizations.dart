@@ -29413,6 +29413,12 @@ abstract class AppLocalizations {
   /// **'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.'**
   String get avatarCropLoadFailed;
 
+  /// Label on the Use photo button while the cropped photo is being encoded
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing photo…'**
+  String get avatarCropPreparing;
+
   /// Heading of the dashboard's opening this-week card
   ///
   /// In en, this message translates to:

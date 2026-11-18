@@ -6,13 +6,16 @@
 // constraint the routes-heatmap test deals with); we pin the chrome +
 // the data path + the legend / empty states, not tile-load success.
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
@@ -20,6 +23,7 @@ import '../lib/screens/run_heatmap_screen.dart';
 import '../lib/widgets/live_run_map.dart' show mapHeatOpacity, mapHeatRamp;
 import '../lib/widgets/map_attribution.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// The screen reads the viewer id to decide whether to fetch server
 /// runs at all, so a fake must declare it rather than falling through
@@ -88,13 +92,16 @@ void simulateNavBar(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-void expectCreditsAboveNavBar(WidgetTester tester) {
+void expectCreditsAboveNavBar(WidgetTester tester) =>
+    expectCreditsAboveNavBarAt(tester, 780);
+
+void expectCreditsAboveNavBarAt(WidgetTester tester, double height) {
   final credits = find.descendant(
       of: find.byType(MapAttribution), matching: find.byType(Text));
   expect(credits, findsWidgets);
   for (final credit in credits.evaluate()) {
     final rect = tester.getRect(find.byWidget(credit.widget));
-    expect(rect.bottom, lessThanOrEqualTo(780 - 48),
+    expect(rect.bottom, lessThanOrEqualTo(height - 48),
         reason: 'credit $rect is under the navigation bar');
   }
 }
@@ -224,6 +231,130 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text(l10n.runHeatmapErrorTitle), findsNothing);
     expect(find.text(l10n.runHeatmapLegendSummary(1)), findsOneWidget);
+  });
+
+  group('MapFirstPage states (issue #1374)', () {
+    void expectAboveNavBar(WidgetTester tester, Finder finder) {
+      expect(finder, findsWidgets);
+      for (final e in finder.evaluate()) {
+        final rect = tester.getRect(find.byWidget(e.widget));
+        expect(rect.bottom, lessThanOrEqualTo(780 - 48),
+            reason: '$rect is under the navigation bar');
+      }
+    }
+
+    testWidgets('loading shows the progress pill over the map',
+        (tester) async {
+      final pending = Completer<List<cm.Run>>();
+      await _pump(
+        tester,
+        fetchRunsFn: () => pending.future,
+        fetchTrackFn: (_) async => _track(),
+      );
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.runHeatmapLoading), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text(l10n.runHeatmapEmptyTitle), findsNothing);
+      pending.complete(const []);
+      await tester.pump();
+    });
+
+    testWidgets('the empty state clears a 48 dp nav bar', (tester) async {
+      simulateNavBar(tester);
+      await _pump(
+        tester,
+        fetchRunsFn: () async => [_run('a')],
+        fetchTrackFn: (_) async => const [],
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expectAboveNavBar(tester, find.text(l10n.runHeatmapEmptyTitle));
+      expectAboveNavBar(tester, find.text(l10n.runHeatmapEmptyBody));
+      expectCreditsAboveNavBar(tester);
+    });
+
+    testWidgets('the error state and its retry clear a 48 dp nav bar',
+        (tester) async {
+      simulateNavBar(tester);
+      await _pump(
+        tester,
+        fetchRunsFn: () async => throw Exception('simulated failure'),
+        fetchTrackFn: (_) async => _track(),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expectAboveNavBar(tester, find.text(l10n.runHeatmapErrorTitle));
+      expectAboveNavBar(
+          tester, find.widgetWithText(FilledButton, l10n.runHeatmapRetry));
+      expectCreditsAboveNavBar(tester);
+    });
+
+    testWidgets('in landscape the pill and the credit clear a side nav bar',
+        (tester) async {
+      tester.view.physicalSize = const Size(780, 360);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(left: 48);
+      tester.view.viewPadding = const FakeViewPadding(left: 48);
+      addTearDown(tester.view.reset);
+      await _pump(
+        tester,
+        fetchRunsFn: () async => [_run('a', trackUrl: 'u/a.json.gz')],
+        fetchTrackFn: (_) async => _track(),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final heading = find.descendant(
+          of: find.byType(PageHeading),
+          matching: find.text(l10n.runHeatmapLegendTitle));
+      expect(tester.getRect(heading).left, greaterThanOrEqualTo(48));
+      final credits = find.descendant(
+          of: find.byType(MapAttribution), matching: find.byType(Text));
+      for (final credit in credits.evaluate()) {
+        expect(tester.getRect(find.byWidget(credit.widget)).left,
+            greaterThanOrEqualTo(48));
+      }
+    });
+
+    // The bar title is cut at 2x on 320 dp in most locales; the pill over
+    // the map says it in full, so the harness's title check passes on the
+    // in-body heading, in every state the page can open in.
+    for (final (state, fetchRunsFn, fetchTrackFn) in [
+      (
+        'the legend',
+        () async => [_run('a', trackUrl: 'u/a.json.gz')],
+        (String _) async => _track(),
+      ),
+      ('the empty state', () async => [_run('a')], (String _) async => <cm.Waypoint>[]),
+      (
+        'the error state',
+        () async => throw Exception('simulated failure'),
+        (String _) async => _track(),
+      ),
+    ]) {
+      worstCaseTestWidgets('Your heatmap, $state', (tester, locale) async {
+        await tester.pumpWidget(worstCaseApp(
+          locale: locale,
+          home: RunHeatmapScreen(
+            api: _FakeApiClient(),
+            fetchRunsFn: fetchRunsFn,
+            fetchTrackFn: fetchTrackFn,
+          ),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        final l10n = l10nFor(locale);
+        final heading = find.descendant(
+            of: find.byType(PageHeading),
+            matching: find.text(l10n.runHeatmapLegendTitle));
+        expect(heading, findsOneWidget);
+        expect(
+            tester.renderObject<RenderParagraph>(heading).didExceedMaxLines,
+            isFalse);
+        expect(tester.getRect(heading).right, lessThanOrEqualTo(320));
+        expectCreditsAboveNavBarAt(tester, 640);
+      }, layoutOnly: true);
+    }
   });
 
   // Issue #239: signed-out recording is a supported flow, so the local

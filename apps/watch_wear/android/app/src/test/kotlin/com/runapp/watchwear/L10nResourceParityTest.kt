@@ -137,6 +137,47 @@ class L10nResourceParityTest {
         }
     }
 
+    /// Every value a wrist reads writes the one-character ellipsis "…"
+    /// (U+2026), never three full stops, which can wrap between the dots and
+    /// read as three sentences to TalkBack (decisions § 2539, § 2556, § 2571).
+    /// Read through the DOM, so an XML comment never matches and `&#8230;`
+    /// counts as the character it encodes.
+    private fun ellipsisOffenders(label: String, file: File): List<String> =
+        parse(file).flatMap { (name, values) ->
+            values.filter { "..." in it }.map { "$label/$name: $it" }
+        }
+
+    @Test
+    fun `every locale writes the one-character ellipsis`() {
+        val offenders = (listOf("values") + localeDirs).flatMap { ellipsisOffenders(it, stringsFile(it)) }
+        assertEquals(
+            "Write …, not three full stops (see offenders)",
+            emptyList<String>(),
+            offenders,
+        )
+    }
+
+    @Test
+    fun `the ellipsis check catches the slips it exists for`() {
+        val file = File.createTempFile("strings", ".xml")
+        try {
+            file.writeText(
+                """
+                <resources>
+                    <!-- a comment may say ... freely -->
+                    <string name="dots">Syncing...</string>
+                    <string name="one">Syncing…</string>
+                    <string name="entity">Syncing&#8230;</string>
+                    <plurals name="p"><item quantity="other">%d left...</item></plurals>
+                </resources>
+                """.trimIndent(),
+            )
+            assertEquals(listOf("x/dots", "x/p"), ellipsisOffenders("x", file).map { it.substringBefore(':') })
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun `every apostrophe is escaped for aapt`() {
         // An apostrophe is legal XML, so the DOM-based checks above sail past

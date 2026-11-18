@@ -1,8 +1,7 @@
-// ignore_for_file: avoid_relative_lib_imports
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart';
 
-import '../lib/widgets/thread_title.dart';
 import 'worst_case_layout.dart';
 
 /// Issue #1374 TO-8: a group thread's name over its member count clipped in

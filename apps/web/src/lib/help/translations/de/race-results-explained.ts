@@ -113,7 +113,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Zur Sicht der Teilnehmenden siehe [[guide:racing-in-a-race|Bei einem Live-Rennen mitlaufen]]. Für Veranstalter: [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Zur Sicht der Teilnehmenden siehe [[guide:racing-in-a-race|Bei einem Live-Rennen mitlaufen]]. Für Veranstalter: [[guide:race-day-for-hosts|Wettkampftag für Veranstalter]].',
 				},
 			],
 		},

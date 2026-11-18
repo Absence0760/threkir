@@ -72,6 +72,12 @@ const _jaNumber = r'(?:\d+(?:[.,]\d+)?|\{[A-Za-z0-9_]+\}|#)';
 const _jaChar = r'[぀-ヿ㐀-鿿　-〿＀-￯]';
 final _jaSpacedCounter = RegExp('$_jaNumber +$_jaCounter|$_jaChar +$_jaNumber$_jaCounter');
 
+// A place on a period's board takes の after the period: 「{season}年の{rank}位」
+// 「{month}の{rank}位」. Run together, 「2027年3位」 reads as a date and
+// 「11月 2位」 as two fragments. Web twin: the same rule in
+// ja_counter_spacing.test.ts.
+final _jaRankWithoutNo = RegExp('(?:年|月|\\})[ \u00a0]?$_jaNumber位');
+
 /// Whether [locale]'s CLDR `one` category, as gen-l10n's generated getters
 /// resolve it through `Intl.pluralLogic`, covers a count other than 1. In
 /// such a locale (`fr` and `pt` take 0 as well) a `one` branch that spells
@@ -333,6 +339,25 @@ void main() {
     expect(offenders, isEmpty,
         reason: 'app_ja.arb: drop the space between a number and its counter '
             '(「{count}件」, 「約{minutes}分」)');
+  });
+
+  test('ja writes a period rank with の between the period and the place', () {
+    expect(_jaRankWithoutNo.hasMatch('{season}年{rank}位'), isTrue);
+    expect(_jaRankWithoutNo.hasMatch('{month} {rank}位'), isTrue);
+    expect(_jaRankWithoutNo.hasMatch('2027年3位'), isTrue);
+    expect(_jaRankWithoutNo.hasMatch('{month}{rank}位'), isTrue);
+    expect(
+        _jaRankWithoutNo.hasMatch('{month}の{rank}位、{season}年の{seasonRank}位'),
+        isFalse);
+    expect(_jaRankWithoutNo.hasMatch('{total}中{rank}位'), isFalse);
+    final ja = _readArb('ja');
+    final offenders = [
+      for (final key in _messageKeys(ja))
+        if (_jaRankWithoutNo.hasMatch(ja[key] as String)) '$key: ${ja[key]}',
+    ]..sort();
+    expect(offenders, isEmpty,
+        reason: 'app_ja.arb: a year or month rank reads 「{season}年の{rank}位」, '
+            '「{month}の{rank}位」');
   });
 
   test('no catalogue declares the same key twice', () {

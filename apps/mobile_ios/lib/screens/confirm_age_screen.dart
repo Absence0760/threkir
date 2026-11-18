@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show UserProfileRow;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -117,80 +118,66 @@ class _ConfirmAgeScreenState extends State<ConfirmAgeScreen> {
           onAction: _signOut,
         );
       },
-      child: Scaffold(
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Text(l10n.confirmAgeHeading, style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 12),
-              Text(l10n.confirmAgeLede, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                value: _confirmAdult,
-                onChanged: _busy
-                    ? null
-                    : (v) => setState(() => _confirmAdult = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.signUpConfirmAge),
-              ),
-              CheckboxListTile(
-                value: _acceptTerms,
-                onChanged: _busy
-                    ? null
-                    : (v) => setState(() => _acceptTerms = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                title: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: l10n.signUpAcceptPrefix),
-                      TextSpan(
-                        text: l10n.legalTerms,
-                        style: linkStyle,
-                        recognizer: _termsTap,
-                      ),
-                      TextSpan(text: l10n.signUpAcceptConjunction),
-                      TextSpan(
-                        text: l10n.legalPrivacy,
-                        style: linkStyle,
-                        recognizer: _privacyTap,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed:
-                    _busy || !_confirmAdult || !_acceptTerms ? null : _confirm,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _busy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l10n.confirmAgeContinue),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _busy ? null : _signOut,
-                child: Text(l10n.settingsAccountSignOut),
-              ),
-            ],
-          ),
+      // The gate is finished, not left: no close button, Continue pinned
+      // where the keyboard and the navigation bar cannot hide it, and Sign
+      // out beside it as the only other way on.
+      child: EditorPage(
+        title: l10n.confirmAgeHeading,
+        dismissible: false,
+        save: EditorSave(
+          label: l10n.confirmAgeContinue,
+          busy: _busy,
+          onPressed: !_confirmAdult || !_acceptTerms ? null : _confirm,
         ),
+        secondary: TextButton(
+          onPressed: _busy ? null : _signOut,
+          child: Text(l10n.settingsAccountSignOut),
+        ),
+        status: _error == null
+            ? null
+            : Text(
+                _error!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+        fields: [
+          Text(l10n.confirmAgeLede, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 16),
+          CheckboxListTile(
+            value: _confirmAdult,
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _confirmAdult = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.signUpConfirmAge),
+          ),
+          CheckboxListTile(
+            value: _acceptTerms,
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _acceptTerms = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: l10n.signUpAcceptPrefix),
+                  TextSpan(
+                    text: l10n.legalTerms,
+                    style: linkStyle,
+                    recognizer: _termsTap,
+                  ),
+                  TextSpan(text: l10n.signUpAcceptConjunction),
+                  TextSpan(
+                    text: l10n.legalPrivacy,
+                    style: linkStyle,
+                    recognizer: _privacyTap,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

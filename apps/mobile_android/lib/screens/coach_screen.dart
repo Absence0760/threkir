@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
+        ConversationPage,
         ListSkeleton,
         PageHeader,
         PushedPage,
@@ -1282,69 +1283,46 @@ class _CoachScreenState extends State<CoachScreen> {
       return _buildCoachConsentScaffold(theme, l10n);
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        // A left `drawer` makes AppBar auto-imply a hamburger in the
-        // leading slot, which swallowed the back button on this pushed
-        // route. Force the back arrow and open the archive drawer from an
-        // explicit action instead.
-        leading: const BackButton(),
-        title: Text(l10n.coachTitle),
-        actions: [
-          if (_messages.isNotEmpty && _viewingArchiveAt == null)
-            IconButton(
-              tooltip: l10n.coachNewChatTooltip,
-              icon: const Icon(Icons.add_comment_outlined),
-              onPressed: _busy ? null : _archiveCurrent,
-            ),
-          Builder(
-            builder: (ctx) => IconButton(
-              tooltip: l10n.coachHistoryTooltip,
-              icon: const Icon(Icons.history),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-            ),
+    return ConversationPage(
+      title: Text(l10n.coachTitle),
+      actions: [
+        if (_messages.isNotEmpty && _viewingArchiveAt == null)
+          IconButton(
+            tooltip: l10n.coachNewChatTooltip,
+            icon: const Icon(Icons.add_comment_outlined),
+            onPressed: _busy ? null : _archiveCurrent,
           ),
-        ],
-      ),
+        Builder(
+          builder: (ctx) => IconButton(
+            tooltip: l10n.coachHistoryTooltip,
+            icon: const Icon(Icons.history),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+      ],
       drawer: _buildArchivesDrawer(theme, l10n),
-      body: Column(
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // The header scrolls on its own once it would take more than its
-          // share of the screen: at a large text scale the wrapped strip,
-          // hint and banner together outgrow a phone and pushed the composer
-          // off the bottom.
-          ConstrainedBox(
-            constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.4),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _peerStrip(l10n),
-                  // The plan picker does not wait for the context read: until
-                  // that lands the runner could not change scope at all.
-                  if (_ctx != null || _plans.isNotEmpty)
-                    _buildContextStrip(theme, l10n),
-                  if (_viewingArchiveAt != null)
-                    _buildArchiveBanner(theme, l10n),
-                  if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: _threadLoaded
-                ? _buildScroll(theme, l10n, hasPlan)
-                : ListSkeleton(
-                    label: l10n.commonLoading,
-                    rows: 4,
-                    rowHeight: 72,
-                    hasLeading: false,
-                  ),
-          ),
-          if (_viewingArchiveAt == null) _buildComposer(theme, l10n, cs),
+          _peerStrip(l10n),
+          // The plan picker does not wait for the context read: until that
+          // lands the runner could not change scope at all.
+          if (_ctx != null || _plans.isNotEmpty)
+            _buildContextStrip(theme, l10n),
+          if (_viewingArchiveAt != null) _buildArchiveBanner(theme, l10n),
+          if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
         ],
       ),
+      body: _threadLoaded
+          ? _buildScroll(theme, l10n, hasPlan)
+          : ListSkeleton(
+              label: l10n.commonLoading,
+              rows: 4,
+              rowHeight: 72,
+              hasLeading: false,
+            ),
+      footer:
+          _viewingArchiveAt == null ? _buildComposer(theme, l10n, cs) : null,
     );
   }
 
@@ -1955,11 +1933,14 @@ class _CoachScreenState extends State<CoachScreen> {
     return Padding(
       key: const ValueKey('coach-ai-byline'),
       padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      // A Wrap, so at large text on a narrow phone the AI tag drops under
+      // the name instead of overflowing the bubble.
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           const CoachAvatar(size: 22),
-          const SizedBox(width: 6),
           Text(
             l10n.coachTitle,
             style: theme.textTheme.labelMedium?.copyWith(
@@ -1967,7 +1948,6 @@ class _CoachScreenState extends State<CoachScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 6),
           const AiTag(),
         ],
       ),
@@ -2105,50 +2085,47 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _buildComposer(
       ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _draftCtrl,
-                enabled: !_busy && !_limitReached,
-                minLines: 1,
-                maxLines: 6,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: _limitReached
-                      ? l10n.coachComposerHintLimit
-                      : l10n.coachComposerHint,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                ),
-                onSubmitted: (_) => _send(),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _draftCtrl,
+              enabled: !_busy && !_limitReached,
+              minLines: 1,
+              maxLines: 6,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: _limitReached
+                    ? l10n.coachComposerHintLimit
+                    : l10n.coachComposerHint,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
               ),
+              onSubmitted: (_) => _send(),
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _busy || _limitReached ? null : _send,
-              style: FilledButton.styleFrom(
-                shape: const CircleBorder(),
-                padding: const EdgeInsets.all(16),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: _busy || _limitReached ? null : _send,
+            style: FilledButton.styleFrom(
+              shape: const CircleBorder(),
+              padding: const EdgeInsets.all(16),
             ),
-          ],
-        ),
+            child: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send),
+          ),
+        ],
       ),
     );
   }

@@ -17452,6 +17452,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get avatarCropLoadFailed => 'この画像を開けませんでした。JPEG、PNG、WebP をお試しください。';
 
   @override
+  String get avatarCropPreparing => '写真を準備中…';
+
+  @override
   String get dashboardLeadTitle => '今週のまとめ';
 
   @override

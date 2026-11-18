@@ -4344,13 +4344,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "CARRERA LISTA"
+            "value": "CARRERA PREPARADA"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "COURSE PRÊTE"
+            "value": "COURSE ARMÉE"
           }
         },
         "ja": {
@@ -4362,13 +4362,13 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "PROVA PRONTA"
+            "value": "PROVA PREPARADA"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "PROVA PRONTA"
+            "value": "PROVA PREPARADA"
           }
         }
       }
@@ -7722,13 +7722,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wettkampf"
+            "value": "Rennen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Course"
+            "value": "Épreuve"
           }
         },
         "es": {

@@ -18807,6 +18807,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP.';
 
   @override
+  String get avatarCropPreparing => 'A preparar a fotografia…';
+
+  @override
   String get dashboardLeadTitle => 'A sua semana';
 
   @override
@@ -25700,7 +25703,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyContactOfWithdrawConfirm =>
-      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e precisaria enviar um novo pedido.';
+      'Deixar de ser o contato de segurança desta pessoa? Ela não poderá mais avisar você e, para voltar a contar com você, precisaria enviar um novo pedido.';
 
   @override
   String get safetyContactOfWithdrawnToast =>
@@ -42967,6 +42970,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get avatarCropLoadFailed =>
       'Não foi possível abrir esta imagem. Tente JPEG, PNG ou WebP.';
+
+  @override
+  String get avatarCropPreparing => 'Preparando a foto…';
 
   @override
   String get dashboardLeadTitle => 'Sua semana';

@@ -81,6 +81,50 @@ void main() {
     expect(_barOpacity(tester), 1);
   });
 
+  testWidgets('a leading widget replaces the back button', (tester) async {
+    var closed = 0;
+    await tester.pumpWidget(_app(Builder(
+      builder: (context) => TextButton(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => PushedPage(
+            title: 'Session',
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Abandon',
+              onPressed: () => closed++,
+            ),
+            body: const SizedBox(),
+          ),
+        )),
+        child: const Text('open'),
+      ),
+    )));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsNothing);
+    await tester.tap(find.byTooltip('Abandon'));
+    await tester.pump();
+    expect(closed, 1);
+    expect(find.byType(PushedPage), findsOneWidget,
+        reason: 'the page decides what its close does; it does not pop');
+  });
+
+  testWidgets('without a leading widget a pushed page keeps its back button',
+      (tester) async {
+    await tester.pumpWidget(_app(Builder(
+      builder: (context) => TextButton(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) =>
+              const PushedPage(title: 'Session', body: SizedBox()),
+        )),
+        child: const Text('open'),
+      ),
+    )));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+  });
+
   testWidgets('a detail page shows two actions beside the overflow and never '
       'a destructive one', (tester) async {
     var reported = false;

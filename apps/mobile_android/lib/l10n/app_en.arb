@@ -23835,6 +23835,10 @@
   "@avatarCropLoadFailed": {
     "description": "Shown when the picked profile photo cannot be decoded"
   },
+  "avatarCropPreparing": "Preparing photo…",
+  "@avatarCropPreparing": {
+    "description": "Label on the Use photo button while the cropped photo is being encoded"
+  },
   "dashboardLeadTitle": "Your week",
   "@dashboardLeadTitle": {
     "description": "Heading of the dashboard's opening this-week card"

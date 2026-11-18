@@ -965,4 +965,105 @@ void main() {
       await _drainBanner(tester);
     });
   });
+
+  group('thread layout', () {
+    Future<void> pumpWorst(WidgetTester tester, _FakeApi api,
+        {double keyboard = 0, bool left = false}) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = FakeViewPadding(
+          bottom: keyboard > 0 ? 0 : kThreeButtonNavBar);
+      tester.view.viewPadding =
+          const FakeViewPadding(bottom: kThreeButtonNavBar);
+      tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: GroupThreadScreen(
+          api: api,
+          conversationId: _group,
+          title: 'Tuesday tempo and the long Sunday hill-repeat crew',
+          initialLeft: left,
+          pollInterval: _quiet,
+        ),
+      ));
+      await pumpUntil(
+        tester,
+        () =>
+            _shows(find.byKey(const ValueKey('message-composer'))) ||
+            _shows(find.byKey(const ValueKey('group-left-notice'))),
+        describe: 'the group thread footer',
+      );
+      await tester.pump();
+    }
+
+    void expectOnScreen(WidgetTester tester, Key key, {required double floor}) {
+      expect(tester.takeException(), isNull);
+      final r = tester.getRect(find.byKey(key));
+      expect(r.left, greaterThanOrEqualTo(0));
+      expect(r.right, lessThanOrEqualTo(320 + 0.5));
+      expect(r.top, greaterThan(tester.getRect(find.byType(AppBar)).bottom));
+      expect(r.bottom, lessThanOrEqualTo(floor + 0.5),
+          reason: '$key sits under the system bar or the keyboard');
+    }
+
+    testWidgets('the composer and Send clear a 48 dp bar at 2x on 320 dp',
+        (tester) async {
+      final api = _FakeApi()
+        ..messages = [
+          for (var i = 0; i < 20; i++) _msg('m$i', minute: i, body: 'hi $i'),
+        ];
+      await pumpWorst(tester, api);
+
+      expect(find.byKey(const ValueKey('group-member-count')), findsOneWidget);
+      expectOnScreen(tester, const ValueKey('message-composer'), floor: 592);
+      expectOnScreen(tester, const ValueKey('message-send'), floor: 592);
+      expect(find.byKey(const ValueKey('message-send')).hitTestable(),
+          findsOneWidget);
+      expect(tester.getRect(find.byKey(const ValueKey('message-send'))).bottom,
+          greaterThan(592 - kThreeButtonNavBar),
+          reason: 'the composer pads the nav bar a second time');
+      for (final k in const [
+        'group-mute-toggle',
+        'group-members-button',
+        'group-menu',
+      ]) {
+        expect(find.byKey(ValueKey(k)).hitTestable(), findsOneWidget,
+            reason: '$k is cut from the bar');
+      }
+    });
+
+    testWidgets('the composer rises above the keyboard', (tester) async {
+      final api = _FakeApi()..messages = [_msg('m1')];
+      await pumpWorst(tester, api, keyboard: 280);
+
+      expectOnScreen(tester, const ValueKey('message-composer'), floor: 360);
+      expectOnScreen(tester, const ValueKey('message-send'), floor: 360);
+    });
+
+    testWidgets('the left notice wraps whole above the 48 dp bar',
+        (tester) async {
+      final api = _FakeApi()
+        ..membersError = const GroupActionRefused(GroupRefusal.notFound)
+        ..messages = [_msg('m1', from: _me, body: 'mine')];
+      await pumpWorst(tester, api, left: true);
+
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expectOnScreen(tester, const ValueKey('group-left-notice'), floor: 592);
+      expect(
+          tester.getRect(find.byKey(const ValueKey('group-left-notice'))).bottom,
+          greaterThan(592 - kThreeButtonNavBar),
+          reason: 'the notice pads the nav bar a second time');
+      final notice = tester.getRect(find.text(
+          'You left this group. You can still unsend your own messages.'));
+      expect(notice.width, greaterThan(200),
+          reason: 'the notice is squeezed to a word per line');
+    });
+  });
 }

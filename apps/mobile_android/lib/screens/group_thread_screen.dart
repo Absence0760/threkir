@@ -769,91 +769,82 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.api.userId != null;
     final title = _displayTitle(l10n);
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        toolbarHeight: ThreadTitle.toolbarHeight(context,
-            subtitle: !_notAvailable && _active),
-        title: _notAvailable
-            ? null
-            : ThreadTitle(
-                avatar: CircleAvatar(
-                  radius: 16,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Icon(Icons.group,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-                title: title,
-                titleKey: const ValueKey('group-title'),
-                subtitle: _active ? l10n.groupsMemberCount(_activeCount) : null,
-                subtitleKey: const ValueKey('group-member-count'),
-              ),
-        actions: [
-          if (_active) ...[
-            IconButton(
-              key: const ValueKey('group-mute-toggle'),
-              tooltip: _muted ? l10n.messagesUnmute : l10n.messagesMute,
-              isSelected: _muted,
-              icon: const Icon(Icons.notifications_off_outlined),
-              selectedIcon: const Icon(Icons.notifications_active),
-              onPressed: _busy ? null : _toggleMuted,
-            ),
-            IconButton(
-              key: const ValueKey('group-members-button'),
-              tooltip: l10n.groupsMembersButton,
-              icon: const Icon(Icons.group),
-              onPressed: _openMembers,
-            ),
-            PopupMenuButton<String>(
-              key: const ValueKey('group-menu'),
-              onSelected: (v) {
-                if (v == 'leave') _leave();
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  key: const ValueKey('group-leave'),
-                  value: 'leave',
-                  enabled: !_busy,
-                  child: Text(l10n.groupsLeave),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-      body: !signedIn
+    return ConversationPage(
+      titleSpacing: 0,
+      toolbarHeight: ThreadTitle.toolbarHeight(context,
+          subtitle: !_notAvailable && _active),
+      title: _notAvailable
           ? const SizedBox.shrink()
-          : Column(
-              children: [
-                Expanded(child: _body(l10n)),
-                if (!_notAvailable && !_loading && _loadError == null)
-                  if (_membership == _Membership.outside)
-                    _closedBar(l10n.groupsLeftNotice)
-                  else if (_active)
-                    _composerBar(l10n),
-              ],
+          : ThreadTitle(
+              avatar: CircleAvatar(
+                radius: 16,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Icon(Icons.group,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+              title: title,
+              titleKey: const ValueKey('group-title'),
+              subtitle: _active ? l10n.groupsMemberCount(_activeCount) : null,
+              subtitleKey: const ValueKey('group-member-count'),
             ),
+      actions: [
+        if (_active) ...[
+          IconButton(
+            key: const ValueKey('group-mute-toggle'),
+            tooltip: _muted ? l10n.messagesUnmute : l10n.messagesMute,
+            isSelected: _muted,
+            icon: const Icon(Icons.notifications_off_outlined),
+            selectedIcon: const Icon(Icons.notifications_active),
+            onPressed: _busy ? null : _toggleMuted,
+          ),
+          IconButton(
+            key: const ValueKey('group-members-button'),
+            tooltip: l10n.groupsMembersButton,
+            icon: const Icon(Icons.group),
+            onPressed: _openMembers,
+          ),
+          PopupMenuButton<String>(
+            key: const ValueKey('group-menu'),
+            onSelected: (v) {
+              if (v == 'leave') _leave();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                key: const ValueKey('group-leave'),
+                value: 'leave',
+                enabled: !_busy,
+                child: Text(l10n.groupsLeave),
+              ),
+            ],
+          ),
+        ],
+      ],
+      body: signedIn ? _body(l10n) : const SizedBox.shrink(),
+      footer: !signedIn || _notAvailable || _loading || _loadError != null
+          ? null
+          : _membership == _Membership.outside
+              ? _closedBar(l10n.groupsLeftNotice)
+              : _active
+                  ? _composerBar(l10n)
+                  : null,
     );
   }
 
   Widget _closedBar(String message) {
     final theme = Theme.of(context);
-    return SafeArea(
-      top: false,
-      child: Container(
-        key: const ValueKey('group-left-notice'),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Text(
-          message,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
+    return Container(
+      key: const ValueKey('group-left-notice'),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Text(
+        message,
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -1021,88 +1012,85 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     final canSend = !_sending &&
         !_preparingPhoto &&
         (_composer.text.trim().isNotEmpty || photo != null);
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (photo != null) ...[
-              Row(
-                key: const ValueKey('dm-photo-draft'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Image.memory(
-                      photo,
-                      height: 96,
-                      fit: BoxFit.cover,
-                      semanticLabel: l10n.messagesPhotoDraftAlt,
-                    ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('dm-photo-remove'),
-                    tooltip: l10n.messagesPhotoRemove,
-                    icon: const Icon(Icons.close),
-                    onPressed: _sending
-                        ? null
-                        : () => setState(() => _photoDraft = null),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (photo != null) ...[
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              key: const ValueKey('dm-photo-draft'),
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_photosEnabled) ...[
-                  IconButton(
-                    key: const ValueKey('dm-attach-photo'),
-                    tooltip: l10n.messagesPhotoAttach,
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
-                    onPressed: _sending || _preparingPhoto ? null : _pickPhoto,
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Expanded(
-                  // semantics-children: names the composer; its hint is a different line, so nothing reads twice
-                  child: Semantics(
-                    label: l10n.groupsComposerLabel(_displayTitle(l10n)),
-                    child: TextField(
-                      key: const ValueKey('message-composer'),
-                      controller: _composer,
-                      minLines: 1,
-                      maxLines: 5,
-                      textCapitalization: TextCapitalization.sentences,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(
-                            kDirectMessageMaxLength),
-                      ],
-                      decoration: InputDecoration(
-                        hintText: l10n.messagesComposerHint,
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Image.memory(
+                    photo,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    semanticLabel: l10n.messagesPhotoDraftAlt,
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  key: const ValueKey('message-send'),
-                  tooltip: l10n.messagesSend,
-                  icon: const Icon(Icons.send),
-                  onPressed: canSend ? _send : null,
+                IconButton(
+                  key: const ValueKey('dm-photo-remove'),
+                  tooltip: l10n.messagesPhotoRemove,
+                  icon: const Icon(Icons.close),
+                  onPressed: _sending
+                      ? null
+                      : () => setState(() => _photoDraft = null),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
           ],
-        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (_photosEnabled) ...[
+                IconButton(
+                  key: const ValueKey('dm-attach-photo'),
+                  tooltip: l10n.messagesPhotoAttach,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  onPressed: _sending || _preparingPhoto ? null : _pickPhoto,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                // semantics-children: names the composer; its hint is a different line, so nothing reads twice
+                child: Semantics(
+                  label: l10n.groupsComposerLabel(_displayTitle(l10n)),
+                  child: TextField(
+                    key: const ValueKey('message-composer'),
+                    controller: _composer,
+                    minLines: 1,
+                    maxLines: 5,
+                    textCapitalization: TextCapitalization.sentences,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(
+                          kDirectMessageMaxLength),
+                    ],
+                    decoration: InputDecoration(
+                      hintText: l10n.messagesComposerHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                key: const ValueKey('message-send'),
+                tooltip: l10n.messagesSend,
+                icon: const Icon(Icons.send),
+                onPressed: canSend ? _send : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

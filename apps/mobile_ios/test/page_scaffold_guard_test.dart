@@ -44,10 +44,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: a gate that cannot be dismissed (EditorPage)',
   ),
-  'lib/screens/group_thread_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: a conversation (ConversationPage)',
-  ),
   'lib/screens/gym_session_screen.dart': (
     count: 1,
     why: 'not migrated yet: EditorPage with the execution band as its bar',

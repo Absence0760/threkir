@@ -43,11 +43,6 @@ const _barsLeft = <String, ({int count, String why})>{
     count: 1,
     why: 'a full-screen crop with a close button; the image takes the body',
   ),
-  'lib/screens/coach_screen.dart': (
-    count: 1,
-    why: 'the chat is a conversation, with its history drawer opened from '
-        'the bar; its signed-out and consent states are PushedPages',
-  ),
   'lib/screens/group_thread_screen.dart': (
     count: 1,
     why: 'a conversation: its name stays in the bar (ThreadTitle, with a '

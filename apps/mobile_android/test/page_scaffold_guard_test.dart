@@ -36,10 +36,6 @@ const _rawScaffolds = <String, ({int count, String why})>{
     count: 1,
     why: 'not migrated yet: needs a non-scrolling EditorPage',
   ),
-  'lib/screens/coach_screen.dart': (
-    count: 1,
-    why: 'not migrated yet: a conversation (ConversationPage)',
-  ),
   'lib/screens/confirm_age_screen.dart': (
     count: 1,
     why: 'not migrated yet: a gate that cannot be dismissed (EditorPage)',

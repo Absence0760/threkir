@@ -772,80 +772,74 @@
       "course_shape": "point_to_point",
       "distance_m": 42195,
       "start": {
-        "lat": 37.526917,
-        "lng": -77.421304
+        "lat": 37.526563,
+        "lng": -77.421025
       },
       "finish": {
-        "lat": 37.333139,
-        "lng": -77.150344
+        "lat": 37.332862,
+        "lng": -77.149898
       },
       "surface": "road",
       "geometry_source": "osm",
       "source_ref": "way/19935964,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
       "source_checked_at": "2026-11-19",
       "geojson": "capital-trail-shiplock-marathon.geojson",
-      "elevation_m": 152,
+      "elevation_m": 156,
       "checkpoints": [
         {
-          "lat": 37.501829,
-          "lng": -77.40947
+          "lat": 37.501466,
+          "lng": -77.409142
         },
         {
-          "lat": 37.478085,
-          "lng": -77.391137
+          "lat": 37.477668,
+          "lng": -77.390924
         },
         {
-          "lat": 37.454414,
-          "lng": -77.371014
+          "lat": 37.454255,
+          "lng": -77.370497
         },
         {
-          "lat": 37.445384,
-          "lng": -77.343899
+          "lat": 37.445706,
+          "lng": -77.343505
         },
         {
-          "lat": 37.448541,
-          "lng": -77.326309
+          "lat": 37.448203,
+          "lng": -77.325935
         },
         {
-          "lat": 37.430383,
-          "lng": -77.314229
+          "lat": 37.430151,
+          "lng": -77.313744
         },
         {
-          "lat": 37.41211,
-          "lng": -77.287973
+          "lat": 37.411811,
+          "lng": -77.28755
         },
         {
-          "lat": 37.399323,
-          "lng": -77.256778
+          "lat": 37.398953,
+          "lng": -77.256457
         },
         {
-          "lat": 37.379531,
-          "lng": -77.236992
+          "lat": 37.37939,
+          "lng": -77.236456
         },
         {
-          "lat": 37.358185,
-          "lng": -77.227865
+          "lat": 37.357746,
+          "lng": -77.227917
         },
         {
-          "lat": 37.341214,
-          "lng": -77.210212
+          "lat": 37.341192,
+          "lng": -77.209647
         },
         {
-          "lat": 37.331924,
-          "lng": -77.181639
+          "lat": 37.332311,
+          "lng": -77.181365
         }
       ],
-      "start_gate": {
-        "lat": 37.526917,
-        "lng": -77.421304,
-        "bearing_deg": 133.6,
-        "half_width_m": 15
-      },
-      "waypoint_count": 804,
+      "waypoint_count": 803,
       "route_guide": {
         "version": 1,
         "lang": "en",
-        "getting_there": "Park at Great Shiplock Park on Dock Street. The start line is on the trail at the park; run east, away from the closed section toward the Floodwall.",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
         "steps": [
           {
             "kind": "start",
@@ -855,12 +849,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 630
+            "at_m": 580
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 2665
+            "at_m": 2615
           },
           {
             "kind": "checkpoint",
@@ -877,18 +871,18 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 8629
+            "at_m": 8579
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 8917
+            "at_m": 8867
           },
           {
             "kind": "climb",
             "gain_m": 12,
             "length_m": 300,
-            "at_m": 8935
+            "at_m": 8885
           },
           {
             "kind": "checkpoint",
@@ -899,7 +893,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 12941
+            "at_m": 12891
           },
           {
             "kind": "checkpoint",
@@ -910,7 +904,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 13251
+            "at_m": 13201
           },
           {
             "kind": "checkpoint",
@@ -921,7 +915,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 18370
+            "at_m": 18320
           },
           {
             "kind": "checkpoint",
@@ -932,7 +926,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 21428
+            "at_m": 21378
           },
           {
             "kind": "checkpoint",
@@ -943,7 +937,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 25027
+            "at_m": 24977
           },
           {
             "kind": "checkpoint",
@@ -954,17 +948,17 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 26417
+            "at_m": 26367
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 27143
+            "at_m": 27093
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 27614
+            "at_m": 27564
           },
           {
             "kind": "checkpoint",
@@ -988,19 +982,19 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Herring Creek Road",
-            "at_m": 38642
+            "at_m": 38592
           },
           {
             "kind": "junction",
             "turn": "left",
             "name": "State Route 640",
-            "at_m": 38731
+            "at_m": 38681
           },
           {
             "kind": "junction",
             "turn": "right",
             "name": "Virginia Capital Trail",
-            "at_m": 38932
+            "at_m": 38882
           },
           {
             "kind": "checkpoint",
@@ -1023,94 +1017,82 @@
       "course_shape": "point_to_point",
       "distance_m": 50000,
       "start": {
-        "lat": 37.526917,
-        "lng": -77.421304
+        "lat": 37.526563,
+        "lng": -77.421025
       },
       "finish": {
-        "lat": 37.343812,
-        "lng": -77.070882
+        "lat": 37.343837,
+        "lng": -77.070318
       },
       "surface": "road",
       "geometry_source": "osm",
-      "source_ref": "way/19928705,way/19935964,way/19935971,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855345,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1066422653,way/1066422654,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1133258813,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1223509412,way/1223509413,way/1223509416,way/1223509433,way/1223509434,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_ref": "way/19928705,way/19935964,way/19935971,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855345,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1066422653,way/1066422654,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1133258813,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414448657,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
       "source_checked_at": "2026-11-19",
       "geojson": "capital-trail-shiplock-50k.geojson",
-      "elevation_m": 174,
+      "elevation_m": 178,
       "checkpoints": [
         {
-          "lat": 37.501182,
-          "lng": -77.408913
+          "lat": 37.500826,
+          "lng": -77.408566
         },
         {
-          "lat": 37.476589,
-          "lng": -77.390525
+          "lat": 37.476154,
+          "lng": -77.390379
         },
         {
-          "lat": 37.453147,
-          "lng": -77.368536
+          "lat": 37.452863,
+          "lng": -77.368097
         },
         {
-          "lat": 37.447647,
-          "lng": -77.341181
+          "lat": 37.447957,
+          "lng": -77.340771
         },
         {
-          "lat": 37.445427,
-          "lng": -77.325419
+          "lat": 37.445003,
+          "lng": -77.325599
         },
         {
-          "lat": 37.428196,
-          "lng": -77.308957
+          "lat": 37.427993,
+          "lng": -77.308452
         },
         {
-          "lat": 37.408844,
-          "lng": -77.282407
+          "lat": 37.408634,
+          "lng": -77.281907
         },
         {
-          "lat": 37.394903,
-          "lng": -77.251532
+          "lat": 37.394879,
+          "lng": -77.250967
         },
         {
-          "lat": 37.377375,
-          "lng": -77.22854
+          "lat": 37.377299,
+          "lng": -77.227982
         },
         {
-          "lat": 37.350882,
-          "lng": -77.230651
+          "lat": 37.350436,
+          "lng": -77.230724
         },
         {
-          "lat": 37.336236,
-          "lng": -77.2029
+          "lat": 37.336038,
+          "lng": -77.202392
         },
         {
-          "lat": 37.337977,
-          "lng": -77.174007
+          "lat": 37.338102,
+          "lng": -77.173466
         },
         {
-          "lat": 37.330541,
-          "lng": -77.139369
+          "lat": 37.330715,
+          "lng": -77.138848
         },
         {
-          "lat": 37.331743,
-          "lng": -77.102905
+          "lat": 37.33184,
+          "lng": -77.102353
         }
       ],
-      "start_gate": {
-        "lat": 37.526917,
-        "lng": -77.421304,
-        "bearing_deg": 133.6,
-        "half_width_m": 15
-      },
-      "end_gate": {
-        "lat": 37.343812,
-        "lng": -77.070882,
-        "bearing_deg": 76.5,
-        "half_width_m": 15
-      },
-      "waypoint_count": 897,
+      "waypoint_count": 894,
       "route_guide": {
         "version": 1,
         "lang": "en",
-        "getting_there": "Park at Great Shiplock Park on Dock Street. The start line is on the trail at the park; run east, away from the closed section toward the Floodwall.",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
         "steps": [
           {
             "kind": "start",
@@ -1120,12 +1102,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 630
+            "at_m": 580
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 2665
+            "at_m": 2615
           },
           {
             "kind": "checkpoint",
@@ -1142,18 +1124,18 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 8629
+            "at_m": 8579
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 8917
+            "at_m": 8867
           },
           {
             "kind": "climb",
             "gain_m": 12,
             "length_m": 300,
-            "at_m": 8935
+            "at_m": 8885
           },
           {
             "kind": "checkpoint",
@@ -1164,12 +1146,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 12941
+            "at_m": 12891
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 13251
+            "at_m": 13201
           },
           {
             "kind": "checkpoint",
@@ -1186,7 +1168,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 18370
+            "at_m": 18320
           },
           {
             "kind": "checkpoint",
@@ -1197,7 +1179,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 21428
+            "at_m": 21378
           },
           {
             "kind": "checkpoint",
@@ -1208,12 +1190,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 25027
+            "at_m": 24977
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 26417
+            "at_m": 26367
           },
           {
             "kind": "checkpoint",
@@ -1224,12 +1206,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 27143
+            "at_m": 27093
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 27614
+            "at_m": 27564
           },
           {
             "kind": "checkpoint",
@@ -1253,19 +1235,19 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Herring Creek Road",
-            "at_m": 38642
+            "at_m": 38592
           },
           {
             "kind": "junction",
             "turn": "left",
             "name": "State Route 640",
-            "at_m": 38731
+            "at_m": 38681
           },
           {
             "kind": "junction",
             "turn": "right",
             "name": "Virginia Capital Trail",
-            "at_m": 38932
+            "at_m": 38882
           },
           {
             "kind": "checkpoint",
@@ -1289,13 +1271,18 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Courthouse Road",
-            "at_m": 49242
+            "at_m": 49192
           },
           {
             "kind": "junction",
             "turn": "straight",
             "name": "Virginia Capital Trail",
-            "at_m": 49806
+            "at_m": 49756
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 49959
           },
           {
             "kind": "finish",
@@ -1312,74 +1299,74 @@
       "course_shape": "point_to_point",
       "distance_m": 42195,
       "start": {
-        "lat": 37.338018,
-        "lng": -77.173886
+        "lat": 37.337817,
+        "lng": -77.174391
       },
       "finish": {
-        "lat": 37.227946,
-        "lng": -76.782055
+        "lat": 37.228292,
+        "lng": -76.781694
       },
       "surface": "road",
       "geometry_source": "osm",
       "source_ref": "way/19928705,way/19935971,way/294875026,way/294875039,way/531855345,way/531855347,way/600835130,way/600835131,way/1066422653,way/1066422654,way/1133258813,way/1202360708,way/1202360709,way/1202360710,way/1202360711,way/1221203690,way/1221203691,way/1221203694,way/1221203695,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1364573838,way/1364573839,way/1414448648,way/1414448649,way/1414448657,way/1414448658,way/1414448659,way/1414448660,way/1414491027,way/1414491028",
       "source_checked_at": "2026-11-19",
       "geojson": "capital-trail-jamestown-marathon.geojson",
-      "elevation_m": 79,
+      "elevation_m": 81,
       "checkpoints": [
         {
-          "lat": 37.330265,
-          "lng": -77.140155
+          "lat": 37.330083,
+          "lng": -77.140672
         },
         {
-          "lat": 37.331663,
-          "lng": -77.104748
+          "lat": 37.331652,
+          "lng": -77.105313
         },
         {
-          "lat": 37.342137,
-          "lng": -77.07247
+          "lat": 37.341785,
+          "lng": -77.072821
         },
         {
-          "lat": 37.336925,
-          "lng": -77.041264
+          "lat": 37.336801,
+          "lng": -77.041808
         },
         {
-          "lat": 37.330557,
-          "lng": -77.010325
+          "lat": 37.330918,
+          "lng": -77.010661
         },
         {
-          "lat": 37.32362,
-          "lng": -76.977865
+          "lat": 37.323845,
+          "lng": -76.978354
         },
         {
-          "lat": 37.302671,
-          "lng": -76.953175
+          "lat": 37.302925,
+          "lng": -76.953642
         },
         {
-          "lat": 37.285543,
-          "lng": -76.923739
+          "lat": 37.285831,
+          "lng": -76.924173
         },
         {
-          "lat": 37.26667,
-          "lng": -76.895763
+          "lat": 37.266963,
+          "lng": -76.896191
         },
         {
-          "lat": 37.261888,
-          "lng": -76.862428
+          "lat": 37.262059,
+          "lng": -76.862946
         },
         {
-          "lat": 37.253824,
-          "lng": -76.828077
+          "lat": 37.253784,
+          "lng": -76.828625
         },
         {
-          "lat": 37.252812,
-          "lng": -76.794957
+          "lat": 37.253262,
+          "lng": -76.79498
         }
       ],
       "waypoint_count": 549,
       "route_guide": {
         "version": 1,
         "lang": "en",
-        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.4 km east along the trail to the start line. The finish is on the trail by the Jamestown Trailhead restrooms, 50 m before the trail meets Colonial Parkway.",
+        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.5 km east along the trail to the start line. The finish is on the trail about 100 m before it meets Colonial Parkway at the Jamestown Trailhead.",
         "steps": [
           {
             "kind": "start",
@@ -1402,7 +1389,7 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Courthouse Road",
-            "at_m": 9230
+            "at_m": 9280
           },
           {
             "kind": "checkpoint",
@@ -1414,17 +1401,17 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Virginia Capital Trail",
-            "at_m": 9795
+            "at_m": 9845
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 9997
+            "at_m": 10047
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 11207
+            "at_m": 11257
           },
           {
             "kind": "checkpoint",
@@ -1435,7 +1422,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 13491
+            "at_m": 13541
           },
           {
             "kind": "checkpoint",
@@ -1446,7 +1433,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 17632
+            "at_m": 17682
           },
           {
             "kind": "checkpoint",
@@ -1475,7 +1462,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 30678
+            "at_m": 30728
           },
           {
             "kind": "checkpoint",
@@ -1492,7 +1479,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 37069
+            "at_m": 37119
           },
           {
             "kind": "checkpoint",
@@ -1503,12 +1490,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 39373
+            "at_m": 39423
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 39622
+            "at_m": 39672
           },
           {
             "kind": "finish",

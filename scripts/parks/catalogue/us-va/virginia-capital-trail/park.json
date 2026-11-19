@@ -486,13 +486,13 @@
       ],
       "via": [
         2838809092,
-        10962867836
+        3857572100
       ],
       "anchor": "via_start",
-      "offset_m": 0,
-      "start_note": "Start at Great Shiplock Park and run east; the finish is on the trail near Herring Creek. Needs a car at each end.",
+      "offset_m": 50,
+      "start_note": "Start on the trail about 50 m east of the Great Shiplock Park entrance, clear of Dock Street, and run east; the finish is on the trail near Herring Creek. Needs a car at each end.",
       "route_guide": {
-        "getting_there": "Park at Great Shiplock Park on Dock Street. The start line is on the trail at the park; run east, away from the closed section toward the Floodwall.",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
         "ground_checked_at": null
       },
       "checkpoint_count": 12
@@ -556,6 +556,7 @@
         1223509412,
         1223509413,
         1223509416,
+        1223509417,
         1223509433,
         1223509434,
         1347598700,
@@ -568,6 +569,7 @@
         1347598708,
         1347620975,
         1347620976,
+        1414448657,
         1414491036,
         1414491037,
         1415052808,
@@ -615,13 +617,13 @@
       ],
       "via": [
         2838809092,
-        3857572047
+        9792624529
       ],
       "anchor": "via_start",
-      "offset_m": 0,
-      "start_note": "Start at Great Shiplock Park and run east; the finish is on the trail near Charles City Courthouse. Needs a car at each end.",
+      "offset_m": 50,
+      "start_note": "Start on the trail about 50 m east of the Great Shiplock Park entrance, clear of Dock Street, and run east; the finish is on the trail near Charles City Courthouse. Needs a car at each end.",
       "route_guide": {
-        "getting_there": "Park at Great Shiplock Park on Dock Street. The start line is on the trail at the park; run east, away from the closed section toward the Floodwall.",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
         "ground_checked_at": null
       },
       "checkpoint_count": 14
@@ -674,11 +676,11 @@
         11322668035
       ],
       "anchor": "via_end",
-      "offset_m": 50,
+      "offset_m": 100,
       "via_ends_at_trail_end": true,
-      "start_note": "Start on the trail about 1.4 km east of the Herring Creek Trailhead and run east; the finish is on the trail 50 m before its end, by the Jamestown Trailhead restrooms, clear of Colonial Parkway. Needs a car at each end.",
+      "start_note": "Start on the trail about 1.5 km east of the Herring Creek Trailhead, past a driveway crossing, and run east; the finish is on the trail about 100 m before its end at the Jamestown Trailhead, well clear of Colonial Parkway. Needs a car at each end.",
       "route_guide": {
-        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.4 km east along the trail to the start line. The finish is on the trail by the Jamestown Trailhead restrooms, 50 m before the trail meets Colonial Parkway.",
+        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.5 km east along the trail to the start line. The finish is on the trail about 100 m before it meets Colonial Parkway at the Jamestown Trailhead.",
         "ground_checked_at": null
       },
       "checkpoint_count": 12

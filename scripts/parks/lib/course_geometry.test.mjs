@@ -16,6 +16,7 @@ import {
 	footAccessRefusal,
 	haversineM,
 	lapCourse,
+	assertFinishAtTrailEnd,
 	cutSequence,
 	linearCourse,
 	pathLengthM,
@@ -542,4 +543,9 @@ test('assertFootAccess lets foot_confirmed lift a bare cycleway refusal and noth
 test('assertTrailReview refuses a foot confirmation on an unreviewed way or without a reason', () => {
 	assert.throws(() => assertTrailReview(square, loopWays, reviewed({ foot_confirmed: { 99: 'shared use' } })), /foot_confirmed lists way 99, which is not designated/);
 	assert.throws(() => assertTrailReview(square, loopWays, reviewed({ foot_confirmed: { 10: ' ' } })), /needs the land manager's word/);
+});
+
+test('assertFinishAtTrailEnd accepts a dead end and refuses a node the trail runs on past', () => {
+	assert.doesNotThrow(() => assertFinishAtTrailEnd([3, 4, 5, 6], lineWays));
+	assert.throws(() => assertFinishAtTrailEnd([2, 3, 4, 5], lineWays), /node 5\) joins 2 edges/);
 });

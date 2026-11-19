@@ -37,6 +37,7 @@ import {
 	curatedGates,
 	distanceDeviation,
 	elevationGainM,
+	assertFinishAtTrailEnd,
 	lapCourse,
 	linearCourse,
 	pathLengthM,
@@ -324,6 +325,13 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 		});
 	} catch (err) {
 		throw fail(err);
+	}
+	if (race.finish_at_trail_end === true) {
+		try {
+			assertFinishAtTrailEnd(cut.sequence, cut.ways);
+		} catch (err) {
+			throw fail(err);
+		}
 	}
 	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
 	const fords = trailReviewOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);

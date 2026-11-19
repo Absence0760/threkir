@@ -26,9 +26,13 @@
 		onhover?: (idx: number | null) => void;
 	} = $props();
 
-	// Render at the container's measured width. `bind:clientWidth` uses a
-	// ResizeObserver under the hood so the chart re-flows on window
-	// resize, sidebar toggles, etc.
+	// Render at the chart box's measured width, one viewBox unit per CSS
+	// pixel. `bind:clientWidth` uses a ResizeObserver under the hood so the
+	// chart re-flows on window resize, sidebar toggles, etc. It measures the
+	// box the SVG fills, not the padded card around it: measuring the card
+	// made the viewBox wider than the drawing, so `preserveAspectRatio="none"`
+	// squeezed every x and the crosshair drifted left of the pointer, further
+	// toward the right end.
 	let containerWidth = $state(0);
 	let svgEl: SVGSVGElement | undefined = $state();
 	const height = 180;
@@ -111,22 +115,32 @@
 		onhover?.(next);
 	});
 
-	function handlePointerMove(e: PointerEvent) {
-		if (!isDragging || !svgEl || plotWidth === 0) return;
+	/**
+	 * The pointer's position in viewBox units: the SVG's on-screen width can
+	 * still differ from `containerWidth` (browser zoom, a transform), so scale
+	 * by the two rather than treating a screen pixel as a unit.
+	 */
+	function pointerX(e: PointerEvent | MouseEvent): number | null {
+		if (!svgEl) return null;
 		const rect = svgEl.getBoundingClientRect();
-		const xPx = e.clientX - rect.left;
-		const f = (xPx - padding.left) / plotWidth;
-		touchFraction = Math.max(0, Math.min(1, f));
+		if (rect.width === 0) return null;
+		return (e.clientX - rect.left) * (containerWidth / rect.width);
+	}
+
+	function handlePointerMove(e: PointerEvent) {
+		if (!isDragging || plotWidth === 0) return;
+		const xPx = pointerX(e);
+		if (xPx == null) return;
+		touchFraction = Math.max(0, Math.min(1, (xPx - padding.left) / plotWidth));
 	}
 
 	function handlePointerDown(e: PointerEvent) {
 		if (!svgEl || plotWidth === 0) return;
 		isDragging = true;
 		svgEl.setPointerCapture(e.pointerId);
-		const rect = svgEl.getBoundingClientRect();
-		const xPx = e.clientX - rect.left;
-		const f = (xPx - padding.left) / plotWidth;
-		touchFraction = Math.max(0, Math.min(1, f));
+		const xPx = pointerX(e);
+		if (xPx == null) return;
+		touchFraction = Math.max(0, Math.min(1, (xPx - padding.left) / plotWidth));
 	}
 
 	function handlePointerUp(e: PointerEvent) {
@@ -148,9 +162,9 @@
 	}
 
 	function handleMouseHover(e: MouseEvent) {
-		if (isDragging || !svgEl || plotWidth === 0) return;
-		const rect = svgEl.getBoundingClientRect();
-		const xPx = e.clientX - rect.left;
+		if (isDragging || plotWidth === 0) return;
+		const xPx = pointerX(e);
+		if (xPx == null) return;
 		if (xPx < padding.left || xPx > padding.left + plotWidth) {
 			touchFraction = null;
 			return;
@@ -160,7 +174,7 @@
 	}
 </script>
 
-<div class="elevation-wrap" bind:clientWidth={containerWidth}>
+<div class="elevation-wrap">
 	<!-- Tooltip rail above the chart. Reserves vertical space at all
 	     times so the chart doesn't shift when a value lights up. -->
 	<div class="tooltip-rail" class:visible={crosshair != null}>
@@ -197,6 +211,7 @@
 		{/if}
 	</div>
 
+	<div class="chart-box" bind:clientWidth={containerWidth}>
 	{#if containerWidth > 0}
 		<svg
 			bind:this={svgEl}
@@ -278,6 +293,7 @@
 			{/if}
 		</svg>
 	{/if}
+	</div>
 </div>
 
 <style>
@@ -325,6 +341,10 @@
 	.tt-hint {
 		font-size: 0.78rem;
 		color: var(--color-text-tertiary);
+	}
+	.chart-box {
+		width: 100%;
+		min-height: 180px;
 	}
 	.elevation-svg {
 		display: block;

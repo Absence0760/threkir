@@ -423,6 +423,12 @@ export const PR_ADVISORY = new Map([
 			'gate to wait on.',
 	],
 	[
+		'issue-progress.yml',
+		'it ACTS on the issues a pull request names (label, comment, tick its checklist on ' +
+			'merge) and asserts nothing about the change, so there is no verdict for a gate to ' +
+			'wait on; it also runs on `closed`, after any gate could matter.',
+	],
+	[
 		'dependabot-auto-merge.yml',
 		'it ACTS on a pull request (approve + enable auto-merge) rather than checking one. A ' +
 			'required check that merges the PR it is required by is a cycle.',

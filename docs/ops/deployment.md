@@ -381,6 +381,10 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   than a verdict.
 - `labeler.yml` -- it labels a pull request and asserts nothing about it, so
   there is no verdict for a gate to wait on.
+- `issue-progress.yml` -- it ACTS on the issues a pull request names (label,
+  comment, tick its checklist on merge) and asserts nothing about the change,
+  so there is no verdict for a gate to wait on; it also runs on `closed`, after
+  any gate could matter.
 - `dependabot-auto-merge.yml` -- it ACTS on a pull request (approve + enable
   auto-merge) rather than checking one, and a required check that merges the PR
   it is required by is a cycle.

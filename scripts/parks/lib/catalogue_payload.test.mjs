@@ -323,6 +323,7 @@ test('a race course must measure exactly its race distance', () => {
 		slug: 'square-race',
 		name: 'Square Race',
 		race_distance: '5k',
+		course_shape: 'loop',
 		distance_m: 4999,
 		laps: 4,
 		surface: 'road',
@@ -335,6 +336,43 @@ test('a race course must measure exactly its race distance', () => {
 	assert.throws(
 		() => cataloguePayload(manifest({ race_courses: [{ ...race, race_distance: '3k' }] }), files),
 		/unknown race distance 3k/,
+	);
+});
+
+test('a linear race course keeps its shape, carries no laps, and says how it runs', () => {
+	// A straight 5 km east along the equator, and the same out 2.5 km and back.
+	const DEG_PER_M = 0.001 / 111.19508;
+	const p2pLine = [[0, 0], [5000 * DEG_PER_M, 0]];
+	const oabLine = [[0, 0], [2500 * DEG_PER_M, 0], [0, 0]];
+	const race = (/** @type {Record<string, any>} */ over) => ({
+		slug: 'line-5k',
+		name: 'Line, 5 km',
+		race_distance: '5k',
+		distance_m: 5000,
+		surface: 'road',
+		geometry_source: 'osm',
+		geojson: 'line.geojson',
+		checkpoints: [],
+		waypoint_count: 2,
+		...over,
+	});
+	const files = (/** @type {number[][]} */ line) => reader({ 'square.geojson': geojson(SQUARE), 'line.geojson': geojson(line) });
+	const p2p = cataloguePayload(manifest({ race_courses: [race({ course_shape: 'point_to_point' })] }), files(p2pLine)).courses[1];
+	assert.deepEqual([p2p.course_shape, p2p.laps, p2p.official_distance_m], ['point_to_point', null, 5000]);
+	assert.equal(p2p.description, 'Measures exactly 5 km: one way along the trail, from the start line to a separate finish line.');
+	const oab = cataloguePayload(
+		manifest({ race_courses: [race({ course_shape: 'out_and_back', waypoint_count: 3 })] }),
+		files(oabLine),
+	).courses[1];
+	assert.deepEqual([oab.course_shape, oab.laps], ['out_and_back', null]);
+	assert.equal(oab.description, 'Measures exactly 5 km: out along the trail to the halfway checkpoint and back to the start.');
+	assert.throws(
+		() => cataloguePayload(manifest({ race_courses: [race({ course_shape: 'point_to_point', laps: 2 })] }), files(p2pLine)),
+		/a point_to_point race course has no laps/,
+	);
+	assert.throws(
+		() => cataloguePayload(manifest({ race_courses: [race({ course_shape: 'lollipop' })] }), files(p2pLine)),
+		/course_shape lollipop/,
 	);
 });
 

@@ -16,6 +16,8 @@ import {
 	footAccessRefusal,
 	haversineM,
 	lapCourse,
+	cutSequence,
+	linearCourse,
 	pathLengthM,
 	checkpointPositionsM,
 	placeCheckpoints,
@@ -465,4 +467,79 @@ test('assertTrailReview returns the walked fords and refuses an unrecorded one',
 	assert.throws(() => assertTrailReview(square, ways, reviewed()), /way 11 is tagged ford=yes but trail_review does not list it/);
 	assert.deepEqual(assertTrailReview(square, ways, reviewed({ fords: [11] })), [11]);
 	assert.throws(() => assertTrailReview(square, ways, reviewed({ fords: [99] })), /ford\(s\) 99 that are not designated/);
+});
+
+// A straight trail east along the equator, ~111.2 m a hop, split across two ways.
+const lineNodes = Object.fromEntries(
+	[1, 2, 3, 4, 5, 6].map((id) => [id, { lat: 0, lon: (id - 1) * 0.001, ele: id * 2 }]),
+);
+/** @type {import('./course_geometry.mjs').SnapshotWay[]} */
+const lineWays = [
+	{ id: 20, nodes: [1, 2, 3], tags: { highway: 'cycleway', foot: 'designated' } },
+	{ id: 21, nodes: [3, 4, 5, 6], tags: { highway: 'cycleway' } },
+];
+const hop = haversineM({ lat: 0, lng: 0 }, { lat: 0, lng: 0.001 });
+
+test('cutSequence adds a synthetic node on the edge each cut falls in', () => {
+	const cut = cutSequence({ sequence: [1, 2, 3, 4, 5, 6], nodes: lineNodes, ways: lineWays, fromM: hop / 2, toM: 3.5 * hop });
+	assert.deepEqual(cut.sequence, [-1, 2, 3, 4, -2]);
+	assert.ok(Math.abs(pathLengthM(toPoints(cut.sequence, cut.nodes)) - 3 * hop) < 1e-6);
+	assert.equal(cut.nodes['-1'].ele, 3);
+	assert.deepEqual(cut.ways.map((w) => w.nodes), [[1, -1, 2, 3], [3, 4, -2, 5, 6]]);
+	assert.deepEqual(lineWays[0].nodes, [1, 2, 3], 'the input ways are not mutated');
+});
+
+test('cutSequence adds no node where a cut lands on one, and refuses a cut off the line', () => {
+	const cut = cutSequence({ sequence: [1, 2, 3, 4, 5, 6], nodes: lineNodes, ways: lineWays, fromM: hop, toM: 5 * hop });
+	assert.deepEqual(cut.sequence, [2, 3, 4, 5, 6]);
+	assert.throws(() => cutSequence({ sequence: [1, 2, 3], nodes: lineNodes, ways: lineWays, fromM: 0, toM: 3 * hop }), /cannot cut/);
+});
+
+test('linearCourse point_to_point measures the distance from either end of the via', () => {
+	const fromStart = linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'point_to_point', distanceM: 300, anchor: 'via_start', offsetM: 50 });
+	const pts = toPoints(fromStart.sequence, fromStart.nodes);
+	assert.ok(Math.abs(pathLengthM(pts) - 300) < 1e-6);
+	assert.ok(Math.abs(haversineM({ lat: 0, lng: 0 }, pts[0]) - 50) < 1e-6);
+	const fromEnd = linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'point_to_point', distanceM: 300, anchor: 'via_end', offsetM: 0 });
+	const end = toPoints(fromEnd.sequence, fromEnd.nodes);
+	assert.equal(fromEnd.sequence.at(-1), 6);
+	assert.ok(Math.abs(pathLengthM(end) - 300) < 1e-6);
+	assert.throws(
+		() => linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'point_to_point', distanceM: 600, anchor: 'via_start', offsetM: 0 }),
+		/too short for 600 m/,
+	);
+});
+
+test('linearCourse out_and_back turns at half the distance and comes back to the start', () => {
+	const oab = linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'out_and_back', distanceM: 500, anchor: 'via_start', offsetM: 0 });
+	assert.deepEqual(oab.sequence, [1, 2, 3, -1, 3, 2, 1]);
+	assert.equal(oab.turnM, 250);
+	assert.ok(Math.abs(pathLengthM(toPoints(oab.sequence, oab.nodes)) - 500) < 1e-6);
+	assert.throws(
+		() => linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'out_and_back', distanceM: 500, anchor: 'via_end', offsetM: 0 }),
+		/anchor it at via_start/,
+	);
+	assert.throws(
+		() => linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'out_and_back', distanceM: 2000, anchor: 'via_start', offsetM: 0 }),
+		/short of the 1000.0 m turn/,
+	);
+});
+
+test('linearCourse checks only the cut course, so the via may run past it', () => {
+	const oab = linearCourse({ ways: lineWays, nodes: lineNodes, via: [1, 6], shape: 'out_and_back', distanceM: 400, anchor: 'via_start', offsetM: 0 });
+	assert.deepEqual(oab.sequence, [1, 2, -1, 2, 1]);
+	assert.doesNotThrow(() => assertFootAccess(oab.sequence, oab.ways));
+});
+
+test('assertFootAccess lets foot_confirmed lift a bare cycleway refusal and nothing else', () => {
+	const seq = [1, 2, 3, 4, 5, 6];
+	assert.throws(() => assertFootAccess(seq, lineWays), /way 21 \(highway=cycleway\)/);
+	assert.doesNotThrow(() => assertFootAccess(seq, lineWays, { 21: 'shared-use path per the land manager' }));
+	const informal = [lineWays[0], { ...lineWays[1], tags: { highway: 'cycleway', informal: 'yes' } }];
+	assert.throws(() => assertFootAccess(seq, informal, { 21: 'shared-use path' }), /way 21 \(informal=yes, highway=cycleway\)/);
+});
+
+test('assertTrailReview refuses a foot confirmation on an unreviewed way or without a reason', () => {
+	assert.throws(() => assertTrailReview(square, loopWays, reviewed({ foot_confirmed: { 99: 'shared use' } })), /foot_confirmed lists way 99, which is not designated/);
+	assert.throws(() => assertTrailReview(square, loopWays, reviewed({ foot_confirmed: { 10: ' ' } })), /needs the land manager's word/);
 });

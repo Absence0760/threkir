@@ -224,6 +224,29 @@ function payloadCourse(entry, line, shape) {
 }
 
 /**
+ * A race course's laps and description by its shape. A loop race is laps of
+ * the loop from a line on its lead-in; a point-to-point or out-and-back race
+ * has no laps.
+ *
+ * @param {{ slug: string, course_shape: string, race_distance: string, laps?: number | null }} entry
+ * @returns {{ laps: number | null, description: string }}
+ */
+function raceShape(entry) {
+	const words = RACE_DISTANCE_WORDS[/** @type {keyof typeof RACE_DISTANCE_WORDS} */ (entry.race_distance)];
+	if (entry.course_shape === 'loop') {
+		check(Number.isInteger(entry.laps) && /** @type {number} */ (entry.laps) >= 1, `${entry.slug}: laps must be a whole number of at least 1`);
+		const laps = entry.laps === 1 ? 'one lap' : `${entry.laps} laps`;
+		return { laps: /** @type {number} */ (entry.laps), description: `Measures exactly ${words}: ${laps} of the loop, starting and finishing on one line on the lead-in.` };
+	}
+	check(entry.laps == null, `${entry.slug}: a ${entry.course_shape} race course has no laps`);
+	if (entry.course_shape === 'out_and_back') {
+		return { laps: null, description: `Measures exactly ${words}: out along the trail to the halfway checkpoint and back to the start.` };
+	}
+	check(entry.course_shape === 'point_to_point', `${entry.slug}: course_shape ${entry.course_shape} is not one of ${COURSE_SHAPES.join(', ')}`);
+	return { laps: null, description: `Measures exactly ${words}: one way along the trail, from the start line to a separate finish line.` };
+}
+
+/**
  * A trail course's laps: what its manifest entry says, else 1 for a loop
  * (the build traces a trail loop once round) and null for an out-and-back or
  * point-to-point course, where a lap count says nothing.
@@ -285,15 +308,12 @@ export function cataloguePayload(manifest, readGeojson) {
 		const raceM = RACE_DISTANCES_M[/** @type {keyof typeof RACE_DISTANCES_M} */ (entry.race_distance)];
 		check(raceM !== undefined, `${entry.slug}: unknown race distance ${entry.race_distance}`);
 		check(entry.distance_m === raceM, `${entry.slug}: measures ${entry.distance_m} m, not the ${entry.race_distance} distance ${raceM} m`);
-		check(Number.isInteger(entry.laps) && entry.laps >= 1, `${entry.slug}: laps must be a whole number of at least 1`);
-		const laps = entry.laps === 1 ? 'one lap' : `${entry.laps} laps`;
 		courses.push(
 			payloadCourse(entry, courseLine(readGeojson(entry.geojson), entry.slug), {
-				course_shape: 'loop',
+				course_shape: entry.course_shape,
 				difficulty: null,
 				official_distance_m: raceM,
-				laps: entry.laps,
-				description: `Measures exactly ${RACE_DISTANCE_WORDS[entry.race_distance]}: ${laps} of the loop, starting and finishing on one line on the lead-in.`,
+				...raceShape(entry),
 			}),
 		);
 	}

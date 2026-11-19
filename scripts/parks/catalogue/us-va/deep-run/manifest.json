@@ -21,6 +21,7 @@
       "slug": "deep-run-park-5k",
       "name": "Deep Run Park, 5 km",
       "race_distance": "5k",
+      "course_shape": "loop",
       "distance_m": 5000,
       "laps": 1,
       "lap_m": 4764.1,

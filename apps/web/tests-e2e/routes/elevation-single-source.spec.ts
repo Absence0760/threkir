@@ -102,4 +102,51 @@ test.describe('/routes/[id] elevation', () => {
 			await deleteRoute(routeId);
 		}
 	});
+
+	/**
+	 * The chart measured the padded card for its viewBox, so the drawing was
+	 * squeezed to fit and the crosshair drifted left of the pointer, more the
+	 * further right it went: near the end the dot sat under the cursor's left.
+	 * The guide must sit under the pointer at either end of the plot.
+	 */
+	test('the crosshair sits under the pointer across the whole chart', async ({ page }) => {
+		const { data, error } = await getAdminClient()
+			.from('routes')
+			.insert({
+				user_id: USER_A.id,
+				name: `Elevation crosshair ${Date.now()}`,
+				waypoints: [
+					{ lat: 39.72, lng: -105.0, ele: 1600 },
+					{ lat: 39.705, lng: -105.025, ele: 1640 },
+					{ lat: 39.695, lng: -105.04, ele: 1680 },
+					{ lat: 39.69, lng: -105.05, ele: 1700 }
+				],
+				distance_m: 6_000,
+				elevation_m: 100,
+				is_public: false
+			})
+			.select('id')
+			.single();
+		if (error || !data) throw new Error(`route insert failed: ${error?.message}`);
+		const routeId = data.id as string;
+		try {
+			await page.goto(`/routes/${routeId}`);
+			const svg = page.locator('svg.elevation-svg');
+			await expect(svg).toBeVisible({ timeout: 15_000 });
+			await svg.scrollIntoViewIfNeeded();
+			const box = await svg.boundingBox();
+			if (!box) throw new Error('no chart box');
+			for (const f of [0.3, 0.95]) {
+				const x = box.x + box.width * f;
+				await page.mouse.move(x, box.y + box.height / 2);
+				const dot = page.locator('.crosshair-dot');
+				await expect(dot).toBeVisible();
+				const db = await dot.boundingBox();
+				if (!db) throw new Error('no crosshair');
+				expect(Math.abs(db.x + db.width / 2 - x)).toBeLessThan(1.5);
+			}
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
 });

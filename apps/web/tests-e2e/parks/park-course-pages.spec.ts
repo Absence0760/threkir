@@ -12,7 +12,8 @@ import { USER_A } from '../fixtures/users';
  * first run with its filters hidden, and the notices callout: the times
  * notice on every course and the give-way note on a course an organised group
  * shares (decisions § 2460), and the start and finish to copy or get
- * directions to.
+ * directions to. A trail (`parks.kind = 'trail'`, decisions § 2581) reads
+ * "Trail" on its card and page in place of its agency.
  *
  * Every row is planted (service role) in one park under a unique slug, at
  * (37.4, -78.4), which no seed row or other spec uses, and removed afterwards.
@@ -25,6 +26,8 @@ const TAG = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const PARK_SLUG = `e2e-pages-park-${TAG}`;
 const PARK_NAME = `E2E Pages State Park ${TAG}`;
 const CREDIT = `© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP ${TAG}`;
+const TRAIL_SLUG = `e2e-pages-trail-${TAG}`;
+const TRAIL_NAME = `E2E Pages Trail ${TAG}`;
 
 // Alphabetical order would be Beaver, 10 km, 50 km, 5 km, Half: the page must
 // not list them that way.
@@ -37,6 +40,7 @@ const COURSES = [
 ] as const;
 
 let parkId: string | null = null;
+let trailId: string | null = null;
 const segmentIds: string[] = [];
 
 test.beforeAll(async () => {
@@ -46,6 +50,7 @@ test.beforeAll(async () => {
 		.insert({
 			slug: PARK_SLUG,
 			name: PARK_NAME,
+			kind: 'park',
 			agency: 'state',
 			region_code: 'US-VA',
 			country_code: 'US',
@@ -98,11 +103,56 @@ test.beforeAll(async () => {
 		});
 		if (course.error) throw course.error;
 	}
+
+	const trail = await admin
+		.from('parks')
+		.insert({
+			slug: TRAIL_SLUG,
+			name: TRAIL_NAME,
+			kind: 'trail',
+			agency: 'other',
+			region_code: 'US-VA',
+			country_code: 'US',
+			timezone: 'America/New_York',
+			website_url: 'https://example.org/e2e-pages-trail',
+		})
+		.select('id')
+		.single();
+	if (trail.error) throw trail.error;
+	trailId = trail.data.id;
+	const trailLng = LNG - 0.05;
+	const trailSeg = await admin
+		.from('global_segments')
+		.insert({
+			name: `Trail 5 km ${TAG}`,
+			waypoints: [
+				{ lat: BASE_LAT, lng: trailLng },
+				{ lat: BASE_LAT + 1000 / M_PER_DEG_LAT, lng: trailLng },
+			],
+			distance_m: 5_000,
+			surface: 'road',
+			country_code: 'US',
+		})
+		.select('id')
+		.single();
+	if (trailSeg.error) throw trailSeg.error;
+	segmentIds.push(trailSeg.data.id);
+	const trailCourse = await admin.from('park_courses').insert({
+		park_id: trailId,
+		global_segment_id: trailSeg.data.id,
+		slug: '5k',
+		course_shape: 'out_and_back',
+		geometry_source: 'osm',
+		checkpoints: [{ lat: BASE_LAT + 500 / M_PER_DEG_LAT, lng: trailLng }],
+		laps: null,
+	});
+	if (trailCourse.error) throw trailCourse.error;
 });
 
 test.afterAll(async () => {
 	const admin = getAdminClient();
 	if (parkId) await admin.from('parks').delete().eq('id', parkId);
+	if (trailId) await admin.from('parks').delete().eq('id', trailId);
 	if (segmentIds.length) await admin.from('global_segments').delete().in('id', segmentIds);
 });
 
@@ -114,6 +164,19 @@ test.describe('park course pages', () => {
 		const card = page.getByTestId('park-card').filter({ hasText: PARK_NAME });
 		await expect(card).toBeVisible({ timeout: 15_000 });
 		await expect(card.getByTestId('park-card-facts')).toHaveText('5 courses · 5–50 km');
+	});
+
+	test('a trail reads Trail on its card and its page, a park its agency', async ({ page }) => {
+		await page.goto('/parks');
+		const trailCard = page.getByTestId('park-card').filter({ hasText: TRAIL_NAME });
+		await expect(trailCard).toBeVisible({ timeout: 15_000 });
+		await expect(trailCard.locator('.park-agency')).toHaveText('Trail');
+		const parkCard = page.getByTestId('park-card').filter({ hasText: PARK_NAME });
+		await expect(parkCard.locator('.park-agency')).toHaveText('State park');
+
+		await page.goto(`/parks/us-va/${TRAIL_SLUG}`);
+		await expect(page.getByRole('heading', { level: 1, name: TRAIL_NAME })).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('park-meta').locator('li').nth(1)).toHaveText('Trail');
 	});
 
 	test('the park lists its courses by distance, with readable distances and a laps chip', async ({ page }) => {

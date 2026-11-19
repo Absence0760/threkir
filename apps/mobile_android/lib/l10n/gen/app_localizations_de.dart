@@ -22631,6 +22631,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksAgencyOther => 'Park';
 
   @override
+  String get parksKindTrail => 'Weg';
+
+  @override
   String get parksShapeLoop => 'Rundstrecke';
 
   @override

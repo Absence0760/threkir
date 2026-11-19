@@ -6033,6 +6033,7 @@
   "parksAgencyState": "州立公園",
   "parksAgencyCounty": "郡立公園",
   "parksAgencyOther": "公園",
+  "parksKindTrail": "トレイル",
   "parksShapeLoop": "周回",
   "parksShapeOutAndBack": "往復",
   "parksShapePointToPoint": "片道",

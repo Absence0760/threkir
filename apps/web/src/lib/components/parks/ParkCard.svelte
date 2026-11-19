@@ -2,17 +2,17 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { ParkCourseWithPark } from '#lib/core/data.ts';
 	import { regionSlug } from '#lib/parks/park_courses.ts';
-	import { AGENCY_LABEL, labelKey } from '#lib/parks/park_labels.ts';
+	import { parkTypeKey } from '#lib/parks/park_labels.ts';
 	import { fmtCourseDistanceRange } from '#lib/parks/course_distance_format.ts';
 	import ParkCourseLinesThumb from '#lib/components/parks/ParkCourseLinesThumb.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
-	// One park as a card that opens its page: the course lines, the agency, and
+	// One park as a card that opens its page: the course lines, the agency (or "Trail"), and
 	// how many courses at what distances. `courses` is empty while the course
 	// read is out or after it failed, which leaves the name and agency.
 	let { park, courses }: { park: ParkCourseWithPark['park']; courses: readonly ParkCourseWithPark[] } = $props();
 
-	const agencyKey = $derived(labelKey(AGENCY_LABEL, park.agency));
+	const agencyKey = $derived(parkTypeKey(park.kind, park.agency));
 	const range = $derived(fmtCourseDistanceRange(courses.map((c) => c.segment.distance_m)));
 	const lines = $derived<TrackPoint[][]>(
 		courses.map((c) => c.segment.waypoints.map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) }))),

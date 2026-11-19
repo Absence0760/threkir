@@ -16,11 +16,11 @@
 	} from '#lib/core/data.ts';
 	import { regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
 	import {
-		AGENCY_LABEL,
 		DIFFICULTY_LABEL,
 		SHAPE_LABEL,
 		STATUS_LABEL,
 		labelKey,
+		parkTypeKey,
 	} from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown, sortParkCourses } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
@@ -134,7 +134,7 @@
 			data-testid="park-not-found"
 		/>
 	{:else}
-		{@const agencyKey = labelKey(AGENCY_LABEL, park.agency)}
+		{@const agencyKey = parkTypeKey(park.kind, park.agency)}
 		<header class="detail-header">
 			<h1>{park.name}</h1>
 			<ul class="meta" data-testid="park-meta">

@@ -15,6 +15,10 @@ import 'run_stats.dart' show haversineMetres;
 
 const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
 
+/// What a catalogue entry is: a park, or a long trail through several parks
+/// that belongs to none (decisions § 2581). Mirrors web `PARK_KINDS`.
+const List<String> kParkKinds = ['park', 'trail'];
+
 const List<String> kCourseShapes = ['loop', 'out_and_back', 'point_to_point'];
 
 const List<String> kCourseStatuses = ['open', 'closed', 'seasonal'];

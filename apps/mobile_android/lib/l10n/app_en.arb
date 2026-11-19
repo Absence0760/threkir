@@ -28931,6 +28931,10 @@
   "@parksAgencyOther": {
     "description": "Park courses (#1313): web key parks.agencyOther."
   },
+  "parksKindTrail": "Trail",
+  "@parksKindTrail": {
+    "description": "Park courses (#1431): a catalogue entry that is a long trail through several parks rather than a park, e.g. the Virginia Capital Trail. Shown in place of the agency label. Web key parks.kindTrail."
+  },
   "parksShapeLoop": "Loop",
   "@parksShapeLoop": {
     "description": "Park courses (#1313): web key parks.shapeLoop."

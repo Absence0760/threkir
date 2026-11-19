@@ -6033,6 +6033,7 @@
   "parksAgencyState": "Parque estatal",
   "parksAgencyCounty": "Parque del condado",
   "parksAgencyOther": "Parque",
+  "parksKindTrail": "Sendero",
   "parksShapeLoop": "Circular",
   "parksShapeOutAndBack": "Ida y vuelta",
   "parksShapePointToPoint": "De punto a punto",

@@ -5380,6 +5380,7 @@ class ParkRow {
   static const String colIsActive = 'is_active';
   static const String colCreatedAt = 'created_at';
   static const String colNpsParkCode = 'nps_park_code';
+  static const String colKind = 'kind';
 
   final String id;
   final String slug;
@@ -5399,6 +5400,7 @@ class ParkRow {
   final bool isActive;
   final DateTime createdAt;
   final String? npsParkCode;
+  final String kind;
 
   const ParkRow({
     required this.id,
@@ -5419,6 +5421,7 @@ class ParkRow {
     required this.isActive,
     required this.createdAt,
     this.npsParkCode,
+    required this.kind,
   });
 
   factory ParkRow.fromJson(Map<String, dynamic> json) => ParkRow(
@@ -5440,6 +5443,7 @@ class ParkRow {
     isActive: (json['is_active'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     npsParkCode: json['nps_park_code'] as String?,
+    kind: json['kind'] as String,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5461,6 +5465,7 @@ class ParkRow {
     colIsActive: isActive,
     colCreatedAt: createdAt.toIso8601String(),
     colNpsParkCode: npsParkCode,
+    colKind: kind,
   };
 
   ParkRow copyWith({
@@ -5482,6 +5487,7 @@ class ParkRow {
     bool? isActive,
     DateTime? createdAt,
     String? npsParkCode,
+    String? kind,
   }) => ParkRow(
     id: id ?? this.id,
     slug: slug ?? this.slug,
@@ -5501,6 +5507,7 @@ class ParkRow {
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     npsParkCode: npsParkCode ?? this.npsParkCode,
+    kind: kind ?? this.kind,
   );
 }
 

@@ -300,3 +300,10 @@ test('a checkpoint step sits where the course names it, not at an even spacing',
 		],
 	);
 });
+
+test('a linear course gets no direction step', () => {
+	const kinds = (/** @type {{ steps: { kind: string }[] }} */ g) => g.steps.map((s) => s.kind);
+	assert.ok(kinds(guide()).includes('direction'));
+	assert.ok(!kinds(guide({ loop: false })).includes('direction'));
+	assert.equal(routeGuideRefusal(guide({ loop: false })), null);
+});

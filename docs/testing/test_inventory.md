@@ -1158,9 +1158,9 @@ Who listed a race and where its course came from. `race_source.ts` takes the cat
 
 The signed-in runner's `show_mascot` outside the settings page. The reading rules live in the rune-free `mascot_pref_read.ts` with the user id and the settings cache passed in; `mascot_pref.ts` wires `auth.user?.id`, `peekCachedSettings` and `loadSettings` (pinned by a source-read case). Covers signed out and a cold cache as unknown, a stored true / false and the device override, the server answer winning, a failed read falling back to the cache, peek and load agreeing on one stored value, and storage that throws (a private window) reading as unknown rather than crashing the empty state or rejecting the load.
 
-### `apps/web/src/lib/parks/park_labels.test.ts` — 6 tests
+### `apps/web/src/lib/parks/park_labels.test.ts` — 8 tests
 
-The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null) and `courseCredit` (course text, else the source label, else nothing).
+The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null), `courseCredit` (course text, else the source label, else nothing), and `parkTypeKey` (was 6: a trail reads "Trail" whoever runs it, a park its agency, and the Trail label is in every locale; decisions § 2581).
 
 ### `apps/web/src/lib/segments/effort_rank.test.ts` — 19 tests
 

@@ -75,7 +75,7 @@ set local "request.jwt.claims" = '{"role":"service_role"}';
 update clubs set is_verified = true where id = 'd1304444-0000-0000-0000-000000000001';
 create temp table nps_manifest (j jsonb);
 insert into nps_manifest values ($json${
-  "park": {"slug": "nps-loaded", "name": "NPS Loaded", "agency": "nps", "region_code": "US-VA",
+  "park": {"slug": "nps-loaded", "name": "NPS Loaded", "kind": "park", "agency": "nps", "region_code": "US-VA",
            "country_code": "US", "timezone": "America/New_York", "website_url": "https://www.nps.gov/blri/",
            "nps_park_code": "blri"},
   "region": "NPS Loaded, Virginia",

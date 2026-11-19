@@ -719,7 +719,7 @@ class _ParkScreenState extends State<ParkScreen> {
     final signedIn = widget.api?.userId != null;
     final names = courseDisplayNames([
       for (final c in _courses) c.segment.name,
-    ]);
+    ], park.name);
     return DetailPage(
       title: park.name,
       body: _loading

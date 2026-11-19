@@ -154,57 +154,107 @@ void main() {
     expect(courseLapsChip(4), 4);
   });
 
-  test('courseDisplayName: drops the distance and laps the chips already state',
-      () {
-    expect(courseDisplayName('Swift Creek Loop, 10 km (2 laps)'),
-        'Swift Creek Loop');
-    expect(courseDisplayName('Swift Creek Loop, 5 km'), 'Swift Creek Loop');
-    expect(courseDisplayName('Deep Run Park, 3.1 mi'), 'Deep Run Park');
-    expect(courseDisplayName('Lake loop, 5k'), 'Lake loop');
-    expect(
-        courseDisplayName('Swift Creek Forest Loop, marathon distance (2 laps)'),
-        'Swift Creek Forest Loop, marathon distance');
-    expect(courseDisplayName(' Beaver Lake Trail '), 'Beaver Lake Trail');
-  });
+  const pocahontas = [
+    'Beaver Lake Trail',
+    'Swift Creek Loop, 5 km',
+    'Swift Creek Loop, 10 km (2 laps)',
+    'Swift Creek Forest Loop, half-marathon distance',
+    'Swift Creek Forest Loop, marathon distance (2 laps)',
+    'Swift Creek Forest Loop, 50 km (2 laps)',
+  ];
 
-  test(
-      'courseDisplayName: keeps a name that is only a distance, and mid-name numbers',
+  test('courseDisplayNames: trims every name when none would read the same',
       () {
-    expect(courseDisplayName('10 km'), '10 km');
-    expect(courseDisplayName(', 5 km'), ', 5 km');
-    expect(courseDisplayName('Route 66 Trail'), 'Route 66 Trail');
-    expect(courseDisplayName('Loop, 5 km, north side'),
-        'Loop, 5 km, north side');
-  });
-
-  test('courseDisplayNames: drops the repeat only where the name stays '
-      'unique in the park', () {
     expect(
       courseDisplayNames([
+        'Lake Loop, 5 km',
+        'Ridge Run, 10 km (2 laps)',
         'Beaver Lake Trail',
-        'Swift Creek Loop, 5 km',
-        'Swift Creek Loop, 10 km (2 laps)',
-        'Swift Creek Forest Loop, half-marathon distance',
-        'Swift Creek Forest Loop, marathon distance (2 laps)',
-        'Swift Creek Forest Loop, 50 km (2 laps)',
       ]),
+      ['Lake Loop', 'Ridge Run', 'Beaver Lake Trail'],
+    );
+    expect(courseDisplayNames(['Deep Run Park, 3.1 mi', 'Lake loop, 5k']), [
+      'Deep Run Park',
+      'Lake loop',
+    ]);
+  });
+
+  test('courseDisplayNames: one rule for the park, so Pocahontas drops only '
+      'the laps from every card', () {
+    expect(courseDisplayNames(pocahontas, 'Pocahontas State Park'), [
+      'Beaver Lake Trail',
+      'Swift Creek Loop, 5 km',
+      'Swift Creek Loop, 10 km',
+      'Swift Creek Forest Loop, half-marathon distance',
+      'Swift Creek Forest Loop, marathon distance',
+      'Swift Creek Forest Loop, 50 km',
+    ]);
+  });
+
+  test('courseDisplayNames: the Capital Trail, old names drop the trail '
+      'prefix and keep the rest', () {
+    expect(
+      courseDisplayNames([
+        'Virginia Capital Trail, Four Mile Creek, 5 km out and back',
+        'Virginia Capital Trail, Four Mile Creek, marathon distance out and back',
+        'Virginia Capital Trail, Great Shiplock Park east, marathon distance',
+        'Virginia Capital Trail, Great Shiplock Park east, 50 km',
+        'Virginia Capital Trail, marathon distance to Jamestown',
+      ], 'Virginia Capital Trail'),
       [
-        'Beaver Lake Trail',
-        'Swift Creek Loop, 5 km',
-        'Swift Creek Loop, 10 km',
-        'Swift Creek Forest Loop, half-marathon distance',
-        'Swift Creek Forest Loop, marathon distance',
-        'Swift Creek Forest Loop',
+        'Four Mile Creek, 5 km out and back',
+        'Four Mile Creek, marathon distance out and back',
+        'Great Shiplock Park east, marathon distance',
+        'Great Shiplock Park east, 50 km',
+        'marathon distance to Jamestown',
       ],
     );
   });
 
-  test('courseDisplayNames: keeps the stored name when even the laps tell '
+  test('courseDisplayNames: the Capital Trail, short names stay whole '
+      'because trimming would collide', () {
+    const names = [
+      'Four Mile Creek, 5 km',
+      'Four Mile Creek, 10 km',
+      'Four Mile Creek, half-marathon distance',
+      'Four Mile Creek, marathon distance',
+      'Four Mile Creek to Herring Creek, half-marathon distance',
+      'Great Shiplock Park east, marathon distance',
+      'Great Shiplock Park east, 50 km',
+      'Herring Creek to Jamestown, marathon distance',
+    ];
+    expect(courseDisplayNames(names, 'Virginia Capital Trail'), names);
+    expect(
+      courseDisplayNames([
+        'Herring Creek to Jamestown, marathon distance',
+      ], 'Virginia Capital Trail'),
+      ['Herring Creek to Jamestown'],
+    );
+  });
+
+  test('courseDisplayNames: a park prefix only goes before a separator, and '
+      'never leaves a name empty', () {
+    expect(
+      courseDisplayNames([
+        'Deep Run Parkway Loop',
+        'Deep Run Park',
+        'Deep Run Park: Lake',
+      ], 'Deep Run Park'),
+      ['Deep Run Parkway Loop', 'Deep Run Park', 'Lake'],
+    );
+    expect(courseDisplayNames(['10 km', 'Route 66 Trail', ', 5 km']), [
+      '10 km',
+      'Route 66 Trail',
+      ', 5 km',
+    ]);
+    expect(courseDisplayNames([]), <String>[]);
+  });
+
+  test('courseDisplayNames: keeps the stored names when even the laps tell '
       'two apart', () {
     expect(courseDisplayNames(['Lake, 5 km (1 lap)', 'Lake, 5 km (2 laps)']), [
       'Lake, 5 km (1 lap)',
       'Lake, 5 km (2 laps)',
     ]);
-    expect(courseDisplayNames([]), <String>[]);
   });
 }

@@ -76,7 +76,7 @@ No DB migration; no deploy step beyond the normal web build/release.
 
 ## Park courses guide
 
-`park-courses-how-timing-works` (category `trail`, issue #1313) is the public explainer for [park courses](park_courses.md): what a standing time trial is, how a run is timed (start, checkpoints in order, finish, the whole course), seasons in the park's own time zone, and the Fastest and Most completions boards. It is written to stay true across the matching phases, so it says which runs can count, not which device or job scores them; the in-app help guide `park-courses` carries the current "open the run on the web" caution. Its `cta.feature` is `parks` ("Find a park course", `/parks`), and the body's closing section also links to `/parks`. `tests-e2e/learn/park-courses-guide.spec.ts` pins its head (title, canonical, `og:*`, `Article` JSON-LD) and the `/parks` link.
+`park-courses-how-timing-works` (category `trail`, issue #1313) is the public explainer for [park courses](park_courses.md): what a standing time trial is, how a run is timed (leaving the start box, checkpoints in order, entering the finish box with a little GPS slack, the whole course; decisions § 2583), seasons in the park's own time zone, and the Fastest and Most completions boards. It is written to stay true across the matching phases, so it says which runs can count, not which device or job scores them; the in-app help guide `park-courses` carries the current "open the run on the web" caution. Its `cta.feature` is `parks` ("Find a park course", `/parks`), and the body's closing section also links to `/parks`. `tests-e2e/learn/park-courses-guide.spec.ts` pins its head (title, canonical, `og:*`, `Article` JSON-LD) and the `/parks` link.
 
 ## Cross-linking (CTA targets)
 

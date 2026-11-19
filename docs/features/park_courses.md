@@ -1003,10 +1003,12 @@ These gate going live, not the code:
       line on the connector trail in the woods, about 900 m back along the loop
       from the small lot the loop passes; walks the route guide and
       sets `ground_checked_at`. Foot access is not confirmed in writing (owner
-      decision). A half was not built: the longest closed walk of 7 km or less
-      that repeats no trail is 6,039 m, so a 7 km lap needs about 1 km of
-      out-and-back on each of three laps of a figure-eight, which fails the
-      curation rule.
+      decision). A half was not built: on the ways scouted for it no 6.7-7 km
+      lap repeats no trail, and the longest such lap a wider search of the
+      park found is 6,039 m, so a 7 km lap needs about 1 km of out-and-back
+      on each of three laps of a figure-eight, which fails the curation rule.
+      The issue's 8 km no-repeat loop needs 14 junction joins; revisit once
+      those are checked.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

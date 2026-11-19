@@ -44,6 +44,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
 | **Cold Harbor, 5 km and 10 km (2 laps)** (Richmond National Battlefield Park, NPS `rich`; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/cold-harbor/`, joining the three trail pieces along the tour road (`trail_review.road_connectors`, a `road` step in the guide) | **Staged**: waits on the owner's ground check and the NPS permit question. See *Pre-deploy checklist* |
 | **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
+| **Poor Farm Park, 5 km and 10 km (2 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -487,7 +488,9 @@ climbs on the way, the checkpoints and the laps.
   the steps from the ordered OSM ways: a junction where the trail name changes
   (a short unnamed bridge or split inside one trail is not one), a road step
   for each stretch along a way the park's `trail_review.road_connectors` lists
-  (at most 250 m each, or the build refuses the course), a junction
+  (at most 250 m each, or the build refuses the course; a `trail_review.joins`
+  step across a near-miss junction is read as the trail either side and adds
+  none), a junction
   between unnamed ways only where the snapshot shows a branch and the course
   turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
   (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
@@ -992,6 +995,18 @@ These gate going live, not the code:
       `ground_checked_at`. Foot access is not confirmed in writing: OSM
       forbids foot on none of the ways used, and the owner decided not to ask
       the city; runners check the park rules themselves.
+- [ ] **Poor Farm Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,853 m lap of mountain-bike singletrack
+      against the trail signs (Hanover County publishes no trail map, so the
+      line is OSM's), including the two park-road crossings where the build
+      joins trail pieces OSM leaves 0.45 m and 2.93 m apart; checks the start
+      line on the connector trail in the woods, about 900 m back along the loop
+      from the small lot the loop passes; walks the route guide and
+      sets `ground_checked_at`. Foot access is not confirmed in writing (owner
+      decision). A half was not built: the longest closed walk of 7 km or less
+      that repeats no trail is 6,039 m, so a 7 km lap needs about 1 km of
+      out-and-back on each of three laps of a figure-eight, which fails the
+      curation rule.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

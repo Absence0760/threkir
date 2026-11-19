@@ -118,7 +118,7 @@ test.describe('park course pages', () => {
 
 		const cards = page.getByTestId('park-course-card');
 		await expect(cards).toHaveCount(5);
-		await expect(cards.locator('.course-name')).toHaveText([
+		await expect(cards.locator('.list-card-title')).toHaveText([
 			COURSES[3].name,
 			COURSES[0].name,
 			COURSES[1].name,
@@ -142,8 +142,12 @@ test.describe('park course pages', () => {
 		await expect(cards.filter({ hasText: /\bLoop\b/ })).toHaveCount(0);
 		await expect(cards.nth(3)).toContainText('Out and back');
 
-		// Signed in with no efforts planted, each course says there is no time yet.
-		await expect(cards.first().getByTestId('park-course-record')).toContainText('No time yet this season');
+		// Signed in with no efforts planted, the park says once that there is no
+		// time yet, and no card repeats it.
+		await expect(page.getByTestId('park-no-times-yet')).toHaveText(
+			'No times here yet this season. Yours could be the first.',
+		);
+		await expect(cards.getByTestId('park-course-record')).toHaveCount(0);
 		await expect(page.getByTestId('park-not-affiliated')).toBeVisible();
 	});
 

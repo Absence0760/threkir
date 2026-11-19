@@ -1,7 +1,14 @@
 <script lang="ts">
 	// Every course line of one park on one map (issue #1352), with each
 	// distinct start area marked. Pointing at a course in the list beside it
-	// (`highlightId`) draws that line in the accent colour over the rest.
+	// (`highlightId`) draws that line in the accent colour over the rest; a
+	// previewed course (`selectedId`) is drawn the same way, the others fade,
+	// the map frames it and its start and finish are pinned.
+	//
+	// The camera frames the lines whenever the map's box changes size, until
+	// the reader moves the map themselves: a fit taken against a box that was
+	// still settling (the consent swap, a sticky column, a phone's toolbar)
+	// otherwise kept the old zoom and left the park a squiggle in a corner.
 	import { onDestroy, untrack } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import maplibregl from '#lib/routes/maplibre.ts';
@@ -10,6 +17,7 @@
 	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv as mapStyleUrl } from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapAccentColour,
+		mapFinishColour,
 		mapOverlayOutline,
 		mapStartColour,
 		mapTrackLine,
@@ -17,17 +25,22 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import { distinctStarts, type LatLng } from '#lib/parks/course_map.ts';
+	import { boundsOf } from '#lib/parks/course_preview.ts';
 
 	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 
 	interface Props {
 		courses: { id: string; points: LatLng[] }[];
 		highlightId?: string | null;
+		/** The previewed course: framed, drawn over faded others, its ends pinned. */
+		selectedId?: string | null;
+		/** Where the previewed course starts and finishes; `finish` null when it is the start. */
+		selectedEnds?: { start: LatLng; finish: LatLng | null } | null;
 		label: string;
 		testid?: string;
 	}
 
-	let { courses, highlightId = null, label, testid }: Props = $props();
+	let { courses, highlightId = null, selectedId = null, selectedEnds = null, label, testid }: Props = $props();
 
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 	const darkBasemap = basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY, prefersDark);
@@ -37,6 +50,11 @@
 	let map: maplibregl.Map | null = null;
 	let ready = false;
 	let stopResize: (() => void) | null = null;
+	// Set once the reader drags, zooms or rotates; from then on the camera is theirs.
+	let readerMoved = false;
+	let endMarkers: maplibregl.Marker[] = [];
+	const reducedMotion =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	function linesData(): GeoJSON.FeatureCollection<GeoJSON.LineString, { id: string }> {
 		return {
@@ -64,9 +82,25 @@
 
 	function paintHighlight() {
 		if (!map || !ready) return;
-		const id = highlightId ?? '';
+		const id = selectedId ?? highlightId ?? '';
 		map.setFilter('park-course-highlight', ['==', ['get', 'id'], id]);
-		map.setPaintProperty('park-course-lines', 'line-opacity', highlightId ? 0.45 : 0.9);
+		map.setFilter('park-course-highlight-casing', ['==', ['get', 'id'], id]);
+		map.setPaintProperty('park-course-lines', 'line-opacity', selectedId ? 0.3 : highlightId ? 0.45 : 0.9);
+		map.setPaintProperty('park-course-casing', 'line-opacity', selectedId ? 0.15 : 0.35);
+		map.setLayoutProperty('park-course-starts', 'visibility', selectedId ? 'none' : 'visible');
+	}
+
+	function pinEnds() {
+		for (const marker of endMarkers) marker.remove();
+		endMarkers = [];
+		if (!map || !ready || !selectedId || !selectedEnds) return;
+		const { start, finish } = selectedEnds;
+		if (finish) {
+			endMarkers.push(new maplibregl.Marker({ color: mapStartColour(darkBasemap) }).setLngLat([start.lng, start.lat]).addTo(map));
+			endMarkers.push(new maplibregl.Marker({ color: mapFinishColour(darkBasemap) }).setLngLat([finish.lng, finish.lat]).addTo(map));
+		} else {
+			endMarkers.push(new maplibregl.Marker({ color: mapFinishColour(darkBasemap) }).setLngLat([start.lng, start.lat]).addTo(map));
+		}
 	}
 
 	function draw() {
@@ -94,12 +128,20 @@
 				paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 3.5, 'line-opacity': 0.9 },
 			});
 			map.addLayer({
+				id: 'park-course-highlight-casing',
+				type: 'line',
+				source: 'park-courses',
+				filter: ['==', ['get', 'id'], ''],
+				layout: { 'line-cap': 'round', 'line-join': 'round' },
+				paint: { 'line-color': mapOverlayOutline(darkBasemap), 'line-width': 9 },
+			});
+			map.addLayer({
 				id: 'park-course-highlight',
 				type: 'line',
 				source: 'park-courses',
 				filter: ['==', ['get', 'id'], ''],
 				layout: { 'line-cap': 'round', 'line-join': 'round' },
-				paint: { 'line-color': mapAccentColour(darkBasemap), 'line-width': 5 },
+				paint: { 'line-color': mapAccentColour(darkBasemap), 'line-width': 5.5 },
 			});
 			map.addLayer({
 				id: 'park-course-starts',
@@ -116,22 +158,16 @@
 		paintHighlight();
 	}
 
-	function fit() {
+	/** Frames the previewed course, or every course; animated only when the reader asked for it. */
+	function frame(animate: boolean) {
 		if (!map) return;
-		let w = Infinity;
-		let s = Infinity;
-		let e = -Infinity;
-		let n = -Infinity;
-		for (const c of courses) {
-			for (const p of c.points) {
-				w = Math.min(w, p.lng);
-				e = Math.max(e, p.lng);
-				s = Math.min(s, p.lat);
-				n = Math.max(n, p.lat);
-			}
-		}
-		if (!Number.isFinite(w)) return;
-		map.fitBounds([[w, s], [e, n]], { padding: 32, maxZoom: 16, duration: 0 });
+		const box = map.getContainer();
+		if (box.clientWidth === 0 || box.clientHeight === 0) return;
+		const picked = selectedId ? courses.filter((c) => c.id === selectedId) : [];
+		const bounds = boundsOf((picked.length > 0 ? picked : courses).map((c) => c.points));
+		if (!bounds) return;
+		const pad = Math.max(12, Math.min(40, Math.round(Math.min(box.clientWidth, box.clientHeight) / 10)));
+		map.fitBounds(bounds, { padding: pad, maxZoom: 16, duration: animate && !reducedMotion ? 600 : 0 });
 	}
 
 	$effect(() => {
@@ -144,10 +180,19 @@
 		});
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		stopResize = watchMapResize(container, map);
+		for (const kind of ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'] as const) {
+			map.on(kind, (e: { originalEvent?: Event }) => {
+				if (e.originalEvent) readerMoved = true;
+			});
+		}
+		map.on('resize', () => {
+			if (!readerMoved) frame(false);
+		});
 		map.on('load', () => {
 			ready = true;
 			draw();
-			fit();
+			pinEnds();
+			frame(false);
 		});
 	});
 
@@ -155,7 +200,7 @@
 		void courses;
 		untrack(() => {
 			draw();
-			fit();
+			frame(false);
 		});
 	});
 
@@ -164,14 +209,33 @@
 		untrack(paintHighlight);
 	});
 
+	$effect(() => {
+		void selectedId;
+		void selectedEnds;
+		untrack(() => {
+			readerMoved = false;
+			paintHighlight();
+			pinEnds();
+			frame(true);
+		});
+	});
+
 	onDestroy(() => {
 		stopResize?.();
+		for (const marker of endMarkers) marker.remove();
 		map?.remove();
 	});
 </script>
 
 {#if consented}
-	<div class="park-courses-map" bind:this={container} role="img" aria-label={label} data-testid={testid}></div>
+	<div
+		class="park-courses-map"
+		bind:this={container}
+		role="img"
+		aria-label={label}
+		data-testid={testid}
+		data-selected={selectedId ?? undefined}
+	></div>
 {:else}
 	<!-- audit/cookie-consent: MapTiler logs the requester IP per tile fetch, so
 	     the map waits for consent or an explicit "Load map", as RunMap does. -->
@@ -189,7 +253,7 @@
 	.park-courses-map {
 		width: 100%;
 		height: 100%;
-		min-height: 18rem;
+		min-height: 14rem;
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}

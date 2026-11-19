@@ -38,7 +38,6 @@ const LEFT: Record<string, number> = {
 	'routes/messages/+layout.svelte': 1,
 	'routes/messages/coach/+page.svelte': 1,
 	'routes/onboarding/+page.svelte': 2,
-	'routes/parks/[region]/[park]/+page.svelte': 1,
 	'routes/races/[id]/+page.svelte': 1,
 	'routes/routes/+page.svelte': 1,
 	'routes/u/[id]/+page.svelte': 1,

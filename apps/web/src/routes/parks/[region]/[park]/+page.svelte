@@ -1,9 +1,12 @@
 <script lang="ts">
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
-	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
+	import { onMount, tick } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
 	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchPark,
@@ -14,7 +17,11 @@
 		type ParkCourse,
 		type ParkCourseRecord,
 	} from '#lib/core/data.ts';
-	import { regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
+	import { courseEnds, regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
+	import { courseSearch, selectedCourseSlug, startSentence } from '#lib/parks/course_preview.ts';
+	import { parseRouteGuide } from '#lib/parks/route_guide.ts';
+	import { referrerBack } from '#lib/util/referrer_back.svelte.ts';
+	import { BACK_PLACE_KEY } from '#lib/util/back_target.ts';
 	import {
 		AGENCY_LABEL,
 		DIFFICULTY_LABEL,
@@ -22,15 +29,24 @@
 		STATUS_LABEL,
 		labelKey,
 	} from '#lib/parks/park_labels.ts';
-	import { courseLapsChip, courseShapeShown, sortParkCourses } from '#lib/parks/park_course_distance.ts';
+	import {
+		courseDisplayName,
+		courseLapsChip,
+		courseShapeShown,
+		sortParkCourses,
+	} from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import TrackPreview from '#lib/components/TrackPreview.svelte';
 	import ParkCoursesMap from '#lib/components/parks/ParkCoursesMap.svelte';
-	import ParkMapLegend from '#lib/components/parks/ParkMapLegend.svelte';
+	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
+
+	// With no in-app history a park sits under Races & courses, the place the
+	// sidebar names; the parks index is one step further from the nav.
+	const back = referrerBack({ href: '/races?show=courses', place: 'races' });
 
 	let park = $state<Park | null>(null);
 	let courses = $state<ParkCourse[]>([]);
@@ -39,6 +55,7 @@
 	// The season's records are an auxiliary read on their own: when it fails
 	// the courses still list, without records. Signed out, there is none.
 	let records = $state<Map<string, ParkCourseRecord>>(new Map());
+	let recordsLoaded = $state(false);
 	let recordsFailed = $state(false);
 	// How many ran each course this month where the park is, an auxiliary
 	// read of its own like the records. A course nobody ran this month has
@@ -62,12 +79,93 @@
 
 	const mapCourses = $derived(sorted.map((c) => ({ id: c.id, points: pointsOf(c) })));
 	const hasLines = $derived(mapCourses.some((c) => c.points.length >= 2));
+	// One quiet line for the park rather than "no time yet" on every card.
+	const noTimesYet = $derived(
+		auth.loggedIn && recordsLoaded && !recordsFailed && courses.length > 0 && !courses.some((c) => records.has(c.id)),
+	);
+
+	// The previewed course lives in `?course=`, written shallow so the list,
+	// its scroll and the back target stay put; back from the course page,
+	// a reload or a shared link brings the preview back.
+	const shownUrl = () => page.shallow?.url ?? page.url;
+	const selectedSlug = $derived(selectedCourseSlug(shownUrl().search, courses.map((c) => c.slug)));
+	const selected = $derived(sorted.find((c) => c.slug === selectedSlug) ?? null);
+	const selectedEnds = $derived.by(() => {
+		if (!selected) return null;
+		return courseEnds({
+			line: pointsOf(selected),
+			startGate: { lat: selected.segment.start_gate_lat, lng: selected.segment.start_gate_lng },
+			endGate: { lat: selected.segment.end_gate_lat, lng: selected.segment.end_gate_lng },
+			shape: selected.course_shape,
+		});
+	});
+	const selectedStart = $derived(
+		selected
+			? startSentence(parseRouteGuide(selected.route_guide), {
+					message: (key, params) => m(`parks.guide.${key}`, params),
+					distance: formatDistance,
+					short: formatElevation,
+				})
+			: null,
+	);
+	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
+		const items: ParkMapLegendItem[] = [
+			{ kind: 'line', label: m('parks.legendCourse') },
+			{ kind: 'focusedLine', label: m('parks.legendHighlighted') },
+		];
+		if (!selected) return [...items, { kind: 'trailhead', label: m('parks.legendStart') }];
+		if (selectedEnds && !selectedEnds.finish) return [...items, { kind: 'startFinish', label: m('parks.legendStartFinish') }];
+		return [
+			...items,
+			{ kind: 'start', label: m('parks.legendStart') },
+			{ kind: 'finish', label: m('parks.legendFinish') },
+		];
+	});
+
+	let overviewEl = $state<HTMLElement | null>(null);
+	let previewHeading = $state<HTMLElement | null>(null);
+	const reducedMotion =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	function courseHref(slug: string): string {
+		return `/parks/${data.region}/${data.park}/${slug}`;
+	}
+
+	async function select(slug: string | null) {
+		const from = selectedSlug;
+		const url = shownUrl();
+		await goto(`${url.pathname}${courseSearch(url.search, slug)}`, {
+			shallow: true,
+			replace: true,
+			persistState: true,
+			state: page.state,
+		});
+		await tick();
+		if (slug) {
+			// On a phone the map sits above the list, out of view.
+			const box = overviewEl?.getBoundingClientRect();
+			if (box && (box.top < 0 || box.top > window.innerHeight / 2)) {
+				overviewEl?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' });
+			}
+			previewHeading?.focus({ preventScroll: true });
+		} else if (from) {
+			document.querySelector<HTMLElement>(`[data-course-slug="${CSS.escape(from)}"] .lc-tap`)?.focus();
+		}
+	}
+
+	function onKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape' && selected && !e.defaultPrevented) {
+			e.preventDefault();
+			void select(null);
+		}
+	}
 
 	async function loadRecords() {
 		recordsFailed = false;
 		if (!auth.loggedIn) return;
 		try {
 			records = await fetchParkCourseRecords();
+			recordsLoaded = true;
 		} catch (e) {
 			console.error('park course records read failed', e);
 			recordsFailed = true;
@@ -111,11 +209,12 @@
 </script>
 
 <svelte:head><title>{park?.name ?? m('parks.title')}</title></svelte:head>
+<svelte:window onkeydown={onKeydown} />
 
 <div class="page">
-	<a href="/parks" class="back-link">
+	<a href={back.href} onclick={back.handle} class="back-link" data-testid="park-back">
 		<span class="material-symbols" aria-hidden="true">arrow_back</span>
-		{m('parks.backToParks')}
+		{m(BACK_PLACE_KEY[back.place])}
 	</a>
 
 	{#if loading}
@@ -158,13 +257,20 @@
 		{#if courses.length === 0}
 			<EmptyState icon="route" title={m('parks.noCourses')} data-testid="park-no-courses" />
 		{:else}
-			<div class="park-layout" class:with-map={hasLines}>
+			<div class="park-layout" class:with-map={hasLines || selected} class:with-preview={selected}>
 				<section class="courses" aria-labelledby="park-courses-title">
 					<SectionHeader title label={m('parks.coursesTitle')} id="park-courses-title">
 						{#snippet badge()}
 							<span class="count">{m('parks.courseCount', { n: courses.length })}</span>
 						{/snippet}
 					</SectionHeader>
+					<p class="list-note" id="park-preview-hint">{m('parks.previewHint')}</p>
+					{#if noTimesYet}
+						<p class="list-note">
+							<span class="material-symbols" aria-hidden="true">emoji_events</span>
+							<span data-testid="park-no-times-yet">{m('parks.noTimesYet')}</span>
+						</p>
+					{/if}
 					{#if recordsFailed}
 						<p class="records-failed" role="status" data-testid="park-records-failed">
 							{m('races.anyTimeFastestFailed')}
@@ -188,23 +294,28 @@
 							{@const record = records.get(course.id)}
 							{@const ranThisMonth = monthRunners.get(course.id) ?? 0}
 							{@const points = pointsOf(course)}
+							{@const name = courseDisplayName(course.segment.name)}
 							<li
+								data-course-slug={course.slug}
 								onmouseenter={() => (highlightId = course.id)}
 								onmouseleave={() => (highlightId = null)}
 								onfocusin={() => (highlightId = course.id)}
 								onfocusout={() => (highlightId = null)}
 							>
-								<a
-									href="/parks/{data.region}/{park.slug}/{course.slug}"
-									class="course-card"
-									class:closed={course.status === 'closed'}
-									data-testid="park-course-card"
+								<ListCard
+									onclick={() => void select(selected?.id === course.id ? null : course.slug)}
+									selected={selected?.id === course.id}
+									title={name}
+									dense
+									class="course-card{course.status === 'closed' ? ' closed' : ''}"
+									testid="park-course-card"
 								>
-									<span class="thumb" aria-hidden="true">
-										{#if points.length >= 2}<TrackPreview {points} aspect={1.4} />{/if}
-									</span>
-									<span class="course-body">
-										<span class="course-name">{course.segment.name}</span>
+									{#snippet leading()}
+										<span class="thumb" aria-hidden="true">
+											{#if points.length >= 2}<TrackPreview {points} aspect={1.4} />{/if}
+										</span>
+									{/snippet}
+									{#snippet meta()}
 										<span class="facts">
 											<span class="fact distance" data-testid="park-course-distance">{fmtCourseDistance(course.segment.distance_m)}</span>
 											{#if laps}<span class="chip" data-testid="park-course-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}
@@ -217,17 +328,16 @@
 												</span>
 											{/if}
 											{#if difficultyKey}<span class="fact">{m(difficultyKey)}</span>{/if}
+											{#if course.status !== 'open' && statusKey}
+												<span class="status-pill" class:closed={course.status === 'closed'}>{m(statusKey)}</span>
+											{/if}
 										</span>
-										{#if auth.loggedIn && !recordsFailed}
+										{#if record && auth.loggedIn && !recordsFailed}
 											<span class="course-record" data-testid="park-course-record">
 												<span class="material-symbols" aria-hidden="true">emoji_events</span>
-												{#if record}
-													{record.displayName
-														? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
-														: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
-												{:else}
-													{m('races.anyTimeNoTimeYet')}
-												{/if}
+												{record.displayName
+													? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
+													: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
 											</span>
 										{/if}
 										{#if ranThisMonth > 0}
@@ -236,34 +346,93 @@
 												{m('parks.monthRunners', { n: ranThisMonth })}
 											</span>
 										{/if}
-									</span>
-									{#if course.status !== 'open' && statusKey}
-										<span class="status-pill" class:closed={course.status === 'closed'}>{m(statusKey)}</span>
-									{/if}
-								</a>
+									{/snippet}
+									{#snippet actions()}
+										<a
+											class="course-open"
+											href={courseHref(course.slug)}
+											aria-label={m('parks.openCourseNamed', { course: name })}
+											data-testid="park-course-open"
+										>
+											{m('parks.cardOpen')}
+											<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+										</a>
+									{/snippet}
+								</ListCard>
 							</li>
 						{/each}
 					</ul>
 				</section>
 
-				{#if hasLines}
-					<section class="overview" aria-label={m('parks.overviewMapLabel', { park: park.name })}>
-						<div class="map-frame">
-							<ParkCoursesMap
-								courses={mapCourses}
-								{highlightId}
-								label={m('parks.overviewMapLabel', { park: park.name })}
-								testid="park-overview-map"
-							/>
-						</div>
-						<ParkMapLegend
-							testid="park-map-legend"
-							items={[
-								{ kind: 'line', label: m('parks.legendCourse') },
-								{ kind: 'focusedLine', label: m('parks.legendHighlighted') },
-								{ kind: 'trailhead', label: m('parks.legendStart') },
-							]}
-						/>
+				{#if hasLines || selected}
+					<section class="overview" aria-label={m('parks.overviewMapLabel', { park: park.name })} bind:this={overviewEl}>
+						{#if hasLines}
+							<div class="map-frame">
+								<ParkCoursesMap
+									courses={mapCourses}
+									{highlightId}
+									selectedId={selected?.id ?? null}
+									{selectedEnds}
+									label={m('parks.overviewMapLabel', { park: park.name })}
+									testid="park-overview-map"
+								/>
+							</div>
+							<ParkMapLegend testid="park-map-legend" items={legendItems} />
+						{/if}
+						{#if selected}
+							{@const shapeKey = labelKey(SHAPE_LABEL, selected.course_shape)}
+							{@const laps = courseLapsChip(selected.laps)}
+							{@const gain = Number(selected.segment.elevation_m)}
+							{@const name = courseDisplayName(selected.segment.name)}
+							<section class="preview card-elevated" aria-labelledby="park-preview-title" data-testid="park-course-preview">
+								<div class="preview-head">
+									<h2 id="park-preview-title" class="preview-title" tabindex="-1" bind:this={previewHeading}>{name}</h2>
+									<button
+										type="button"
+										class="preview-close"
+										aria-label={m('parks.previewClose')}
+										onclick={() => void select(null)}
+										data-testid="park-course-preview-close"
+									>
+										<span class="material-symbols" aria-hidden="true">close</span>
+									</button>
+								</div>
+								<dl class="preview-facts">
+									<div>
+										<dt>{m('parks.statDistance')}</dt>
+										<dd data-testid="park-course-preview-distance">{fmtCourseDistance(selected.segment.distance_m)}</dd>
+									</div>
+									{#if Number.isFinite(gain) && gain > 0}
+										<div>
+											<dt>{m('parks.statElevation')}</dt>
+											<dd>{formatElevation(gain)}</dd>
+										</div>
+									{/if}
+									{#if laps}
+										<div>
+											<dt>{m('parks.statLaps')}</dt>
+											<dd data-testid="park-course-preview-laps">{laps}</dd>
+										</div>
+									{/if}
+									{#if shapeKey}
+										<div>
+											<dt>{m('parks.statShape')}</dt>
+											<dd data-testid="park-course-preview-shape">{m(shapeKey)}</dd>
+										</div>
+									{/if}
+								</dl>
+								{#if selectedStart}
+									<p class="preview-start">
+										<span class="material-symbols" aria-hidden="true">place</span>
+										<span lang={selectedStart.lang ?? undefined} data-testid="park-course-preview-start">{selectedStart.text}</span>
+									</p>
+								{/if}
+								<a class="btn btn-primary preview-open" href={courseHref(selected.slug)} data-testid="park-course-preview-open">
+									{m('parks.openCourse')}
+									<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+								</a>
+							</section>
+						{/if}
 					</section>
 				{/if}
 			</div>
@@ -376,41 +545,53 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 	}
-	.course-card {
-		display: grid;
-		grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+	.list-note {
+		display: flex;
 		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		text-decoration: none;
+		gap: var(--space-xs);
+		margin: 0 0 var(--space-sm);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
 	}
-	.course-card:hover,
-	.course-card:focus-visible {
-		border-color: var(--color-primary);
+	.list-note .material-symbols {
+		flex-shrink: 0;
+		font-size: 1rem;
+		color: var(--color-crown);
 	}
-	.course-card.closed .thumb,
-	.course-card.closed .course-name {
+	.course-list :global(.course-card.closed .thumb),
+	.course-list :global(.course-card.closed .list-card-title) {
 		opacity: 0.6;
 	}
+	.course-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+		min-height: var(--tap-target-min);
+		padding: 0 var(--space-sm);
+		border-radius: var(--radius-pill);
+		color: var(--color-primary);
+		font-weight: 600;
+		font-size: 0.875rem;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.course-open:hover {
+		background: var(--color-primary-light);
+	}
+	.course-open:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.course-open .material-symbols {
+		font-size: 1.1rem;
+	}
 	.thumb {
+		display: block;
 		width: 4.5rem;
 		height: 3.2rem;
 		border-radius: var(--radius-sm);
 		background: var(--color-fill-subtle);
 		overflow: hidden;
-	}
-	.course-body {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		min-width: 0;
-	}
-	.course-name {
-		font-weight: 600;
 	}
 	.facts {
 		display: flex;
@@ -442,7 +623,8 @@
 		font-weight: 600;
 	}
 	.course-record {
-		display: inline-flex;
+		display: flex;
+		margin-top: var(--space-2xs);
 		align-items: center;
 		gap: 0.25rem;
 		font-size: 0.8rem;
@@ -472,16 +654,101 @@
 		line-height: 1.5;
 	}
 	@media (max-width: 30rem) {
-		.course-card {
-			grid-template-columns: 3.5rem minmax(0, 1fr);
-		}
 		.thumb {
 			width: 3.5rem;
 			height: 2.6rem;
 		}
-		.status-pill {
-			grid-column: 2;
-			justify-self: start;
+	}
+	.park-layout.with-preview .map-frame {
+		height: 14rem;
+	}
+	@media (min-width: 64rem) {
+		.park-layout.with-preview .map-frame {
+			height: min(24rem, 46vh);
+		}
+	}
+	.preview {
+		margin-top: var(--space-md);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.preview-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+	.preview-title {
+		margin: 0;
+		font-size: var(--font-size-section-title);
+		font-weight: 700;
+		line-height: 1.3;
+		align-self: center;
+	}
+	.preview-title:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.preview-close {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
+		margin: calc(var(--space-sm) * -1) calc(var(--space-sm) * -1) 0 0;
+		border: 0;
+		border-radius: var(--radius-pill);
+		background: none;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.preview-close:hover {
+		background: var(--color-fill-subtle);
+	}
+	.preview-close:focus-visible {
+		outline: 2px solid var(--color-primary);
+	}
+	.preview-facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm) var(--space-lg);
+		margin: 0;
+	}
+	.preview-facts dt {
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+	}
+	.preview-facts dd {
+		margin: 0;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+	.preview-start {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin: 0;
+		color: var(--color-text);
+		line-height: 1.45;
+	}
+	.preview-start .material-symbols {
+		flex-shrink: 0;
+		font-size: 1.1rem;
+		color: var(--color-text-secondary);
+		margin-top: 0.1rem;
+	}
+	.preview-open {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+	@media (max-width: 40rem) {
+		.preview-open {
+			align-self: stretch;
+			justify-content: center;
 		}
 	}
 </style>

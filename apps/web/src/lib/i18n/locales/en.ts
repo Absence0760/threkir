@@ -19,6 +19,7 @@ export const en = {
 	'common.unsavedBody': 'You have unsaved changes. Leave without saving?',
 	'common.discard': 'Discard',
 	"common.unsavedBusy": "Still saving. You can leave when it finishes.",
+	"common.back": "Back",
 	"metricLabel.about": "About {name}",
 	// Rate-limit refusals (postgres P0001 from enforce_create_rate_limit).
 	// The bucket picks the whole sentence; {wait} is the one noun phrase
@@ -8061,7 +8062,14 @@ export const en = {
 	"parks.courseMapLabel": "Course map",
 	"parks.mapKey": "Map key",
 	"parks.legendCourse": "Course line",
-	"parks.legendHighlighted": "Course you are pointing at",
+	"parks.legendHighlighted": "Selected course",
+	"parks.previewHint": "Pick a course to see it on the map.",
+	"parks.openCourse": "Open course",
+	"parks.openCourseNamed": "Open {course}",
+	"parks.cardOpen": "Open",
+	"parks.previewClose": "Close preview",
+	"parks.noTimesYet": "No times here yet this season. Yours could be the first.",
+	"parks.statLaps": "Laps",
 	"parks.legendStart": "Start",
 	"parks.legendFinish": "Finish",
 	"parks.legendStartFinish": "Start and finish",

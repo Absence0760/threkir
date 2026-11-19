@@ -408,7 +408,8 @@ they already return to the screen the runner came from.
   of the park's course lines (no tile request), the agency, and the course
   count with the distance range. The course read is auxiliary: when it fails
   the parks still list.
-- **Park page:** region, agency and the park website as separate items; a
+- **Park page:** region, agency and the website ("Website", not "Park
+  website", since a trail is no park) as separate items; a
   course list beside a map of every course line (`ParkCoursesMap`) with each
   distinct start area marked. Side by side from 64rem; map first on a phone.
   The map waits for cookie consent like every MapLibre map, and it frames the
@@ -417,22 +418,31 @@ they already return to the screen the runner came from.
   sticky column, a phone's toolbar) never strands the park in a corner of a
   zoomed-out map. A point at exactly 0, 0 (a null coordinate) is left out of
   the frame (`boundsOf`).
-  - **Cards** are `ListCard` buttons: route thumbnail (dropped under 30rem
-    so the name keeps its room), the name without the distance and laps it
-    would repeat where that stays unique in the park (`courseDisplayNames`:
-    "Swift Creek Forest Loop, 50 km (2 laps)" reads "Swift Creek Forest
-    Loop" over "50 km · 2 laps", while the 5 km and 10 km Swift Creek loops
-    keep their distances so they do not read the same), distance, laps chip,
-    elevation gain, difficulty, status pill, this season's record and holder
-    when there is one, and a visible **Open** link named "Open {course}". A
-    course with no time says nothing; when no course in the park has one,
-    one line under the list says so ("No times here yet this season"). The
-    park-level lines sit under the cards so a late read never moves a card.
+  - **Cards** are `ListCard` buttons on one grid: every card the height of
+    the tallest, the name held to two lines (the whole name stays in the
+    button's accessible name) and the Open link centred. Each carries a route
+    thumbnail (dropped under 30rem), the name, distance, laps chip, elevation
+    gain, difficulty, status pill, this season's record and holder when there
+    is one, and a visible **Open** link named "Open {course}". The heading
+    and the hint above it span both columns, so the first card and the map
+    start on one line. A course with no time says nothing; when no course in
+    the park has one, one line under the list says so.
+  - **Names** (`courseDisplayNames`, one rule for the whole list): the park's
+    own name is dropped from the front ("Virginia Capital Trail, Four Mile
+    Creek, …" reads "Four Mile Creek, …"). Then, if the distance (", 10 km",
+    ", marathon distance", with a trailing shape) and the laps can go from
+    every name without two reading the same, they go from every name; else
+    only the laps go, if that keeps them apart; else the names stay as
+    stored. Never a mix, so the list never trims one card's ", 50 km" and
+    keeps another's ", marathon distance". Pocahontas drops only its laps;
+    the Capital Trail's short names (#1435) stay whole.
   - **Preview** (decisions § 2588): a line above the list says "Pick a course
     to see where it goes and where to start." Tapping a card selects its
     course without leaving the page (tapping it again keeps it; Close or
-    Escape clear it): the map frames it, draws it in the accent colour over
-    the others faded, hides the other start areas and pins its start (green)
+    Escape clear it): the map frames it, draws it wider in the pinned-line
+    violet on a halo over the others faded (3.92:1 against a faded line
+    light, 3.63:1 dark; the accent amber read 1.29:1 against the coral line
+    and looked the same), hides the other start areas and pins its start (green)
     and finish (red), or one "Start and finish" pin when they share a place
     (`courseEnds`). The key shows "Selected course" only while one is, and
     the key shows only under a drawn map. A panel gives the name, a status

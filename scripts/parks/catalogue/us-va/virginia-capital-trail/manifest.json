@@ -1311,74 +1311,74 @@
       "course_shape": "point_to_point",
       "distance_m": 42195,
       "start": {
-        "lat": 37.337304,
-        "lng": -77.175968
+        "lat": 37.338121,
+        "lng": -77.173336
       },
       "finish": {
-        "lat": 37.229338,
-        "lng": -76.780596
+        "lat": 37.227589,
+        "lng": -76.782388
       },
       "surface": "road",
       "geometry_source": "osm",
       "source_ref": "way/19928705,way/19935971,way/294875026,way/294875039,way/531855345,way/531855347,way/600835130,way/600835131,way/1066422653,way/1066422654,way/1133258813,way/1202360708,way/1202360709,way/1202360710,way/1202360711,way/1221203690,way/1221203691,way/1221203694,way/1221203695,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1364573838,way/1364573839,way/1414448648,way/1414448649,way/1414448657,way/1414448658,way/1414448659,way/1414448660,way/1414491027,way/1414491028",
       "source_checked_at": "2026-11-19",
       "geojson": "capital-trail-jamestown-marathon.geojson",
-      "elevation_m": 81,
+      "elevation_m": 71,
       "checkpoints": [
         {
-          "lat": 37.329636,
-          "lng": -77.142284
+          "lat": 37.330447,
+          "lng": -77.139638
         },
         {
-          "lat": 37.331864,
-          "lng": -77.106995
+          "lat": 37.331681,
+          "lng": -77.104183
         },
         {
-          "lat": 37.341268,
-          "lng": -77.074382
+          "lat": 37.342503,
+          "lng": -77.072141
         },
         {
-          "lat": 37.336429,
-          "lng": -77.043458
+          "lat": 37.337049,
+          "lng": -77.040721
         },
         {
-          "lat": 37.332012,
-          "lng": -77.011686
+          "lat": 37.330195,
+          "lng": -77.00999
         },
         {
-          "lat": 37.324458,
-          "lng": -76.979874
+          "lat": 37.323394,
+          "lng": -76.977376
         },
         {
-          "lat": 37.303706,
-          "lng": -76.955046
+          "lat": 37.302405,
+          "lng": -76.95272
         },
         {
-          "lat": 37.28671,
-          "lng": -76.925482
+          "lat": 37.28525,
+          "lng": -76.92331
         },
         {
-          "lat": 37.26783,
-          "lng": -76.897513
+          "lat": 37.266379,
+          "lng": -76.895333
         },
         {
-          "lat": 37.26271,
-          "lng": -76.864422
+          "lat": 37.261666,
+          "lng": -76.861945
         },
         {
-          "lat": 37.253694,
-          "lng": -76.830284
+          "lat": 37.25404,
+          "lng": -76.827602
         },
         {
-          "lat": 37.253893,
-          "lng": -76.796042
+          "lat": 37.252363,
+          "lng": -76.794934
         }
       ],
       "waypoint_count": 549,
       "route_guide": {
         "version": 1,
         "lang": "en",
-        "getting_there": "Park at the Herring Creek Trailhead and walk about 1 km east along the trail to the start line. The finish is at the Jamestown Settlement end of the trail.",
+        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.3 km east along the trail to the start line. The finish is at the Jamestown Trailhead lot by Jamestown Settlement, at the end of the trail.",
         "steps": [
           {
             "kind": "start",
@@ -1401,7 +1401,7 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Courthouse Road",
-            "at_m": 9431
+            "at_m": 9180
           },
           {
             "kind": "checkpoint",
@@ -1413,17 +1413,17 @@
             "kind": "junction",
             "turn": "straight",
             "name": "Virginia Capital Trail",
-            "at_m": 9996
+            "at_m": 9745
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 10199
+            "at_m": 9947
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 11409
+            "at_m": 11157
           },
           {
             "kind": "checkpoint",
@@ -1434,7 +1434,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 13693
+            "at_m": 13441
           },
           {
             "kind": "checkpoint",
@@ -1445,7 +1445,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 17834
+            "at_m": 17582
           },
           {
             "kind": "checkpoint",
@@ -1474,7 +1474,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 30880
+            "at_m": 30628
           },
           {
             "kind": "checkpoint",
@@ -1491,7 +1491,7 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 37270
+            "at_m": 37019
           },
           {
             "kind": "checkpoint",
@@ -1502,12 +1502,12 @@
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 39575
+            "at_m": 39323
           },
           {
             "kind": "crossing",
             "crossing": "bridge",
-            "at_m": 39824
+            "at_m": 39572
           },
           {
             "kind": "finish",

@@ -42,6 +42,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2551). See *The pages* | Shipped |
 | **Deep Run Park, 5 km and 10 km (2 laps)** (Henrico County, VA; issues #1345, #1430): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 | **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
+| **Cold Harbor, 5 km and 10 km (2 laps)** (Richmond National Battlefield Park, NPS `rich`; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/cold-harbor/`, joining the three trail pieces along the tour road (`trail_review.road_connectors`, a `road` step in the guide) | **Staged**: waits on the owner's ground check and the NPS permit question. See *Pre-deploy checklist* |
+| **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -464,7 +466,9 @@ climbs on the way, the checkpoints and the laps.
   (`name` or `way`), `direction` (`rotation`: `clockwise` /
   `counterclockwise`, with an optional `keep_on` + `landmark`), `lap` (`lap`,
   `of`), `junction` (`turn`: `left` / `right` / `straight`, and `name` or
-  `way`: `fire_road` / `road` / `path`), `crossing` (`bridge` / `ford`),
+  `way`: `fire_road` / `road` / `path`), `road` (`length_m`, optional
+  `name`: a stretch of road the course follows between two pieces of trail,
+  since migration `20280102001430`), `crossing` (`bridge` / `ford`),
   `surface` (`paved` / `gravel` / `dirt` / `unpaved` / `boardwalk`), `climb`
   (`gain_m`, `length_m`), `checkpoint` (`order`, `of`) and `finish`, each with
   its whole-metre `at_m` along the course. The CHECK
@@ -481,7 +485,9 @@ climbs on the way, the checkpoints and the laps.
   step missing.
 - **Generated, never invented.** `scripts/parks/lib/route_guide.mjs` derives
   the steps from the ordered OSM ways: a junction where the trail name changes
-  (a short unnamed bridge or split inside one trail is not one), a junction
+  (a short unnamed bridge or split inside one trail is not one), a road step
+  for each stretch along a way the park's `trail_review.road_connectors` lists
+  (at most 250 m each, or the build refuses the course), a junction
   between unnamed ways only where the snapshot shows a branch and the course
   turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
   (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
@@ -966,6 +972,26 @@ These gate going live, not the code:
       Orange Trail and the dashed connectors by Gregory's Pond. A
       half-marathon was not built: on the map's trails the shortest 7 km lap
       found repeats 22 % of itself, over the 15 % cap set on #1430.
+- [ ] **Cold Harbor (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,692 m lap (Main Trail to the visitor
+      center and back, the Extended Loop Trail, the Western Trail) against the
+      NPS trail map, including the four tour-road stretches each lap runs on
+      Anderson Wright Drive (56, 219, 41 and 159 m, run facing the one-way
+      traffic) where OSM leaves the trail in three pieces; confirms runners may
+      use the tour road there; checks the start line on the Main Trail east of
+      the tour road (155 m from the crossing for the 5K, 310 m for the 10K);
+      walks the route guide and sets `ground_checked_at`; and asks the park
+      whether an organised run needs a special park use permit. If OSM gains
+      the foot links at the crossings, drop the connectors and rebuild.
+- [ ] **Powhite Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,605 m lap of shared mountain-bike
+      singletrack against the trail signs (the city publishes no trail map, so
+      the line and the unnamed inner trails are OSM's), checks the start line
+      on the Powhite Park Loop Trail north of the Jahnke Road lot (the 10K's
+      is 50 m in from the lot end), walks the route guide and sets
+      `ground_checked_at`. Foot access is not confirmed in writing: OSM
+      forbids foot on none of the ways used, and the owner decided not to ask
+      the city; runners check the park rules themselves.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).
@@ -1118,7 +1144,10 @@ These gate going live, not the code:
   `fixtures/route_guide_cases.json` (template per step, fail-closed reading,
   `GUIDE_EN` against the English catalogue); pgTAP
   `park_course_route_guide_test.sql` (the shape predicate, the CHECKs, the load
-  writing the guide and its date with no backfill, each refusal); Playwright
+  writing the guide and its date with no backfill, each refusal) and
+  `park_course_route_guide_road_test.sql` (the road step, #1430); road
+  connectors in `course_geometry.test.mjs` (the trail review, the 250 m cap);
+  Playwright
   `tests-e2e/parks/park-course-route-guide.spec.ts` (the list and the draft
   note on the course and share pages, the checked date, the GPX `<desc>`);
   a widget test in `test/park_courses_screen_test.dart`.

@@ -2,11 +2,16 @@
 #
 # seed-demo.sh — load the opt-in demo dataset into a LOCAL Supabase stack.
 #
-# Applies apps/backend/supabase/seed_demo.sql on top of seed.sql: more
-# runners, 34 Virginia parks with ~170 park courses and their boards, 36 races,
-# 58 routes, six months of the seed runner's activities, a busy feed, clubs,
-# events, challenges, messages, a past training plan, gym, food and body
-# metrics. Real catalogue courses already loaded get boards too. See decisions § 2521 for why this is not part of seed.sql.
+# Two steps on top of seed.sql:
+#   1. Loads the real park catalogue: every park under scripts/parks/catalogue/,
+#      staged ones included, through the release sync's own SQL
+#      (scripts/parks/local_load.mjs), as a local official club owned by
+#      runner@test.com. No park or course is invented.
+#   2. Applies apps/backend/supabase/seed_demo.sql: more runners, boards on
+#      every catalogue course, 36 races, 58 routes, six months of the seed
+#      runner's activities, a busy feed, clubs, events, challenges, messages, a
+#      past training plan, gym, food and body metrics.
+# See decisions § 2521 and § 2590 for why this is not part of seed.sql.
 #
 # Usage:
 #   bin/seed-demo.sh                       # the default local stack (port 24322)
@@ -96,7 +101,14 @@ done
 ok "host ${host}"
 
 need_cmd psql
+need_cmd node
 [[ -f "$SQL_FILE" ]] || fatal "missing $SQL_FILE"
+
+step "Loading the park catalogue"
+catalogue_sql="$(node "${REPO_ROOT}/scripts/parks/local_load.mjs")"
+printf '%s\n' "$catalogue_sql" | psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 -At -F ' ' \
+	| awk '{ n[$3]++ } END { for (a in n) printf "  %s %d\n", a, n[a] }'
+ok "loaded"
 
 step "Applying seed_demo.sql"
 psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 -f "$SQL_FILE"

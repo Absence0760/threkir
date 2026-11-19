@@ -110,6 +110,11 @@ export const EXPECTED_SURVIVORS = [
     reason: 'it checks the EXEMPT list against apps/web/src call sites, not any function module',
   },
   {
+    file: './supabase/functions/_shared/ellipsis_guard.test.ts',
+    name: 'the registry sentinel sees a locale table in every shape',
+    reason: "its subject is the guard's own holdsLocaleTable, run on planted source strings; the cases that read the catalogues and the functions tree are the ones that test the function modules",
+  },
+  {
     file: './supabase/functions/_shared/offline_worker_boot_guard.test.ts',
     name: "the root supabase-js pin is apps/web's own release, so npm installs one copy",
     reason: "its subject is the root and apps/web package.json manifests, which the mutation leaves intact; a drift between them doubles supabase-js in the web bundle (decisions § 2341)",

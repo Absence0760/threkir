@@ -526,7 +526,7 @@ test('geocodePlace (Nominatim path) returns null on a body that is not an array'
 
 // ---- PlaceBias ------------------------------------------------------------
 
-import { biasCountries, geocodePlaceWithKey, mapTilerBiasQuery } from './geocoding_math';
+import { biasCountries, mapTilerBiasQuery } from './geocoding_math';
 
 async function urlAsked(call: () => Promise<unknown>): Promise<URL> {
 	const originalFetch = globalThis.fetch;

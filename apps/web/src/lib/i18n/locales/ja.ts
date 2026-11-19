@@ -8074,6 +8074,8 @@ export const messages = {
 	"parks.guide.leftPath": "{at}：左折して小道へ。",
 	"parks.guide.rightPath": "{at}：右折して小道へ。",
 	"parks.guide.straightPath": "{at}：小道を直進。",
+	"parks.guide.road": "{at}：道路を{length}進みます。車に注意してください。",
+	"parks.guide.roadNamed": "{at}：道路（{name}）を{length}進みます。車に注意してください。",
 	"parks.guide.bridge": "{at}：橋を渡ります。",
 	"parks.guide.ford": "{at}：浅瀬を渡ります。橋はないので、足が濡れる覚悟を。",
 	"parks.guide.surfacePaved": "{at}：ここから舗装路。",

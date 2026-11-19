@@ -8079,6 +8079,8 @@ export const messages = {
 	"parks.guide.leftPath": "{at}: links auf den Pfad abbiegen.",
 	"parks.guide.rightPath": "{at}: rechts auf den Pfad abbiegen.",
 	"parks.guide.straightPath": "{at}: geradeaus weiter auf dem Pfad.",
+	"parks.guide.road": "{at}: folge der Straße {length} weit. Achte auf Autos.",
+	"parks.guide.roadNamed": "{at}: folge der Straße {name} {length} weit. Achte auf Autos.",
 	"parks.guide.bridge": "{at}: über die Brücke.",
 	"parks.guide.ford": "{at}: durch die Furt. Hier gibt es keine Brücke, rechne mit Wasser.",
 	"parks.guide.surfacePaved": "{at}: ab hier asphaltiert.",

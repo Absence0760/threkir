@@ -8078,6 +8078,8 @@ export const messages = {
 	"parks.guide.leftPath": "{at}: vire à esquerda na trilha.",
 	"parks.guide.rightPath": "{at}: vire à direita na trilha.",
 	"parks.guide.straightPath": "{at}: siga em frente pela trilha.",
+	"parks.guide.road": "{at}: siga pela estrada por {length}. Cuidado com os carros.",
+	"parks.guide.roadNamed": "{at}: siga pela estrada {name} por {length}. Cuidado com os carros.",
 	"parks.guide.bridge": "{at}: atravesse a ponte.",
 	"parks.guide.ford": "{at}: atravesse o vau. Não há ponte, então espere água.",
 	"parks.guide.surfacePaved": "{at}: asfaltado a partir daqui.",

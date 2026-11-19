@@ -366,7 +366,12 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2710;
+// Raised to 2718 for the park course list preview and the back link that
+// names where the reader came from (PR #1442), measured in CI at 2712 KB on
+// the merge with origin/main. Route-level code only, with no new dependency:
+// the in-place course preview card and its map on the park page. Same 6 KB of
+// cover (decisions § 2470).
+export const MAX_CODE_KB = 2718;
 export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

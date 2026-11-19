@@ -40,6 +40,36 @@ function itemText(line) {
 }
 
 /**
+ * The text outside HTML comments, as GitHub renders a PR body: each
+ * `<!-- ... -->` is dropped, and an unclosed `<!--` hides everything after
+ * it. Removing one comment can join the text around it into a new opener
+ * (`<!<!---->--`), so it repeats until nothing changes, then cuts at any
+ * opener left, rather than a single regex replace that can leave one behind.
+ *
+ * @param {string} body
+ */
+export function stripHtmlComments(body) {
+	let text = body;
+	for (;;) {
+		let out = '';
+		let i = 0;
+		let open = text.indexOf('<!--');
+		while (open !== -1) {
+			const close = text.indexOf('-->', open + 4);
+			if (close === -1) break;
+			out += text.slice(i, open);
+			i = close + 3;
+			open = text.indexOf('<!--', i);
+		}
+		out += text.slice(i);
+		if (out === text) break;
+		text = out;
+	}
+	const left = text.indexOf('<!--');
+	return left === -1 ? text : text.slice(0, left);
+}
+
+/**
  * The PR body's `## Issues` section: the issues it fixes, and the ones it
  * is part of with the checkbox lines it completes. HTML comments are ignored,
  * so the template's guidance never counts as a reference.
@@ -51,7 +81,7 @@ export function parseIssuesSection(body) {
 	/** @type {IssuesSection} */
 	const out = { fixes: [], parts: [] };
 	if (!body) return out;
-	const text = body.replace(/<!--[\s\S]*?-->/g, '');
+	const text = stripHtmlComments(body);
 	const lines = text.split(/\r?\n/);
 	const start = lines.findIndex((l) => /^##\s+Issues\s*$/i.test(l.trim()));
 	if (start === -1) return out;

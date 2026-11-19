@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LABEL, commentBody, parseIssuesSection, run, tickItems } from './issue_progress.mjs';
+import { LABEL, commentBody, parseIssuesSection, run, stripHtmlComments, tickItems } from './issue_progress.mjs';
 
 const BODY = `## Summary
 
@@ -142,4 +142,20 @@ test('run does nothing for a PR with no Part of issues', async () => {
 		gh.restore();
 	}
 	assert.equal(gh.calls.length, 0);
+});
+
+test('stripHtmlComments drops every comment, overlapping or unclosed, and leaves no opener behind', () => {
+	assert.equal(stripHtmlComments('a<!-- x -->b<!-- y -->c'), 'abc');
+	assert.equal(stripHtmlComments('a<!--<!-- x -->-->b'), 'a-->b');
+	// Removing the inner comment joins `<!` and `--` into a new opener.
+	assert.equal(stripHtmlComments('a<!<!---->-- Part of #1 -->b'), 'ab');
+	assert.equal(stripHtmlComments('keep <!-- never closed\nPart of #2'), 'keep ');
+	assert.equal(stripHtmlComments('no comments'), 'no comments');
+	for (const s of ['<!<!---->--', '<!--<!---->--', 'x<!<!<!------>-->-->y']) {
+		assert.ok(!stripHtmlComments(s).includes('<!--'), s);
+	}
+});
+
+test('parseIssuesSection ignores a reference hidden in an unclosed comment', () => {
+	assert.deepEqual(parseIssuesSection('## Issues\nPart of #3\n<!-- Part of #4'), { fixes: [], parts: [{ issue: 3, items: [] }] });
 });

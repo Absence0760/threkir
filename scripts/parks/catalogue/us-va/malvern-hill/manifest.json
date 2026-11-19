@@ -1,0 +1,285 @@
+{
+  "park": {
+    "slug": "malvern-hill",
+    "name": "Malvern Hill, Richmond National Battlefield Park",
+    "agency": "nps",
+    "nps_park_code": "rich",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
+    "osm_boundary": "way/792352918"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses at Malvern Hill against the NPS trail brochure (the Carter's Farm trail's OSM line sits up to 40 m off the NPS line for about 300 m, and each lap crosses Willis Church Road twice) and confirms with the park whether an organised run needs a special use permit."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "malvern-hill-5k",
+      "name": "Malvern Hill, 5 km",
+      "race_distance": "5k",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4637.1,
+      "lead_in_m": 445.9,
+      "start_line_from_lead_in_start_m": 264.5,
+      "start_finish": {
+        "lat": 37.420107,
+        "lng": -77.250596
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/315721186,way/553520879,way/1334922139,way/1334922140,way/1335189656,way/1335189657,way/1335189658",
+      "source_checked_at": "2026-11-19",
+      "geojson": "malvern-hill-5k.geojson",
+      "elevation_m": 46,
+      "checkpoints": [
+        {
+          "lat": 37.413048,
+          "lng": -77.249
+        },
+        {
+          "lat": 37.420811,
+          "lng": -77.253477
+        },
+        {
+          "lat": 37.426538,
+          "lng": -77.250662
+        }
+      ],
+      "start_gate": {
+        "lat": 37.420107,
+        "lng": -77.250596,
+        "bearing_deg": 101.2,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 37.420107,
+        "lng": -77.250596,
+        "bearing_deg": 281.2,
+        "half_width_m": 15
+      },
+      "waypoint_count": 133,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the lot opposite The Parsonage on Willis Church Road and join the White trail. The start line is on the White trail just west of where the Blue (Carter's Farm) trail branches off, not far west of The Parsonage.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Malvern Hill Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 264
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 1351
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Marlvern Hill-Carter's Farm Trail",
+            "at_m": 2443
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2443
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Malvern Hill Trail",
+            "at_m": 4819
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "malvern-hill-10k",
+      "name": "Malvern Hill, 10 km (2 laps)",
+      "race_distance": "10k",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4637.1,
+      "lead_in_m": 445.9,
+      "start_line_from_lead_in_start_m": 83.1,
+      "start_finish": {
+        "lat": 37.41966,
+        "lng": -77.249649
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/315721186,way/553520879,way/1334922139,way/1334922140,way/1335189656,way/1335189657,way/1335189658",
+      "source_checked_at": "2026-11-19",
+      "geojson": "malvern-hill-10k.geojson",
+      "elevation_m": 80,
+      "checkpoints": [
+        {
+          "lat": 37.427273,
+          "lng": -77.252964
+        },
+        {
+          "lat": 37.419145,
+          "lng": -77.247644
+        },
+        {
+          "lat": 37.41421,
+          "lng": -77.25196
+        },
+        {
+          "lat": 37.42566,
+          "lng": -77.254697
+        },
+        {
+          "lat": 37.420554,
+          "lng": -77.247093
+        },
+        {
+          "lat": 37.412934,
+          "lng": -77.249949
+        }
+      ],
+      "waypoint_count": 266,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the lot opposite The Parsonage on Willis Church Road and join the White trail. The start line is on the White trail just west of where the Blue (Carter's Farm) trail branches off, not far west of The Parsonage.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Malvern Hill Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Marlvern Hill-Carter's Farm Trail",
+            "at_m": 363
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Malvern Hill Trail",
+            "at_m": 2739
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2821
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 3908
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Marlvern Hill-Carter's Farm Trail",
+            "at_m": 5000
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5714,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7143,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8571,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 9879
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

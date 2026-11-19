@@ -1160,7 +1160,7 @@ The signed-in runner's `show_mascot` outside the settings page. The reading rule
 
 ### `apps/web/src/lib/parks/park_labels.test.ts` — 8 tests
 
-(was 6) Two added cases cover `parks.kind` (decisions § 2581): `parkTypeKey` reads a trail as "Trail" whoever runs it and a park as its agency, and the Trail label exists in every locale. The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null) and `courseCredit` (course text, else the source label, else nothing).
+The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null), `courseCredit` (course text, else the source label, else nothing), and `parkTypeKey` (was 6: a trail reads "Trail" whoever runs it, a park its agency, and the Trail label is in every locale; decisions § 2581).
 
 ### `apps/web/src/lib/segments/effort_rank.test.ts` — 19 tests
 

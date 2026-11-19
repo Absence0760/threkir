@@ -23,7 +23,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, eight point-to-point and out-and-back courses, decisions § 2581) is committed `staged` and not loaded until its owner checks in #1432 are done. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -694,7 +694,8 @@ pipeline), and **every backend release loads it**: the "Sync production state"
 step of `release-backend.yml` runs last, after the migrations and the Edge
 Functions, and calls
 `private.load_park_catalogue` (migration `20271126002425`, made idempotent by
-`20271127002429`; decisions § 2425, § 2429) once per committed
+`20271127002429` and last replaced by `20280101001431`; decisions § 2425,
+§ 2429) once per committed
 `scripts/parks/catalogue/<region>/<park>/manifest.json`. The club is
 committed in `scripts/parks/publisher.json` (slug, with its id as a
 cross-check); the author is resolved at run time by

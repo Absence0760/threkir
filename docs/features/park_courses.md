@@ -408,19 +408,62 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   The map waits for cookie consent like every MapLibre map. Side by side from
   64rem; map first on a phone.
 - **Course page:** the map marks the checkpoints (`CP 1`, `CP 2`, …) and
-  carries a key (`ParkMapLegend`): start and finish (one red pin, "Start and
-  finish", when the line closes within 30 m, since the finish pin draws over
-  the start), checkpoints, the kilometre or mile badges, and the ▶ direction
-  arrows. An elevation profile, linked to the map, shows when every point has
-  a height. The credit is one line (below). The safety, long-course and
-  not-affiliated notices are one callout (`ParkCourseNotices`), safety first.
-  "Navigate this course" is the filled primary action, "Download GPX" the
-  outline one (primary when there is no route). From 72rem the map, profile
-  and boards take the wide column and the stats, actions and notices the
-  narrow one, so each column's blocks share its width.
-- **Start and finish points** (decisions § 2551): a block on the course page
-  (web `CourseEndsBlock`, at the top of the notices column; mobile
-  `CourseEndsCard`, under the map) gives the start and the finish as
+  carries a key (`ParkMapLegend`). Two checkpoints so close that their
+  markers would cover each other at the whole-course zoom share one marker
+  carrying both numbers (`CP 1, 2`): closer than 5 % of the line's
+  bounding-box diagonal, at least 25 m (`checkpointMarks` in the
+  `park_courses` pair). On an out-and-back the last checkpoint is the turn
+  and is drawn as a "Turn around" tag with a U-turn instead of a number,
+  named in the key as a point the run must pass (decisions § 2581). The key
+  lists the start and finish (below), the
+  checkpoints, the turn-around, the kilometre or mile badges and the ▶
+  direction arrows. An elevation profile, linked to the map, shows when every
+  point has a height. The credit is one line (below). "Navigate this course"
+  is the filled primary action, "Download GPX" the outline one (primary when
+  there is no route). The facts box (distance, gain, shape, surface,
+  difficulty) wraps with its last row stretched and each cell drawing its own
+  dividers, so no count of facts leaves an empty filled slot. From 72rem the
+  page is two independent columns, so neither one's length opens a gap in the
+  other: the map, its profile and the board right under them on the left; the
+  facts, the start and finish block, the actions, the notices and the route
+  guide on the right. On a phone, one column: facts, start and finish,
+  actions, map, notices, profile, guide, board.
+- **Start and finish boxes** (decisions § 2581): when the segment has both
+  stored lines (`start_gate_*`, `end_gate_*`, the lines the matcher times),
+  the map draws a green start box behind the start line and a red finish box
+  past the finish line, each 10 m deep and the line's full width, so leaving
+  the green box is crossing the start and entering the red box is crossing
+  the finish. Each box carries a name tag at a fixed size ("Start" with a
+  flag, "Finish" with a chequered flag), filled with the box's colour and
+  inked in `mapBoxInk` (AA on both box colours), set at the box's far side
+  and reaching toward the middle of the course so it never runs off the map,
+  so the boxes are the most visible marks at the whole-course zoom; the tags replace the start and
+  finish pins, and the key names the boxes ("Start", "Finish"). Where the
+  lines share a spot (`gatesShareSpot`: centres within 10 m, facing within
+  20° of the same or opposite way) there is one "Start and finish" tag. On an
+  out-and-back both boxes land behind the start line, so they draw as one box
+  split along the line, green half and red half, with one "Start and finish"
+  key entry; on a loop the green box sits behind the line and the red one
+  ahead of it, edge to edge, and the key names both. The geometry is `gateBoxParts` in the `course_gates` pair; the
+  colours are `mapStartZoneColour` / `mapFinishZoneColour` (measured in
+  `basemap_contrast.test.ts` and `live_run_map_tile_url_test.dart`: each
+  clears 3:1 on every ground of its basemap, the pair keeps a lightness gap
+  to a deuteranope, the finish reads apart from the coral track). Hue is
+  never the only cue: the names, the flags, and the finish edge chequered
+  where the start's is solid. A segment missing either line keeps the pins.
+- **Start and finish points** (decisions § 2551, § 2581): a block on the
+  course page (web `CourseEndsBlock`, at the top of the notices column;
+  mobile `CourseEndsCard`, under the map). When the course has its boxes it
+  leads with one sentence (`courseBoxInstruction`): "Start recording in the
+  green box. Follow the arrows to the red box." (on a lapped course "…round
+  the loop 2 times and finish in the red box."); for one green-and-red box,
+  "…Follow the arrows and finish back in it." (with its laps when it has
+  them), and with a turn-around "…Follow the arrows to the Turn around mark,
+  then back to the box." It names the map's direction arrows, not a
+  rotation, and a "mark", since nothing on the ground is signed or
+  marshalled. Then a "Get directions to the start" button, and the
+  coordinates folded under "Coordinates". On a phone the block comes right
+  after the facts, above the map. The coordinates give the start and the finish as
   "lat, lng" to five decimals (about 1 m), the order Google and Apple Maps
   read when it is pasted, e.g. `37.39124, -77.57620`. Each row has a copy
   button named for its point ("Copy start coordinates"; web shows "Coordinates
@@ -438,10 +481,19 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   privacy-clipped line for anyone but the route's owner), so it gives no point
   the map does not show. The mobile race page draws no course line, so it
   has no block; its Drive this course screen remains the way to the start.
+- **Before you run** (`ParkCourseNotices` / `_CourseNotices`, decisions
+  § 2581): at most two plain lines, safety first: "Follow the course line on
+  the map and pass every checkpoint in order, or your time won't count.", the give-way note
+  when an organised group shares the paths, then "Finish before the park
+  closes." (or, on a long course, the long-course notice, which says so with
+  more). The required notices follow as one smaller line: a time trial on
+  open trails, not a race, and nobody marshals it; the times are not event
+  results; not affiliated with the park.
 - **Empty board:** the page asks the all-time completions board for one row
   first (it throws on a failed read, so a failure is not read as empty).
   With no time at all, the board kinds, seasons, Compare and the filters are
-  hidden and an `EmptyState` explains how to get the first time. They appear
+  hidden and an `EmptyState` says, in one line, "No times yet. Run it with
+  Threkir and yours shows up here." They appear
   once there is one; a filtered or this-year board that is empty still says so
   inline.
 - **`/share/course/…`** takes the same distance label, laps chip, credit line,
@@ -494,8 +546,23 @@ climbs on the way, the checkpoints and the laps.
   page's meta description says so, and the GPX `<desc>` opens with it. Once
   set, they say "Checked on the ground on <date>." How to check one is in
   [scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides).
-- **Where it shows.** The course page (between the actions and the Before you
-  run notice), the share page (the same component, `ParkCourseRouteGuide`),
+- **Short first** (decisions § 2581). The course page and the share page
+  show the short view from `routeGuideView` (the `route_guide` pair, case
+  table `views`): the start, the direction, how many laps ("2 laps of the
+  loop."), the first lap's turns where the trail changes (a left or right
+  onto a different trail or kind of way; a straight-on or a turn that stays
+  on the same trail is left out), where each later lap starts ("25.0 km:
+  start lap 2 of 2 and repeat the loop.", so nobody stops at the box after
+  the first) and the finish. Everything else sits under
+  "Show all steps", collapsed: bridges, fords, surfaces and climbs grouped by
+  lap (a lap after the first reads "Repeat the loop.") or, with no laps, by
+  5 km stretch with a distance heading. Neither view lists checkpoints; the
+  map marks them. The GPX `<desc>` and the share page's search text keep
+  every line (`routeGuideLines`). The Swift Creek 50K's 68 steps read as 23
+  lines: the start, the direction, "2 laps of the loop.", the 18 turns where
+  the loop changes trail, the start of lap 2, and the finish.
+- **Where it shows.** The course page (in the right-hand column on a wide
+  screen, after the Before you run notice), the share page (the same component, `ParkCourseRouteGuide`),
   the share page's JSON-LD description in canonical English (`GUIDE_EN`, held
   to `locales/en.ts` by a test), the course GPX's track `<desc>` in the same
   English, mobile `ParkCourseScreen`, and a line in the `park-courses` help

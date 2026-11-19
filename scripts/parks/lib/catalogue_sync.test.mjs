@@ -102,6 +102,7 @@ test('the committed stage loads Pocahontas\'s six courses as the committed club 
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
 	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until .*; malvern-hill \(2 courses\): Held until /);
+	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(2 courses\): Held until /);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
 	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));
@@ -110,6 +111,10 @@ test('the committed stage loads Pocahontas\'s six courses as the committed club 
 	for (const slug of ['malvern-hill-5k', 'malvern-hill-10k']) {
 		assert.ok(stage.sql.includes(`('malvern-hill', '${slug}', 'staged')`), slug);
 	}
+	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-10k', 'staged')"));
+	assert.ok(!stage.sql.includes('"slug":"rockwood"'), 'Rockwood Park never reaches the load');
+	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-5k', 'staged')"));
+	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-10k', 'staged')"));
 	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
 	assert.ok(!stage.sql.includes('442e4798'), 'no owner id is committed or emitted');
 	for (const slug of ['beaver-lake-trail', 'swift-creek-5k', 'swift-creek-10k', 'swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k']) {

@@ -50,7 +50,6 @@ import '../widgets/error_state.dart';
 import 'help_screen.dart' show openGuide;
 import 'public_route_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
-import '../widgets/live_run_map.dart' show currentBasemapIsDark;
 import '../widgets/park_course_map.dart';
 import '../widgets/park_course_preview_sheet.dart';
 import '../widgets/park_course_report_sheet.dart';
@@ -700,9 +699,11 @@ class _ParkScreenState extends State<ParkScreen> {
         ),
       );
 
-  void _preview(ParkCourseListing c) => showParkCoursePreviewSheet(
+  void _preview(ParkCourseListing c, String title) =>
+      showParkCoursePreviewSheet(
         context,
         course: c,
+        title: title,
         onOpen: () => _open(c),
       );
 
@@ -716,7 +717,9 @@ class _ParkScreenState extends State<ParkScreen> {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final signedIn = widget.api?.userId != null;
-    final darkBasemap = currentBasemapIsDark(context);
+    final names = courseDisplayNames([
+      for (final c in _courses) c.segment.name,
+    ]);
     return DetailPage(
       title: park.name,
       body: _loading
@@ -790,6 +793,27 @@ class _ParkScreenState extends State<ParkScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Text(l10n.parksPreviewHint, style: muted),
                         ),
+                        for (var i = 0; i < _courses.length; i++)
+                          _ParkCourseCard(
+                            key: ValueKey(
+                              'park-course-${_courses[i].course.id}',
+                            ),
+                            course: _courses[i],
+                            recordLine: signedIn && !_recordsFailed
+                                ? _recordLine(
+                                    l10n,
+                                    _records[_courses[i].course.id],
+                                  )
+                                : null,
+                            monthRunnersLine: _monthRunnersLine(
+                              l10n,
+                              _monthRunners[_courses[i].course.id],
+                            ),
+                            title: names[i],
+                            onTap: () => _preview(_courses[i], names[i]),
+                          ),
+                        // Below the cards, so a line that arrives late never
+                        // moves a card under a finger about to tap it.
                         // One line for the park rather than "no time yet" on
                         // every card.
                         if (signedIn &&
@@ -837,28 +861,6 @@ class _ParkScreenState extends State<ParkScreen> {
                               ],
                             ),
                           ),
-                        for (var i = 0; i < _courses.length; i++)
-                          _ParkCourseCard(
-                            key: ValueKey(
-                              'park-course-${_courses[i].course.id}',
-                            ),
-                            course: _courses[i],
-                            colour: parkCourseLineColour(
-                              i,
-                              darkBasemap: darkBasemap,
-                            ),
-                            recordLine: signedIn && !_recordsFailed
-                                ? _recordLine(
-                                    l10n,
-                                    _records[_courses[i].course.id],
-                                  )
-                                : null,
-                            monthRunnersLine: _monthRunnersLine(
-                              l10n,
-                              _monthRunners[_courses[i].course.id],
-                            ),
-                            onTap: () => _preview(_courses[i]),
-                          ),
                       ],
                       const SizedBox(height: 24),
                       _NotAffiliatedNote(
@@ -875,7 +877,7 @@ class _ParkScreenState extends State<ParkScreen> {
 
 class _ParkCourseCard extends StatelessWidget {
   final ParkCourseListing course;
-  final Color colour;
+  final String title;
   final String? recordLine;
   final String? monthRunnersLine;
   final VoidCallback onTap;
@@ -883,7 +885,7 @@ class _ParkCourseCard extends StatelessWidget {
   const _ParkCourseCard({
     super.key,
     required this.course,
-    required this.colour,
+    required this.title,
     required this.recordLine,
     required this.monthRunnersLine,
     required this.onTap,
@@ -898,7 +900,6 @@ class _ParkCourseCard extends StatelessWidget {
     return ListCard.row(
       dense: true,
       onTap: onTap,
-      chevron: true,
       leadingWidth: geometry.length >= 2 ? 88 : null,
       leading: geometry.length >= 2
           ? AspectRatio(
@@ -906,14 +907,7 @@ class _ParkCourseCard extends StatelessWidget {
               child: TrackPreview(points: geometry),
             )
           : null,
-      title: courseDisplayName(segment.name),
-      // The course's colour on the park map, so the card names its line.
-      badge: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
-          child: const SizedBox.square(dimension: 10),
-        ),
-      ),
+      title: title,
       meta: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

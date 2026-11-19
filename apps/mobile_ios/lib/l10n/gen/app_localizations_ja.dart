@@ -21121,7 +21121,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksStatLaps => '周回数';
 
   @override
-  String get parksPreviewHint => 'コースを選ぶと地図に表示されます。';
+  String get parksPreviewHint => 'コースを選ぶと、ルートとスタート地点が表示されます。';
 
   @override
   String get parksOpenCourse => 'コースを開く';

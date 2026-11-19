@@ -35388,7 +35388,7 @@ abstract class AppLocalizations {
   /// Park courses (#1313): web key parks.previewHint.
   ///
   /// In en, this message translates to:
-  /// **'Pick a course to see it on the map.'**
+  /// **'Pick a course to see where it goes and where to start.'**
   String get parksPreviewHint;
 
   /// Park courses (#1313): web key parks.openCourse.

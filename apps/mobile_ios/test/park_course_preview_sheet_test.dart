@@ -6,14 +6,21 @@ import 'package:mobile_android/l10n/gen/app_localizations.dart';
 import 'package:mobile_android/widgets/park_course_map.dart';
 import 'package:mobile_android/widgets/park_course_preview_sheet.dart';
 
-ParkCourseListing _course({int? laps, Object? routeGuide}) => ParkCourseListing(
+ParkCourseListing _course({
+  int? laps,
+  Object? routeGuide,
+  String status = 'open',
+  String? statusNote,
+}) => ParkCourseListing(
   course: ParkCourseRow(
     id: 'c10',
     parkId: 'p1',
     globalSegmentId: 's-c10',
     slug: 'swift-creek-10k',
     courseShape: 'loop',
-    status: 'open',
+    status: status,
+    statusNote: statusNote,
+    difficulty: 'moderate',
     geometrySource: 'osm',
     checkpoints: const [],
     laps: laps,
@@ -65,6 +72,7 @@ Future<void> _open(
             onPressed: () => showParkCoursePreviewSheet(
               context,
               course: course,
+              title: 'Swift Creek Loop, 10 km',
               onOpen: onOpen,
             ),
             child: const Text('preview'),
@@ -96,7 +104,7 @@ void main() {
     await _open(tester, _course(laps: 2, routeGuide: _guide), () => opened++);
 
     expect(find.byKey(const Key('park-course-preview')), findsOneWidget);
-    expect(find.text('Swift Creek Loop'), findsOneWidget);
+    expect(find.text('Swift Creek Loop, 10 km'), findsOneWidget);
     expect(find.byType(ParkCourseMap), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const Key('park-preview-distance'))).data,
@@ -116,12 +124,18 @@ void main() {
       'Park at the boat-ramp lot.',
     );
 
+    expect(
+      tester.widget<Text>(find.byKey(const Key('park-preview-difficulty'))).data,
+      'Moderate',
+    );
+    expect(find.byKey(const Key('park-preview-directions')), findsOneWidget);
+    expect(find.text('Directions to the start and finish'), findsOneWidget);
+
+    // The course opens on top of the sheet, so back lands on the preview.
     await tester.tap(find.byKey(const Key('park-preview-open')));
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.pump(const Duration(milliseconds: 100));
     expect(opened, 1);
-    expect(find.byKey(const Key('park-course-preview')), findsNothing);
+    expect(find.byKey(const Key('park-course-preview')), findsOneWidget);
     await _unmount(tester);
   });
 
@@ -148,6 +162,28 @@ void main() {
     }
     expect(find.byKey(const Key('park-course-preview')), findsNothing);
     expect(opened, 0);
+    await _unmount(tester);
+  });
+
+  testWidgets('a closed course says so, with no start or directions',
+      (tester) async {
+    await _open(
+      tester,
+      _course(
+        routeGuide: _guide,
+        status: 'closed',
+        statusNote: 'Closed for bridge repairs.',
+      ),
+      () {},
+    );
+    expect(find.text('Closed'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('park-preview-closed'))).data,
+      'Closed for bridge repairs.',
+    );
+    expect(find.byKey(const Key('park-preview-start')), findsNothing);
+    expect(find.byKey(const Key('park-preview-directions')), findsNothing);
+    expect(find.byKey(const Key('park-preview-open')), findsOneWidget);
     await _unmount(tester);
   });
 }

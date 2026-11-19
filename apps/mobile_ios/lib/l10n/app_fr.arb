@@ -6048,7 +6048,7 @@
   "parksStatElevation": "Dénivelé positif",
   "parksStatShape": "Forme",
   "parksStatLaps": "Tours",
-  "parksPreviewHint": "Choisissez un parcours pour le voir sur la carte.",
+  "parksPreviewHint": "Choisissez un parcours pour voir son tracé et où il commence.",
   "parksOpenCourse": "Ouvrir le parcours",
   "parksPreviewClose": "Fermer l'aperçu",
   "parksNoTimesYet": "Aucun temps ici cette saison pour l'instant. Le vôtre pourrait être le premier.",

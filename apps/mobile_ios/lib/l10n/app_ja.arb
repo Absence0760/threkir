@@ -6048,7 +6048,7 @@
   "parksStatElevation": "獲得標高",
   "parksStatShape": "形状",
   "parksStatLaps": "周回数",
-  "parksPreviewHint": "コースを選ぶと地図に表示されます。",
+  "parksPreviewHint": "コースを選ぶと、ルートとスタート地点が表示されます。",
   "parksOpenCourse": "コースを開く",
   "parksPreviewClose": "プレビューを閉じる",
   "parksNoTimesYet": "今シーズンはここにまだタイムがありません。最初のタイムを残せるかもしれません。",

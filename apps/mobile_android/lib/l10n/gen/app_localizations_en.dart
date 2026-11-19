@@ -22447,7 +22447,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksStatLaps => 'Laps';
 
   @override
-  String get parksPreviewHint => 'Pick a course to see it on the map.';
+  String get parksPreviewHint =>
+      'Pick a course to see where it goes and where to start.';
 
   @override
   String get parksOpenCourse => 'Open course';

@@ -22672,7 +22672,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksStatLaps => 'Vueltas';
 
   @override
-  String get parksPreviewHint => 'Elige un recorrido para verlo en el mapa.';
+  String get parksPreviewHint =>
+      'Elige un recorrido para ver por dónde va y dónde empieza.';
 
   @override
   String get parksOpenCourse => 'Abrir recorrido';

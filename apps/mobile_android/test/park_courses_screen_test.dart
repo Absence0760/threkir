@@ -878,7 +878,9 @@ void main() {
       await tester.tap(find.byKey(const Key('park-course-park-link')));
       await _settle(tester);
       await tester.pump(const Duration(seconds: 1));
+      // Back from the course lands on the preview it was opened from.
       expect(find.byType(ParkCourseScreen), findsNothing);
+      expect(find.byKey(const Key('park-course-preview')), findsOneWidget);
       expect(find.byType(ParkScreen), findsOneWidget);
       await _unmount(tester);
     });

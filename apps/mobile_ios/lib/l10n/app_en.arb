@@ -28996,7 +28996,7 @@
   "@parksStatLaps": {
     "description": "Park courses (#1313): web key parks.statLaps."
   },
-  "parksPreviewHint": "Pick a course to see it on the map.",
+  "parksPreviewHint": "Pick a course to see where it goes and where to start.",
   "@parksPreviewHint": {
     "description": "Park courses (#1313): web key parks.previewHint."
   },

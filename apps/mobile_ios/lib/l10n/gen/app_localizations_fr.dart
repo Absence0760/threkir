@@ -22736,7 +22736,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksPreviewHint =>
-      'Choisissez un parcours pour le voir sur la carte.';
+      'Choisissez un parcours pour voir son tracé et où il commence.';
 
   @override
   String get parksOpenCourse => 'Ouvrir le parcours';

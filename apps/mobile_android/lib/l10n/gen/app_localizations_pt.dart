@@ -22697,7 +22697,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksStatLaps => 'Voltas';
 
   @override
-  String get parksPreviewHint => 'Escolha um percurso para o ver no mapa.';
+  String get parksPreviewHint =>
+      'Escolha um percurso para ver por onde passa e onde começa.';
 
   @override
   String get parksOpenCourse => 'Abrir percurso';
@@ -46879,7 +46880,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parksStatLaps => 'Voltas';
 
   @override
-  String get parksPreviewHint => 'Escolha um percurso para vê-lo no mapa.';
+  String get parksPreviewHint =>
+      'Escolha um percurso para ver por onde ele passa e onde começa.';
 
   @override
   String get parksOpenCourse => 'Abrir percurso';

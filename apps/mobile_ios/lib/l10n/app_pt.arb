@@ -6048,7 +6048,7 @@
   "parksStatElevation": "Desnível positivo",
   "parksStatShape": "Formato",
   "parksStatLaps": "Voltas",
-  "parksPreviewHint": "Escolha um percurso para o ver no mapa.",
+  "parksPreviewHint": "Escolha um percurso para ver por onde passa e onde começa.",
   "parksOpenCourse": "Abrir percurso",
   "parksPreviewClose": "Fechar pré-visualização",
   "parksNoTimesYet": "Ainda não há tempos aqui nesta época. O seu pode ser o primeiro.",

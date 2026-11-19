@@ -22680,7 +22680,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksPreviewHint =>
-      'Wähle eine Strecke, um sie auf der Karte zu sehen.';
+      'Wähle eine Strecke, um zu sehen, wo sie verläuft und wo sie beginnt.';
 
   @override
   String get parksOpenCourse => 'Strecke öffnen';

@@ -11,7 +11,6 @@
 	import { periodStart } from '#lib/training/goals.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunEditor from '#lib/components/RunEditor.svelte';
-	import PageHeader from '#lib/components/PageHeader.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { goto, replaceState } from '$app/navigation';
@@ -717,10 +716,6 @@
      Asserting the filtered count before this races the in-flight
      refetch. -->
 <div class="page" data-testid="runs-surface" data-list-state={loading ? 'loading' : `loaded-${lastFetchMode}`}>
-	<!-- A root page says its name, the sidebar's label for it, above its strip
-	     (issue #1374): the h1 used to be visually hidden, so nothing on the
-	     screen said which surface this was. -->
-	<PageHeader title={m('nav.runs')} testid="runs-page-header" />
 	<RunSurfaceTabs active="runs" />
 
 	{#snippet listSkeleton()}

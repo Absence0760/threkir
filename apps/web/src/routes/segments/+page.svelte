@@ -177,7 +177,7 @@
 <div class="page">
 	<!-- Routes → Explore → Segments (issue #1374, owner decision 1): the
 	     catalogue is no longer a run-surface tab of its own. -->
-	<RunSurfaceTabs active="routes" />
+	<RunSurfaceTabs active="routes" ownHeading />
 	<RoutesViewNav view="segments" />
 	<PageHeader title={m('segments.browseTitle')} subtitle={m('segments.browseIntro')}>
 		<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">

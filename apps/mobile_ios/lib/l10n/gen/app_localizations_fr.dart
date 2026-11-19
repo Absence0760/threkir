@@ -23633,6 +23633,16 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoad(String at, String length) {
+    return '$at : suivez la route sur $length. Attention aux voitures.';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at : suivez la route $name sur $length. Attention aux voitures.';
+  }
+
+  @override
   String parkGuideBridge(String at) {
     return '$at : traversez le pont.';
   }

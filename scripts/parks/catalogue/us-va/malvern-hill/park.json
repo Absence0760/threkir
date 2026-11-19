@@ -1,0 +1,99 @@
+{
+  "park": {
+    "slug": "malvern-hill",
+    "name": "Malvern Hill, Richmond National Battlefield Park",
+    "kind": "park",
+    "agency": "nps",
+    "nps_park_code": "rich",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
+    "osm_boundary": "way/792352918"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses at Malvern Hill against the NPS trail brochure (the Carter's Farm trail's OSM line sits up to 40 m off the NPS line for about 300 m, and each lap crosses Willis Church Road twice) and confirms with the park whether an organised run needs a special use permit."
+  },
+  "trail_review": {
+    "checked_at": "2026-11-19",
+    "source_urls": [
+      "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
+      "https://www.nps.gov/rich/planyourvisit/upload/MH-BROCHURE-high-quality-print-compressed.pdf",
+      "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/FeatureServer/0/query?where=UNITCODE%3D%27RICH%27&outFields=*&f=geojson"
+    ],
+    "designated": [
+      315721186,
+      553520879,
+      1334922139,
+      1334922140,
+      1334922141,
+      1335189656,
+      1335189657,
+      1335189658
+    ],
+    "refused": {
+      "20274543": "main parking lot driveway (service road), not trail",
+      "20277998": "Willis Church Road (VA 156), a public road; the courses only cross it",
+      "20283462": "Carters Mill Road, a public road; the courses only cross it",
+      "280027566": "Parsonage parking lot aisle, not trail",
+      "1334922142": "Parsonage parking lot aisle, not trail",
+      "1335189654": "unnamed 20 m path from the main lot driveway; no matching line in the NPS Public Trails layer",
+      "1335189655": "unnamed dead-end path west of the main lot; the NPS layer's nearest line diverges up to 13 m and the brochure map names no trail here"
+    },
+    "fords": []
+  },
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "malvern-hill-5k",
+      "name": "Malvern Hill, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "laps": 1,
+      "surface": "trail",
+      "osm_ways": [
+        315721186,
+        553520879,
+        1334922139,
+        1334922140,
+        1335189656,
+        1335189657,
+        1335189658
+      ],
+      "lead_in_via": [5342844574, 3218531308, 12349936604, 214993473, 12352335630, 12352335659, 12352335681],
+      "loop_via": [12352335681, 12352335648, 12352335697, 12352335641, 12352335640, 214888896, 12349936607, 12349936608, 3218531286, 3218531271, 3218531261, 3218530660, 3218530636, 3218530649, 3218530622, 3218530617, 3218530620, 3218530629, 3218531273, 3218531299, 5342844574, 5342844573, 5342844565, 12352362210, 12352362221, 12352362217, 12352362220, 5342844551, 5342844543, 5342844540, 12352335681],
+      "start_note": "Start and finish on the White trail between the Carters Mill Road crossing and the Blue (Carter's Farm) trail junction west of The Parsonage. One lap clockwise: the White trail east past The Parsonage and south to the main lot, then north to the Confederate artillery and round the Blue trail.",
+      "route_guide": {
+        "getting_there": "Park at the lot opposite The Parsonage on Willis Church Road and join the White trail. The start line is on the White trail just west of where the Blue (Carter's Farm) trail branches off, not far west of The Parsonage.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 3
+    },
+    {
+      "slug": "malvern-hill-10k",
+      "name": "Malvern Hill, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "laps": 2,
+      "surface": "trail",
+      "osm_ways": [
+        315721186,
+        553520879,
+        1334922139,
+        1334922140,
+        1335189656,
+        1335189657,
+        1335189658
+      ],
+      "lead_in_via": [12352335681, 12352335649, 12352335630, 12352335629, 12349936604, 12352335623, 5342844574],
+      "loop_via": [5342844574, 5342844573, 5342844565, 12352362210, 12352362221, 12352362217, 12352362220, 5342844551, 5342844543, 5342844540, 12352335681, 12352335648, 12352335697, 12352335641, 12352335640, 214888896, 12349936607, 12349936608, 3218531286, 3218531271, 3218531261, 3218530660, 3218530636, 3218530649, 3218530622, 3218530617, 3218530620, 3218530629, 3218531273, 3218531299, 5342844574],
+      "start_note": "Start and finish on the White trail just west of the Blue (Carter's Farm) trail junction west of The Parsonage. The lead-in runs south-west on the White trail across Carters Mill Road to the Confederate artillery; each lap goes clockwise round the Blue trail, the White trail east past The Parsonage, south to the main lot and north again.",
+      "route_guide": {
+        "getting_there": "Park at the lot opposite The Parsonage on Willis Church Road and join the White trail. The start line is on the White trail just west of where the Blue (Carter's Farm) trail branches off, not far west of The Parsonage.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 3
+    }
+  ]
+}

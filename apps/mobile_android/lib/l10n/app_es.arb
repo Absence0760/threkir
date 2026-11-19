@@ -6284,6 +6284,8 @@
   "parkGuideLeftPath": "{at}: gira a la izquierda por el sendero.",
   "parkGuideRightPath": "{at}: gira a la derecha por el sendero.",
   "parkGuideStraightPath": "{at}: sigue recto por el sendero.",
+  "parkGuideRoad": "{at}: sigue por la carretera durante {length}. Cuidado con los coches.",
+  "parkGuideRoadNamed": "{at}: sigue por la carretera {name} durante {length}. Cuidado con los coches.",
   "parkGuideBridge": "{at}: cruza el puente.",
   "parkGuideFord": "{at}: cruza el vado. No hay puente, así que cuenta con mojarte.",
   "parkGuideSurfacePaved": "{at}: asfaltado desde aquí.",

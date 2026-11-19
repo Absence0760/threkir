@@ -33,11 +33,13 @@ import {
 	RACE_COURSE_SHAPES,
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertRoadConnectors,
 	assertTrailReview,
 	curatedGates,
 	distanceDeviation,
 	elevationGainM,
 	assertViaEndsAtTrailEnd,
+	joinWays,
 	lapCourse,
 	linearCourse,
 	pathLengthM,
@@ -49,6 +51,7 @@ import {
 	traceLoop,
 	traceVia,
 	trimToDistance,
+	walkedWays,
 } from './lib/course_geometry.mjs';
 import { SHARED_USES } from './lib/catalogue_payload.mjs';
 import { parseRelease } from './lib/catalogue_release.mjs';
@@ -73,6 +76,14 @@ export function buildPark(dir) {
 	/** @type {Map<string, string>} */
 	const outputs = new Map();
 	const courses = [];
+	/** @type {ReturnType<typeof joinWays>} */
+	let joins;
+	try {
+		joins = joinWays(spec.trail_review, snapshot.nodes);
+	} catch (err) {
+		throw new Error(`${spec.park?.slug}: ${/** @type {Error} */ (err).message}`);
+	}
+	const allWays = [...Object.values(snapshot.ways), ...joins];
 
 	for (const course of spec.courses) {
 		if (course.course_shape !== 'loop') {
@@ -82,7 +93,7 @@ export function buildPark(dir) {
 			const way = snapshot.ways[String(id)];
 			if (!way) throw new Error(`${course.slug}: way ${id} is not in the snapshot; re-run fetch_snapshot.mjs`);
 			return way;
-		});
+		}).concat(joins);
 		const sequence = traceLoop({
 			ways,
 			nodes: snapshot.nodes,
@@ -91,6 +102,7 @@ export function buildPark(dir) {
 		});
 		footAccessOrThrow(course.slug, sequence, ways, spec.trail_review);
 		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
+		roadConnectorsOrThrow(course.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -113,11 +125,12 @@ export function buildPark(dir) {
 			sequence,
 			nodes: snapshot.nodes,
 			ways,
-			allWays: Object.values(snapshot.ways),
+			allWays,
 			lengthM: distanceM,
 			checkpointAtM,
 			laps: null,
 			water: snapshot.water,
+			roadConnectors: roadConnectorIds(spec.trail_review),
 		});
 
 		const geojson = {
@@ -154,6 +167,7 @@ export function buildPark(dir) {
 			difficulty: course.difficulty,
 			...sharedUseOrThrow(course),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(sequence, ways),
 			geometry_source: 'osm',
 			source_ref: course.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -178,7 +192,7 @@ export function buildPark(dir) {
 			const way = snapshot.ways[String(id)];
 			if (!way) throw new Error(`${race.slug}: way ${id} is not in the snapshot; re-run fetch_snapshot.mjs`);
 			return way;
-		});
+		}).concat(joins);
 		if (!RACE_COURSE_SHAPES.includes(race.course_shape)) {
 			throw new Error(`${race.slug}: course_shape ${race.course_shape} is not one of ${RACE_COURSE_SHAPES.join(', ')}`);
 		}
@@ -193,6 +207,7 @@ export function buildPark(dir) {
 		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
 		footAccessOrThrow(race.slug, sequence, ways, spec.trail_review);
 		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
+		roadConnectorsOrThrow(race.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
@@ -210,12 +225,13 @@ export function buildPark(dir) {
 			sequence,
 			nodes: snapshot.nodes,
 			ways,
-			allWays: Object.values(snapshot.ways),
+			allWays,
 			offsetM: trimEachEndM,
 			lengthM: pathLengthM(raw),
 			checkpointAtM,
 			laps: { count: race.laps, firstStartM: leadInM, lapM },
 			water: snapshot.water,
+			roadConnectors: roadConnectorIds(spec.trail_review),
 		});
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
@@ -265,6 +281,7 @@ export function buildPark(dir) {
 			surface: race.surface,
 			...sharedUseOrThrow(race),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(sequence, ways),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -334,6 +351,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 	}
 	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
 	const fords = trailReviewOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
+	roadConnectorsOrThrow(race.slug, cut.sequence, cut.nodes, cut.ways, spec.trail_review);
 	const raw = toPoints(cut.sequence, cut.nodes);
 	const lengthM = pathLengthM(raw);
 	if (Math.abs(lengthM - targetM) > 0.5) throw new Error(`${race.slug}: built ${lengthM.toFixed(1)} m, not ${targetM} m`);
@@ -360,6 +378,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 		laps: null,
 		loop: false,
 		water: snapshot.water,
+		roadConnectors: roadConnectorIds(spec.trail_review),
 	});
 	const start = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 	const last = waypoints[waypoints.length - 1];
@@ -409,6 +428,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 			surface: race.surface,
 			...sharedUseOrThrow(race),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(cut.sequence, cut.ways),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -448,6 +468,44 @@ function trailReviewOrThrow(slug, sequence, ways, review) {
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}
+}
+
+/**
+ * The trail_review joins a course walks, each with its measured gap, for its
+ * manifest entry, so a reviewer sees every place the line crosses a gap OSM
+ * leaves.
+ *
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ */
+function walkedJoins(sequence, ways) {
+	const walked = walkedWays(sequence, ways).filter((w) => w.join);
+	if (walked.length === 0) return {};
+	return {
+		joins: walked
+			.map((w) => ({ nodes: w.nodes.filter((n) => n > 0), gap_m: Math.round(/** @type {any} */ (w).gapM * 10) / 10 }))
+			.sort((a, b) => a.nodes[0] - b.nodes[0]),
+	};
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {Record<string, import('./lib/course_geometry.mjs').SnapshotNode>} nodes
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
+ */
+function roadConnectorsOrThrow(slug, sequence, nodes, ways, review) {
+	try {
+		assertRoadConnectors(sequence, nodes, ways, review);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/** @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review */
+function roadConnectorIds(review) {
+	return Object.keys(review?.road_connectors ?? {}).map(Number);
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

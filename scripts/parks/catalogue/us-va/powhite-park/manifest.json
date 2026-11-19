@@ -1,0 +1,524 @@
+{
+  "park": {
+    "slug": "powhite-park",
+    "name": "Powhite Park",
+    "kind": "park",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.rva.gov/parks-recreation/powhite-park",
+    "osm_boundary": "relation/9294688"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses against the trail signs (the city publishes no trail map; the line is OSM's) and decides whether bike traffic on these shared mountain-bike trails suits a timed run. Foot access is not confirmed in writing: runners check the park rules themselves (owner decision on #1430)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "powhite-park-5k",
+      "name": "Powhite Park, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4604.9,
+      "lead_in_m": 445.4,
+      "start_line_from_lead_in_start_m": 247.9,
+      "start_finish": {
+        "lat": 37.520244,
+        "lng": -77.527532
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/303810222,way/303810225,way/303810226,way/303810227,way/303810229,way/303810231,way/303810232,way/303810236,way/517040247,way/565481361,way/565481366,way/570752216,way/570752218,way/570752689,way/1135565457",
+      "source_checked_at": "2026-11-19",
+      "geojson": "powhite-park-5k.geojson",
+      "elevation_m": 97,
+      "checkpoints": [
+        {
+          "lat": 37.522628,
+          "lng": -77.523426
+        },
+        {
+          "lat": 37.523881,
+          "lng": -77.521303
+        },
+        {
+          "lat": 37.525629,
+          "lng": -77.523827
+        }
+      ],
+      "start_gate": {
+        "lat": 37.520244,
+        "lng": -77.527532,
+        "bearing_deg": 23.4,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 37.520244,
+        "lng": -77.527532,
+        "bearing_deg": 203.4,
+        "half_width_m": 15
+      },
+      "waypoint_count": 343,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the small lot off Jahnke Road at the south end of the park and walk north into the woods on the Powhite Park Loop Trail. The start line is on that trail, short of where it meets the loop.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Powhite Park Loop Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 150
+          },
+          {
+            "kind": "climb",
+            "gain_m": 26,
+            "length_m": 690,
+            "at_m": 150
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 169
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 198
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 359
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 1057
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1550
+          },
+          {
+            "kind": "climb",
+            "gain_m": 20,
+            "length_m": 310,
+            "at_m": 1550
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1694
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1826
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 1826
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2011
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2179
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 2441
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2522
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2784
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2841
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 3144
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3144
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "climb",
+            "gain_m": 19,
+            "length_m": 350,
+            "at_m": 3931
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4121
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4121
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 4454
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4454
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4831
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4850
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "powhite-park-10k",
+      "name": "Powhite Park, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4604.9,
+      "lead_in_m": 445.4,
+      "start_line_from_lead_in_start_m": 50.3,
+      "start_finish": {
+        "lat": 37.5186,
+        "lng": -77.527624
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/303810222,way/303810225,way/303810226,way/303810227,way/303810229,way/303810231,way/303810232,way/303810236,way/517040247,way/565481361,way/565481366,way/570752216,way/570752218,way/570752689,way/1135565457",
+      "source_checked_at": "2026-11-19",
+      "geojson": "powhite-park-10k.geojson",
+      "elevation_m": 178,
+      "checkpoints": [
+        {
+          "lat": 37.522714,
+          "lng": -77.52324
+        },
+        {
+          "lat": 37.523784,
+          "lng": -77.522681
+        },
+        {
+          "lat": 37.525,
+          "lng": -77.524076
+        },
+        {
+          "lat": 37.522508,
+          "lng": -77.522064
+        },
+        {
+          "lat": 37.523511,
+          "lng": -77.522613
+        },
+        {
+          "lat": 37.525799,
+          "lng": -77.523836
+        }
+      ],
+      "waypoint_count": 663,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the small lot off Jahnke Road at the south end of the park and walk north into the woods on the Powhite Park Loop Trail. The start line is on that trail, short of where it meets the loop.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Powhite Park Loop Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 348
+          },
+          {
+            "kind": "climb",
+            "gain_m": 26,
+            "length_m": 690,
+            "at_m": 348
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 366
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 395
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 556
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 1254
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1748
+          },
+          {
+            "kind": "climb",
+            "gain_m": 20,
+            "length_m": 310,
+            "at_m": 1748
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1892
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2024
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 2024
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2208
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2377
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 2638
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2720
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2981
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 3038
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 3341
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3341
+          },
+          {
+            "kind": "climb",
+            "gain_m": 19,
+            "length_m": 350,
+            "at_m": 4128
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4319
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4319
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powhite Park Loop Trail",
+            "at_m": 4652
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4652
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5714,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7143,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8571,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9634
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 9652
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "park": {
+    "slug": "james-river-park",
+    "name": "James River Park System",
+    "kind": "park",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://jamesriverpark.org/trails/"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks the Forest Hill Park line against the trail signs (the park map is schematic, and the build uses short OSM connectors such as the steps south of the lake). The Buttermilk + North Bank half and marathon are not built yet: they wait on Boulevard Bridge pedestrian access, the closed Texas Beach footbridge and the North Bank reroute, and the OSM junction fixes listed on #1430."
+  },
+  "trail_review": {
+    "checked_at": "2026-11-19",
+    "source_urls": [
+      "https://jamesriverpark.org/wp-content/uploads/2024/04/JRPS-3-2024-Park-Map.pdf",
+      "https://jamesriverpark.org/trails/",
+      "https://www.rva.gov/parks-recreation/james-river-park-system-0"
+    ],
+    "designated": [
+      76739173,
+      76739262,
+      287532396,
+      287532402,
+      291803968,
+      291803973,
+      295413458,
+      296682811,
+      303080234,
+      303080235,
+      303080237,
+      1041749400,
+      1041749402,
+      1112131234,
+      1112131236
+    ],
+    "refused": {
+      "78942971": "unnamed footway between the lake path and the Stone House path, across the Forest Hill Park Trail; the park map draws no path there",
+      "294992614": "North Bank Trail section tagged foot=no",
+      "1494846537": "concrete footway ring beside the lake path; not drawn on the park map and not a through route"
+    },
+    "fords": []
+  },
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "forest-hill-park-5k",
+      "name": "Forest Hill Park Loop, 5 km",
+      "course_shape": "loop",
+      "race_distance": "5k",
+      "laps": 1,
+      "surface": "trail",
+      "osm_ways": [
+        76739173,
+        76739262,
+        287532396,
+        287532402,
+        291803968,
+        291803973,
+        295413458,
+        296682811,
+        303080234,
+        303080235,
+        303080237,
+        1041749400,
+        1041749402,
+        1112131234,
+        1112131236
+      ],
+      "lead_in_via": [
+        904104408,
+        904104381,
+        2953129954,
+        904104348
+      ],
+      "loop_via": [
+        904104348,
+        904104344,
+        904104298,
+        904098075,
+        904119310,
+        2911540397,
+        2911540320,
+        2911540811,
+        2911540816,
+        2953129977,
+        2953129978,
+        2953130252,
+        2953130015,
+        2911540817,
+        2911540840,
+        9590467702,
+        9590467701,
+        9590467697,
+        9590467695,
+        9590467696,
+        2991228416,
+        3073809202,
+        2911540885,
+        904104348
+      ],
+      "start_note": "Start and finish on the paved path that runs south from the park drive beside the Stone House. The loop goes round Forest Hill Park: the paved path west of the lake, the Forest Hill Park Trail through the north and east of the park, then the trail south of the lake back to the paved path.",
+      "route_guide": {
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 440 m along it.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 4
+    },
+    {
+      "slug": "forest-hill-park-10k",
+      "name": "Forest Hill Park Loop, 10 km (2 laps)",
+      "course_shape": "loop",
+      "race_distance": "10k",
+      "laps": 2,
+      "surface": "trail",
+      "osm_ways": [
+        76739173,
+        76739262,
+        287532396,
+        287532402,
+        291803968,
+        291803973,
+        295413458,
+        296682811,
+        303080234,
+        303080235,
+        303080237,
+        1041749400,
+        1041749402,
+        1112131234,
+        1112131236
+      ],
+      "lead_in_via": [
+        904104408,
+        904104381,
+        2953129954,
+        904104348
+      ],
+      "loop_via": [
+        904104348,
+        904104344,
+        904104298,
+        904098075,
+        904119310,
+        2911540397,
+        2911540320,
+        2911540811,
+        2911540816,
+        2953129977,
+        2953129978,
+        2953130252,
+        2953130015,
+        2911540817,
+        2911540840,
+        9590467702,
+        9590467701,
+        9590467697,
+        9590467695,
+        9590467696,
+        2991228416,
+        3073809202,
+        2911540885,
+        904104348
+      ],
+      "start_note": "Start and finish on the paved path that runs south from the park drive beside the Stone House. The loop goes round Forest Hill Park: the paved path west of the lake, the Forest Hill Park Trail through the north and east of the park, then the trail south of the lake back to the paved path.",
+      "route_guide": {
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 365 m along it.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 4
+    }
+  ]
+}

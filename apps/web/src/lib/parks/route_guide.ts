@@ -37,6 +37,7 @@ export type RouteGuideStep =
 	  }
 	| { kind: 'lap'; at_m: number; lap: number; of: number }
 	| ({ kind: 'junction'; at_m: number; turn: Turn } & GuideTarget)
+	| { kind: 'road'; at_m: number; length_m: number; name?: string }
 	| { kind: 'crossing'; at_m: number; crossing: (typeof GUIDE_CROSSINGS)[number] }
 	| { kind: 'surface'; at_m: number; surface: (typeof GUIDE_SURFACES)[number] }
 	| { kind: 'climb'; at_m: number; gain_m: number; length_m: number }
@@ -91,6 +92,11 @@ function readStep(raw: unknown): RouteGuideStep | null {
 		case 'junction': {
 			const target = readTarget(s);
 			return target && oneOf(GUIDE_TURNS, s.turn) ? { kind: 'junction', at_m, turn: s.turn, ...target } : null;
+		}
+		case 'road': {
+			if (!isWhole(s.length_m) || s.length_m < 1) return null;
+			if (!('name' in s)) return { kind: 'road', at_m, length_m: s.length_m };
+			return isLabel(s.name) ? { kind: 'road', at_m, length_m: s.length_m, name: s.name.trim() } : null;
 		}
 		case 'crossing':
 			return oneOf(GUIDE_CROSSINGS, s.crossing) ? { kind: 'crossing', at_m, crossing: s.crossing } : null;
@@ -163,6 +169,8 @@ export const GUIDE_LINE_KEYS = [
 	'leftPath',
 	'rightPath',
 	'straightPath',
+	'road',
+	'roadNamed',
 	'bridge',
 	'ford',
 	'surfacePaved',
@@ -229,6 +237,13 @@ export function routeGuideLines(guide: RouteGuide): GuideLine[] {
 					'name' in s
 						? { key: `${s.turn}Named`, at: s.at_m, name: s.name }
 						: { key: `${s.turn}${WAY_SUFFIX[s.way]}`, at: s.at_m },
+				);
+				break;
+			case 'road':
+				rest.push(
+					s.name !== undefined
+						? { key: 'roadNamed', at: s.at_m, name: s.name, length: s.length_m }
+						: { key: 'road', at: s.at_m, length: s.length_m },
 				);
 				break;
 			case 'crossing':
@@ -416,6 +431,8 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	leftPath: "{at}: turn left onto the path.",
 	rightPath: "{at}: turn right onto the path.",
 	straightPath: "{at}: continue straight along the path.",
+	road: "{at}: follow the road for {length}. Watch for cars.",
+	roadNamed: "{at}: follow the road, {name}, for {length}. Watch for cars.",
 	bridge: "{at}: cross the bridge.",
 	ford: "{at}: cross the ford. There is no bridge, so expect water.",
 	surfacePaved: "{at}: paved from here.",

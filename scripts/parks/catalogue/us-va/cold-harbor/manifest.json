@@ -1,0 +1,415 @@
+{
+  "park": {
+    "slug": "cold-harbor",
+    "name": "Cold Harbor, Richmond National Battlefield Park",
+    "kind": "park",
+    "agency": "nps",
+    "nps_park_code": "rich",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
+    "osm_boundary": "relation/9991347"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses at Cold Harbor against the NPS trail map, including the four stretches on the tour road (Anderson Wright Drive) that join the trail pieces, and confirms with the park whether an organised run needs a special use permit."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "cold-harbor-5k",
+      "name": "Cold Harbor, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4691.6,
+      "lead_in_m": 424.6,
+      "start_line_from_lead_in_start_m": 270.4,
+      "start_finish": {
+        "lat": 37.588348,
+        "lng": -77.286627
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20279308,way/20286978,way/320263974,way/320263976,way/455394851,way/320263980,way/455394850,way/320263962,way/20286996,way/20260277",
+      "source_checked_at": "2026-11-19",
+      "geojson": "cold-harbor-5k.geojson",
+      "elevation_m": 61,
+      "checkpoints": [
+        {
+          "lat": 37.589247,
+          "lng": -77.284234
+        },
+        {
+          "lat": 37.593566,
+          "lng": -77.288035
+        },
+        {
+          "lat": 37.591989,
+          "lng": -77.296108
+        }
+      ],
+      "waypoint_count": 232,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Cold Harbor Visitor Center on Cold Harbor Road and walk out on the Main Trail. The start line is on the Main Trail in the open field east of the tour road, between the tour-road crossing and the Extended Loop Trail junction.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Main Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 290,
+            "at_m": 147
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Anderson Wright Drive",
+            "at_m": 556
+          },
+          {
+            "kind": "road",
+            "length_m": 56,
+            "name": "Anderson Wright Drive",
+            "at_m": 556
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Main Trail",
+            "at_m": 612
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Extended Loop Trail",
+            "at_m": 1249
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Anderson Wright Drive",
+            "at_m": 1475
+          },
+          {
+            "kind": "road",
+            "length_m": 219,
+            "name": "Anderson Wright Drive",
+            "at_m": 1475
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Extended Loop Trail",
+            "at_m": 1694
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Anderson Wright Drive",
+            "at_m": 2691
+          },
+          {
+            "kind": "road",
+            "length_m": 41,
+            "name": "Anderson Wright Drive",
+            "at_m": 2691
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Extended Loop Trail",
+            "at_m": 2732
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Western Trail",
+            "at_m": 3029
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Extended Loop Trail",
+            "at_m": 4457
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Anderson Wright Drive",
+            "at_m": 4687
+          },
+          {
+            "kind": "road",
+            "length_m": 159,
+            "name": "Anderson Wright Drive",
+            "at_m": 4687
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Main Trail",
+            "at_m": 4846
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "cold-harbor-10k",
+      "name": "Cold Harbor, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4691.6,
+      "lead_in_m": 424.6,
+      "start_line_from_lead_in_start_m": 116.2,
+      "start_finish": {
+        "lat": 37.589156,
+        "lng": -77.285593
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20279308,way/20286978,way/320263974,way/320263976,way/455394851,way/320263980,way/455394850,way/320263962,way/20286996,way/20260277",
+      "source_checked_at": "2026-11-19",
+      "geojson": "cold-harbor-10k.geojson",
+      "elevation_m": 129,
+      "checkpoints": [
+        {
+          "lat": 37.589213,
+          "lng": -77.283983
+        },
+        {
+          "lat": 37.592125,
+          "lng": -77.289233
+        },
+        {
+          "lat": 37.590584,
+          "lng": -77.293337
+        },
+        {
+          "lat": 37.586771,
+          "lng": -77.285177
+        },
+        {
+          "lat": 37.593919,
+          "lng": -77.286092
+        },
+        {
+          "lat": 37.592153,
+          "lng": -77.295926
+        }
+      ],
+      "waypoint_count": 458,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Cold Harbor Visitor Center on Cold Harbor Road and walk out on the Main Trail. The start line is on the Main Trail in the open field east of the tour road, between the tour-road crossing and the Extended Loop Trail junction.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Main Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 290,
+            "at_m": 301
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Anderson Wright Drive",
+            "at_m": 710
+          },
+          {
+            "kind": "road",
+            "length_m": 56,
+            "name": "Anderson Wright Drive",
+            "at_m": 710
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Main Trail",
+            "at_m": 766
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Extended Loop Trail",
+            "at_m": 1404
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Anderson Wright Drive",
+            "at_m": 1629
+          },
+          {
+            "kind": "road",
+            "length_m": 219,
+            "name": "Anderson Wright Drive",
+            "at_m": 1629
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Extended Loop Trail",
+            "at_m": 1848
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Anderson Wright Drive",
+            "at_m": 2845
+          },
+          {
+            "kind": "road",
+            "length_m": 41,
+            "name": "Anderson Wright Drive",
+            "at_m": 2845
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Extended Loop Trail",
+            "at_m": 2886
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Western Trail",
+            "at_m": 3183
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Extended Loop Trail",
+            "at_m": 4611
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Anderson Wright Drive",
+            "at_m": 4841
+          },
+          {
+            "kind": "road",
+            "length_m": 159,
+            "name": "Anderson Wright Drive",
+            "at_m": 4841
+          },
+          {
+            "kind": "climb",
+            "gain_m": 13,
+            "length_m": 290,
+            "at_m": 4993
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Main Trail",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5714,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7143,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8571,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Main Trail",
+            "at_m": 9692
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

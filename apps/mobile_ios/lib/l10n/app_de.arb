@@ -6284,6 +6284,8 @@
   "parkGuideLeftPath": "{at}: links auf den Pfad abbiegen.",
   "parkGuideRightPath": "{at}: rechts auf den Pfad abbiegen.",
   "parkGuideStraightPath": "{at}: geradeaus weiter auf dem Pfad.",
+  "parkGuideRoad": "{at}: folge der Straße {length} weit. Achte auf Autos.",
+  "parkGuideRoadNamed": "{at}: folge der Straße {name} {length} weit. Achte auf Autos.",
   "parkGuideBridge": "{at}: über die Brücke.",
   "parkGuideFord": "{at}: durch die Furt. Hier gibt es keine Brücke, rechne mit Wasser.",
   "parkGuideSurfacePaved": "{at}: ab hier asphaltiert.",

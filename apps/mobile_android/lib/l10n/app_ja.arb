@@ -6284,6 +6284,8 @@
   "parkGuideLeftPath": "{at}：左折して小道へ。",
   "parkGuideRightPath": "{at}：右折して小道へ。",
   "parkGuideStraightPath": "{at}：小道を直進。",
+  "parkGuideRoad": "{at}：道路を{length}進みます。車に注意してください。",
+  "parkGuideRoadNamed": "{at}：道路（{name}）を{length}進みます。車に注意してください。",
   "parkGuideBridge": "{at}：橋を渡ります。",
   "parkGuideFord": "{at}：浅瀬を渡ります。橋はないので、足が濡れる覚悟を。",
   "parkGuideSurfacePaved": "{at}：ここから舗装路。",

@@ -8141,6 +8141,8 @@ export const en = {
 	"parks.guide.leftPath": "{at}: turn left onto the path.",
 	"parks.guide.rightPath": "{at}: turn right onto the path.",
 	"parks.guide.straightPath": "{at}: continue straight along the path.",
+	"parks.guide.road": "{at}: follow the road for {length}. Watch for cars.",
+	"parks.guide.roadNamed": "{at}: follow the road, {name}, for {length}. Watch for cars.",
 	"parks.guide.bridge": "{at}: cross the bridge.",
 	"parks.guide.ford": "{at}: cross the ford. There is no bridge, so expect water.",
 	"parks.guide.surfacePaved": "{at}: paved from here.",

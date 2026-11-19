@@ -8112,6 +8112,8 @@ export const messages = {
 	"parks.guide.leftPath": "{at} : tournez à gauche sur le sentier.",
 	"parks.guide.rightPath": "{at} : tournez à droite sur le sentier.",
 	"parks.guide.straightPath": "{at} : continuez tout droit sur le sentier.",
+	"parks.guide.road": "{at} : suivez la route sur {length}. Attention aux voitures.",
+	"parks.guide.roadNamed": "{at} : suivez la route {name} sur {length}. Attention aux voitures.",
 	"parks.guide.bridge": "{at} : traversez le pont.",
 	"parks.guide.ford": "{at} : traversez le gué. Il n'y a pas de pont, attendez-vous à avoir les pieds dans l'eau.",
 	"parks.guide.surfacePaved": "{at} : revêtement goudronné à partir d'ici.",

@@ -30197,6 +30197,33 @@
       }
     }
   },
+  "parkGuideRoad": "{at}: follow the road for {length}. Watch for cars.",
+  "@parkGuideRoad": {
+    "description": "Park course route guide (#1430, web parks.guide.road): the course follows a road for a short stretch between two pieces of trail.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRoadNamed": "{at}: follow the road, {name}, for {length}. Watch for cars.",
+  "@parkGuideRoadNamed": {
+    "description": "Park course route guide (#1430, web parks.guide.roadNamed): as parkGuideRoad, with the road's name from OpenStreetMap.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
   "parkGuideBridge": "{at}: cross the bridge.",
   "@parkGuideBridge": {
     "description": "Park course route guide (#1344, web parks.guide.bridge).",

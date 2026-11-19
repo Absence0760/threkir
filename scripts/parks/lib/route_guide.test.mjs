@@ -307,3 +307,25 @@ test('a linear course gets no direction step', () => {
 	assert.ok(!kinds(guide({ loop: false })).includes('direction'));
 	assert.equal(routeGuideRefusal(guide({ loop: false })), null);
 });
+
+test('a stretch along a road connector is a road step with its length and name', () => {
+	const road = { ...beta, tags: { highway: 'service', name: 'Tour Road' } };
+	const g = guide({ ways: [alpha, road], allWays: [alpha, road], roadConnectors: [11] });
+	const step = g.steps.find((s) => s.kind === 'road');
+	assert.deepEqual(step, { kind: 'road', at_m: 222, length_m: 222, name: 'Tour Road' });
+	assert.equal(routeGuideRefusal(g), null);
+	const unnamed = { ...beta, tags: { highway: 'service' } };
+	const g2 = guide({ ways: [alpha, unnamed], allWays: [alpha, unnamed], roadConnectors: [11] });
+	assert.deepEqual(g2.steps.find((s) => s.kind === 'road'), { kind: 'road', at_m: 222, length_m: 222 });
+	assert.equal(guide({ ways: [alpha, road], allWays: [alpha, road] }).steps.some((s) => s.kind === 'road'), false);
+});
+
+test('routeGuideRefusal holds a road step to a whole length and its known fields', () => {
+	const g = structuredClone(guide());
+	g.steps.splice(1, 0, { kind: 'road', at_m: 0, length_m: 120 });
+	assert.equal(routeGuideRefusal(g), null);
+	g.steps[1].length_m = 0;
+	assert.match(String(routeGuideRefusal(g)), /road needs a whole length_m/);
+	g.steps[1] = { kind: 'road', at_m: 0, length_m: 120, way: 'road' };
+	assert.match(String(routeGuideRefusal(g)), /unknown field way/);
+});

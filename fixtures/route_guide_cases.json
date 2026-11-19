@@ -412,6 +412,118 @@
    ]
   },
   {
+   "name": "road stretches between two pieces of trail, named and unnamed",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Main Trail"
+     },
+     {
+      "kind": "junction",
+      "at_m": 556,
+      "turn": "straight",
+      "name": "Tour Road"
+     },
+     {
+      "kind": "road",
+      "at_m": 556,
+      "length_m": 56,
+      "name": "  Tour Road "
+     },
+     {
+      "kind": "road",
+      "at_m": 1475,
+      "length_m": 219
+     },
+     {
+      "kind": "finish",
+      "at_m": 5000
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startNamed",
+     "name": "Main Trail"
+    },
+    {
+     "key": "straightNamed",
+     "at": 556,
+     "name": "Tour Road"
+    },
+    {
+     "key": "roadNamed",
+     "at": 556,
+     "name": "Tour Road",
+     "length": 56
+    },
+    {
+     "key": "road",
+     "at": 1475,
+     "length": 219
+    },
+    {
+     "key": "finish",
+     "at": 5000
+    }
+   ]
+  },
+  {
+   "name": "a road step with no length",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "road",
+      "at_m": 100
+     },
+     {
+      "kind": "finish",
+      "at_m": 900
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road step of 0 m",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "road",
+      "at_m": 100,
+      "length_m": 0
+     },
+     {
+      "kind": "finish",
+      "at_m": 900
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
    "name": "an unknown step kind hides the whole guide",
    "guide": {
     "version": 1,

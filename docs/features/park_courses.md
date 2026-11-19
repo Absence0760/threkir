@@ -739,6 +739,10 @@ Each is a `loop` course, because its start and finish are one line on the
 lead-in: the start line faces out along the lead-in and the end line faces
 back in (on the 10K both are curated, its line sitting 14 m before a bend), and every complete lap is timed with the fastest counting
 (decisions § 2465). Its route carries the race distance as `official_distance_m`.
+A linear race course on a rail trail (the Virginia Capital Trail's, decisions
+§ 2581) loads as `point_to_point`, with separate start and finish lines, or
+`out_and_back`, with one line at the start and an odd number of checkpoints so
+the middle one sits on the turn. Neither has `laps`.
 
 Shipping a park, or a change to one:
 

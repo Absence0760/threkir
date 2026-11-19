@@ -1418,6 +1418,11 @@ jobs:
       - name: Generated TS row types vs the live schema
         if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.supabase_stack.outcome == 'success' }}
         run: |
+          if ! node --test apps/backend/scripts/gen_types.test.mjs; then
+            echo "::error::apps/backend/scripts/gen_types.mjs, which gen:types and gen:types:check run, no longer reads one Supabase CLI pin from ci.yml or no longer filters the CLI's noise lines. The generated types themselves were not checked yet."
+            echo "Reproduce with: node --test apps/backend/scripts/gen_types.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
           if ! npm run gen:types:check --workspace=apps/backend; then
             echo "::error::apps/web/src/lib/database.types.ts is out of sync with the Supabase schema."
             echo "Run 'npm run gen:types' locally and commit the result."

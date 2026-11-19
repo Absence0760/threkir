@@ -668,14 +668,21 @@ void main() {
 
   test(
       'a circle match reports matched_by zone, and the matcher version is '
-      'past the two-pass loop rule of 2', () {
+      'past the lap rule of 3', () {
     final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
     final eff = computeGlobalSegmentEffort(
       track,
       GlobalSegmentGeometry(points: [track[10], track[100]], distanceM: 450),
     );
     expect(eff?.matchedBy, GlobalSegmentMatchedBy.zone);
-    expect(kGlobalSegmentMatcherVersion, 3);
+    expect(kGlobalSegmentMatcherVersion, 4);
+  });
+
+  test('the box rule constants match the web twin (decisions § 2583)', () {
+    expect(kGlobalSegmentBoxSlackM, 5);
+    expect(kGlobalSegmentFinishMaxGapS, 300);
+    expect(kGlobalSegmentGapSpeedMin, 0.4);
+    expect(kGlobalSegmentGapSpeedMax, 1.5);
   });
 
   test(

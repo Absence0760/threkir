@@ -8,6 +8,10 @@ import {
 	computeGlobalSegmentEffort,
 	computeGlobalSegmentEfforts,
 	globalSegmentGeometry,
+	GLOBAL_SEGMENT_BOX_SLACK_M,
+	GLOBAL_SEGMENT_FINISH_MAX_GAP_S,
+	GLOBAL_SEGMENT_GAP_SPEED_MAX,
+	GLOBAL_SEGMENT_GAP_SPEED_MIN,
 	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type GlobalSegmentGeometry,
 	linesChain,
@@ -858,14 +862,21 @@ test('globalSegmentGeometry reads a row\'s lines, and a row missing one value ha
 	assert.equal(globalSegmentGeometry({ waypoints: null, distance_m: 100 }).points.length, 0);
 });
 
-test('a circle match reports matched_by zone, and the matcher version is past the two-pass loop rule of 2', () => {
+test('a circle match reports matched_by zone, and the matcher version is past the lap rule of 3', () => {
 	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
 	const eff = computeGlobalSegmentEffort(track, {
 		points: [track[10], track[100]],
 		distance_m: 450,
 	});
 	assert.equal(eff?.matched_by, 'zone');
-	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 3);
+	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 4);
+});
+
+test('the box rule constants match the Dart twin (decisions § 2583)', () => {
+	assert.equal(GLOBAL_SEGMENT_BOX_SLACK_M, 5);
+	assert.equal(GLOBAL_SEGMENT_FINISH_MAX_GAP_S, 300);
+	assert.equal(GLOBAL_SEGMENT_GAP_SPEED_MIN, 0.4);
+	assert.equal(GLOBAL_SEGMENT_GAP_SPEED_MAX, 1.5);
 });
 
 test('linesChain: a loop finishing on its start line, facing within 90 degrees of it, chains its laps', () => {

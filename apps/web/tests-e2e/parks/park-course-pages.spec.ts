@@ -63,9 +63,12 @@ test.beforeAll(async () => {
 			.insert({
 				name: c.name,
 				description: 'Run it clockwise.',
+				// The half runs out and back, so the trigger derives its finish
+				// line at its start, facing the other way.
 				waypoints: [
 					{ lat: BASE_LAT, lng },
 					{ lat: BASE_LAT + 1000 / M_PER_DEG_LAT, lng },
+					...(c.shape === 'out_and_back' ? [{ lat: BASE_LAT, lng }] : []),
 				],
 				distance_m: c.distanceM,
 				surface: 'trail',
@@ -81,7 +84,14 @@ test.beforeAll(async () => {
 			slug: c.slug,
 			course_shape: c.shape,
 			geometry_source: 'osm',
-			checkpoints: [{ lat: BASE_LAT + 500 / M_PER_DEG_LAT, lng }],
+			// The half's last checkpoint is its turn, at the far end of the line.
+			checkpoints:
+				c.shape === 'out_and_back'
+					? [
+							{ lat: BASE_LAT + 500 / M_PER_DEG_LAT, lng },
+							{ lat: BASE_LAT + 1000 / M_PER_DEG_LAT, lng },
+						]
+					: [{ lat: BASE_LAT + 500 / M_PER_DEG_LAT, lng }],
 			laps: c.laps,
 			attribution: c.slug === '5k' ? CREDIT : null,
 			shared_use: c.slug === '5k' ? 'saturday_morning_group' : null,
@@ -168,16 +178,32 @@ test.describe('park course pages', () => {
 			'Kilometre marker',
 			'Direction to run',
 		]);
+		// The segment's stored lines (derived from its line by the trigger) are
+		// drawn as a start box and a finish box, which the key names plainly,
+		// and the block leads with one sentence and the way to the start.
+		await expect(legend.locator('li[data-kind="startBox"]')).toHaveText('Start');
+		await expect(legend.locator('li[data-kind="finishBox"]')).toHaveText('Finish');
+		await expect(legend.locator('li[data-kind="start"]')).toHaveCount(0);
+		await expect(page.getByTestId('park-course-ends-instruction')).toHaveText(
+			'Start recording in the green box. Follow the arrows to the red box.',
+		);
+		const getDirections = page.getByTestId('park-course-ends-get-directions');
+		await expect(getDirections).toHaveText(/Get directions to the start/);
+		await expect(getDirections).toHaveAttribute('href', /destination=37\.40000%2C-78\.37000/);
+		await expect(page.getByTestId('park-course-ends-coordinates')).not.toHaveAttribute('open');
 
-		// One callout: the safety notice, the give-way note this shared course
-		// carries, the times notice, then the not-affiliated note.
+		// One callout: two plain lines, safety first, the give-way note this
+		// shared course carries between them, then the required notices as
+		// one smaller line under them.
 		const notices = page.getByTestId('park-course-notices');
 		await expect(notices.locator('li')).toHaveText([
-			/^Stay on the marked trail\./,
+			"Follow the course line on the map and pass every checkpoint in order, or your time won't count.",
 			'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.',
-			'Times here are Threkir times on these paths. They are not results of any event held on them.',
-			/^Threkir publishes these courses\./,
+			'Finish before the park closes.',
 		]);
+		await expect(notices.getByTestId('park-course-open-trail')).toHaveText(
+			'A time trial on open trails, not a race. Nobody marshals it.',
+		);
 		await expect(notices.locator('li').first()).toHaveAttribute('data-testid', 'park-course-safety');
 		await expect(notices.getByTestId('park-course-shared-use')).toBeVisible();
 		await expect(notices.getByTestId('park-course-times')).toBeVisible();
@@ -189,7 +215,9 @@ test.describe('park course pages', () => {
 		await expect(page.locator('.course-actions .btn-primary')).toHaveCount(1);
 
 		// No times on any board: an invitation, and nothing to switch between.
-		await expect(page.getByTestId('park-board-invite')).toContainText('Yours could be the first.');
+		await expect(page.getByTestId('park-board-invite').getByRole('heading')).toHaveText(
+			'No times yet. Run it with Threkir and yours shows up here.',
+		);
 		await expect(page.getByTestId('park-board-fastest')).toHaveCount(0);
 		await expect(page.getByTestId('park-season-all-time')).toHaveCount(0);
 		await expect(page.getByTestId('park-board-filters')).toHaveCount(0);
@@ -206,6 +234,8 @@ test.describe('park course pages', () => {
 		const ends = page.getByTestId('park-course-ends');
 		await expect(ends).toBeVisible({ timeout: 15_000 });
 		await expect(ends.getByRole('heading', { name: 'Start and finish points' })).toBeVisible();
+		// The coordinates sit folded under the sentence and the directions button.
+		await ends.getByText('Coordinates', { exact: true }).click();
 		await expect(ends.getByTestId('park-course-ends-start-coords')).toHaveText('37.40000, -78.38000');
 		await expect(ends.getByTestId('park-course-ends-finish-coords')).toHaveText('37.40898, -78.38000');
 		await expect(ends.getByTestId('park-course-ends-startFinish')).toHaveCount(0);
@@ -215,12 +245,13 @@ test.describe('park course pages', () => {
 		await expect(ends.getByTestId('park-course-ends-finish-status')).toHaveText('Coordinates copied');
 		expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('37.40898, -78.38000');
 
-		const directions = ends.getByRole('link', { name: 'Directions to the start' });
+		const directions = ends.getByRole('link', { name: 'Directions to the start', exact: true });
 		await expect(directions).toHaveAttribute('href', /destination=37\.40000%2C-78\.38000/);
 		await expect(directions).toHaveAttribute('target', '_blank');
 
 		await page.goto(`/parks/us-va/${PARK_SLUG}/5k`);
 		const loop = page.getByTestId('park-course-ends');
+		await loop.getByText('Coordinates', { exact: true }).click({ timeout: 15_000 });
 		await expect(loop.getByTestId('park-course-ends-startFinish')).toContainText('Start and finish', { timeout: 15_000 });
 		await expect(loop.getByTestId('park-course-ends-start')).toHaveCount(0);
 		await expect(loop.getByRole('button', { name: 'Copy start and finish coordinates' })).toBeVisible();
@@ -234,7 +265,8 @@ test.describe('park course pages', () => {
 		});
 		await page.goto(`/parks/us-va/${PARK_SLUG}/50k`);
 		const ends = page.getByTestId('park-course-ends');
-		await ends.getByRole('button', { name: 'Copy start coordinates' }).click({ timeout: 15_000 });
+		await ends.getByText('Coordinates', { exact: true }).click({ timeout: 15_000 });
+		await ends.getByRole('button', { name: 'Copy start coordinates' }).click();
 		await expect(ends.getByTestId('park-course-ends-start-status')).toHaveText(
 			"Couldn't copy the coordinates. Select them and copy them yourself.",
 		);
@@ -249,6 +281,19 @@ test.describe('park course pages', () => {
 		// A course no group shares has the times notice and no give-way note.
 		await expect(page.getByTestId('park-course-times')).toBeVisible();
 		await expect(page.getByTestId('park-course-shared-use')).toHaveCount(0);
+	});
+
+	test('an out-and-back has one green-and-red box and a Turn around mark', async ({ page }) => {
+		await page.goto(`/parks/us-va/${PARK_SLUG}/half`);
+		await expect(page.getByRole('heading', { level: 1, name: COURSES[4].name })).toBeVisible({ timeout: 15_000 });
+		const legend = page.getByTestId('park-course-legend');
+		await expect(legend.locator('li[data-kind="startFinishBox"]')).toHaveText('Start and finish');
+		await expect(legend.locator('li[data-kind="startBox"]')).toHaveCount(0);
+		await expect(legend.locator('li[data-kind="finishBox"]')).toHaveCount(0);
+		await expect(legend.locator('li[data-kind="turnaround"]')).toHaveText('Turn around here: your run must pass it');
+		await expect(page.getByTestId('park-course-ends-instruction')).toHaveText(
+			'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.',
+		);
 	});
 });
 

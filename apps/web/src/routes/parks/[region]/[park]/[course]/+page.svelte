@@ -24,6 +24,7 @@
 	import {
 		boardPeriodArgs,
 		boardPeriodParam,
+		checkpointMarks,
 		courseAttribution,
 		courseEnds,
 		courseOffersWayfinding,
@@ -50,7 +51,8 @@
 	} from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
-	import { checkpointPinColour, finishesAtStart } from '#lib/parks/course_map.ts';
+	import { checkpointPinColour, courseBoxGates, courseBoxInstruction, finishesAtStart } from '#lib/parks/course_map.ts';
+	import { gateBoxParts } from '#lib/races/course_gates.ts';
 	import { PUBLIC_MAPTILER_KEY } from '$app/env/public';
 	import { basemapIsDarkFromEnv } from '#lib/routes/map-style.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -158,6 +160,38 @@
 			: null,
 	);
 
+	// The stored start and finish lines, drawn as a green start box and a red
+	// finish box with one plain sentence; null when the segment lacks either,
+	// and the page shows its pins as before.
+	const boxGates = $derived(course ? courseBoxGates(course.segment) : null);
+	// An out-and-back's boxes are one box; a loop's and a point-to-point's two.
+	const boxesMerged = $derived(boxGates ? gateBoxParts(boxGates.start, boxGates.finish).layout === 'merged' : false);
+	// What the map marks for the checkpoints: an out-and-back's last one is the
+	// turn, and checkpoints close enough to hide each other share a marker.
+	const marks = $derived(
+		course
+			? checkpointMarks({ checkpoints: course.checkpoints ?? [], line: mapTrack, shape: course.course_shape })
+			: [],
+	);
+	const turn = $derived(marks.find((k) => k.kind === 'turn') ?? null);
+	const boxInstruction = $derived.by(() => {
+		if (!boxGates) return null;
+		const said = courseBoxInstruction(boxGates, turn !== null, course?.laps);
+		return m(said.key, said.params);
+	});
+	const gateBoxes = $derived(
+		boxGates
+			? {
+					...boxGates,
+					labels: {
+						start: m('parks.legendStart'),
+						finish: m('parks.legendFinish'),
+						both: m('parks.legendStartFinish'),
+					},
+				}
+			: null,
+	);
+
 	async function load() {
 		loading = true;
 		loadFailed = false;
@@ -248,22 +282,34 @@
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 	const darkBasemap = $derived(basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY ?? '', prefersDark));
 	const checkpointPins = $derived<MapMarkerPin[]>(
-		(course?.checkpoints ?? []).map((c, i) => ({
-			id: `checkpoint-${i}`,
-			label: m('parks.checkpointShort', { n: i + 1 }),
-			color: checkpointPinColour(darkBasemap),
-			lat: c.lat,
-			lng: c.lng,
-		})),
+		marks
+			.filter((k) => k.kind === 'numbers')
+			.map((k) => ({
+				id: `checkpoint-${k.numbers[0]}`,
+				label: m('parks.checkpointShort', { n: k.numbers.join(', ') }),
+				color: checkpointPinColour(darkBasemap),
+				lat: k.lat,
+				lng: k.lng,
+			})),
 	);
+	const turnaround = $derived(turn ? { lat: turn.lat, lng: turn.lng, label: m('parks.turnAround') } : null);
 	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
-		const items: ParkMapLegendItem[] = finishesAtStart(mapTrack)
-			? [{ kind: 'startFinish', label: m('parks.legendStartFinish') }]
-			: [
-					{ kind: 'start', label: m('parks.legendStart') },
-					{ kind: 'finish', label: m('parks.legendFinish') },
-				];
+		// The boxes replace the pins on the map, so the key names the boxes.
+		const items: ParkMapLegendItem[] = boxGates
+			? boxesMerged
+				? [{ kind: 'startFinishBox', label: m('parks.legendStartFinish') }]
+				: [
+						{ kind: 'startBox', label: m('parks.legendStart') },
+						{ kind: 'finishBox', label: m('parks.legendFinish') },
+					]
+			: finishesAtStart(mapTrack)
+				? [{ kind: 'startFinish', label: m('parks.legendStartFinish') }]
+				: [
+						{ kind: 'start', label: m('parks.legendStart') },
+						{ kind: 'finish', label: m('parks.legendFinish') },
+					];
 		if (checkpointPins.length > 0) items.push({ kind: 'checkpoint', label: m('parks.legendCheckpoint') });
+		if (turnaround) items.push({ kind: 'turnaround', label: m('parks.legendTurnAround') });
 		const unitM = getUnit() === 'mi' ? 1609.344 : 1000;
 		if (Number(course?.segment.distance_m) >= unitM) {
 			items.push({
@@ -354,338 +400,344 @@
 		</header>
 
 		<div class="course-layout" class:with-map={mapTrack.length >= 2}>
-			<div class="summary">
-				<div class="key-stats" data-testid="park-course-stats">
-					<div class="key-stat">
-						<span class="key-stat-value">
-							<span data-testid="park-course-distance">{fmtCourseDistance(course.segment.distance_m)}</span>
-							{#if laps}<span class="chip" data-testid="park-course-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}
-						</span>
-						<span class="key-stat-label">{m('parks.statDistance')}</span>
-					</div>
-					{#if course.segment.elevation_m != null && Number(course.segment.elevation_m) > 0}
-						<div class="key-stat">
-							<span class="key-stat-value">{formatElevation(Number(course.segment.elevation_m))}</span>
-							<span class="key-stat-label">{m('parks.statElevation')}</span>
+			<!-- Two columns from 72rem: the map with the board right under it, and
+			     beside them the summary, the actions, how to start and the guide.
+			     Below 72rem the wrappers step aside and the blocks read in one column
+			     in their own order. -->
+			<div class="col-main">
+				{#if mapTrack.length >= 2}
+					<section class="map-block" aria-label={m('parks.courseMapLabel')}>
+						<div class="map-wrap">
+							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} />
 						</div>
-					{/if}
-					{#if shapeKey}
-						<div class="key-stat">
-							<span class="key-stat-value">{m(shapeKey)}</span>
-							<span class="key-stat-label">{m('parks.statShape')}</span>
-						</div>
-					{/if}
-					{#if course.segment.surface}
-						<div class="key-stat">
-							<span class="key-stat-value">{routeSurfaceLabel(course.segment.surface)}</span>
-							<span class="key-stat-label">{m('parks.statSurface')}</span>
-						</div>
-					{/if}
-					{#if difficultyKey}
-						<div class="key-stat">
-							<span class="key-stat-value">{m(difficultyKey)}</span>
-							<span class="key-stat-label">{m('parks.statDifficulty')}</span>
-						</div>
-					{/if}
-				</div>
-				{#if course.status !== 'open' && statusKey}
-					<p class="status-line">
-						{m(statusKey)}{#if course.status_note}: {course.status_note}{/if}
-						{#if statusCheckedLabel}
-							<span class="muted">({m('parks.statusChecked', { date: statusCheckedLabel })})</span>
+						<ParkMapLegend items={legendItems} testid="park-course-legend" />
+						{#if credit}
+							<p class="attribution" data-testid="park-course-attribution">
+								{'text' in credit ? credit.text : m(credit.key)}
+							</p>
 						{/if}
-					</p>
+					</section>
 				{/if}
-				{#if course.segment.description}
-					<p class="description" data-testid="park-course-description">{course.segment.description}</p>
-				{/if}
-			</div>
-
-			{#if canNavigate || canDownload}
-				<div class="course-actions">
-					{#if canNavigate}
-						<a class="btn btn-primary action" href="/routes/{course.route_id}" data-testid="park-course-navigate">
-							<span class="material-symbols" aria-hidden="true">directions_run</span>
-							{m('parks.navigate')}
-						</a>
-					{/if}
-					{#if canDownload}
-						<button
-							type="button"
-							class="btn action"
-							class:btn-primary={!canNavigate}
-							class:btn-outline={canNavigate}
-							onclick={downloadGpx}
-							data-testid="park-course-gpx"
-						>
-							<span class="material-symbols" aria-hidden="true">download</span>
-							{m('parks.downloadGpx')}
-						</button>
-					{/if}
-				</div>
-			{/if}
-
-			{#if mapTrack.length >= 2}
-				<section class="map-block" aria-label={m('parks.courseMapLabel')}>
-					<div class="map-wrap">
-						<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} />
+				{#if elevations}
+					<div class="elevation elevation-slot" data-testid="park-course-elevation">
+						<SectionHeader title label={m('parks.elevationTitle')} />
+						<ElevationProfile
+							{elevations}
+							totalGain={course.segment.elevation_m == null ? null : Number(course.segment.elevation_m)}
+							totalDistance={Number(course.segment.distance_m)}
+							onhover={(idx) => (chartHoverIdx = idx)}
+						/>
 					</div>
-					<ParkMapLegend items={legendItems} testid="park-course-legend" />
-					{#if credit}
-						<p class="attribution" data-testid="park-course-attribution">
-							{'text' in credit ? credit.text : m(credit.key)}
+				{/if}
+
+				<section class="board" aria-labelledby="park-board-title">
+					<SectionHeader title label={m('parks.boardTitle')} id="park-board-title" />
+					{#if !auth.loggedIn}
+						<p class="muted" data-testid="park-course-sign-in">
+							{m('parks.signInForBoards')}
+							<a href="/login">{m('parks.signIn')}</a>
 						</p>
-					{/if}
-					{#if elevations}
-						<div class="elevation" data-testid="park-course-elevation">
-							<SectionHeader title label={m('parks.elevationTitle')} />
-							<ElevationProfile
-								{elevations}
-								totalGain={course.segment.elevation_m == null ? null : Number(course.segment.elevation_m)}
-								totalDistance={Number(course.segment.distance_m)}
-								onhover={(idx) => (chartHoverIdx = idx)}
-							/>
-						</div>
-					{/if}
-				</section>
-			{/if}
-
-			{#if routeGuide && wayfinding}
-				<div class="guide-slot">
-					<ParkCourseRouteGuide
-						guide={routeGuide}
-						checkedAt={course.route_guide_checked_at}
-						testidPrefix="park-course"
-					/>
-				</div>
-			{/if}
-
-			<div class="notices-slot">
-				<!-- In this slot so the wide layout keeps its placed rows. -->
-				{#if ends}
-					<div class="ends-wrap">
-						<CourseEndsBlock {ends} testidPrefix="park-course" />
-					</div>
-				{/if}
-				<ParkCourseNotices
-					distanceM={Number(course.segment.distance_m)}
-					sharedUse={parseSharedUse(course.shared_use)}
-					testidPrefix="park-course"
-				/>
-				{#if credit && mapTrack.length < 2}
-					<p class="attribution" data-testid="park-course-attribution">
-						{'text' in credit ? credit.text : m(credit.key)}
-					</p>
-				{/if}
-				<!-- Kept with the notices, away from Navigate: it is for the rare
-				     runner or land manager with a problem, not a next step. -->
-				<p class="report-row">
-					<button
-						type="button"
-						class="report-link"
-						onclick={() => (showReport = true)}
-						data-testid="park-course-report"
-					>
-						<span class="material-symbols" aria-hidden="true">flag</span>
-						{m('parks.report.action')}
-					</button>
-				</p>
-			</div>
-
-			<section class="board" aria-labelledby="park-board-title">
-				<SectionHeader title label={m('parks.boardTitle')} id="park-board-title" />
-				{#if !auth.loggedIn}
-					<p class="muted" data-testid="park-course-sign-in">
-						{m('parks.signInForBoards')}
-						<a href="/login">{m('parks.signIn')}</a>
-					</p>
-				{:else if probeFailed}
-					<p class="muted board-error" role="alert" data-testid="park-board-error">
-						{m('parks.boardFailed')}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => course && void probeBoard(course.segment.id)}
-						>
-							{m('parks.retry')}
-						</button>
-					</p>
-				{:else if anyTimes === null}
-					<p class="muted">{m('segments.loading')}</p>
-				{:else if !anyTimes}
-					<EmptyState
-						icon="emoji_events"
-						headingLevel={3}
-						title={m('parks.firstTimeTitle')}
-						text={m('parks.firstTimeBody')}
-						data-testid="park-board-invite"
-					/>
-				{:else}
-					<div class="board-head">
-						<div class="segmented" role="group" aria-label={m('parks.boardKindLabel')}>
-							<button
-								type="button"
-								class:active={boardKind === 'fastest'}
-								aria-pressed={boardKind === 'fastest'}
-								onclick={() => (boardKind = 'fastest')}
-								data-testid="park-board-fastest"
-							>
-								{m('parks.boardFastest')}
-							</button>
-							<button
-								type="button"
-								class:active={boardKind === 'completions'}
-								aria-pressed={boardKind === 'completions'}
-								onclick={() => (boardKind = 'completions')}
-								data-testid="park-board-completions"
-							>
-								{m('parks.boardCompletions')}
-							</button>
-						</div>
-						<div class="segmented" role="group" aria-label={m('parks.boardSeasonLabel')}>
-							<button
-								type="button"
-								class:active={period?.kind === 'month'}
-								aria-pressed={period?.kind === 'month'}
-								onclick={() => {
-									const next = thisMonth();
-									if (next) setPeriod(next);
-								}}
-								data-testid="park-period-this-month"
-							>
-								{m('parks.periodThisMonth')}
-							</button>
-							<button
-								type="button"
-								class:active={period?.kind === 'year'}
-								aria-pressed={period?.kind === 'year'}
-								onclick={() => setPeriod({ kind: 'year', season: park!.park_season })}
-								data-testid="park-season-this-year"
-							>
-								{m('parks.seasonThisYear', { year: park.park_season })}
-							</button>
-							<button
-								type="button"
-								class:active={period?.kind === 'all'}
-								aria-pressed={period?.kind === 'all'}
-								onclick={() => setPeriod({ kind: 'all' })}
-								data-testid="park-season-all-time"
-							>
-								{m('parks.seasonAllTime')}
-							</button>
-						</div>
-						<button
-							type="button"
-							class="btn btn-outline btn-sm h2h-open"
-							onclick={() => (showHeadToHead = true)}
-							data-testid="park-board-compare"
-						>
-							<span class="material-symbols" aria-hidden="true">group</span>
-							{m('headToHead.compare')}
-						</button>
-					</div>
-
-					{#if period?.kind === 'month'}
-						<div class="month-nav" data-testid="park-period-month-nav">
-							<button
-								type="button"
-								class="month-step"
-								aria-label={m('parks.periodPrevMonth')}
-								disabled={!prevMonth}
-								onclick={() => prevMonth && setPeriod(prevMonth)}
-								data-testid="park-period-prev"
-							>
-								<span class="material-symbols" aria-hidden="true">chevron_left</span>
-							</button>
-							<span class="month-label" aria-live="polite" data-testid="park-period-month">
-								{monthYearLabel(period.season, period.month, currentLocale())}
-							</span>
-							<button
-								type="button"
-								class="month-step"
-								aria-label={m('parks.periodNextMonth')}
-								disabled={!nextMonth}
-								onclick={() => nextMonth && setPeriod(nextMonth)}
-								data-testid="park-period-next"
-							>
-								<span class="material-symbols" aria-hidden="true">chevron_right</span>
-							</button>
-						</div>
-					{/if}
-
-					{#if boardKind === 'fastest'}
-						<div class="tier-filters" data-testid="park-board-filters">
-							<label>
-								{m('segments.gender')}
-								<select bind:value={genderFilter}>
-									<option value={null}>{m('segments.all')}</option>
-									<option value="male">{m('segments.men')}</option>
-									<option value="female">{m('segments.women')}</option>
-								</select>
-							</label>
-							<label>
-								{m('segments.ageBand')}
-								<select bind:value={ageFilter}>
-									<option value={null}>{m('segments.allAges')}</option>
-									{#each SEGMENT_AGE_BANDS as band (band)}
-										<option value={band}>{band}</option>
-									{/each}
-								</select>
-							</label>
-						</div>
-					{/if}
-
-					{#if boardFailed}
+					{:else if probeFailed}
 						<p class="muted board-error" role="alert" data-testid="park-board-error">
 							{m('parks.boardFailed')}
 							<button
 								type="button"
 								class="btn btn-outline btn-sm"
-								onclick={() => course && void refreshBoard(course.segment.id)}
+								onclick={() => course && void probeBoard(course.segment.id)}
 							>
 								{m('parks.retry')}
 							</button>
 						</p>
-					{:else if boardKind === 'fastest'}
-						<OldMatchNote segment={course.segment} />
-						{#if fastest == null}
+					{:else if anyTimes === null}
+						<p class="muted">{m('segments.loading')}</p>
+					{:else if !anyTimes}
+						<EmptyState
+							icon="emoji_events"
+							headingLevel={3}
+							title={m('parks.firstTimeTitle')}
+							data-testid="park-board-invite"
+						/>
+					{:else}
+						<div class="board-head">
+							<div class="segmented" role="group" aria-label={m('parks.boardKindLabel')}>
+								<button
+									type="button"
+									class:active={boardKind === 'fastest'}
+									aria-pressed={boardKind === 'fastest'}
+									onclick={() => (boardKind = 'fastest')}
+									data-testid="park-board-fastest"
+								>
+									{m('parks.boardFastest')}
+								</button>
+								<button
+									type="button"
+									class:active={boardKind === 'completions'}
+									aria-pressed={boardKind === 'completions'}
+									onclick={() => (boardKind = 'completions')}
+									data-testid="park-board-completions"
+								>
+									{m('parks.boardCompletions')}
+								</button>
+							</div>
+							<div class="segmented" role="group" aria-label={m('parks.boardSeasonLabel')}>
+								<button
+									type="button"
+									class:active={period?.kind === 'month'}
+									aria-pressed={period?.kind === 'month'}
+									onclick={() => {
+										const next = thisMonth();
+										if (next) setPeriod(next);
+									}}
+									data-testid="park-period-this-month"
+								>
+									{m('parks.periodThisMonth')}
+								</button>
+								<button
+									type="button"
+									class:active={period?.kind === 'year'}
+									aria-pressed={period?.kind === 'year'}
+									onclick={() => setPeriod({ kind: 'year', season: park!.park_season })}
+									data-testid="park-season-this-year"
+								>
+									{m('parks.seasonThisYear', { year: park.park_season })}
+								</button>
+								<button
+									type="button"
+									class:active={period?.kind === 'all'}
+									aria-pressed={period?.kind === 'all'}
+									onclick={() => setPeriod({ kind: 'all' })}
+									data-testid="park-season-all-time"
+								>
+									{m('parks.seasonAllTime')}
+								</button>
+							</div>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm h2h-open"
+								onclick={() => (showHeadToHead = true)}
+								data-testid="park-board-compare"
+							>
+								<span class="material-symbols" aria-hidden="true">group</span>
+								{m('headToHead.compare')}
+							</button>
+						</div>
+
+						{#if period?.kind === 'month'}
+							<div class="month-nav" data-testid="park-period-month-nav">
+								<button
+									type="button"
+									class="month-step"
+									aria-label={m('parks.periodPrevMonth')}
+									disabled={!prevMonth}
+									onclick={() => prevMonth && setPeriod(prevMonth)}
+									data-testid="park-period-prev"
+								>
+									<span class="material-symbols" aria-hidden="true">chevron_left</span>
+								</button>
+								<span class="month-label" aria-live="polite" data-testid="park-period-month">
+									{monthYearLabel(period.season, period.month, currentLocale())}
+								</span>
+								<button
+									type="button"
+									class="month-step"
+									aria-label={m('parks.periodNextMonth')}
+									disabled={!nextMonth}
+									onclick={() => nextMonth && setPeriod(nextMonth)}
+									data-testid="park-period-next"
+								>
+									<span class="material-symbols" aria-hidden="true">chevron_right</span>
+								</button>
+							</div>
+						{/if}
+
+						{#if boardKind === 'fastest'}
+							<div class="tier-filters" data-testid="park-board-filters">
+								<label>
+									{m('segments.gender')}
+									<select bind:value={genderFilter}>
+										<option value={null}>{m('segments.all')}</option>
+										<option value="male">{m('segments.men')}</option>
+										<option value="female">{m('segments.women')}</option>
+									</select>
+								</label>
+								<label>
+									{m('segments.ageBand')}
+									<select bind:value={ageFilter}>
+										<option value={null}>{m('segments.allAges')}</option>
+										{#each SEGMENT_AGE_BANDS as band (band)}
+											<option value={band}>{band}</option>
+										{/each}
+									</select>
+								</label>
+							</div>
+						{/if}
+
+						{#if boardFailed}
+							<p class="muted board-error" role="alert" data-testid="park-board-error">
+								{m('parks.boardFailed')}
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									onclick={() => course && void refreshBoard(course.segment.id)}
+								>
+									{m('parks.retry')}
+								</button>
+							</p>
+						{:else if boardKind === 'fastest'}
+							<OldMatchNote segment={course.segment} />
+							{#if fastest == null}
+								<p class="muted">{m('segments.loading')}</p>
+							{:else if fastest.length === 0}
+								<p class="muted" data-testid="park-board-empty">{m('parks.noEfforts')}</p>
+							{:else}
+								<ol data-testid="park-board">
+									{#each fastest as entry (entry.effort.id)}
+										<li class:viewer={entry.effort.user_id === auth.user?.id}>
+											<span class="rank">#{entry.rank}</span>
+											<a href="/u/{entry.athlete.id}" class="athlete">
+												<Avatar url={entry.athlete.avatar_url} name={entry.athlete.display_name} size="1.6rem" font="0.72rem" />
+												<span class="athlete-name">{entry.athlete.display_name ?? m('segments.runnerFallback')}</span>
+											</a>
+											<span class="value">{formatDuration(Math.round(entry.effort.time_seconds))}</span>
+										</li>
+									{/each}
+								</ol>
+							{/if}
+						{:else if completions == null}
 							<p class="muted">{m('segments.loading')}</p>
-						{:else if fastest.length === 0}
+						{:else if completions.length === 0}
 							<p class="muted" data-testid="park-board-empty">{m('parks.noEfforts')}</p>
 						{:else}
 							<ol data-testid="park-board">
-								{#each fastest as entry (entry.effort.id)}
-									<li class:viewer={entry.effort.user_id === auth.user?.id}>
+								{#each completions as entry (entry.athlete.id)}
+									<li class:viewer={entry.athlete.id === auth.user?.id}>
 										<span class="rank">#{entry.rank}</span>
 										<a href="/u/{entry.athlete.id}" class="athlete">
 											<Avatar url={entry.athlete.avatar_url} name={entry.athlete.display_name} size="1.6rem" font="0.72rem" />
 											<span class="athlete-name">{entry.athlete.display_name ?? m('segments.runnerFallback')}</span>
 										</a>
-										<span class="value">{formatDuration(Math.round(entry.effort.time_seconds))}</span>
+										<span class="value">{m('parks.completionDays', { n: entry.completions })}</span>
 									</li>
 								{/each}
 							</ol>
 						{/if}
-					{:else if completions == null}
-						<p class="muted">{m('segments.loading')}</p>
-					{:else if completions.length === 0}
-						<p class="muted" data-testid="park-board-empty">{m('parks.noEfforts')}</p>
-					{:else}
-						<ol data-testid="park-board">
-							{#each completions as entry (entry.athlete.id)}
-								<li class:viewer={entry.athlete.id === auth.user?.id}>
-									<span class="rank">#{entry.rank}</span>
-									<a href="/u/{entry.athlete.id}" class="athlete">
-										<Avatar url={entry.athlete.avatar_url} name={entry.athlete.display_name} size="1.6rem" font="0.72rem" />
-										<span class="athlete-name">{entry.athlete.display_name ?? m('segments.runnerFallback')}</span>
-									</a>
-									<span class="value">{m('parks.completionDays', { n: entry.completions })}</span>
-								</li>
-							{/each}
-						</ol>
 					{/if}
+				</section>
+			</div>
+			<div class="col-side">
+				{#if ends}
+					<div class="ends-slot">
+						<CourseEndsBlock {ends} instruction={boxInstruction} testidPrefix="park-course" />
+					</div>
 				{/if}
-			</section>
+
+				<div class="summary">
+					<div class="key-stats" data-testid="park-course-stats">
+						<div class="key-stat">
+							<span class="key-stat-value">
+								<span data-testid="park-course-distance">{fmtCourseDistance(course.segment.distance_m)}</span>
+								{#if laps}<span class="chip" data-testid="park-course-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}
+							</span>
+							<span class="key-stat-label">{m('parks.statDistance')}</span>
+						</div>
+						{#if course.segment.elevation_m != null && Number(course.segment.elevation_m) > 0}
+							<div class="key-stat">
+								<span class="key-stat-value">{formatElevation(Number(course.segment.elevation_m))}</span>
+								<span class="key-stat-label">{m('parks.statElevation')}</span>
+							</div>
+						{/if}
+						{#if shapeKey}
+							<div class="key-stat">
+								<span class="key-stat-value">{m(shapeKey)}</span>
+								<span class="key-stat-label">{m('parks.statShape')}</span>
+							</div>
+						{/if}
+						{#if course.segment.surface}
+							<div class="key-stat">
+								<span class="key-stat-value">{routeSurfaceLabel(course.segment.surface)}</span>
+								<span class="key-stat-label">{m('parks.statSurface')}</span>
+							</div>
+						{/if}
+						{#if difficultyKey}
+							<div class="key-stat">
+								<span class="key-stat-value">{m(difficultyKey)}</span>
+								<span class="key-stat-label">{m('parks.statDifficulty')}</span>
+							</div>
+						{/if}
+					</div>
+					{#if course.status !== 'open' && statusKey}
+						<p class="status-line">
+							{m(statusKey)}{#if course.status_note}: {course.status_note}{/if}
+							{#if statusCheckedLabel}
+								<span class="muted">({m('parks.statusChecked', { date: statusCheckedLabel })})</span>
+							{/if}
+						</p>
+					{/if}
+					{#if course.segment.description}
+						<p class="description" data-testid="park-course-description">{course.segment.description}</p>
+					{/if}
+				</div>
+
+				{#if canNavigate || canDownload}
+					<div class="course-actions">
+						{#if canNavigate}
+							<a class="btn btn-primary action" href="/routes/{course.route_id}" data-testid="park-course-navigate">
+								<span class="material-symbols" aria-hidden="true">directions_run</span>
+								{m('parks.navigate')}
+							</a>
+						{/if}
+						{#if canDownload}
+							<button
+								type="button"
+								class="btn action"
+								class:btn-primary={!canNavigate}
+								class:btn-outline={canNavigate}
+								onclick={downloadGpx}
+								data-testid="park-course-gpx"
+							>
+								<span class="material-symbols" aria-hidden="true">download</span>
+								{m('parks.downloadGpx')}
+							</button>
+						{/if}
+					</div>
+				{/if}
+
+				<div class="notices-slot">
+					<ParkCourseNotices
+						distanceM={Number(course.segment.distance_m)}
+						sharedUse={parseSharedUse(course.shared_use)}
+						testidPrefix="park-course"
+					/>
+					{#if credit && mapTrack.length < 2}
+						<p class="attribution" data-testid="park-course-attribution">
+							{'text' in credit ? credit.text : m(credit.key)}
+						</p>
+					{/if}
+					<!-- Kept with the notices, away from Navigate: it is for the rare
+					     runner or land manager with a problem, not a next step. -->
+					<p class="report-row">
+						<button
+							type="button"
+							class="report-link"
+							onclick={() => (showReport = true)}
+							data-testid="park-course-report"
+						>
+							<span class="material-symbols" aria-hidden="true">flag</span>
+							{m('parks.report.action')}
+						</button>
+					</p>
+				</div>
+
+				{#if routeGuide && wayfinding}
+					<div class="guide-slot">
+						<ParkCourseRouteGuide
+							guide={routeGuide}
+							checkedAt={course.route_guide_checked_at}
+							testidPrefix="park-course"
+						/>
+					</div>
+				{/if}
+			</div>
 		</div>
 		<ParkCourseReportDialog
 			open={showReport}
@@ -779,62 +831,84 @@
 		background: var(--color-warning-light);
 		color: var(--color-warning-text);
 	}
-	.ends-wrap {
-		margin-bottom: var(--space-lg);
-	}
-	/* One column on a phone, in reading order. From 72rem the map and the board
-	   take the wide column and the summary, actions, route guide and notices the narrow
-	   one, so every block in a column shares that column's width. */
+	/* One column on a phone: what the course is, where to start and finish,
+	   the actions, the map, the notices, the profile, the guide, then the
+	   board. From 72rem two independent columns, so
+	   neither one's length opens a gap in the other: the map with the board
+	   right under it, and beside them the summary, the actions, how to start
+	   and the guide (its full list folded away). */
 	.course-layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--space-lg);
 		align-items: start;
 	}
+	.col-main,
+	.col-side {
+		display: contents;
+	}
+	.summary {
+		order: 1;
+	}
+	.ends-slot {
+		order: 2;
+	}
+	.course-actions {
+		order: 3;
+	}
+	.map-block {
+		order: 4;
+	}
+	.notices-slot {
+		order: 5;
+	}
+	.elevation-slot {
+		order: 6;
+	}
+	.guide-slot {
+		order: 7;
+	}
+	.board {
+		order: 8;
+	}
 	@media (min-width: 72rem) {
 		.course-layout.with-map {
 			grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
-			grid-template-rows: auto auto auto auto 1fr;
 			column-gap: var(--space-xl);
 		}
-		.with-map .map-block {
-			grid-column: 1;
-			grid-row: 1 / span 3;
-		}
-		.with-map .summary {
-			grid-column: 2;
-			grid-row: 1;
-		}
-		.with-map .course-actions {
-			grid-column: 2;
-			grid-row: 2;
-		}
-		.with-map .guide-slot {
-			grid-column: 2;
-			grid-row: 3;
-		}
-		.with-map .notices-slot {
-			grid-column: 2;
-			grid-row: 4 / span 2;
-		}
-		.with-map .board {
-			grid-column: 1;
-			grid-row: 4 / span 2;
+		.with-map .col-main,
+		.with-map .col-side {
+			display: flex;
+			flex-direction: column;
+			gap: var(--space-lg);
+			min-width: 0;
 		}
 		.with-map .map-wrap {
 			height: 26rem;
 		}
+		/* In the side column: the facts, then where to start, then the rest. */
+		.with-map .col-side .summary {
+			order: 0;
+		}
 	}
+	/* The facts wrap and the last row's cells stretch to fill it, so no count
+	   of facts leaves an empty slot. Each cell draws its own dividers (into the
+	   1px gap after it, clipped at the box's edge), so the box behind them is
+	   the surface, never a filled block. */
 	.key-stats {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
+		display: flex;
+		flex-wrap: wrap;
 		gap: 1px;
-		background: var(--color-border);
+		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}
 	.key-stat {
+		flex: 1 1 8rem;
+		box-shadow:
+			1px 0 0 0 var(--color-border),
+			0 1px 0 0 var(--color-border);
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
@@ -885,9 +959,6 @@
 		height: 20rem;
 		border-radius: var(--radius-md);
 		overflow: hidden;
-	}
-	.elevation {
-		margin-top: var(--space-lg);
 	}
 	.attribution {
 		margin: var(--space-sm) 0 0;

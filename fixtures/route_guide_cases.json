@@ -1,5 +1,5 @@
 {
- "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting.",
+ "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting. 'views' are routeGuideView: the short 'summary' lines and the full 'sections' ({lap, from, to, lines}), neither listing checkpoints (decisions § 2581).",
  "cases": [
   {
    "name": "a full guide reads every kind of step in order",
@@ -1717,6 +1717,391 @@
    "name": "null",
    "guide": null,
    "parsed": null
+  }
+ ],
+ "views": [
+  {
+   "name": "a two-lap course: the summary keeps the first lap's real trail changes and where lap 2 starts, the full view's second lap reads Repeat the loop",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "road"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 100,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 200,
+      "turn": "straight",
+      "name": "Trail A"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "right",
+      "name": "Trail B"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 400,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 450,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 500,
+      "turn": "left",
+      "name": "trail b"
+     },
+     {
+      "kind": "junction",
+      "at_m": 600,
+      "turn": "left",
+      "way": "fire_road"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1000,
+      "turn": "left",
+      "way": "road"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1450,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "finish",
+      "at_m": 2000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startRoad"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "laps",
+     "total": 2
+    },
+    {
+     "key": "rightNamed",
+     "at": 300,
+     "name": "Trail B"
+    },
+    {
+     "key": "leftFireRoad",
+     "at": 600
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "finish",
+     "at": 2000
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "rightRoad",
+       "at": 100
+      },
+      {
+       "key": "straightNamed",
+       "at": 200,
+       "name": "Trail A"
+      },
+      {
+       "key": "rightNamed",
+       "at": 300,
+       "name": "Trail B"
+      },
+      {
+       "key": "bridge",
+       "at": 400
+      },
+      {
+       "key": "leftNamed",
+       "at": 500,
+       "name": "trail b"
+      },
+      {
+       "key": "leftFireRoad",
+       "at": 600
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "finish",
+       "at": 2000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a 12 km course without laps: 5 km stretches, the finish in the last",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "counterclockwise",
+      "keep_on": "left",
+      "landmark": "the lake"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 6000,
+      "gain_m": 20,
+      "length_m": 300
+     },
+     {
+      "kind": "junction",
+      "at_m": 11000,
+      "turn": "right",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 12000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "counterclockwise"
+    },
+    {
+     "key": "keepLeft",
+     "landmark": "the lake"
+    },
+    {
+     "key": "leftNamed",
+     "at": 400,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "rightPath",
+     "at": 11000
+    },
+    {
+     "key": "finish",
+     "at": 12000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 400,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "surfaceGravel",
+       "at": 700
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 10000,
+     "lines": [
+      {
+       "key": "climb",
+       "at": 6000,
+       "gain": 20,
+       "length": 300
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 10000,
+     "to": 12000,
+     "lines": [
+      {
+       "key": "rightPath",
+       "at": 11000
+      },
+      {
+       "key": "finish",
+       "at": 12000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a course with nothing between start and finish: one stretch holding the finish",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 3000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "finish",
+     "at": 3000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 3000,
+     "lines": [
+      {
+       "key": "finish",
+       "at": 3000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "steps that end early still put the finish in its own stretch",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1000,
+      "crossing": "ford"
+     },
+     {
+      "kind": "finish",
+      "at_m": 8000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "finish",
+     "at": 8000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "ford",
+       "at": 1000
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 8000,
+     "lines": [
+      {
+       "key": "finish",
+       "at": 8000
+      }
+     ]
+    }
+   ]
   }
  ]
 }

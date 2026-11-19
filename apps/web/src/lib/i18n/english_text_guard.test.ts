@@ -49,7 +49,7 @@ const ENGLISH_BY_DESIGN: Record<string, { count: number; reason: string }> = {
 	'src/lib/share/share_workout_meta.ts': { count: 4, reason: SHARE_HEAD },
 	'src/lib/share/site_meta.ts': { count: 1, reason: SHARE_HEAD },
 	'src/lib/parks/route_guide.ts': {
-		count: 11,
+		count: 12,
 		reason: "the route guide's canonical English for JSON-LD and the meta description (decisions § 2448); the page body lists it in the reader's language",
 	},
 	'src/lib/coach/assist/context.ts': { count: 2, reason: MODEL_PROMPT },

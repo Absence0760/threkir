@@ -510,3 +510,55 @@ function fixed5(v: number): string {
 export function formatLatLng(p: Point): string {
 	return `${fixed5(p.lat)}, ${fixed5(p.lng)}`;
 }
+
+/** Checkpoints closer than this share of the course's extent share one marker. */
+export const CHECKPOINT_MERGE_FRACTION = 0.05;
+/** …and never closer than this, whatever the course's size. */
+export const CHECKPOINT_MERGE_MIN_M = 25;
+
+/** A checkpoint marker on a course map: one or more numbers, or an out-and-back's turn. */
+export interface CheckpointMark {
+	kind: 'numbers' | 'turn';
+	/** The 1-based checkpoint numbers it stands for, in course order. */
+	numbers: number[];
+	lat: number;
+	lng: number;
+}
+
+/**
+ * What a course map marks for its checkpoints (decisions § 2581). On an
+ * out-and-back the last checkpoint is the turn, marked as such. The rest are
+ * numbered, and checkpoints so close that their markers would cover each
+ * other at the whole-course zoom share one marker that carries every number:
+ * closer than CHECKPOINT_MERGE_FRACTION of the line's bounding-box diagonal,
+ * at least CHECKPOINT_MERGE_MIN_M, to the first checkpoint of a marker.
+ */
+export function checkpointMarks(input: {
+	checkpoints: readonly { lat: number; lng: number }[];
+	line: readonly { lat: number; lng: number }[];
+	shape: string | null | undefined;
+}): CheckpointMark[] {
+	const { checkpoints, line } = input;
+	let s = Infinity;
+	let w = Infinity;
+	let n = -Infinity;
+	let e = -Infinity;
+	for (const p of line) {
+		s = Math.min(s, p.lat);
+		n = Math.max(n, p.lat);
+		w = Math.min(w, p.lng);
+		e = Math.max(e, p.lng);
+	}
+	const extent = Number.isFinite(s) ? haversineMetres(s, w, n, e) : 0;
+	const mergeM = Math.max(CHECKPOINT_MERGE_MIN_M, CHECKPOINT_MERGE_FRACTION * extent);
+	const turn = input.shape === 'out_and_back' && checkpoints.length > 0 ? checkpoints.length - 1 : -1;
+	const marks: CheckpointMark[] = [];
+	checkpoints.forEach((c, i) => {
+		if (i === turn) return;
+		const near = marks.find((m) => haversineMetres(m.lat, m.lng, c.lat, c.lng) < mergeM);
+		if (near) near.numbers.push(i + 1);
+		else marks.push({ kind: 'numbers', numbers: [i + 1], lat: c.lat, lng: c.lng });
+	});
+	if (turn >= 0) marks.push({ kind: 'turn', numbers: [turn + 1], lat: checkpoints[turn].lat, lng: checkpoints[turn].lng });
+	return marks;
+}

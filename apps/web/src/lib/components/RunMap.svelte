@@ -15,8 +15,11 @@
 	import {
 		mapAccentColour,
 		mapFinishColour,
+		mapFinishZoneColour,
 		mapLabelHalo,
 		mapLabelInk,
+		mapBoxInk,
+		mapStartZoneColour,
 		MAP_ARROW_INK,
 		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
@@ -38,6 +41,9 @@
 	} from '#lib/segments/pace_segments.ts';
 	import { snapToPolyline } from '#lib/routes/route_snap.ts';
 	import { computeDistanceMarkers, METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
+	import { addCourseGateBoxLayers, gateFlagSvg, turnaroundSvg } from '#lib/races/course_gate_layers.ts';
+	import { gateBoxParts } from '#lib/races/course_gates.ts';
+	import type { Gate } from '#lib/geo/gate_crossing.ts';
 	import {
 		buildTrackIndex,
 		nearestIndex,
@@ -136,6 +142,18 @@
 		/// snap is purely the rendered lng/lat; `position_m` is still derived
 		/// server-side from routes.geom.
 		snapToRoute?: boolean;
+		/// A course's stored start and finish lines, drawn as a green start box
+		/// and a red finish box, each with a flag and its name, in place of the
+		/// start and finish pins (`gateBoxParts`, decisions § 2581). Null = the
+		/// pins, as before.
+		gateBoxes?: {
+			start: Gate | null;
+			finish: Gate | null;
+			labels: { start: string; finish: string; both: string };
+		} | null;
+		/// An out-and-back's turn: its last checkpoint, drawn as a named tag
+		/// with a U-turn instead of a numbered pin. Null = none.
+		turnaround?: { lat: number; lng: number; label: string } | null;
 	}
 	let {
 		track = [],
@@ -157,6 +175,8 @@
 		onMarkerDrag,
 		draftMarker = null,
 		snapToRoute = false,
+		gateBoxes = null,
+		turnaround = null,
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
@@ -282,6 +302,49 @@
 
 	let startMarker: maplibregl.Marker | undefined;
 	let endMarker: maplibregl.Marker | undefined;
+	let boxMarkers: maplibregl.Marker[] = [];
+
+	/// A start or finish box's name tag: filled with the box's colour, so it
+	/// is the green or red box at the whole-course zoom, with its flag and
+	/// name. The name is text, never markup.
+	function boxMarkerElement(which: 'start' | 'finish' | 'both', name: string): HTMLDivElement {
+		const start = mapStartZoneColour(darkBasemap);
+		const finish = mapFinishZoneColour(darkBasemap);
+		return tagElement(
+			`gate-box-marker-${which}`,
+			which === 'start' ? start : which === 'finish' ? finish : `linear-gradient(90deg, ${start} 50%, ${finish} 50%)`,
+			mapBoxInk(darkBasemap),
+			gateFlagSvg(which, darkBasemap),
+			name,
+		);
+	}
+
+	/// Which side of its point a tag sits: toward the middle of the course, so
+	/// a tag at the edge of the fitted view reads whole instead of running off
+	/// the map.
+	function tagAnchor(lng: number, coords: [number, number][]): 'left' | 'right' {
+		let w = Infinity;
+		let e = -Infinity;
+		for (const [x] of coords) {
+			w = Math.min(w, x);
+			e = Math.max(e, x);
+		}
+		return lng <= (w + e) / 2 ? 'left' : 'right';
+	}
+
+	function tagElement(testid: string, background: string, ink: string, iconSvg: string, name: string): HTMLDivElement {
+		const el = document.createElement('div');
+		el.className = 'map-tag';
+		el.dataset.testid = testid;
+		el.style.background = background;
+		el.style.color = ink;
+		el.style.borderColor = mapOverlayOutline(darkBasemap);
+		el.innerHTML = iconSvg;
+		const label = document.createElement('span');
+		label.textContent = name;
+		el.appendChild(label);
+		return el;
+	}
 	let segmentMarker: maplibregl.Marker | undefined;
 	/// Marker rendered at track[hoverIdx] when hoverIdx is in range —
 	/// the chart-driven half of the linked-cursor pattern. Held as an
@@ -509,6 +572,8 @@
 			});
 		}
 
+		if (gateBoxes) addCourseGateBoxLayers(map, 'course-gate-boxes', gateBoxes.start, gateBoxes.finish, darkBasemap);
+
 		// Course markers (aid stations, cutoffs, …). Coloured pins above the
 		// trace with an optional label; updated reactively by the $effect
 		// below as the editor adds / removes them.
@@ -565,12 +630,49 @@
 		// a style swap can flip the ground these caps are measured against.
 		startMarker?.remove();
 		endMarker?.remove();
-		startMarker = new maplibregl.Marker({ color: mapStartColour(darkBasemap) })
-			.setLngLat(coords[0])
-			.addTo(map);
-		endMarker = new maplibregl.Marker({ color: mapFinishColour(darkBasemap) })
-			.setLngLat(coords[coords.length - 1])
-			.addTo(map);
+		startMarker = undefined;
+		endMarker = undefined;
+		for (const mk of boxMarkers) mk.remove();
+		boxMarkers = [];
+		if (gateBoxes) {
+			// The boxes' flags take the pins' place: a fixed size at any zoom,
+			// so the start and finish read first on the whole-course view.
+			for (const { which, at } of gateBoxParts(gateBoxes.start, gateBoxes.finish).markers) {
+				boxMarkers.push(
+					new maplibregl.Marker({
+						element: boxMarkerElement(which, gateBoxes.labels[which]),
+						anchor: tagAnchor(at.lng, coords),
+						offset: [tagAnchor(at.lng, coords) === 'left' ? 6 : -6, 0],
+					})
+						.setLngLat([at.lng, at.lat])
+						.addTo(map),
+				);
+			}
+		}
+		if (turnaround) {
+			boxMarkers.push(
+				new maplibregl.Marker({
+					element: tagElement(
+						'turnaround-marker',
+						mapLabelHalo(darkBasemap),
+						mapLabelInk(darkBasemap),
+						turnaroundSvg(mapLabelInk(darkBasemap)),
+						turnaround.label,
+					),
+					anchor: tagAnchor(turnaround.lng, coords),
+				})
+					.setLngLat([turnaround.lng, turnaround.lat])
+					.addTo(map),
+			);
+		}
+		if (!gateBoxes) {
+			startMarker = new maplibregl.Marker({ color: mapStartColour(darkBasemap) })
+				.setLngLat(coords[0])
+				.addTo(map);
+			endMarker = new maplibregl.Marker({ color: mapFinishColour(darkBasemap) })
+				.setLngLat(coords[coords.length - 1])
+				.addTo(map);
+		}
 
 		// Empty selected-segment source + layers; populated when the user
 		// clicks. Rendered above the base trace so the highlight reads
@@ -604,6 +706,7 @@
 		'trace',
 		'distance-markers',
 		'route-markers',
+		'course-gate-boxes',
 		'animated-trace',
 		'selected-segment',
 	] as const;
@@ -994,6 +1097,8 @@
 		previewMarker = undefined;
 		for (const mk of pinMarkers.values()) mk.remove();
 		pinMarkers.clear();
+		for (const mk of boxMarkers) mk.remove();
+		boxMarkers = [];
 		draftMk?.remove();
 		draftMk = undefined;
 		map?.remove();
@@ -1232,6 +1337,23 @@
 			0 1px 4px rgba(0, 0, 0, 0.3);
 	}
 
+	/* A start or finish box's name tag, or the turn-around's: big enough to
+	   read first on the whole-course view, and never a hit target (the map
+	   stays pannable). */
+	:global(.map-tag) {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.2rem 0.55rem 0.2rem 0.4rem;
+		border: 2px solid;
+		border-radius: 999px;
+		font-weight: 700;
+		font-size: 0.95rem;
+		line-height: 1.2;
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow: var(--shadow-md);
+	}
 	:global(.segment-pin) {
 		width: 14px;
 		height: 14px;

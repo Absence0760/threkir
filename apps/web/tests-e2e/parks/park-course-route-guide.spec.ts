@@ -100,12 +100,20 @@ test.describe('park course route guide (web)', () => {
 			'Drafted from map data, not yet checked on the ground.',
 		);
 		await expect(page.getByTestId('park-course-guide-getting-there')).toHaveText('Park by the boathouse.');
+		// The short view: the start, the direction, the turn, the finish. No
+		// checkpoint: the map marks it.
 		const steps = page.getByTestId('park-course-guide-steps').getByRole('listitem');
 		await expect(steps.first()).toHaveText('Start on Lake Trail.');
 		await expect(steps.nth(1)).toHaveText('Run the loop clockwise.');
-		await expect(steps.nth(2)).toHaveText('Pass every checkpoint in order, or the run is not timed.');
-		await expect(steps.nth(3)).toContainText('turn left onto Ridge Trail.');
-		await expect(steps).toHaveCount(6);
+		await expect(steps.nth(2)).toContainText('turn left onto Ridge Trail.');
+		await expect(steps.nth(3)).toContainText('finish.');
+		await expect(steps).toHaveCount(4);
+		const all = page.getByTestId('park-course-guide-all');
+		await expect(all).not.toHaveAttribute('open');
+		await all.getByText('Show all steps').click();
+		// One stretch on a 1 km course, its turn and its finish, still no checkpoint.
+		await expect(all.getByRole('heading', { level: 3 })).toHaveCount(1);
+		await expect(all.getByRole('listitem')).toHaveText([/turn left onto Ridge Trail\./, /finish\./]);
 
 		const [download] = await Promise.all([
 			page.waitForEvent('download'),

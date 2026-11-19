@@ -21,7 +21,11 @@
   "arrowTip": "{gate, tip}.",
   "routeRelation": "{gate, route, expected}: expected is null or {distanceM, routeBearingDeg, against}.",
   "warnings": "{which, gate, route, selfCross, mode, expected}: gate and route are nullable; expected is the warning codes in order.",
-  "preflight": "{mode, courses, expected}: each course {id, startGate, finishGate, hasFinishPoint, selfCross, route}, gates nullable and carrying a source; expected is the issues in order, each {courseId, code, severity, which} with which null except on gate_far_from_route; blocks is preflightBlocks of the result."
+  "preflight": "{mode, courses, expected}: each course {id, startGate, finishGate, hasFinishPoint, selfCross, route}, gates nullable and carrying a source; expected is the issues in order, each {courseId, code, severity, which} with which null except on gate_far_from_route; blocks is preflightBlocks of the result.",
+  "pointAlong": "{gate, f, point}: the point at f of the half-width along the line, -1 its left end, 1 its right end.",
+  "box": "{gate, depthM, side, from, to, corners}: the box on `side` (behind or ahead) of the line, from `from` to `to` along it; corners are the line edge's left then right end, then the far right and far left corners.",
+  "sharedSpot": "{start, finish, shared}: whether the two lines sit at one spot (centres within sharedSpotM, facing within sharedSpotDeg of the same way or of opposite ways).",
+  "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart, adjacent or merged; each part is {which, box, line: [a, b]}, start then finish; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side."
  },
  "degreeTolerance": 1e-09,
  "bearingTolerance": 1e-06,
@@ -31,7 +35,10 @@
   "halfWidthMaxM": 100,
   "defaultHalfWidthM": 15,
   "routeWarnM": 100,
-  "againstRouteDeg": 90
+  "againstRouteDeg": 90,
+  "boxDepthM": 10,
+  "sharedSpotM": 10,
+  "sharedSpotDeg": 20
  },
  "normalizeBearing": [
   {
@@ -1013,6 +1020,639 @@
     }
    ],
    "blocks": false
+  }
+ ],
+ "pointAlong": [
+  {
+   "note": "north, half-width 10, half way to the right end: 5 m east",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 10
+   },
+   "f": 0.5,
+   "point": {
+    "lat": 0.0,
+    "lng": 4.49660181862269e-05
+   }
+  },
+  {
+   "note": "east, half-width 10, the left end: left of eastward travel is north, 10 m",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 10
+   },
+   "f": -1,
+   "point": {
+    "lat": 8.99320363724538e-05,
+    "lng": 0.0
+   }
+  },
+  {
+   "note": "the centre is the gate's own point",
+   "gate": {
+    "lat": 3.597281454898152e-05,
+    "lng": 2.6979610911736143e-05,
+    "bearingDeg": 45,
+    "halfWidthM": 30
+   },
+   "f": 0,
+   "point": {
+    "lat": 3.597281454898152e-05,
+    "lng": 2.6979610911736143e-05
+   }
+  }
+ ],
+ "box": [
+  {
+   "note": "north, half-width 10, 10 m behind: the edge runs 10 m west to 10 m east, the box reaches 10 m south",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 10
+   },
+   "depthM": 10,
+   "side": "behind",
+   "from": -1,
+   "to": 1,
+   "corners": [
+    {
+     "lat": 0.0,
+     "lng": -8.99320363724538e-05
+    },
+    {
+     "lat": 0.0,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": -8.99320363724538e-05,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": -8.99320363724538e-05,
+     "lng": -8.99320363724538e-05
+    }
+   ]
+  },
+  {
+   "note": "the same line, 10 m ahead: the box reaches 10 m north",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 10
+   },
+   "depthM": 10,
+   "side": "ahead",
+   "from": -1,
+   "to": 1,
+   "corners": [
+    {
+     "lat": 0.0,
+     "lng": -8.99320363724538e-05
+    },
+    {
+     "lat": 0.0,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": 8.99320363724538e-05,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": 8.99320363724538e-05,
+     "lng": -8.99320363724538e-05
+    }
+   ]
+  },
+  {
+   "note": "east, half-width 10, 10 m behind, the right half only (south of eastward travel): behind is west",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 10
+   },
+   "depthM": 10,
+   "side": "behind",
+   "from": 0,
+   "to": 1,
+   "corners": [
+    {
+     "lat": 0.0,
+     "lng": 0.0
+    },
+    {
+     "lat": -8.99320363724538e-05,
+     "lng": 0.0
+    },
+    {
+     "lat": -8.99320363724538e-05,
+     "lng": -8.99320363724538e-05
+    },
+    {
+     "lat": 0.0,
+     "lng": -8.99320363724538e-05
+    }
+   ]
+  }
+ ],
+ "sharedSpot": [
+  {
+   "note": "an out-and-back: one centre, facing opposite ways",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "shared": true
+  },
+  {
+   "note": "a loop that closes 9 m short, facing the same way",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": -8.093883273520843e-05,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "shared": true
+  },
+  {
+   "note": "11 m apart is two spots",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": -9.892524000969919e-05,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "shared": false
+  },
+  {
+   "note": "one centre, but crossing at right angles",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "shared": false
+  },
+  {
+   "note": "160 degrees apart is opposed enough",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 200,
+    "halfWidthM": 15
+   },
+   "shared": true
+  },
+  {
+   "note": "21 degrees apart is neither parallel nor opposed",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 21,
+    "halfWidthM": 15
+   },
+   "shared": false
+  }
+ ],
+ "boxParts": [
+  {
+   "note": "apart: the start box behind its line (south), the finish box ahead of its own (north), each name at the middle of its box's far side",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.000899320363724538,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "apart",
+   "parts": [
+    {
+     "which": "start",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      }
+     ]
+    },
+    {
+     "which": "finish",
+     "box": [
+      {
+       "lat": 0.000899320363724538,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.000899320363724538,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 0.000989252400096992,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 0.000989252400096992,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.000899320363724538,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.000899320363724538,
+       "lng": 0.0001348980545586807
+      }
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "which": "start",
+     "at": {
+      "lat": -8.99320363724538e-05,
+      "lng": 0.0
+     }
+    },
+    {
+     "which": "finish",
+     "at": {
+      "lat": 0.000989252400096992,
+      "lng": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "note": "an out-and-back: the finish faces south, so the box ahead of it is the box behind the start; one box, the start's west half and the finish's own left (east) half, one name beyond its far (south) side",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "merged",
+   "parts": [
+    {
+     "which": "start",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0
+      }
+     ]
+    },
+    {
+     "which": "finish",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0
+      }
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "which": "both",
+     "at": {
+      "lat": -8.99320363724538e-05,
+      "lng": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "note": "a loop, both lines facing north at one spot: the start box behind, the finish box ahead, edge to edge, one name beyond the start box's far side",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "adjacent",
+   "parts": [
+    {
+     "which": "start",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      }
+     ]
+    },
+    {
+     "which": "finish",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 8.99320363724538e-05,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": 8.99320363724538e-05,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      }
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "which": "both",
+     "at": {
+      "lat": -8.99320363724538e-05,
+      "lng": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "note": "only a start line: its box and its marker",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": null,
+   "depthM": 10,
+   "layout": "apart",
+   "parts": [
+    {
+     "which": "start",
+     "box": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": 0.0001348980545586807
+      },
+      {
+       "lat": -8.99320363724538e-05,
+       "lng": -0.0001348980545586807
+      }
+     ],
+     "line": [
+      {
+       "lat": 0.0,
+       "lng": -0.0001348980545586807
+      },
+      {
+       "lat": 0.0,
+       "lng": 0.0001348980545586807
+      }
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "which": "start",
+     "at": {
+      "lat": -8.99320363724538e-05,
+      "lng": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "note": "a start facing west: left of travel is south, its box reaches east (behind it)",
+   "start": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 270,
+    "halfWidthM": 15
+   },
+   "finish": null,
+   "depthM": 10,
+   "layout": "apart",
+   "parts": [
+    {
+     "which": "start",
+     "box": [
+      {
+       "lat": -0.0001348980545586807,
+       "lng": 0.0
+      },
+      {
+       "lat": 0.0001348980545586807,
+       "lng": 0.0
+      },
+      {
+       "lat": 0.0001348980545586807,
+       "lng": 8.99320363724538e-05
+      },
+      {
+       "lat": -0.0001348980545586807,
+       "lng": 8.99320363724538e-05
+      }
+     ],
+     "line": [
+      {
+       "lat": -0.0001348980545586807,
+       "lng": 0.0
+      },
+      {
+       "lat": 0.0001348980545586807,
+       "lng": 0.0
+      }
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "which": "start",
+     "at": {
+      "lat": 0.0,
+      "lng": 8.99320363724538e-05
+     }
+    }
+   ]
+  },
+  {
+   "note": "no lines: nothing to draw",
+   "start": null,
+   "finish": null,
+   "depthM": 10,
+   "layout": "apart",
+   "parts": [],
+   "markers": []
   }
  ]
 }

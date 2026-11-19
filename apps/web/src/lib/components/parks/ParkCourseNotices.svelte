@@ -1,10 +1,13 @@
 <script lang="ts">
-	// Everything a runner should know before setting off on a park course, in
-	// one callout (issue #1352): the safety notice first, then the give-way
-	// note when an organised group shares the paths (decisions § 2460), the
-	// long-course notice when it applies, then the times and not-affiliated
-	// notes. Each line keeps the test id it had when they were separate pieces
-	// of fine print.
+	// What a runner must know before setting off on a park course, in one
+	// callout (issue #1352): at most a couple of plain lines, safety first
+	// (stay on the trail and pass every checkpoint), the give-way note when an
+	// organised group shares the paths (decisions § 2460), then finish before
+	// the park closes, or the long-course notice that says so with more.
+	// The required notices (a time trial, not a race; times are not event
+	// results; not affiliated with the park) follow as one smaller line.
+	// Each keeps the test id it had when they were separate pieces of fine
+	// print (decisions § 2581).
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { isLongCourse, type SharedUse } from '#lib/parks/park_courses.ts';
@@ -34,10 +37,15 @@
 		{/if}
 		{#if isLongCourse(distanceM)}
 			<li data-testid="{testidPrefix}-long">{m('parks.longCourseNotice')}</li>
+		{:else}
+			<li data-testid="{testidPrefix}-hours">{m('parks.noticeParkHours')}</li>
 		{/if}
-		<li class="quiet" data-testid="{testidPrefix}-times">{m('parks.timesNotEventResults')}</li>
-		<li class="quiet" data-testid="{testidPrefix}-not-affiliated">{m('parks.notAffiliated')}</li>
 	</ul>
+	<p class="fine">
+		<span data-testid="{testidPrefix}-open-trail">{m('parks.noticeOpenTrail')}</span>
+		<span data-testid="{testidPrefix}-times">{m('parks.timesNotEventResults')}</span>
+		<span data-testid="{testidPrefix}-not-affiliated">{m('parks.notAffiliated')}</span>
+	</p>
 </aside>
 
 <style>
@@ -67,11 +75,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);
-		font-size: 0.875rem;
+		font-size: 0.95rem;
 		line-height: 1.5;
 		color: var(--color-text);
 	}
-	.quiet {
+	.fine {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.78rem;
+		line-height: 1.45;
 		color: var(--color-text-secondary);
 	}
 </style>

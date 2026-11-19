@@ -7,6 +7,9 @@
 
 import { mapPinnedLine } from '../routes/basemap_contrast.ts';
 import { haversineMetres } from '../runs/run_stats.ts';
+import { courseGate, gateBoxParts } from '../races/course_gates.ts';
+import type { Gate } from '../geo/gate_crossing.ts';
+import type { MessageKey } from '../i18n/messages.ts';
 
 export interface LatLng {
 	lat: number;
@@ -48,3 +51,58 @@ export function finishesAtStart(line: readonly LatLng[]): boolean {
  * (`mapOverlayOutline`) is what clears 3:1 against the ground.
  */
 export const checkpointPinColour = mapPinnedLine;
+
+/** A catalogue segment's stored start and end line columns (decisions § 2402). */
+export interface SegmentGateColumns {
+	start_gate_lat: number | null;
+	start_gate_lng: number | null;
+	start_gate_bearing_deg: number | null;
+	start_gate_half_width_m: number | null;
+	end_gate_lat: number | null;
+	end_gate_lng: number | null;
+	end_gate_bearing_deg: number | null;
+	end_gate_half_width_m: number | null;
+}
+
+/**
+ * The lines a course page draws its start and finish boxes on (decisions
+ * § 2581): the segment's stored lines, the ones the matcher times, read
+ * through the race helper so a line means one thing everywhere. Null unless
+ * both are whole: the page then shows its pins alone, as before.
+ */
+export function courseBoxGates(segment: SegmentGateColumns): { start: Gate; finish: Gate } | null {
+	const row = {
+		start_gate_lat: segment.start_gate_lat,
+		start_gate_lng: segment.start_gate_lng,
+		start_gate_bearing_deg: segment.start_gate_bearing_deg,
+		start_gate_half_width_m: segment.start_gate_half_width_m,
+		finish_gate_lat: segment.end_gate_lat,
+		finish_gate_lng: segment.end_gate_lng,
+		finish_gate_bearing_deg: segment.end_gate_bearing_deg,
+		finish_gate_half_width_m: segment.end_gate_half_width_m,
+	};
+	const start = courseGate(row, 'start');
+	const finish = courseGate(row, 'finish');
+	if (!start || !finish) return null;
+	const plain = (g: Gate): Gate => ({ lat: g.lat, lng: g.lng, bearingDeg: g.bearingDeg, halfWidthM: g.halfWidthM });
+	return { start: plain(start), finish: plain(finish) };
+}
+
+/**
+ * The one sentence a course page gives a runner (decisions § 2581): start
+ * recording in the green box and follow the arrows to the red one (round the
+ * loop n times on a lapped course). Where both boxes land on one spot behind
+ * the start line, an out-and-back, it is one green-and-red box, left and come
+ * back to, by way of the Turn around mark when the course marks one.
+ */
+export function courseBoxInstruction(
+	gates: { start: Gate; finish: Gate },
+	hasTurn: boolean,
+	laps: number | null | undefined,
+): { key: MessageKey; params?: { n: number } } {
+	const n = laps != null && laps > 0 ? laps : 1;
+	if (gateBoxParts(gates.start, gates.finish).layout === 'merged') {
+		return hasTurn ? { key: 'parks.boxesOutAndBack' } : { key: 'parks.boxesShared', params: { n } };
+	}
+	return { key: 'parks.boxesApart', params: { n } };
+}

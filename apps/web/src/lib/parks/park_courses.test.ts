@@ -27,6 +27,7 @@ import {
 	boardPeriodArgs,
 	stepBoardMonth,
 	SHARE_COURSE_YEAR_PLACE_MAX,
+	checkpointMarks,
 } from './park_courses';
 
 test('parseCourseCheckpoints: reads an ordered list of points', () => {
@@ -420,3 +421,50 @@ test('formatLatLng: lat then lng, five decimals, no negative zero', () => {
 	assert.equal(formatLatLng({ lat: -0.000001, lng: 0 }), '0.00000, 0.00000');
 });
 
+
+const CP_M = 1 / 111_195;
+const cpAt = (m: number) => ({ lat: 37 + m * CP_M, lng: -77 });
+
+test('checkpointMarks: a pair 38 m apart on a 2 km course share one marker', () => {
+	const marks = checkpointMarks({ checkpoints: [cpAt(500), cpAt(538), cpAt(1000)], line: [cpAt(0), cpAt(2000)], shape: 'loop' });
+	assert.deepEqual(
+		marks.map((m) => [m.kind, m.numbers]),
+		[
+			['numbers', [1, 2]],
+			['numbers', [3]],
+		],
+	);
+	assert.deepEqual([marks[0].lat, marks[0].lng], [cpAt(500).lat, -77]);
+});
+
+test('checkpointMarks: an out-and-back marks its last checkpoint as the turn, never merged', () => {
+	const marks = checkpointMarks({
+		checkpoints: [cpAt(980), cpAt(1000)],
+		line: [cpAt(0), cpAt(1000), cpAt(0)],
+		shape: 'out_and_back',
+	});
+	assert.deepEqual(
+		marks.map((m) => [m.kind, m.numbers]),
+		[
+			['numbers', [1]],
+			['turn', [2]],
+		],
+	);
+});
+
+test('checkpointMarks: a short course still merges within 25 m, and only within it', () => {
+	const line = [cpAt(0), cpAt(200)];
+	assert.deepEqual(
+		checkpointMarks({ checkpoints: [cpAt(50), cpAt(70)], line, shape: 'loop' }).map((m) => m.numbers),
+		[[1, 2]],
+	);
+	assert.deepEqual(
+		checkpointMarks({ checkpoints: [cpAt(50), cpAt(80)], line, shape: 'loop' }).map((m) => m.numbers),
+		[[1], [2]],
+	);
+});
+
+test('checkpointMarks: no checkpoints, no marks; a loop has no turn', () => {
+	assert.deepEqual(checkpointMarks({ checkpoints: [], line: [cpAt(0), cpAt(100)], shape: 'out_and_back' }), []);
+	assert.ok(checkpointMarks({ checkpoints: [cpAt(50)], line: [cpAt(0), cpAt(100)], shape: 'loop' }).every((m) => m.kind === 'numbers'));
+});

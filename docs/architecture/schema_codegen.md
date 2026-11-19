@@ -287,9 +287,13 @@ This is exactly what CI runs in the `parity-types` job. Revert the hand-edit whe
 
 ## Troubleshooting
 
+### `gen:types` rewrites the whole file
+
+`supabase gen types` formats its output differently across CLI versions, so a CLI other than CI's pin produces a whole-file diff (CLI 3.2.0 against the 2.84.2 pin rewrote ~10k lines for a one-column migration, PR #1435). `gen:types` and `gen:types:check` run `apps/backend/scripts/gen_types.mjs`, which reads the pin from `.github/workflows/ci.yml` and uses the installed CLI only when it is that version, else `npx supabase@<pin>`. A CLI older than 2.108.0 cannot parse `config.toml`'s `[local_smtp]`, so it runs against a temporary copy renamed to `[inbucket]` exactly as CI does (`.github/actions/setup-supabase-cli/local_smtp_compat.sh`). If you still see a whole-file diff, check `ci.yml`'s `setup-supabase-cli` steps name one version.
+
 ### `gen:types` puts "Connecting to db 5432" at the top of the file
 
-Fixed — the `gen:types` script pipes through `grep -v '^Connecting to db'` to strip that stderr-on-stdout line. If it reappears, the CLI changed its output format; check `supabase gen types typescript --help` and adjust the filter.
+Fixed — `gen_types.mjs` drops that stderr-on-stdout line and any `{"_tag":"Error"` record. If it reappears, the CLI changed its output format; adjust `stripCliNoise`.
 
 ### `gen:types` produces an empty file
 

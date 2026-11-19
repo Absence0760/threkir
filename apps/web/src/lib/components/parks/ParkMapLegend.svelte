@@ -59,14 +59,17 @@
 {/snippet}
 
 <!-- A start or finish box as the map draws it: the fill, its outline, and its
-     edge on the course line, solid for the start and chequered for the finish. -->
-{#snippet boxPart(which: 'start' | 'finish', x0: number, x1: number)}
-	{@const colour = which === 'start' ? mapStartZoneColour(dark) : mapFinishZoneColour(dark)}
-	<rect x={x0} y="3" width={x1 - x0} height="11" fill={colour} fill-opacity={MAP_ZONE_FILL_OPACITY} stroke={colour} stroke-width="1" />
-	<line x1={x0} y1="3" x2={x1} y2="3" stroke={mapOverlayOutline(dark)} stroke-width="4" />
-	<line x1={x0} y1="3" x2={x1} y2="3" stroke={colour} stroke-width="2.5" />
-	{#if which === 'finish'}
-		<line x1={x0} y1="3" x2={x1} y2="3" stroke={MAP_ARROW_OUTLINE} stroke-width="2.5" stroke-dasharray="2.5 2.5" />
+     timing line, solid for the start and chequered for the finish. The box a
+     start and finish share is the start colour with a chequered line across
+     its middle. -->
+{#snippet boxPart(which: 'start' | 'finish' | 'both')}
+	{@const colour = which === 'finish' ? mapFinishZoneColour(dark) : mapStartZoneColour(dark)}
+	{@const y = which === 'both' ? 8.5 : 3}
+	<rect x="1" y="3" width="22" height="11" fill={colour} fill-opacity={MAP_ZONE_FILL_OPACITY} stroke={colour} stroke-width="1" />
+	<line x1="1" y1={y} x2="23" y2={y} stroke={mapOverlayOutline(dark)} stroke-width="4" />
+	<line x1="1" y1={y} x2="23" y2={y} stroke={colour} stroke-width="2.5" />
+	{#if which !== 'start'}
+		<line x1="1" y1={y} x2="23" y2={y} stroke={MAP_ARROW_OUTLINE} stroke-width="2.5" stroke-dasharray="2.5 2.5" />
 	{/if}
 {/snippet}
 
@@ -85,12 +88,7 @@
 				{@render pin(mapFinishColour(dark))}
 			{:else if item.kind === 'startBox' || item.kind === 'finishBox' || item.kind === 'startFinishBox'}
 				<svg viewBox="0 0 24 16" class="swatch wide" aria-hidden="true" focusable="false">
-					{#if item.kind === 'startFinishBox'}
-						{@render boxPart('start', 1, 12)}
-						{@render boxPart('finish', 12, 23)}
-					{:else}
-						{@render boxPart(item.kind === 'startBox' ? 'start' : 'finish', 1, 23)}
-					{/if}
+					{@render boxPart(item.kind === 'startBox' ? 'start' : item.kind === 'finishBox' ? 'finish' : 'both')}
 				</svg>
 			{:else if item.kind === 'turnaround'}
 				<span class="swatch tag" style:border-color={mapOverlayOutline(dark)} style:background={mapLabelHalo(dark)}>

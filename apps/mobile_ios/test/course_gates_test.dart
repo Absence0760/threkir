@@ -260,7 +260,7 @@ void main() {
       final got = gateBox(
         _gate(c['gate']),
         _num(c['depthM']),
-        c['side'] == 'ahead' ? GateBoxSide.ahead : GateBoxSide.behind,
+        GateBoxSide.values.byName(c['side'] as String),
         from: _num(c['from']),
         to: _num(c['to']),
       );
@@ -290,7 +290,8 @@ void main() {
       for (var i = 0; i < want.length; i++) {
         final p = got.parts[i];
         final w = want[i];
-        expect(p.which.name, w['which'], reason: '$note [$i] which');
+        expect(p.which?.name ?? 'both', w['which'],
+            reason: '$note [$i] which');
         _nearPoints(p.box, w['box'], '$note [$i] box');
         _nearPoints([p.line.$1, p.line.$2], w['line'], '$note [$i] line');
       }

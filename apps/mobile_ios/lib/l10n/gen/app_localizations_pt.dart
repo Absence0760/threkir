@@ -22933,9 +22933,9 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Comece a gravar na caixa verde e vermelha. Siga as setas $n voltas ao circuito e termine na mesma caixa.',
+          'Comece a gravar na caixa de partida. Siga as setas $n voltas ao circuito e termine na mesma caixa.',
       one:
-          'Comece a gravar na caixa verde e vermelha. Siga as setas e termine na mesma caixa.',
+          'Comece a gravar na caixa de partida. Siga as setas e termine na mesma caixa.',
     );
     return '$_temp0';
   }
@@ -22955,7 +22955,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Comece a gravar na caixa verde e vermelha. Siga as setas até à marca de Meia-volta e volte à caixa.';
+      'Comece a gravar na caixa de partida. Siga as setas até à marca de Meia-volta e volte à caixa.';
 
   @override
   String parksMapCourseLabel(int n) {
@@ -47189,9 +47189,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       n,
       locale: localeName,
       other:
-          'Comece a gravar na caixa verde e vermelha. Siga as setas por $n voltas no circuito e termine na mesma caixa.',
+          'Comece a gravar na caixa de largada. Siga as setas por $n voltas no circuito e termine na mesma caixa.',
       one:
-          'Comece a gravar na caixa verde e vermelha. Siga as setas e termine na mesma caixa.',
+          'Comece a gravar na caixa de largada. Siga as setas e termine na mesma caixa.',
     );
     return '$_temp0';
   }
@@ -47211,7 +47211,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Comece a gravar na caixa verde e vermelha. Siga as setas até a marca de Retorno e volte para a caixa.';
+      'Comece a gravar na caixa de largada. Siga as setas até a marca de Retorno e volte para a caixa.';
 
   @override
   String parksMapCourseLabel(int n) {

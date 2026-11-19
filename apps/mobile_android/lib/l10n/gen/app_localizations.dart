@@ -35727,10 +35727,10 @@ abstract class AppLocalizations {
   /// **'{n, plural, =1 {Start recording in the green box. Follow the arrows to the red box.} other {Start recording in the green box. Follow the arrows round the loop {n} times and finish in the red box.}}'**
   String parksBoxesApart(int n);
 
-  /// As parksBoxesApart, for a course whose start and finish are one box drawn half green and half red: finish back in that box; with n over 1, after n laps of the loop.
+  /// As parksBoxesApart, for a course whose start and finish share one spot, drawn as one box in the start colour (the start box): finish back in that box; with n over 1, after n laps of the loop.
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, =1 {Start recording in the green-and-red box. Follow the arrows and finish back in it.} other {Start recording in the green-and-red box. Follow the arrows round the loop {n} times and finish back in it.}}'**
+  /// **'{n, plural, =1 {Start recording in the start box. Follow the arrows and finish back in it.} other {Start recording in the start box. Follow the arrows round the loop {n} times and finish back in it.}}'**
   String parksBoxesShared(int n);
 
   /// The main button in the start and finish block: opens the maps app with directions to the start.
@@ -35760,7 +35760,7 @@ abstract class AppLocalizations {
   /// The one instruction on an out-and-back course page: start recording in the start-and-finish box, follow the arrows to the Turn around mark on the map (parksTurnAround, named as it appears there), and come back to the box.
   ///
   /// In en, this message translates to:
-  /// **'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.'**
+  /// **'Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.'**
   String get parksBoxesOutAndBack;
 
   /// Screen-reader label of a park course map (#1352); n is its checkpoint count.

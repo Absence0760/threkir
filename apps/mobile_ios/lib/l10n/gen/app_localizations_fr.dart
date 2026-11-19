@@ -22970,9 +22970,9 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Lancez l\'enregistrement dans la zone verte et rouge. Suivez les flèches sur $n tours de la boucle et terminez dans cette même zone.',
+          'Lancez l\'enregistrement dans la zone de départ. Suivez les flèches sur $n tours de la boucle et terminez dans cette même zone.',
       one:
-          'Lancez l\'enregistrement dans la zone verte et rouge. Suivez les flèches et terminez dans cette même zone.',
+          'Lancez l\'enregistrement dans la zone de départ. Suivez les flèches et terminez dans cette même zone.',
     );
     return '$_temp0';
   }
@@ -22992,7 +22992,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Lancez l\'enregistrement dans la zone verte et rouge. Suivez les flèches jusqu\'au repère Demi-tour, puis revenez à la zone.';
+      'Lancez l\'enregistrement dans la zone de départ. Suivez les flèches jusqu\'au repère Demi-tour, puis revenez à la zone.';
 
   @override
   String parksMapCourseLabel(int n) {

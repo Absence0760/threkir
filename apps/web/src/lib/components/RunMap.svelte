@@ -322,13 +322,12 @@
 
 	/// A start or finish box's name tag: filled with the box's colour, so it
 	/// is the green or red box at the whole-course zoom, with its flag and
-	/// name. The name is text, never markup.
+	/// name. A box the start and finish share is one colour, the start's,
+	/// like the box. The name is text, never markup.
 	function boxMarkerElement(which: 'start' | 'finish' | 'both', name: string): HTMLDivElement {
-		const start = mapStartZoneColour(darkBasemap);
-		const finish = mapFinishZoneColour(darkBasemap);
 		return tagElement(
 			`gate-box-marker-${which}`,
-			which === 'start' ? start : which === 'finish' ? finish : `linear-gradient(90deg, ${start} 50%, ${finish} 50%)`,
+			which === 'finish' ? mapFinishZoneColour(darkBasemap) : mapStartZoneColour(darkBasemap),
 			mapBoxInk(darkBasemap),
 			gateFlagSvg(which, darkBasemap),
 			name,

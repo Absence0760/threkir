@@ -48,19 +48,19 @@ test('courseBoxGates: a segment missing either line draws no boxes', () => {
 	assert.equal(courseBoxGates({ ...segment, start_gate_lat: null }), null);
 });
 
-test('courseBoxInstruction: an out-and-back is one green-and-red box, by the turn when it has one', () => {
+test('courseBoxInstruction: an out-and-back is one start box, by the turn when it has one', () => {
 	const gates = courseBoxGates(segment)!;
 	assert.deepEqual(courseBoxInstruction(gates, false, null), { key: 'parks.boxesShared', params: { n: 1 } });
 	assert.deepEqual(courseBoxInstruction(gates, true, null), { key: 'parks.boxesOutAndBack' });
 	assert.deepEqual(courseBoxInstruction(gates, false, 2), { key: 'parks.boxesShared', params: { n: 2 } });
 });
 
-test('courseBoxInstruction: lines apart, or a loop at one spot, are a green box and a red box, laps counted', () => {
+test('courseBoxInstruction: lines apart are a green box and a red box; a loop at one spot is one box; laps counted', () => {
 	const apart = courseBoxGates({ ...segment, end_gate_lat: north(37.3, 2000), end_gate_bearing_deg: 100 })!;
 	assert.deepEqual(courseBoxInstruction(apart, false, 1), { key: 'parks.boxesApart', params: { n: 1 } });
 	const loop = courseBoxGates({ ...segment, end_gate_bearing_deg: 10 })!;
-	assert.deepEqual(courseBoxInstruction(loop, false, null), { key: 'parks.boxesApart', params: { n: 1 } });
-	assert.deepEqual(courseBoxInstruction(loop, false, 2), { key: 'parks.boxesApart', params: { n: 2 } });
+	assert.deepEqual(courseBoxInstruction(loop, false, null), { key: 'parks.boxesShared', params: { n: 1 } });
+	assert.deepEqual(courseBoxInstruction(loop, false, 2), { key: 'parks.boxesShared', params: { n: 2 } });
 });
 
 test('badgeAtOverview: a short lap shows every badge, a long one every 5th', () => {
@@ -75,7 +75,7 @@ test('badgeAtOverview: a short lap shows every badge, a long one every 5th', () 
 test('courseKeyKinds: the key names only what the map draws', () => {
 	const base = { boxes: 'apart' as const, finishesAtStart: false, checkpointMarkers: 0, turnaround: false, badgesShown: false };
 	assert.deepEqual(courseKeyKinds(base), ['startBox', 'finishBox', 'direction']);
-	assert.deepEqual(courseKeyKinds({ ...base, boxes: 'merged', checkpointMarkers: 3, turnaround: true, badgesShown: true }), [
+	assert.deepEqual(courseKeyKinds({ ...base, boxes: 'shared', checkpointMarkers: 3, turnaround: true, badgesShown: true }), [
 		'startFinishBox',
 		'checkpoint',
 		'turnaround',

@@ -22677,9 +22677,9 @@ class AppLocalizationsEn extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Start recording in the green-and-red box. Follow the arrows round the loop $n times and finish back in it.',
+          'Start recording in the start box. Follow the arrows round the loop $n times and finish back in it.',
       one:
-          'Start recording in the green-and-red box. Follow the arrows and finish back in it.',
+          'Start recording in the start box. Follow the arrows and finish back in it.',
     );
     return '$_temp0';
   }
@@ -22698,7 +22698,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.';
+      'Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.';
 
   @override
   String parksMapCourseLabel(int n) {

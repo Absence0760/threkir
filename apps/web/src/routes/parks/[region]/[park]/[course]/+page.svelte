@@ -170,11 +170,12 @@
 	);
 
 	// The stored start and finish lines, drawn as a green start box and a red
-	// finish box with one plain sentence; null when the segment lacks either,
+	// finish box (one start box when they share a spot) with one plain sentence; null when the segment lacks either,
 	// and the page shows its pins as before.
 	const boxGates = $derived(course ? courseBoxGates(course.segment) : null);
-	// An out-and-back's boxes are one box; a loop's and a point-to-point's two.
-	const boxesMerged = $derived(boxGates ? gateBoxParts(boxGates.start, boxGates.finish).layout === 'merged' : false);
+	// A start and finish at one spot (a loop, an out-and-back) are one box; a
+	// point-to-point's two.
+	const boxesShared = $derived(boxGates ? gateBoxParts(boxGates.start, boxGates.finish).layout === 'shared' : false);
 	// What the map marks for the checkpoints: an out-and-back's last one is the
 	// turn, and checkpoints close enough to hide each other share a marker.
 	const marks = $derived(
@@ -337,7 +338,7 @@
 	};
 	const legendItems = $derived<ParkMapLegendItem[]>(
 		courseKeyKinds({
-			boxes: !boxGates ? 'none' : boxesMerged ? 'merged' : 'apart',
+			boxes: !boxGates ? 'none' : boxesShared ? 'shared' : 'apart',
 			finishesAtStart: finishesAtStart(mapTrack),
 			checkpointMarkers: checkpointPins.length,
 			turnaround: turnaround !== null,

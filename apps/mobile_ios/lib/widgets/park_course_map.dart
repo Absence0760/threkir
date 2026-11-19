@@ -104,10 +104,10 @@ double _lineMetres(List<LatLng> pts) {
 
 /// The one sentence a course page gives a runner (decisions § 2582): start
 /// recording in the green box and follow the arrows to the red one (round the
-/// loop [laps] times on a lapped course). Where both boxes land on one spot
-/// behind the start line, an out-and-back, it is one green-and-red box, left
-/// and come back to, by way of the Turn around mark when the course marks
-/// one. Twin of web's `courseBoxInstruction`.
+/// loop [laps] times on a lapped course). Where the start and finish share a
+/// spot, a loop or an out-and-back, it is one start box, left and come back
+/// to, by way of the Turn around mark when the course marks one. Twin of
+/// web's `courseBoxInstruction`.
 String courseBoxInstruction(
   AppLocalizations l10n,
   ({Gate start, Gate finish}) g, {
@@ -115,7 +115,7 @@ String courseBoxInstruction(
   int? laps,
 }) {
   final n = laps != null && laps > 0 ? laps : 1;
-  if (gateBoxParts(g.start, g.finish).layout == GateBoxLayout.merged) {
+  if (gateBoxParts(g.start, g.finish).layout == GateBoxLayout.shared) {
     return hasTurn ? l10n.parksBoxesOutAndBack : l10n.parksBoxesShared(n);
   }
   return l10n.parksBoxesApart(n);
@@ -124,9 +124,10 @@ String courseBoxInstruction(
 LatLng _gp(GatePoint p) => LatLng(p.lat, p.lng);
 
 /// The start and finish boxes over a course map (decisions § 2582), from
-/// [gateBoxParts]: a translucent fill with a full-strength outline, the edge
-/// on the course line (solid for the start, chequered for the finish), and a
-/// flag with the box's name at a fixed size, so the boxes read first at the
+/// [gateBoxParts]: a translucent fill with a full-strength outline, the
+/// timing line (solid for the start, chequered for the finish and for the one
+/// start-coloured box a start and finish at one spot share), and a flag with
+/// the box's name at a fixed size, so the boxes read first at the
 /// whole-course zoom. Twin of web's `addCourseGateBoxLayers` and its markers.
 List<Widget> courseGateBoxLayers({
   required Gate start,
@@ -140,16 +141,16 @@ List<Widget> courseGateBoxLayers({
   final boxes = gateBoxParts(start, finish);
 
   final casing = mapOverlayOutline(darkBasemap: darkBasemap);
-  Color colourOf(GateWhich w) => w == GateWhich.start
-      ? mapStartZoneColour(darkBasemap: darkBasemap)
-      : mapFinishZoneColour(darkBasemap: darkBasemap);
+  Color colourOf(GateWhich? w) => w == GateWhich.finish
+      ? mapFinishZoneColour(darkBasemap: darkBasemap)
+      : mapStartZoneColour(darkBasemap: darkBasemap);
   final edges = <Polyline>[];
   for (final p in boxes.parts) {
     final pts = [_gp(p.line.$1), _gp(p.line.$2)];
     edges
       ..add(Polyline(points: pts, strokeWidth: 8, color: casing))
       ..add(Polyline(points: pts, strokeWidth: 5, color: colourOf(p.which)));
-    if (p.which == GateWhich.finish) {
+    if (p.which != GateWhich.start) {
       // The chequered finish: light squares over the edge's own colour.
       edges.add(Polyline(
         points: pts,
@@ -208,7 +209,8 @@ List<Widget> courseGateBoxLayers({
 
 /// A box's name tag, filled with the box's colour so it is the green or red
 /// box at the whole-course zoom: a flag for the start, a chequered flag for
-/// the finish, both (and both colours) for a box they share. The map's key
+/// the finish, both flags (in the start colour, like the box) for a box they
+/// share. The map's key
 /// and the page's sentence name the boxes for a screen reader, so the tag is
 /// excluded. Twin of web's box tags in `RunMap`.
 class _BoxMarker extends StatelessWidget {
@@ -224,8 +226,6 @@ class _BoxMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final start = mapStartZoneColour(darkBasemap: darkBasemap);
-    final finish = mapFinishZoneColour(darkBasemap: darkBasemap);
     final ink = mapBoxInk(darkBasemap: darkBasemap);
     // The tag has a fixed box on the map, so its text scales only so far.
     return MediaQuery.withClampedTextScaling(
@@ -234,17 +234,9 @@ class _BoxMarker extends StatelessWidget {
         child: DecoratedBox(
           // A pill on the map, not a card: a stadium shape.
           decoration: ShapeDecoration(
-            color: switch (which) {
-              GateWhich.start => start,
-              GateWhich.finish => finish,
-              null => null,
-            },
-            gradient: which == null
-                ? LinearGradient(
-                    colors: [start, start, finish, finish],
-                    stops: const [0, 0.5, 0.5, 1],
-                  )
-                : null,
+            color: which == GateWhich.finish
+                ? mapFinishZoneColour(darkBasemap: darkBasemap)
+                : mapStartZoneColour(darkBasemap: darkBasemap),
             shape: StadiumBorder(
               side: BorderSide(
                 width: 2,
@@ -627,21 +619,21 @@ class ParkCourseMapLegend extends StatelessWidget {
         children: [
           // The boxes replace the pins on the map, so the key names the boxes.
           if (zones case final z?)
-            if (gateBoxParts(z.start, z.finish).layout == GateBoxLayout.merged)
+            if (gateBoxParts(z.start, z.finish).layout == GateBoxLayout.shared)
               item(
                 const Key('park-course-legend-start-finish-box'),
-                _BoxSwatch(darkBasemap: darkBasemap, start: true, finish: true),
+                _BoxSwatch(darkBasemap: darkBasemap, which: null),
                 l10n.parksLegendStartFinish,
               )
             else ...[
               item(
                 const Key('park-course-legend-start-box'),
-                _BoxSwatch(darkBasemap: darkBasemap, start: true),
+                _BoxSwatch(darkBasemap: darkBasemap, which: GateWhich.start),
                 l10n.parksLegendStart,
               ),
               item(
                 const Key('park-course-legend-finish-box'),
-                _BoxSwatch(darkBasemap: darkBasemap, finish: true),
+                _BoxSwatch(darkBasemap: darkBasemap, which: GateWhich.finish),
                 l10n.parksLegendFinish,
               ),
             ]
@@ -709,91 +701,91 @@ class ParkCourseMapLegend extends StatelessWidget {
 }
 
 /// A box as the map draws it, for the key: the fill, its outline and its
-/// cased edge on the course line, solid for the start, chequered for the
-/// finish, split in two for a box the start and finish share.
+/// cased timing line, solid for the start, chequered for the finish, and for
+/// a box the start and finish share ([which] null) the start colour with a
+/// chequered line across its middle.
 class _BoxSwatch extends StatelessWidget {
   final bool darkBasemap;
-  final bool start;
-  final bool finish;
-  const _BoxSwatch({
-    required this.darkBasemap,
-    this.start = false,
-    this.finish = false,
-  });
+  final GateWhich? which;
+  const _BoxSwatch({required this.darkBasemap, required this.which});
 
   @override
   Widget build(BuildContext context) => CustomPaint(
     painter: _BoxSwatchPainter(
-      start: start ? mapStartZoneColour(darkBasemap: darkBasemap) : null,
-      finish: finish ? mapFinishZoneColour(darkBasemap: darkBasemap) : null,
+      colour: which == GateWhich.finish
+          ? mapFinishZoneColour(darkBasemap: darkBasemap)
+          : mapStartZoneColour(darkBasemap: darkBasemap),
+      chequered: which != GateWhich.start,
+      centred: which == null,
       casing: mapOverlayOutline(darkBasemap: darkBasemap),
     ),
   );
 }
 
 class _BoxSwatchPainter extends CustomPainter {
-  final Color? start;
-  final Color? finish;
+  final Color colour;
+  final bool chequered;
+  final bool centred;
   final Color casing;
-  const _BoxSwatchPainter({this.start, this.finish, required this.casing});
+  const _BoxSwatchPainter({
+    required this.colour,
+    required this.chequered,
+    required this.centred,
+    required this.casing,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final halves = [
-      if (start != null) (start!, false),
-      if (finish != null) (finish!, true),
-    ];
-    final w = size.width / halves.length;
     final top = size.height * 0.2;
     final bottom = size.height * 0.8;
-    final edge = top;
-    for (var i = 0; i < halves.length; i++) {
-      final (colour, chequered) = halves[i];
-      final band = Rect.fromLTRB(i * w, top, (i + 1) * w, bottom);
-      canvas
-        ..drawRect(
-          band,
-          Paint()..color = colour.withValues(alpha: mapZoneFillOpacity),
-        )
-        ..drawRect(
-          band,
-          Paint()
-            ..color = colour
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1,
-        )
-        ..drawLine(
-          Offset(band.left, edge),
-          Offset(band.right, edge),
-          Paint()
-            ..color = casing
-            ..strokeWidth = 4,
-        )
-        ..drawLine(
-          Offset(band.left, edge),
-          Offset(band.right, edge),
-          Paint()
-            ..color = colour
-            ..strokeWidth = 2.5,
+    final edge = centred ? (top + bottom) / 2 : top;
+    final band = Rect.fromLTRB(0, top, size.width, bottom);
+    canvas
+      ..drawRect(
+        band,
+        Paint()..color = colour.withValues(alpha: mapZoneFillOpacity),
+      )
+      ..drawRect(
+        band,
+        Paint()
+          ..color = colour
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      )
+      ..drawLine(
+        Offset(band.left, edge),
+        Offset(band.right, edge),
+        Paint()
+          ..color = casing
+          ..strokeWidth = 4,
+      )
+      ..drawLine(
+        Offset(band.left, edge),
+        Offset(band.right, edge),
+        Paint()
+          ..color = colour
+          ..strokeWidth = 2.5,
+      );
+    if (chequered) {
+      final white = Paint()
+        ..color = Colors.white
+        ..strokeWidth = 2.5;
+      for (var x = band.left + 2.5; x < band.right; x += 5) {
+        canvas.drawLine(
+          Offset(x, edge),
+          Offset((x + 2.5).clamp(0, band.right), edge),
+          white,
         );
-      if (chequered) {
-        final white = Paint()
-          ..color = Colors.white
-          ..strokeWidth = 2.5;
-        for (var x = band.left + 2.5; x < band.right; x += 5) {
-          canvas.drawLine(
-            Offset(x, edge),
-            Offset((x + 2.5).clamp(0, band.right), edge),
-            white,
-          );
-        }
       }
     }
   }
 
   @override
   bool shouldRepaint(_BoxSwatchPainter old) =>
-      old.start != start || old.finish != finish || old.casing != casing;
+      old.colour != colour ||
+      old.chequered != chequered ||
+      old.centred != centred ||
+      old.casing != casing;
 }
 
 /// Every course line in one park over a basemap, each in its own colour

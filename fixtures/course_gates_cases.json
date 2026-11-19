@@ -23,9 +23,9 @@
   "warnings": "{which, gate, route, selfCross, mode, expected}: gate and route are nullable; expected is the warning codes in order.",
   "preflight": "{mode, courses, expected}: each course {id, startGate, finishGate, hasFinishPoint, selfCross, route}, gates nullable and carrying a source; expected is the issues in order, each {courseId, code, severity, which} with which null except on gate_far_from_route; blocks is preflightBlocks of the result.",
   "pointAlong": "{gate, f, point}: the point at f of the half-width along the line, -1 its left end, 1 its right end.",
-  "boxCorners": "{gate, depthM, side, from, to, corners}: the box on `side` (behind or ahead) of the line, from `from` to `to` along it; corners are the line edge's left then right end, then the far right and far left corners.",
+  "boxCorners": "{gate, depthM, side, from, to, corners}: the box on `side` (behind, ahead or centred) of the line, from `from` to `to` along it; corners are the near edge's left then right end, then the far right and far left corners. The near edge is on the line for behind and ahead; a centred box runs depthM/2 behind to depthM/2 ahead, its near edge the one behind.",
   "sharedSpot": "{start, finish, shared}: whether the two lines sit at one spot (centres within sharedSpotM, facing within sharedSpotDeg of the same way or of opposite ways).",
-  "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart, adjacent or merged; each part is {which, box, line: [a, b]}, start then finish; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side."
+  "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart or shared; each part is {which, box, line: [a, b]}: which is start, finish or both, start then finish; a shared spot is one part, both, centred on the start line; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side."
  },
  "degreeTolerance": 1e-09,
  "bearingTolerance": 1e-06,
@@ -1159,6 +1159,37 @@
      "lng": -8.99320363724538e-05
     }
    ]
+  },
+  {
+   "note": "the same line, centred: the edge 5 m south, the box reaching 5 m north, the line across its middle",
+   "gate": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 10
+   },
+   "depthM": 10,
+   "side": "centred",
+   "from": -1,
+   "to": 1,
+   "corners": [
+    {
+     "lat": -4.49660181862269e-05,
+     "lng": -8.99320363724538e-05
+    },
+    {
+     "lat": -4.49660181862269e-05,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": 4.49660181862269e-05,
+     "lng": 8.99320363724538e-05
+    },
+    {
+     "lat": 4.49660181862269e-05,
+     "lng": -8.99320363724538e-05
+    }
+   ]
   }
  ],
  "sharedSpot": [
@@ -1358,7 +1389,7 @@
    ]
   },
   {
-   "note": "an out-and-back: the finish faces south, so the box ahead of it is the box behind the start; one box, the start's west half and the finish's own left (east) half, one name beyond its far (south) side",
+   "note": "an out-and-back, the finish facing back at one spot: one box in the start colour, centred on the start line (5 m south to 5 m north), the name beyond its far (south) side",
    "start": {
     "lat": 0.0,
     "lng": 0.0,
@@ -1372,25 +1403,25 @@
     "halfWidthM": 15
    },
    "depthM": 10,
-   "layout": "merged",
+   "layout": "shared",
    "parts": [
     {
-     "which": "start",
+     "which": "both",
      "box": [
       {
-       "lat": 0.0,
+       "lat": -4.49660181862269e-05,
        "lng": -0.0001348980545586807
       },
       {
-       "lat": 0.0,
-       "lng": 0.0
+       "lat": -4.49660181862269e-05,
+       "lng": 0.0001348980545586807
       },
       {
-       "lat": -8.99320363724538e-05,
-       "lng": 0.0
+       "lat": 4.49660181862269e-05,
+       "lng": 0.0001348980545586807
       },
       {
-       "lat": -8.99320363724538e-05,
+       "lat": 4.49660181862269e-05,
        "lng": -0.0001348980545586807
       }
      ],
@@ -1401,38 +1432,7 @@
       },
       {
        "lat": 0.0,
-       "lng": 0.0
-      }
-     ]
-    },
-    {
-     "which": "finish",
-     "box": [
-      {
-       "lat": 0.0,
        "lng": 0.0001348980545586807
-      },
-      {
-       "lat": 0.0,
-       "lng": 0.0
-      },
-      {
-       "lat": -8.99320363724538e-05,
-       "lng": 0.0
-      },
-      {
-       "lat": -8.99320363724538e-05,
-       "lng": 0.0001348980545586807
-      }
-     ],
-     "line": [
-      {
-       "lat": 0.0,
-       "lng": 0.0001348980545586807
-      },
-      {
-       "lat": 0.0,
-       "lng": 0.0
       }
      ]
     }
@@ -1441,14 +1441,14 @@
     {
      "which": "both",
      "at": {
-      "lat": -8.99320363724538e-05,
-      "lng": 0.0
+      "lat": -4.49660181862269e-05,
+      "lng": 5.506749024216445e-21
      }
     }
    ]
   },
   {
-   "note": "a loop, both lines facing north at one spot: the start box behind, the finish box ahead, edge to edge, one name beyond the start box's far side",
+   "note": "a loop, both lines facing north at one spot: one box in the start colour, centred on the start line, the name beyond its far (south) side",
    "start": {
     "lat": 0.0,
     "lng": 0.0,
@@ -1462,56 +1462,25 @@
     "halfWidthM": 15
    },
    "depthM": 10,
-   "layout": "adjacent",
+   "layout": "shared",
    "parts": [
     {
-     "which": "start",
+     "which": "both",
      "box": [
       {
-       "lat": 0.0,
+       "lat": -4.49660181862269e-05,
        "lng": -0.0001348980545586807
       },
       {
-       "lat": 0.0,
+       "lat": -4.49660181862269e-05,
        "lng": 0.0001348980545586807
       },
       {
-       "lat": -8.99320363724538e-05,
+       "lat": 4.49660181862269e-05,
        "lng": 0.0001348980545586807
       },
       {
-       "lat": -8.99320363724538e-05,
-       "lng": -0.0001348980545586807
-      }
-     ],
-     "line": [
-      {
-       "lat": 0.0,
-       "lng": -0.0001348980545586807
-      },
-      {
-       "lat": 0.0,
-       "lng": 0.0001348980545586807
-      }
-     ]
-    },
-    {
-     "which": "finish",
-     "box": [
-      {
-       "lat": 0.0,
-       "lng": -0.0001348980545586807
-      },
-      {
-       "lat": 0.0,
-       "lng": 0.0001348980545586807
-      },
-      {
-       "lat": 8.99320363724538e-05,
-       "lng": 0.0001348980545586807
-      },
-      {
-       "lat": 8.99320363724538e-05,
+       "lat": 4.49660181862269e-05,
        "lng": -0.0001348980545586807
       }
      ],
@@ -1531,8 +1500,8 @@
     {
      "which": "both",
      "at": {
-      "lat": -8.99320363724538e-05,
-      "lng": 0.0
+      "lat": -4.49660181862269e-05,
+      "lng": 5.506749024216445e-21
      }
     }
    ]

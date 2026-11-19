@@ -22906,9 +22906,9 @@ class AppLocalizationsEs extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Empieza a grabar en el recuadro verde y rojo. Sigue las flechas $n vueltas al circuito y termina en el mismo recuadro.',
+          'Empieza a grabar en el recuadro de salida. Sigue las flechas $n vueltas al circuito y termina en el mismo recuadro.',
       one:
-          'Empieza a grabar en el recuadro verde y rojo. Sigue las flechas y termina en el mismo recuadro.',
+          'Empieza a grabar en el recuadro de salida. Sigue las flechas y termina en el mismo recuadro.',
     );
     return '$_temp0';
   }
@@ -22928,7 +22928,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Empieza a grabar en el recuadro verde y rojo. Sigue las flechas hasta la marca de Media vuelta y vuelve al recuadro.';
+      'Empieza a grabar en el recuadro de salida. Sigue las flechas hasta la marca de Media vuelta y vuelve al recuadro.';
 
   @override
   String parksMapCourseLabel(int n) {

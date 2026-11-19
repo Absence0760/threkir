@@ -91,9 +91,9 @@ export function courseBoxGates(segment: SegmentGateColumns): { start: Gate; fini
 /**
  * The one sentence a course page gives a runner (decisions § 2582): start
  * recording in the green box and follow the arrows to the red one (round the
- * loop n times on a lapped course). Where both boxes land on one spot behind
- * the start line, an out-and-back, it is one green-and-red box, left and come
- * back to, by way of the Turn around mark when the course marks one.
+ * loop n times on a lapped course). Where the start and finish share a spot,
+ * a loop or an out-and-back, it is one start box, left and come back to, by
+ * way of the Turn around mark when the course marks one.
  */
 export function courseBoxInstruction(
 	gates: { start: Gate; finish: Gate },
@@ -101,7 +101,7 @@ export function courseBoxInstruction(
 	laps: number | null | undefined,
 ): { key: MessageKey; params?: { n: number } } {
 	const n = laps != null && laps > 0 ? laps : 1;
-	if (gateBoxParts(gates.start, gates.finish).layout === 'merged') {
+	if (gateBoxParts(gates.start, gates.finish).layout === 'shared') {
 		return hasTurn ? { key: 'parks.boxesOutAndBack' } : { key: 'parks.boxesShared', params: { n } };
 	}
 	return { key: 'parks.boxesApart', params: { n } };
@@ -143,14 +143,14 @@ export type CourseKeyKind =
  * a line.
  */
 export function courseKeyKinds(input: {
-	boxes: 'none' | 'apart' | 'merged';
+	boxes: 'none' | 'apart' | 'shared';
 	finishesAtStart: boolean;
 	checkpointMarkers: number;
 	turnaround: boolean;
 	badgesShown: boolean;
 }): CourseKeyKind[] {
 	const kinds: CourseKeyKind[] =
-		input.boxes === 'merged'
+		input.boxes === 'shared'
 			? ['startFinishBox']
 			: input.boxes === 'apart'
 				? ['startBox', 'finishBox']

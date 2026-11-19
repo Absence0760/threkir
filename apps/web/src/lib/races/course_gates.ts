@@ -146,23 +146,29 @@ export function gatePointAlong(gate: Gate, f: number): GatePoint {
 	return fromPlane(gate, f * gate.halfWidthM * Math.cos(b), -f * gate.halfWidthM * Math.sin(b));
 }
 
-/** Which side of its line a box sits: behind it (where a runner waits to start) or ahead (where one stops). */
-export type GateBoxSide = 'behind' | 'ahead';
+/**
+ * Which side of its line a box sits: behind it (where a runner waits to
+ * start), ahead (where one stops), or centred on it (a start and finish at
+ * one spot, half behind and half ahead).
+ */
+export type GateBoxSide = 'behind' | 'ahead' | 'centred';
 
 /**
  * The box on one side of a line, `depthM` deep, from `from` to `to` along the
- * line (as gatePointAlong). Corners: the timing edge first, its left end then
- * its right (left of travel), then the far right and far left corners.
- * Leaving a `behind` box through its edge, or entering an `ahead` one, is
- * crossing the line.
+ * line (as gatePointAlong). Corners: the near edge first, its left end then
+ * its right (left of travel), then the far right and far left corners. For
+ * `behind` and `ahead` the near edge is on the line, and leaving a `behind`
+ * box through it, or entering an `ahead` one, is crossing the line. A
+ * `centred` box runs from `depthM / 2` behind the line to `depthM / 2` ahead,
+ * its near edge the one behind, so the line crosses its middle.
  */
 export function gateBox(gate: Gate, depthM: number, side: GateBoxSide, from = -1, to = 1): GatePoint[] {
 	const b = rad(gate.bearingDeg);
 	const ax = gate.halfWidthM * Math.cos(b);
 	const ay = -gate.halfWidthM * Math.sin(b);
-	const d = side === 'ahead' ? depthM : -depthM;
+	const [near, far] = side === 'ahead' ? [0, depthM] : side === 'behind' ? [0, -depthM] : [-depthM / 2, depthM / 2];
 	const at = (f: number, k: number) => fromPlane(gate, f * ax + k * Math.sin(b), f * ay + k * Math.cos(b));
-	return [at(from, 0), at(to, 0), at(to, d), at(from, d)];
+	return [at(from, near), at(to, near), at(to, far), at(from, far)];
 }
 
 /** Whether a start line and a finish line sit at one spot: an out-and-back's or a loop's. */
@@ -173,26 +179,26 @@ export function gatesShareSpot(start: Gate, finish: Gate): boolean {
 	return d <= COURSE_GATE_SHARED_SPOT_DEG || d >= 180 - COURSE_GATE_SHARED_SPOT_DEG;
 }
 
-/** One line's box on a course map. */
+/** One box on a course map. */
 export interface GateBoxPart {
-	which: GateWhich;
-	/** As gateBox gives it: behind the start line, ahead of the finish line. */
+	/** The line it belongs to, or 'both' for the one box a start and finish at one spot share. */
+	which: GateWhich | 'both';
+	/** As gateBox gives it: behind the start line, ahead of the finish line, centred on a shared one. */
 	box: GatePoint[];
-	/** The box's edge on the stored line: the stretch of the line it covers. */
+	/** The timing line across the box: the stretch of the stored line it covers. */
 	line: [GatePoint, GatePoint];
 }
 
 /**
  * How a course's start and finish boxes lie:
- * - `apart`: two boxes in two places.
- * - `adjacent`: one spot, both lines facing the same way (a loop): the start
- *   box behind the line and the finish box ahead of it, edge to edge.
- * - `merged`: one spot, the lines facing opposite ways (an out-and-back):
- *   both boxes land behind the start line, so they are one box, split along
- *   the line, the start half left of the start's travel; each half drawn on
- *   its own stored line.
+ * - `apart`: two boxes in two places, the start box behind its line and the
+ *   finish box ahead of its own.
+ * - `shared`: the lines sit at one spot (a loop, or an out-and-back), so it
+ *   is one box in one colour, centred on the start line, which crosses its
+ *   middle. Never two colours at one spot: a runner would read half of it as
+ *   the start and half as the finish (decisions § 2582).
  */
-export type GateBoxLayout = 'apart' | 'adjacent' | 'merged';
+export type GateBoxLayout = 'apart' | 'shared';
 
 /**
  * Where a box's flag and name go: the middle of the box's far side, so at a
@@ -210,40 +216,32 @@ export function gateBoxParts(
 	finish: Gate | null,
 	depthM: number = COURSE_GATE_BOX_DEPTH_M,
 ): { layout: GateBoxLayout; parts: GateBoxPart[]; markers: GateBoxMarker[] } {
-	const part = (which: GateWhich, gate: Gate, from: number, to: number): GateBoxPart => ({
+	const part = (which: GateWhich | 'both', gate: Gate): GateBoxPart => ({
 		which,
-		box: gateBox(gate, depthM, which === 'start' ? 'behind' : 'ahead', from, to),
-		line: [gatePointAlong(gate, from), gatePointAlong(gate, to)],
+		box: gateBox(gate, depthM, which === 'both' ? 'centred' : which === 'start' ? 'behind' : 'ahead'),
+		line: gateLineEnds(gate),
 	});
-	const marker = (which: GateWhich | 'both', gate: Gate, away: number): GateBoxMarker => ({
+	const marker = (which: GateWhich | 'both', gate: Gate, away: number, distM: number): GateBoxMarker => ({
 		which,
-		at: offsetPoint(gate, away, depthM),
+		at: offsetPoint(gate, away, distM),
 	});
 	const back = (g: Gate) => g.bearingDeg + 180;
 	if (start && finish && gatesShareSpot(start, finish)) {
-		if (bearingDelta(start.bearingDeg, finish.bearingDeg) > COURSE_GATE_SHARED_SPOT_DEG) {
-			// Facing back, the finish's own left half is the start's right half.
-			return {
-				layout: 'merged',
-				parts: [part('start', start, -1, 0), part('finish', finish, -1, 0)],
-				markers: [marker('both', start, back(start))],
-			};
-		}
 		return {
-			layout: 'adjacent',
-			parts: [part('start', start, -1, 1), part('finish', finish, -1, 1)],
-			markers: [marker('both', start, back(start))],
+			layout: 'shared',
+			parts: [part('both', start)],
+			markers: [marker('both', start, back(start), depthM / 2)],
 		};
 	}
 	const parts: GateBoxPart[] = [];
 	const markers: GateBoxMarker[] = [];
 	if (start) {
-		parts.push(part('start', start, -1, 1));
-		markers.push(marker('start', start, back(start)));
+		parts.push(part('start', start));
+		markers.push(marker('start', start, back(start), depthM));
 	}
 	if (finish) {
-		parts.push(part('finish', finish, -1, 1));
-		markers.push(marker('finish', finish, finish.bearingDeg));
+		parts.push(part('finish', finish));
+		markers.push(marker('finish', finish, finish.bearingDeg, depthM));
 	}
 	return { layout: 'apart', parts, markers };
 }

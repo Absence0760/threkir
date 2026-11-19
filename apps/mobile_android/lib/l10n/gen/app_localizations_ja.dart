@@ -21329,8 +21329,8 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '緑と赤のボックスで記録を開始し、矢印に沿って周回コースを$n周走り、同じボックスでフィニッシュします。',
-      one: '緑と赤のボックスで記録を開始し、矢印に沿って走って、同じボックスでフィニッシュします。',
+      other: 'スタートボックスで記録を開始し、矢印に沿って周回コースを$n周走り、同じボックスでフィニッシュします。',
+      one: 'スタートボックスで記録を開始し、矢印に沿って走って、同じボックスでフィニッシュします。',
     );
     return '$_temp0';
   }
@@ -21349,7 +21349,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      '緑と赤のボックスで記録を開始し、矢印に沿って「折り返し」の印まで走り、ボックスに戻ります。';
+      'スタートボックスで記録を開始し、矢印に沿って「折り返し」の印まで走り、ボックスに戻ります。';
 
   @override
   String parksMapCourseLabel(int n) {

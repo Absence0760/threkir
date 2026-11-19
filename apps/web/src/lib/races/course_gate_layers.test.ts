@@ -74,14 +74,20 @@ test('boxes apart: a box and its edge each, the start box behind its line', () =
 	assert.ok(Math.abs(fin[2][1] - 110 * M) < 1e-12);
 });
 
-test('an out-and-back is one box: two halves behind the start line, side by side', () => {
-	const fc = courseGateBoxGeoJSON(north, { ...north, bearingDeg: 180 });
-	assert.deepEqual(kinds(fc), ['start:area', 'finish:area', 'start:edge', 'finish:edge']);
-	const xs = (i: number) => (fc.features[i].geometry as { coordinates: number[][][] }).coordinates[0].map((c) => c[0]);
-	const ys = (i: number) => (fc.features[i].geometry as { coordinates: number[][][] }).coordinates[0].map((c) => c[1]);
-	assert.ok(Math.max(...xs(0)) <= 1e-12 && Math.min(...xs(1)) >= -1e-12);
-	for (const i of [0, 1]) assert.ok(Math.max(...ys(i)) <= 1e-12, 'both halves sit south of the line');
-});
+for (const [shape, finish] of [
+	['an out-and-back', { ...north, bearingDeg: 180 }],
+	['a loop', north],
+] as const) {
+	test(`${shape} is one box in one colour, centred on the start line, its line chequered`, () => {
+		const fc = courseGateBoxGeoJSON(north, finish);
+		assert.deepEqual(kinds(fc), ['both:area', 'both:edge']);
+		const ys = (fc.features[0].geometry as { coordinates: number[][][] }).coordinates[0].map((c) => c[1]);
+		assert.ok(Math.abs(Math.min(...ys) + 5 * M) < 1e-12, '5 m behind the line');
+		assert.ok(Math.abs(Math.max(...ys) - 5 * M) < 1e-12, '5 m ahead of it');
+		const edge = (fc.features[1].geometry as { coordinates: number[][] }).coordinates;
+		assert.ok(edge.every(([, lat]) => Math.abs(lat) < 1e-12), 'the timing line crosses the middle');
+	});
+}
 
 test('no lines draw no box', () => {
 	assert.equal(courseGateBoxGeoJSON(null, null).features.length, 0);

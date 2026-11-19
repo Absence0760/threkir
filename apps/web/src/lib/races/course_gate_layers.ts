@@ -149,13 +149,14 @@ export function addCourseGateLayers(
 export type GateBoxFeatureKind = 'area' | 'edge';
 
 export interface GateBoxFeatureProps {
-	which: GateWhich;
+	which: GateWhich | 'both';
 	kind: GateBoxFeatureKind;
 }
 
 /**
  * A course's start and finish boxes (decisions § 2582), from gateBoxParts:
- * each box as a Polygon and its edge on the stored line as a LineString.
+ * each box as a Polygon and its timing line as a LineString (the box's edge,
+ * or across the middle of the one box a start and finish at one spot share).
  * The flags and names go on as DOM markers, so they keep their size at any
  * zoom (gateFlagSvg).
  */
@@ -185,9 +186,11 @@ export function courseGateBoxGeoJSON(
 
 /**
  * Add (or refresh) the boxes on a loaded map under `sourceId`: a translucent
- * fill, a full-strength outline, and the edge on the stored line, cased, solid
- * for the start and chequered for the finish, so the two never differ by hue
- * alone.
+ * fill, a full-strength outline, and the timing line, cased, solid for the
+ * start and chequered for the finish, so the two never differ by hue alone.
+ * The one box a start and finish share is the start colour with its line
+ * chequered: one colour, so no half of it reads as only the start or only the
+ * finish.
  */
 export function addCourseGateBoxLayers(
 	map: maplibregl.Map,
@@ -205,9 +208,9 @@ export function addCourseGateBoxLayers(
 	map.addSource(sourceId, { type: 'geojson', data });
 	const colour: maplibregl.ExpressionSpecification = [
 		'case',
-		['==', ['get', 'which'], 'start'],
-		mapStartZoneColour(darkBasemap),
+		['==', ['get', 'which'], 'finish'],
 		mapFinishZoneColour(darkBasemap),
+		mapStartZoneColour(darkBasemap),
 	];
 	const kindIs = (k: GateBoxFeatureKind): maplibregl.ExpressionSpecification => ['==', ['get', 'kind'], k];
 	map.addLayer({
@@ -245,7 +248,7 @@ export function addCourseGateBoxLayers(
 		id: `${sourceId}-chequer`,
 		type: 'line',
 		source: sourceId,
-		filter: ['all', kindIs('edge'), ['==', ['get', 'which'], 'finish']],
+		filter: ['all', kindIs('edge'), ['!=', ['get', 'which'], 'start']],
 		paint: { 'line-color': MAP_ARROW_OUTLINE, 'line-width': 5, 'line-dasharray': [1, 1] },
 	});
 }

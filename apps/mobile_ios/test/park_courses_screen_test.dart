@@ -16,6 +16,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/elevation_chart.dart';
+import '../lib/widgets/live_run_map.dart' show mapStartZoneColour;
 import '../lib/widgets/park_course_map.dart';
 import 'supabase_test_init.dart';
 import 'worst_case_layout.dart';
@@ -1372,9 +1373,11 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets(
-        'an out-and-back is one green-and-red box, flagged, with one sentence '
-        'and the coordinates folded away', (tester) async {
+    // A loop and an out-and-back alike: never a start half and a finish half.
+    for (final (shape, finishBearing) in [('out_and_back', 180.0), ('loop', 0.0)]) {
+      testWidgets(
+          'a $shape at one spot is one start box, flagged, with one sentence '
+          'and the coordinates folded away', (tester) async {
       tallView(tester);
       await tester.pumpWidget(
         _host(
@@ -1382,9 +1385,14 @@ void main() {
             api: _ParksApi(),
             listing: _park(id: 'p1', name: 'Pocahontas State Park'),
             course: _course(
-              shape: 'out_and_back',
+              shape: shape,
               startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
-              endGate: (lat: 37.0, lng: -77.0, bearing: 180, halfWidth: 15),
+              endGate: (
+                lat: 37.0,
+                lng: -77.0,
+                bearing: finishBearing,
+                halfWidth: 15,
+              ),
             ),
           ),
         ),
@@ -1392,8 +1400,15 @@ void main() {
       await _settle(tester);
       final boxes = tester.widget<PolygonLayer>(
           find.byKey(const ValueKey('park-course-boxes')));
-      expect(boxes.polygons, hasLength(2),
-          reason: 'the start half and the finish half of one box');
+      expect(boxes.polygons, hasLength(1));
+      expect(
+        boxes.polygons.single.borderColor,
+        isIn([
+          for (final dark in [false, true])
+            mapStartZoneColour(darkBasemap: dark),
+        ]),
+        reason: "one colour, the start's",
+      );
       expect(find.byKey(const ValueKey('park-course-box-both')), findsOneWidget);
       expect(find.byKey(const ValueKey('park-course-box-start')), findsNothing);
       // The boxes take the pins' place, on the map and in its key.
@@ -1410,7 +1425,7 @@ void main() {
         tester
             .widget<Text>(find.byKey(const Key('course-ends-instruction')))
             .data,
-        'Start recording in the green-and-red box. Follow the arrows and '
+        'Start recording in the start box. Follow the arrows and '
         'finish back in it.',
       );
       expect(find.byKey(const Key('course-ends-get-directions')), findsOneWidget);
@@ -1423,6 +1438,7 @@ void main() {
           findsOneWidget);
       await _unmount(tester);
     });
+    }
 
     testWidgets(
         'lines apart are a Start box and a Finish box, and the main button '
@@ -1522,7 +1538,7 @@ void main() {
         tester
             .widget<Text>(find.byKey(const Key('course-ends-instruction')))
             .data,
-        'Start recording in the green-and-red box. Follow the arrows to the '
+        'Start recording in the start box. Follow the arrows to the '
         'Turn around mark, then back to the box.',
       );
       await _unmount(tester);

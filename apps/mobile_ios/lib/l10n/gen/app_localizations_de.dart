@@ -22913,9 +22913,9 @@ class AppLocalizationsDe extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Starte die Aufzeichnung in der grün-roten Box. Folge den Pfeilen $n-mal um die Schleife und komm in derselben Box ins Ziel.',
+          'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen $n-mal um die Schleife und komm in derselben Box ins Ziel.',
       one:
-          'Starte die Aufzeichnung in der grün-roten Box. Folge den Pfeilen und komm in derselben Box ins Ziel.',
+          'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen und komm in derselben Box ins Ziel.',
     );
     return '$_temp0';
   }
@@ -22934,7 +22934,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksBoxesOutAndBack =>
-      'Starte die Aufzeichnung in der grün-roten Box. Folge den Pfeilen bis zur Wenden-Markierung und zurück zur Box.';
+      'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen bis zur Wenden-Markierung und zurück zur Box.';
 
   @override
   String parksMapCourseLabel(int n) {

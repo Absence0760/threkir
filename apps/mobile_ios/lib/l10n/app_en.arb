@@ -29254,9 +29254,9 @@
       }
     }
   },
-  "parksBoxesShared": "{n, plural, =1 {Start recording in the green-and-red box. Follow the arrows and finish back in it.} other {Start recording in the green-and-red box. Follow the arrows round the loop {n} times and finish back in it.}}",
+  "parksBoxesShared": "{n, plural, =1 {Start recording in the start box. Follow the arrows and finish back in it.} other {Start recording in the start box. Follow the arrows round the loop {n} times and finish back in it.}}",
   "@parksBoxesShared": {
-    "description": "As parksBoxesApart, for a course whose start and finish are one box drawn half green and half red: finish back in that box; with n over 1, after n laps of the loop.",
+    "description": "As parksBoxesApart, for a course whose start and finish share one spot, drawn as one box in the start colour (the start box): finish back in that box; with n over 1, after n laps of the loop.",
     "placeholders": {
       "n": {
         "type": "int"
@@ -29279,7 +29279,7 @@
   "@parksLegendTurnAround": {
     "description": "Map key item on an out-and-back course: the Turn around mark, the last checkpoint, which the run must reach (web parks.legendTurnAround)."
   },
-  "parksBoxesOutAndBack": "Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.",
+  "parksBoxesOutAndBack": "Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.",
   "@parksBoxesOutAndBack": {
     "description": "The one instruction on an out-and-back course page: start recording in the start-and-finish box, follow the arrows to the Turn around mark on the map (parksTurnAround, named as it appears there), and come back to the box."
   },

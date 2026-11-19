@@ -526,7 +526,7 @@
 {/snippet}
 
 <div class="races-page">
-	<RunSurfaceTabs active="races" />
+	<RunSurfaceTabs active="races" ownHeading />
 	<PageHeader title={m('races.pageTitle')} subtitle={m('races.pageSubtitle')} flush>
 		{#snippet help()}<HelpLink route="/races" />{/snippet}
 		{#if suggestionsToReview > 0}

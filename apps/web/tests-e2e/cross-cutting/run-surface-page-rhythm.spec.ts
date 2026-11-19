@@ -17,7 +17,9 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  * Measured as an equality across the five, not against pixel literals: the
  * gutter is a token that narrows at 40rem (app.css), so a literal would pin the
  * token's value rather than the thing that matters, which is that all five
- * agree. `/parks` left the strip for the Run any time section of `/races`
+ * agree. The strip's top is compared too: when only `/runs` put its title above
+ * the strip, the strip dropped a line on that one tab, so RunSurfaceTabs now
+ * renders the surface title itself on every tab. `/parks` left the strip for the Run any time section of `/races`
  * (issue #1352) but keeps its title in the size comparison below.
  */
 
@@ -36,7 +38,7 @@ async function stripRect(page: Page, route: string) {
 	await expect(strip).toBeVisible({ timeout: 10_000 });
 	return strip.evaluate((el) => {
 		const r = el.getBoundingClientRect();
-		return { x: Math.round(r.x), width: Math.round(r.width) };
+		return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width) };
 	});
 }
 
@@ -81,9 +83,8 @@ test.describe('run-surface pages share one page rhythm', () => {
 	});
 
 	test('the page title renders at the same size on every tab that has one', async ({ page }) => {
-		// /runs, /routes and /plans carry their title in the tab strip and have
-		// no visible h1 of their own (/runs' is visually-hidden), so only the three
-		// that render one are compared.
+		// /runs, /routes and /plans take their h1 from the tab strip's surface
+		// title; the pages compared here render an h1 of their own below it.
 		const sizes: Record<string, string> = {};
 
 		for (const route of ['/segments', '/parks', '/races']) {

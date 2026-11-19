@@ -379,6 +379,7 @@ test('every ALLOW entry still needs its exemption', () => {
 // view names the file that renders the header.
 const ROOT_HEADER_FILE: Record<string, string> = {
 	'/dashboard': 'routes/dashboard/DashboardView.svelte',
+	'/runs': 'lib/components/RunSurfaceTabs.svelte',
 };
 const ROOT_EXEMPT: Record<string, string> = {
 	'/messages':

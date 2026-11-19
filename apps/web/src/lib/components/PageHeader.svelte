@@ -13,6 +13,9 @@
 	// link returns to the page the runner came from when there is one. `badge`
 	// renders inside the h1 after the title (an `OfficialBadge`), so it is part
 	// of the heading's name. `testid` names the header; `titleTestid` the h1.
+	// `heading={false}` renders the title as a paragraph with the same look, for
+	// a title that sits above a page whose own h1 comes later (the run-surface
+	// strip on Races & courses and Segments).
 	let {
 		title,
 		kicker,
@@ -24,6 +27,7 @@
 		actions,
 		children,
 		flush = false,
+		heading = true,
 		testid,
 		titleTestid,
 	}: {
@@ -41,6 +45,7 @@
 		/// Extra lines under the subtitle (a note, a review link).
 		children?: Snippet;
 		flush?: boolean;
+		heading?: boolean;
 		testid?: string;
 		titleTestid?: string;
 	} = $props();
@@ -56,7 +61,7 @@
 		{/if}
 		{#if kicker}<p class="page-head-kicker" data-testid="page-header-kicker">{kicker}</p>{/if}
 		<div class="page-head-title">
-			<h1 data-testid={titleTestid}>{title}{#if badge}{@render badge()}{/if}</h1>
+			<svelte:element this={heading ? 'h1' : 'p'} class="page-head-h" data-testid={titleTestid}>{title}{#if badge}{@render badge()}{/if}</svelte:element>
 			{#if help}{@render help()}{/if}
 		</div>
 		{#if sub}
@@ -122,7 +127,7 @@
 		align-items: center;
 		gap: var(--space-sm);
 	}
-	.page-head-title h1 {
+	.page-head-h {
 		margin: 0;
 		font-size: var(--font-size-page-title);
 		font-weight: 700;

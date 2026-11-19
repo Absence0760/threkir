@@ -64,7 +64,7 @@
 <svelte:head><title>{m('raceCourse.queueTitle')}</title></svelte:head>
 
 <div class="queue-page">
-	<RunSurfaceTabs active="races" />
+	<RunSurfaceTabs active="races" ownHeading />
 	<PageHeader
 		flush
 		back={{ href: '/races', label: m('raceCourse.queueBack') }}

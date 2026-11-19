@@ -387,10 +387,13 @@ because a course is something you go and do, not a stretch you happen to run.
 The owner's 2026-11-10 review found the pages primitive; this is what each
 one does now. Mobile matches it (`park_courses_screen.dart`). On the phone a
 course card opens a bottom sheet (`park_course_preview_sheet.dart`) with the
-course on its own map (start, finish, direction), its distance, elevation
-gain, laps and shape, where to start and an Open course button; the OS and
-app-bar back pop the Navigator stack, so they already return to the screen
-the runner came from.
+course on its own map (start, finish, direction), its status and closure
+note when it is not open, distance, elevation gain, laps, shape and
+difficulty, where to start, Directions to the start and Open course; the
+course opens on top of the sheet, so back returns to the preview. The
+cards carry no line-colour dot (the 10 km loop's colour hid under the 5 km
+line) and no chevron. The OS and app-bar back pop the Navigator stack, so
+they already return to the screen the runner came from.
 
 - **Distances** read through the `park_course_distance` parity pair
   (`lib/parks/park_course_distance.ts` ↔ `park_course_distance.dart`): whole
@@ -414,31 +417,43 @@ the runner came from.
   sticky column, a phone's toolbar) never strands the park in a corner of a
   zoomed-out map. A point at exactly 0, 0 (a null coordinate) is left out of
   the frame (`boundsOf`).
-  - **Cards** are `ListCard` buttons: route thumbnail, the name without the
-    distance and laps it would repeat (`courseDisplayName`, so "Swift Creek
-    Loop, 10 km (2 laps)" reads "Swift Creek Loop" over "10 km · 2 laps"),
-    distance, laps chip, elevation gain, difficulty, status pill, this
-    season's record and holder when there is one, and a visible **Open**
-    link (the arrow alone under 40rem, still named "Open {course}"). A
+  - **Cards** are `ListCard` buttons: route thumbnail (dropped under 30rem
+    so the name keeps its room), the name without the distance and laps it
+    would repeat where that stays unique in the park (`courseDisplayNames`:
+    "Swift Creek Forest Loop, 50 km (2 laps)" reads "Swift Creek Forest
+    Loop" over "50 km · 2 laps", while the 5 km and 10 km Swift Creek loops
+    keep their distances so they do not read the same), distance, laps chip,
+    elevation gain, difficulty, status pill, this season's record and holder
+    when there is one, and a visible **Open** link named "Open {course}". A
     course with no time says nothing; when no course in the park has one,
-    one line above the list says so ("No times here yet this season").
+    one line under the list says so ("No times here yet this season"). The
+    park-level lines sit under the cards so a late read never moves a card.
   - **Preview** (decisions § 2588): a line above the list says "Pick a course
-    to see it on the map." Tapping a card selects its course without leaving
-    the page: the map frames it, draws it in the accent colour over the
-    others faded, hides the other start areas and pins its start (green) and
-    finish (red), or one "Start and finish" pin when they share a place
-    (`courseEnds`); the key reads "Selected course" for both the hovered and
-    the picked line. A panel under the map gives the name, distance,
-    elevation gain, laps, shape, one sentence of where to start (the route
-    guide's own getting-there note, else its first line, `startSentence`) and
-    an **Open course** button. Focus moves to the panel's heading (and on a
-    phone the page scrolls up to the map); Escape or the panel's Close clears
-    it and puts focus back on the card. The card's button carries
-    `aria-pressed`. The choice is `?course=<slug>`, written as a shallow
-    `replace` so it adds no history entry and keeps the list and the back
-    target; back from the course page, a reload and a shared link reopen
-    it, and a slug the park does not have is ignored. No turnaround mark yet
-    for an out-and-back: no park course is one today.
+    to see where it goes and where to start." Tapping a card selects its
+    course without leaving the page (tapping it again keeps it; Close or
+    Escape clear it): the map frames it, draws it in the accent colour over
+    the others faded, hides the other start areas and pins its start (green)
+    and finish (red), or one "Start and finish" pin when they share a place
+    (`courseEnds`). The key shows "Selected course" only while one is, and
+    the key shows only under a drawn map. A panel gives the name, a status
+    pill and the closure note for a course that is not open, distance,
+    elevation gain, laps as "2 × 5 km", shape, difficulty, one sentence of
+    where to start (the route guide's own getting-there note, else its first
+    line, `startSentence`; not for a closed course), **Open course** and
+    **Directions to the start** (Google Maps, as the course page's start and
+    finish block). From 64rem the panel sits under the sticky map; narrower,
+    the map and panel lift into a sheet fixed to the bottom of the screen,
+    the list staying where it was and the map's place in the page held so
+    nothing jumps. Focus moves to the panel's heading and back to the card
+    when it closes; the card's button carries `aria-pressed`. On a touch
+    screen the map takes two fingers to move (MapLibre's cooperative
+    gestures, its hint in the reader's language), so a thumb scrolling the
+    page never pans the park. The choice is `?course=<slug>`, written
+    shallow: opening a preview from none pushes one history entry, so the
+    browser's or the phone's back closes it, and picking another course
+    replaces it. Back from the course page, a reload and a shared link
+    reopen it, and a slug the park does not have is ignored. No turnaround
+    mark yet for an out-and-back: no park course is one today.
   - **Back** (decisions § 2588): the link returns to the page the reader came
     from in the app and names it: "Races & courses" (with its `?show=` kept,
     even when the Show switch wrote it shallow), "All park courses" for the
@@ -447,7 +462,8 @@ the runner came from.
     sidebar names, rather than the `/parks` index. The target is saved in the
     history entry, so coming back down from a course page or reloading keeps
     it. It is a real `<a href>`, and pops history when the target is the
-    entry behind it, so that page comes back with its scroll and filters.
+    entry behind it (stepping over an opened preview's entry, `stacked`), so
+    that page comes back with its scroll and filters.
 - **Course page:** the back link is its park, named for the park; it pops
   history when the reader came from that park (the preview they left comes
   back), and otherwise links to the park with the course previewed

@@ -24,8 +24,10 @@ const PARK_PATH = `/parks/us-va/${PARK_SLUG}`;
 const START_NOTE = 'Start at the boat-ramp lot.';
 
 const COURSES = [
-	{ slug: '5k', name: `Lakeside Loop ${TAG}, 5 km`, shown: `Lakeside Loop ${TAG}`, distanceM: 5_000, laps: null },
-	{ slug: '10k', name: `Lakeside Loop ${TAG}, 10 km (2 laps)`, shown: `Lakeside Loop ${TAG}`, distanceM: 10_000, laps: 2 },
+	// Trimmed to "Lakeside Loop" both would read the same, so each keeps its
+	// distance and only the laps its chip states are dropped.
+	{ slug: '5k', name: `Lakeside Loop ${TAG}, 5 km`, shown: `Lakeside Loop ${TAG}, 5 km`, distanceM: 5_000, laps: null },
+	{ slug: '10k', name: `Lakeside Loop ${TAG}, 10 km (2 laps)`, shown: `Lakeside Loop ${TAG}, 10 km`, distanceM: 10_000, laps: 2 },
 ] as const;
 
 let parkId: string | null = null;
@@ -155,7 +157,7 @@ test.describe('park preview and back', () => {
 		await page.goto(PARK_PATH);
 		const cards = page.getByTestId('park-course-card');
 		await expect(cards).toHaveCount(2, { timeout: 15_000 });
-		// Each fact once: the name drops the distance and laps the chips state.
+		// The laps the chip states are not repeated, and no two cards read the same.
 		await expect(cards.locator('.list-card-title')).toHaveText([COURSES[0].shown, COURSES[1].shown]);
 
 		const pick = cards.nth(1).locator('button.lc-tap');
@@ -168,11 +170,19 @@ test.describe('park preview and back', () => {
 		await expect(preview.getByRole('heading', { level: 2 })).toHaveText(COURSES[1].shown);
 		await expect(preview.getByRole('heading', { level: 2 })).toBeFocused();
 		await expect(preview.getByTestId('park-course-preview-distance')).toHaveText('10 km');
-		await expect(preview.getByTestId('park-course-preview-laps')).toHaveText('2');
+		await expect(preview.getByTestId('park-course-preview-laps')).toHaveText('2 × 5 km');
 		await expect(preview.getByTestId('park-course-preview-shape')).toHaveText('Loop');
 		await expect(preview.getByTestId('park-course-preview-start')).toHaveText(START_NOTE);
 		const open = preview.getByRole('link', { name: 'Open course' });
 		await expect(open).toHaveAttribute('href', `${PARK_PATH}/10k`);
+		const directions = preview.getByRole('link', { name: 'Directions to the start and finish' });
+		await expect(directions).toHaveAttribute('href', /destination=37\.20000%2C-78\.89000/);
+		await expect(directions).toHaveAttribute('target', '_blank');
+
+		// Tapping the picked card again keeps the preview: only Close or Escape close it.
+		await pick.click();
+		await expect(preview).toBeVisible();
+		await expect(page).toHaveURL(new RegExp(`${PARK_PATH}\\?course=10k$`));
 
 		await page.reload();
 		await expect(page.getByTestId('park-course-preview').getByRole('heading', { level: 2 })).toHaveText(
@@ -201,5 +211,23 @@ test.describe('park preview and back', () => {
 		await page.waitForURL(`**${PARK_PATH}?course=5k`);
 		await expect(page.getByTestId('park-course-preview')).toBeVisible();
 		await expect(page.getByTestId('park-back')).toHaveAccessibleName('Races & courses');
+	});
+
+	test('back closes an opened preview, and the park back link steps over it', async ({ page }) => {
+		await page.goto('/races?show=courses');
+		await page.getByTestId('park-card').filter({ hasText: PARK_NAME }).click({ timeout: 15_000 });
+		await page.waitForURL(`**${PARK_PATH}`);
+		await page.getByTestId('park-course-card').first().locator('button.lc-tap').click();
+		await expect(page.getByTestId('park-course-preview')).toBeVisible();
+
+		await page.goBack();
+		await expect(page.getByTestId('park-course-preview')).toHaveCount(0);
+		await expect(page).toHaveURL(new RegExp(`${PARK_PATH}$`));
+
+		await page.getByTestId('park-course-card').nth(1).locator('button.lc-tap').click();
+		await page.getByTestId('park-course-card').first().locator('button.lc-tap').click();
+		await expect(page).toHaveURL(new RegExp(`${PARK_PATH}\\?course=5k$`));
+		await page.getByTestId('park-back').click();
+		await page.waitForURL('**/races?show=courses');
 	});
 });

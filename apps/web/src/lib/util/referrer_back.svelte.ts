@@ -15,7 +15,9 @@ import { backTargetFrom, isBackTarget, type BackTarget } from './back_target.ts'
  * The target is saved in this history entry's state, so coming back down
  * from a child page (a course, then back to its park) keeps it, and a reload
  * does too (`persistState`). Pages that write their own shallow state pass
- * `page.state` along so the saved target survives.
+ * `page.state` along so the saved target survives, and set `stacked` to the
+ * entries they pushed over their own (an opened preview), which the pop
+ * steps over.
  *
  * Call once during component init, like `smartBack`.
  */
@@ -58,7 +60,8 @@ export function referrerBack(fallback: BackTarget): {
 		handle(e: MouseEvent) {
 			if (!pop || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 			e.preventDefault();
-			history.back();
+			const stacked = page.state.stacked;
+			history.go(-1 - (typeof stacked === 'number' && stacked > 0 ? Math.floor(stacked) : 0));
 		},
 	};
 }

@@ -37,15 +37,27 @@
 		/** Where the previewed course starts and finishes; `finish` null when it is the start. */
 		selectedEnds?: { start: LatLng; finish: LatLng | null } | null;
 		label: string;
+		/** Shown over the map on a touch screen when one finger tries to move it. */
+		twoFingerHint?: string;
+		/** Whether the map is drawn rather than waiting for consent; bind it to show a key only for a map. */
+		consented?: boolean;
 		testid?: string;
 	}
 
-	let { courses, highlightId = null, selectedId = null, selectedEnds = null, label, testid }: Props = $props();
+	let {
+		courses,
+		highlightId = null,
+		selectedId = null,
+		selectedEnds = null,
+		label,
+		twoFingerHint,
+		consented = $bindable(untrack(() => hasAcceptedConsent())),
+		testid,
+	}: Props = $props();
 
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 	const darkBasemap = basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY, prefersDark);
 
-	let consented = $state(untrack(() => hasAcceptedConsent()));
 	let container: HTMLDivElement | undefined = $state();
 	let map: maplibregl.Map | null = null;
 	let ready = false;
@@ -172,11 +184,16 @@
 
 	$effect(() => {
 		if (!consented || !container || map) return;
+		// On a touch screen one finger scrolls the page past the map and two
+		// move it, so a thumb flick down the park page never pans the park.
+		const touch = window.matchMedia('(pointer: coarse)').matches;
 		map = new maplibregl.Map({
 			container,
 			style: mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark),
 			center: [0, 0],
 			zoom: 1,
+			cooperativeGestures: touch,
+			locale: twoFingerHint ? { 'CooperativeGesturesHandler.MobileHelpText': twoFingerHint } : undefined,
 		});
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		stopResize = watchMapResize(container, map);

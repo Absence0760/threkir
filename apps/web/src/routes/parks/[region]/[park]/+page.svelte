@@ -19,6 +19,8 @@
 	} from '#lib/core/data.ts';
 	import { courseEnds, regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
 	import { courseSearch, selectedCourseSlug, startSentence } from '#lib/parks/course_preview.ts';
+	import { mapsStartUrl } from '#lib/routes/course_drive.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import { parseRouteGuide } from '#lib/parks/route_guide.ts';
 	import { referrerBack } from '#lib/util/referrer_back.svelte.ts';
 	import { BACK_PLACE_KEY } from '#lib/util/back_target.ts';
@@ -30,7 +32,7 @@
 		labelKey,
 	} from '#lib/parks/park_labels.ts';
 	import {
-		courseDisplayName,
+		courseDisplayNames,
 		courseLapsChip,
 		courseShapeShown,
 		sortParkCourses,
@@ -78,6 +80,12 @@
 	}
 
 	const mapCourses = $derived(sorted.map((c) => ({ id: c.id, points: pointsOf(c) })));
+	// Each card's name, without the distance and laps it states where the
+	// shorter name stays unique in the park.
+	const names = $derived.by(() => {
+		const shown = courseDisplayNames(sorted.map((c) => c.segment.name));
+		return new Map(sorted.map((c, i) => [c.id, shown[i]]));
+	});
 	const hasLines = $derived(mapCourses.some((c) => c.points.length >= 2));
 	// One quiet line for the park rather than "no time yet" on every card.
 	const noTimesYet = $derived(
@@ -109,11 +117,9 @@
 			: null,
 	);
 	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
-		const items: ParkMapLegendItem[] = [
-			{ kind: 'line', label: m('parks.legendCourse') },
-			{ kind: 'focusedLine', label: m('parks.legendHighlighted') },
-		];
-		if (!selected) return [...items, { kind: 'trailhead', label: m('parks.legendStart') }];
+		const line: ParkMapLegendItem = { kind: 'line', label: m('parks.legendCourse') };
+		if (!selected) return [line, { kind: 'trailhead', label: m('parks.legendStart') }];
+		const items: ParkMapLegendItem[] = [line, { kind: 'focusedLine', label: m('parks.legendHighlighted') }];
 		if (selectedEnds && !selectedEnds.finish) return [...items, { kind: 'startFinish', label: m('parks.legendStartFinish') }];
 		return [
 			...items,
@@ -122,41 +128,66 @@
 		];
 	});
 
-	let overviewEl = $state<HTMLElement | null>(null);
 	let previewHeading = $state<HTMLElement | null>(null);
-	const reducedMotion =
-		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	// The overview's height while no course is previewed: the slot keeps it
+	// when the preview lifts the overview into a sheet on a narrow screen.
+	let overviewHeight = $state(0);
+	// Whether the map is drawn; its key shows only under a drawn map.
+	let mapShown = $state(hasAcceptedConsent());
+	let restingHeight = $state(0);
+	$effect(() => {
+		if (!selected) restingHeight = overviewHeight;
+	});
 
 	function courseHref(slug: string): string {
 		return `/parks/${data.region}/${data.park}/${slug}`;
 	}
 
-	async function select(slug: string | null) {
-		const from = selectedSlug;
+	function focusCard(slug: string) {
+		document.querySelector<HTMLElement>(`[data-course-slug="${CSS.escape(slug)}"] .lc-tap`)?.focus();
+	}
+
+	// Opening a preview from none adds one history entry, so the browser's or
+	// the phone's back closes it; picking another course replaces that entry.
+	// `stacked` tells the back link to step over it.
+	async function select(slug: string) {
+		const opening = !selectedSlug;
 		const url = shownUrl();
 		await goto(`${url.pathname}${courseSearch(url.search, slug)}`, {
 			shallow: true,
-			replace: true,
+			replace: !opening,
 			persistState: true,
-			state: page.state,
+			state: { ...page.state, stacked: opening ? 1 : (page.state.stacked ?? 0) },
 		});
 		await tick();
-		if (slug) {
-			// On a phone the map sits above the list, out of view.
-			const box = overviewEl?.getBoundingClientRect();
-			if (box && (box.top < 0 || box.top > window.innerHeight / 2)) {
-				overviewEl?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' });
-			}
-			previewHeading?.focus({ preventScroll: true });
-		} else if (from) {
-			document.querySelector<HTMLElement>(`[data-course-slug="${CSS.escape(from)}"] .lc-tap`)?.focus();
+		previewHeading?.focus({ preventScroll: true });
+	}
+
+	async function closePreview() {
+		const from = selectedSlug;
+		if (!from) return;
+		if (page.state.stacked) {
+			await new Promise<void>((done) => {
+				addEventListener('popstate', () => done(), { once: true });
+				history.back();
+			});
+		} else {
+			const url = shownUrl();
+			await goto(`${url.pathname}${courseSearch(url.search, null)}`, {
+				shallow: true,
+				replace: true,
+				persistState: true,
+				state: page.state,
+			});
 		}
+		await tick();
+		focusCard(from);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && selected && !e.defaultPrevented) {
 			e.preventDefault();
-			void select(null);
+			void closePreview();
 		}
 	}
 
@@ -265,25 +296,6 @@
 						{/snippet}
 					</SectionHeader>
 					<p class="list-note" id="park-preview-hint">{m('parks.previewHint')}</p>
-					{#if noTimesYet}
-						<p class="list-note">
-							<span class="material-symbols" aria-hidden="true">emoji_events</span>
-							<span data-testid="park-no-times-yet">{m('parks.noTimesYet')}</span>
-						</p>
-					{/if}
-					{#if recordsFailed}
-						<p class="records-failed" role="status" data-testid="park-records-failed">
-							{m('races.anyTimeFastestFailed')}
-						</p>
-					{/if}
-					{#if monthRunnersFailed}
-						<p class="records-failed" role="status" data-testid="park-month-runners-failed">
-							{m('parks.monthRunnersFailed')}
-							<button type="button" class="btn btn-outline btn-sm" onclick={() => park && void loadMonthRunners(park.id)}>
-								{m('parks.retry')}
-							</button>
-						</p>
-					{/if}
 					<ul class="course-list" data-testid="park-courses">
 						{#each sorted as course (course.id)}
 							{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
@@ -294,7 +306,7 @@
 							{@const record = records.get(course.id)}
 							{@const ranThisMonth = monthRunners.get(course.id) ?? 0}
 							{@const points = pointsOf(course)}
-							{@const name = courseDisplayName(course.segment.name)}
+							{@const name = names.get(course.id) ?? course.segment.name}
 							<li
 								data-course-slug={course.slug}
 								onmouseenter={() => (highlightId = course.id)}
@@ -303,7 +315,7 @@
 								onfocusout={() => (highlightId = null)}
 							>
 								<ListCard
-									onclick={() => void select(selected?.id === course.id ? null : course.slug)}
+									onclick={() => void select(course.slug)}
 									selected={selected?.id === course.id}
 									title={name}
 									dense
@@ -347,14 +359,14 @@
 											</span>
 										{/if}
 									{/snippet}
-									{#snippet actions()}
+									{#snippet trailing()}
 										<a
 											class="course-open"
 											href={courseHref(course.slug)}
 											aria-label={m('parks.openCourseNamed', { course: name })}
 											data-testid="park-course-open"
 										>
-											{m('parks.cardOpen')}
+											<span class="course-open-text">{m('parks.cardOpen')}</span>
 											<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 										</a>
 									{/snippet}
@@ -362,10 +374,35 @@
 							</li>
 						{/each}
 					</ul>
+					<!-- Below the cards, so a line that arrives late never moves a card
+					     under a finger about to tap it. -->
+					{#if noTimesYet}
+						<p class="list-note">
+							<span class="material-symbols" aria-hidden="true">emoji_events</span>
+							<span data-testid="park-no-times-yet">{m('parks.noTimesYet')}</span>
+						</p>
+					{/if}
+					{#if recordsFailed}
+						<p class="records-failed" role="status" data-testid="park-records-failed">
+							{m('races.anyTimeFastestFailed')}
+						</p>
+					{/if}
+					{#if monthRunnersFailed}
+						<p class="records-failed" role="status" data-testid="park-month-runners-failed">
+							{m('parks.monthRunnersFailed')}
+							<button type="button" class="btn btn-outline btn-sm" onclick={() => park && void loadMonthRunners(park.id)}>
+								{m('parks.retry')}
+							</button>
+						</p>
+					{/if}
 				</section>
 
 				{#if hasLines || selected}
-					<section class="overview" aria-label={m('parks.overviewMapLabel', { park: park.name })} bind:this={overviewEl}>
+					<!-- Below 64rem the preview is a sheet fixed to the bottom of the
+					     screen; the slot keeps the map's place in the page so the list
+					     does not jump when it lifts out. -->
+					<div class="overview-slot" style:--resting-height="{restingHeight}px">
+					<section class="overview" aria-label={m('parks.overviewMapLabel', { park: park.name })} bind:offsetHeight={overviewHeight}>
 						{#if hasLines}
 							<div class="map-frame">
 								<ParkCoursesMap
@@ -374,29 +411,45 @@
 									selectedId={selected?.id ?? null}
 									{selectedEnds}
 									label={m('parks.overviewMapLabel', { park: park.name })}
+									twoFingerHint={m('parks.mapTwoFingers')}
+									bind:consented={mapShown}
 									testid="park-overview-map"
 								/>
 							</div>
-							<ParkMapLegend testid="park-map-legend" items={legendItems} />
+							{#if mapShown}
+								<ParkMapLegend testid="park-map-legend" items={legendItems} />
+							{/if}
 						{/if}
 						{#if selected}
 							{@const shapeKey = labelKey(SHAPE_LABEL, selected.course_shape)}
 							{@const laps = courseLapsChip(selected.laps)}
 							{@const gain = Number(selected.segment.elevation_m)}
-							{@const name = courseDisplayName(selected.segment.name)}
+							{@const name = names.get(selected.id) ?? selected.segment.name}
+							{@const difficultyKey = labelKey(DIFFICULTY_LABEL, selected.difficulty)}
+							{@const statusKey = selected.status === 'open' ? null : labelKey(STATUS_LABEL, selected.status)}
+							{@const closed = selected.status === 'closed'}
+							{@const directionsTo = closed ? null : selectedEnds}
 							<section class="preview card-elevated" aria-labelledby="park-preview-title" data-testid="park-course-preview">
 								<div class="preview-head">
 									<h2 id="park-preview-title" class="preview-title" tabindex="-1" bind:this={previewHeading}>{name}</h2>
+									{#if statusKey}
+										<span class="status-pill" class:closed data-testid="park-course-preview-status">{m(statusKey)}</span>
+									{/if}
 									<button
 										type="button"
 										class="preview-close"
 										aria-label={m('parks.previewClose')}
-										onclick={() => void select(null)}
+										onclick={() => void closePreview()}
 										data-testid="park-course-preview-close"
 									>
 										<span class="material-symbols" aria-hidden="true">close</span>
 									</button>
 								</div>
+								{#if closed}
+									<p class="preview-closed" data-testid="park-course-preview-closed">
+										{selected.status_note?.trim() || m('parks.closedBanner')}
+									</p>
+								{/if}
 								<dl class="preview-facts">
 									<div>
 										<dt>{m('parks.statDistance')}</dt>
@@ -411,7 +464,9 @@
 									{#if laps}
 										<div>
 											<dt>{m('parks.statLaps')}</dt>
-											<dd data-testid="park-course-preview-laps">{laps}</dd>
+											<dd data-testid="park-course-preview-laps">
+												{m('parks.lapsOf', { n: laps, distance: fmtCourseDistance(Number(selected.segment.distance_m) / laps) })}
+											</dd>
 										</div>
 									{/if}
 									{#if shapeKey}
@@ -420,20 +475,41 @@
 											<dd data-testid="park-course-preview-shape">{m(shapeKey)}</dd>
 										</div>
 									{/if}
+									{#if difficultyKey}
+										<div>
+											<dt>{m('parks.statDifficulty')}</dt>
+											<dd>{m(difficultyKey)}</dd>
+										</div>
+									{/if}
 								</dl>
-								{#if selectedStart}
+								{#if selectedStart && !closed}
 									<p class="preview-start">
 										<span class="material-symbols" aria-hidden="true">place</span>
 										<span lang={selectedStart.lang ?? undefined} data-testid="park-course-preview-start">{selectedStart.text}</span>
 									</p>
 								{/if}
-								<a class="btn btn-primary preview-open" href={courseHref(selected.slug)} data-testid="park-course-preview-open">
-									{m('parks.openCourse')}
-									<span class="material-symbols" aria-hidden="true">arrow_forward</span>
-								</a>
+								<div class="preview-actions">
+									<a class="btn btn-primary preview-open" href={courseHref(selected.slug)} data-testid="park-course-preview-open">
+										{m('parks.openCourse')}
+										<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+									</a>
+									{#if directionsTo}
+										<a
+											class="btn btn-outline preview-directions"
+											href={mapsStartUrl('google', directionsTo.start)}
+											target="_blank"
+											rel="noopener noreferrer"
+											data-testid="park-course-preview-directions"
+										>
+											<span class="material-symbols" aria-hidden="true">directions</span>
+											{m(directionsTo.finish ? 'parks.endsDirectionsStart' : 'parks.endsDirectionsStartFinish')}
+										</a>
+									{/if}
+								</div>
 							</section>
 						{/if}
 					</section>
+					</div>
 				{/if}
 			</div>
 		{/if}
@@ -479,9 +555,11 @@
 		align-items: center;
 		gap: 0.25rem;
 	}
-	.meta li + li::before {
+	/* The dot ends an item rather than starting the next, so a wrapped line
+	   never opens on one. */
+	.meta li:not(:last-child)::after {
 		content: '·';
-		margin-inline-end: var(--space-sm);
+		margin-inline-start: var(--space-sm);
 		color: var(--color-text-tertiary);
 	}
 	.meta .material-symbols {
@@ -503,18 +581,24 @@
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--space-lg);
 	}
-	.overview {
+	.overview-slot {
 		order: -1;
 	}
+	/* Short on a phone, so the first course shows without a scroll. */
 	.map-frame {
-		height: 16rem;
+		height: 10rem;
+	}
+	@media (min-width: 40rem) {
+		.map-frame {
+			height: 16rem;
+		}
 	}
 	@media (min-width: 64rem) {
 		.park-layout.with-map {
 			grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
 			align-items: start;
 		}
-		.overview {
+		.overview-slot {
 			order: 0;
 			position: sticky;
 			top: var(--space-md);
@@ -552,6 +636,10 @@
 		margin: 0 0 var(--space-sm);
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
+	}
+	.course-list ~ .list-note,
+	.course-list ~ .records-failed {
+		margin: var(--space-sm) 0 0;
 	}
 	.list-note .material-symbols {
 		flex-shrink: 0;
@@ -653,10 +741,11 @@
 		color: var(--color-text-tertiary);
 		line-height: 1.5;
 	}
+	/* On the narrowest phones the thumbnail gives way, so the name and the
+	   Open link keep their room; the preview draws the line. */
 	@media (max-width: 30rem) {
-		.thumb {
-			width: 3.5rem;
-			height: 2.6rem;
+		.course-list :global(.course-card .lc-leading) {
+			display: none;
 		}
 	}
 	.park-layout.with-preview .map-frame {
@@ -666,6 +755,48 @@
 		.park-layout.with-preview .map-frame {
 			height: min(24rem, 46vh);
 		}
+	}
+	/* Below 64rem the preview is a sheet over the bottom of the screen: the
+	   list stays where it was, a tap on another card swaps the course, and the
+	   slot holds the map's place so nothing jumps. */
+	@media (max-width: 63.99rem) {
+		.park-layout.with-preview .overview-slot {
+			min-height: var(--resting-height);
+		}
+		.park-layout.with-preview .overview {
+			position: fixed;
+			inset: auto 0 0 0;
+			z-index: var(--z-modal);
+			max-height: 85dvh;
+			overflow-y: auto;
+			padding: var(--space-md) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom));
+			background: var(--color-surface);
+			border-top: 1px solid var(--color-border);
+			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			box-shadow: var(--shadow-lg);
+		}
+		.park-layout.with-preview .preview {
+			margin-top: var(--space-sm);
+			padding: 0;
+			border: 0;
+			box-shadow: none;
+			background: none;
+		}
+	}
+	.preview-closed {
+		margin: 0;
+		color: var(--color-danger-text);
+		line-height: 1.45;
+	}
+	.preview-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
+	.preview-directions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
 	}
 	.preview {
 		margin-top: var(--space-md);
@@ -740,14 +871,14 @@
 		margin-top: 0.1rem;
 	}
 	.preview-open {
-		align-self: flex-start;
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-xs);
 	}
 	@media (max-width: 40rem) {
-		.preview-open {
-			align-self: stretch;
+		.preview-open,
+		.preview-directions {
+			flex: 1 1 100%;
 			justify-content: center;
 		}
 	}

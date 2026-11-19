@@ -59,7 +59,7 @@ test('park dirs are the region/park pairs holding a manifest, sorted', () => {
 test('the committed catalogue is found on disk', () => {
 	assert.deepEqual(
 		findParkDirs(CATALOGUE_ROOT).map((d) => path.relative(CATALOGUE_ROOT, d)),
-		[path.join('us-va', 'deep-run'), path.join('us-va', 'james-river-park'), path.join('us-va', 'malvern-hill'), path.join('us-va', 'pocahontas'), path.join('us-va', 'rockwood'), path.join('us-va', 'virginia-capital-trail')],
+		[path.join('us-va', 'cold-harbor'), path.join('us-va', 'deep-run'), path.join('us-va', 'james-river-park'), path.join('us-va', 'malvern-hill'), path.join('us-va', 'pocahontas'), path.join('us-va', 'powhite-park'), path.join('us-va', 'rockwood'), path.join('us-va', 'virginia-capital-trail')],
 	);
 });
 
@@ -103,7 +103,7 @@ test('the committed stage loads Pocahontas\'s six courses as the committed club 
 	assert.equal(stage.id, 'park-catalogue');
 	assert.match(
 		stage.note,
-		/^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(2 courses\): Held until .*; james-river-park \(2 courses\): Held until .*; malvern-hill \(2 courses\): Held until .*; rockwood \(2 courses\): Held until .*; virginia-capital-trail \(8 courses\): /,
+		/^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: cold-harbor \(2 courses\): Held until .*; deep-run \(2 courses\): Held until .*; james-river-park \(2 courses\): Held until .*; malvern-hill \(2 courses\): Held until .*; powhite-park \(2 courses\): Held until .*; rockwood \(2 courses\): Held until .*; virginia-capital-trail \(8 courses\): /,
 	);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
@@ -114,6 +114,13 @@ test('the committed stage loads Pocahontas\'s six courses as the committed club 
 		assert.ok(stage.sql.includes(`('malvern-hill', '${slug}', 'staged')`), slug);
 	}
 	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-10k', 'staged')"));
+	for (const [park, slugs] of /** @type {const} */ ([
+		['cold-harbor', ['cold-harbor-5k', 'cold-harbor-10k']],
+		['powhite-park', ['powhite-park-5k', 'powhite-park-10k']],
+	])) {
+		assert.ok(!stage.sql.includes(`"slug":"${park}"`), `${park} never reaches the load`);
+		for (const slug of slugs) assert.ok(stage.sql.includes(`('${park}', '${slug}', 'staged')`), slug);
+	}
 	assert.ok(!stage.sql.includes('"slug":"rockwood"'), 'Rockwood Park never reaches the load');
 	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-5k', 'staged')"));
 	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-10k', 'staged')"));

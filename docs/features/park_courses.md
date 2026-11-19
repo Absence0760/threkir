@@ -471,19 +471,22 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   to a deuteranope, the finish reads apart from the coral track). Hue is
   never the only cue: the names, the flags, and the finish edge chequered
   where the start's is solid. A segment missing either line keeps the pins.
-- **Jump-to buttons under the map**: "Show on the map", then **Start** and
-  **Finish** (one **Start and finish** where the course draws one shared
-  box) and **Whole course**, each an icon and a word, the start and finish
-  icons on their boxes' colours. A start or finish button fits its box with
-  at least 120 m of ground across and never past zoom 18; Whole course fits
-  the line as the map does when it opens. A course without its stored lines
-  jumps to the line's ends. The choice of buttons and the bounds are
-  `courseJumps` in the `course_jump` pair (`fixtures/course_jump_cases.json`).
-  Web eases the camera (`RunMap.jumpTo`, which waits for the entrance fit
-  so it never undoes a jump) and shows the buttons once the map is loaded;
-  Android/iOS tween the camera under the map, which still does not pan or
-  pinch. Both jump instead under reduced motion. Buttons are at least
-  44 px (web) / 48 dp (mobile) tall.
+- **Jump-to controls on the map**: the **Start** and **Finish** tags the map
+  draws on its boxes (one **Start and finish** tag where the course draws one
+  shared box) are buttons, named "Show the start on the map" and so on, and
+  so are the Start and Finish entries in the map key under it (padded to a
+  44 px (web) / 48 dp (mobile) hit area without looking bigger). A **Whole
+  course** icon button sits in the map's controls: under zoom and the compass
+  on web (with a tooltip), in the top corner on Android/iOS. There is no
+  separate row of buttons. A start or finish jump fits its box with at least
+  120 m of ground across and never past zoom 18; Whole course fits the line as
+  the map does when it opens. A course without its stored lines has no tags,
+  so its key entries jump to the line's ends. The choice of targets and the
+  bounds are `courseJumps` in the `course_jump` pair
+  (`fixtures/course_jump_cases.json`). Web eases the camera (`RunMap.jumpTo`,
+  which waits for the entrance fit so it never undoes a jump) and makes the
+  key entries buttons once the map is loaded; Android/iOS tween the camera,
+  which still does not pan or pinch. Both jump instead under reduced motion.
 - **Start and finish points** (decisions § 2551, § 2582): a block on the
   course page (web `CourseEndsBlock`, at the top of the notices column;
   mobile `CourseEndsCard`, under the map). When the course has its boxes it

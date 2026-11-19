@@ -14,14 +14,14 @@
 --     them forward, `supabase db reset` and run it again.
 --   * It only adds rows. Rows seed.sql owns are never updated or deleted
 --     (the one exception: demo-generated notifications get a realistic
---     created_at / read_at, see section 14).
+--     created_at / read_at, see section 13).
 --   * It runs as postgres, so RLS is bypassed, but every CHECK, trigger and
 --     consent gate still fires: heart rate is kept only where
 --     health_data_consent_at is stamped (decisions § 2514), and the food log
 --     is written only for the runner, who has consent.
---   * The park geometry is FICTIONAL (circles and out-and-backs around a
---     real park's centre). It is local demo data, never catalogue data: real
---     courses ship through scripts/parks/ (park_courses.md § Loading courses).
+--   * It invents no park and no park course (decisions § 2590). The parks are
+--     the real catalogue, which bin/seed-demo.sh loads from scripts/parks/
+--     before this file runs; this file only times runs on those courses.
 --   * GPS tracks live in Storage, not in a column, so demo runs carry no
 --     track_url (as most seed.sql runs don't); run detail shows its no-track
 --     state for them.
@@ -40,6 +40,9 @@ begin
   end if;
   if not exists (select 1 from auth.users where id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890') then
     raise exception 'seed_demo.sql layers on seed.sql: runner@test.com is missing; run supabase db reset first';
+  end if;
+  if not exists (select 1 from park_courses where park_id <> '5eed0000-0000-4000-8000-0000000000a1') then
+    raise exception 'seed_demo.sql times runs on the real park catalogue, and none is loaded: run bin/seed-demo.sh, which loads it first';
   end if;
 end $$;
 
@@ -186,123 +189,7 @@ select u.id, s.id, now() - interval '60 days'
  where u.idx % 2 = 1
 on conflict do nothing;
 
--- ───────────────────────── 2. Parks and park courses ─────────────────────────
--- 34 real Virginia parks (real names, plausible centres) with 3-7 courses
--- each. The geometry is generated, not surveyed.
-
-create temp table demo_parks on commit drop as
-select pg_temp.did('park:' || slug) as id, slug, name, agency, nps, lat, lng, feature, region, ele, idx
-  from (values
-    ('james-river-park-system',   'James River Park System',        'other',  null,   37.5300, -77.4560, 'Belle Isle',       'rva',    40, 1),
-    ('maymont',                   'Maymont',                        'other',  null,   37.5368, -77.4775, 'Italian Garden',   'rva',    45, 2),
-    ('byrd-park',                 'Byrd Park',                      'other',  null,   37.5398, -77.4877, 'Swan Lake',        'rva',    55, 3),
-    ('bryan-park',                'Bryan Park',                     'other',  null,   37.5960, -77.4718, 'Young''s Pond',    'rva',    60, 4),
-    ('forest-hill-park',          'Forest Hill Park',               'other',  null,   37.5200, -77.4730, 'Reedy Creek',      'rva',    50, 5),
-    ('dorey-park',                'Dorey Park',                     'county', null,   37.4920, -77.3560, 'Dorey Lake',       'rva',    45, 6),
-    ('robious-landing-park',      'Robious Landing Park',           'county', null,   37.5480, -77.6750, 'River Landing',    'rva',    50, 7),
-    ('dutch-gap-conservation-area','Dutch Gap Conservation Area',   'county', null,   37.3600, -77.3700, 'Henricus',         'rva',    10, 8),
-    ('ivy-creek-natural-area',    'Ivy Creek Natural Area',         'county', null,   38.0870, -78.5010, 'Ivy Creek',        'cville', 150, 9),
-    ('mcintire-park',             'McIntire Park',                  'other',  null,   38.0430, -78.4800, 'Meadow Creek',     'cville', 140, 10),
-    ('riverview-park',            'Riverview Park',                 'other',  null,   38.0270, -78.4600, 'Rivanna',          'cville', 110, 11),
-    ('ragged-mountain-natural-area','Ragged Mountain Natural Area', 'other',  null,   38.0230, -78.5520, 'Reservoir',        'cville', 180, 12),
-    ('shenandoah-national-park',  'Shenandoah National Park',       'nps',    'shen', 38.5300, -78.4400, 'Big Meadows',      'shen',   1000, 13),
-    ('sky-meadows-state-park',    'Sky Meadows State Park',         'state',  null,   38.9890, -77.9650, 'Piedmont Overlook','shen',   250, 14),
-    ('douthat-state-park',        'Douthat State Park',             'state',  null,   37.8980, -79.8040, 'Douthat Lake',     'shen',   450, 15),
-    ('seven-bends-state-park',    'Seven Bends State Park',         'state',  null,   38.8730, -78.4700, 'North Fork',       'shen',   230, 16),
-    ('first-landing-state-park',  'First Landing State Park',       'state',  null,   36.9170, -76.0480, 'Cape Henry',       'vb',     4, 17),
-    ('false-cape-state-park',     'False Cape State Park',          'state',  null,   36.6340, -75.9150, 'Barbour Hill',     'vb',     3, 18),
-    ('mount-trashmore-park',      'Mount Trashmore Park',           'other',  null,   36.8250, -76.1420, 'Lake Windsor',     'vb',     8, 19),
-    ('northwest-river-park',      'Northwest River Park',           'county', null,   36.5890, -76.1700, 'Indian Creek',     'vb',     4, 20),
-    ('prince-william-forest-park','Prince William Forest Park',     'nps',    'prwi', 38.5850, -77.3800, 'Quantico Creek',   'nova',   70, 21),
-    ('great-falls-park',          'Great Falls Park',               'nps',    'grfa', 38.9980, -77.2550, 'Mather Gorge',     'nova',   60, 22),
-    ('burke-lake-park',           'Burke Lake Park',                'county', null,   38.7600, -77.3010, 'Burke Lake',       'nova',   90, 23),
-    ('leesylvania-state-park',    'Leesylvania State Park',         'state',  null,   38.5880, -77.2600, 'Freestone Point',  'nova',   10, 24),
-    ('holliday-lake-state-park',  'Holliday Lake State Park',       'state',  null,   37.3990, -78.6400, 'Holliday Lake',    'central',190, 25),
-    ('smith-mountain-lake-state-park','Smith Mountain Lake State Park','state',null,  37.0870, -79.6020, 'Turtle Island',    'roanoke',240, 26),
-    ('claytor-lake-state-park',   'Claytor Lake State Park',        'state',  null,   37.0570, -80.6250, 'Claytor Lake',     'roanoke',560, 27),
-    ('mill-mountain-park',        'Mill Mountain Park',             'other',  null,   37.2510, -79.9330, 'Roanoke Star',     'roanoke',480, 28),
-    ('carvins-cove-natural-reserve','Carvins Cove Natural Reserve', 'other',  null,   37.3740, -79.9590, 'Carvins Cove',     'roanoke',360, 29),
-    ('grayson-highlands-state-park','Grayson Highlands State Park', 'state',  null,   36.6290, -81.5090, 'Wilburn Ridge',    'roanoke',1450, 30),
-    ('york-river-state-park',     'York River State Park',          'state',  null,   37.4130, -76.7140, 'Taskinas Creek',   'central',15, 31),
-    ('belle-isle-state-park',     'Belle Isle State Park',          'state',  null,   37.7810, -76.5960, 'Mulberry Creek',   'central',5, 32),
-    ('lake-anna-state-park',      'Lake Anna State Park',           'state',  null,   38.1210, -77.8170, 'Lake Anna',        'central',80, 33),
-    ('james-river-state-park',    'James River State Park',         'state',  null,   37.6260, -78.8030, 'Tye River',        'central',200, 34)
-  ) v(slug, name, agency, nps, lat, lng, feature, region, ele, idx);
-
-insert into parks (id, slug, name, description, agency, nps_park_code, region_code, country_code,
-                   timezone, centroid_lat, centroid_lng,
-                   bbox_min_lat, bbox_min_lng, bbox_max_lat, bbox_max_lng)
-select p.id, p.slug, p.name,
-       'Demo data: the courses here are generated around the park''s centre, not surveyed.',
-       p.agency, p.nps, 'US-VA', 'US', 'America/New_York', p.lat, p.lng,
-       p.lat - 0.045, p.lng - 0.055, p.lat + 0.045, p.lng + 0.055
-  from demo_parks p
-on conflict (id) do nothing;
-
--- Course templates: j is the template index; a park gets the first 3 + idx % 5.
-create temp table demo_course_templates on commit drop as
-select * from (values
-  (0, '%f Loop',               'loop',          3200,  'easy',     'trail', 0.4),
-  (1, '%p Perimeter 5K',       'loop',          5000,  'moderate', 'mixed', 0.3),
-  (2, '%f Out-and-Back',       'out_and_back',  4400,  'easy',     'trail', 0.5),
-  (3, 'Ridge Trail',           'loop',          5600,  'hard',     'trail', 1.0),
-  (4, '%p Mile',               'loop',          1609,  'easy',     'road',  0.1),
-  (5, 'Woodland Figure Eight', 'loop',          6400,  'moderate', 'trail', 0.6),
-  (6, 'Long Loop 10K',         'loop',          10000, 'moderate', 'mixed', 0.5)
-) t(j, pattern, shape, len, difficulty, surface, climb);
-
-create temp table demo_courses on commit drop as
-select pg_temp.did('course:' || p.slug || ':' || t.j) as id,
-       pg_temp.did('segment:' || p.slug || ':' || t.j) as segment_id,
-       p.id as park_id, p.slug as park_slug, p.name as park_name, p.region, t.j, t.shape,
-       t.difficulty, t.surface,
-       replace(replace(t.pattern, '%f', p.feature),
-               '%p', regexp_replace(p.name, ' (State Park|National Park|Park|Natural Area|Conservation Area|Natural Reserve|Park System)$', '')) as name,
-       case when t.shape = 'loop'
-         then pg_temp.loop_points(p.slug || t.j,
-                p.lat + (300 + t.j * 160) * sin(radians(t.j * 51 + p.idx * 17)) / 111320.0,
-                p.lng + (300 + t.j * 160) * cos(radians(t.j * 51 + p.idx * 17)) / (111320.0 * cos(radians(p.lat))),
-                t.len * (0.92 + 0.16 * pg_temp.rnd('len:' || p.slug || t.j)), p.ele,
-                greatest(4, t.climb * (case when p.region in ('shen', 'roanoke') then 120 else 30 end)))
-         else pg_temp.oab_points(p.slug || t.j, p.lat, p.lng,
-                t.len * (0.92 + 0.16 * pg_temp.rnd('len:' || p.slug || t.j)), p.ele,
-                greatest(4, t.climb * (case when p.region in ('shen', 'roanoke') then 120 else 30 end)))
-       end as waypoints,
-       greatest(4, t.climb * (case when p.region in ('shen', 'roanoke') then 120 else 30 end)) as climb_m
-  from demo_parks p
-  join demo_course_templates t on t.j < 3 + p.idx % 5;
-
-alter table demo_courses add column distance_m numeric;
-update demo_courses set distance_m = pg_temp.line_len(waypoints);
-
-insert into global_segments (id, name, description, waypoints, distance_m, elevation_m, surface,
-                             region, country_code)
-select c.segment_id, c.name,
-       'Demo course in ' || c.park_name || '. Generated geometry for local testing.',
-       c.waypoints, c.distance_m, round(c.climb_m::numeric * (case when c.shape = 'loop' then 1 else 2 end)),
-       c.surface, c.park_name || ', Virginia', 'US'
-  from demo_courses c
-on conflict (id) do nothing;
-
-insert into park_courses (id, park_id, global_segment_id, slug, course_shape, status, status_note,
-                          status_checked_at, geometry_source, source_ref, difficulty, laps)
-select c.id, c.park_id, c.segment_id,
-       trim(both '-' from regexp_replace(lower(c.name), '[^a-z0-9]+', '-', 'g')),
-       c.shape,
-       case when c.park_slug = 'false-cape-state-park' and c.j = 2 then 'seasonal'
-            when c.park_slug = 'forest-hill-park' and c.j = 2 then 'closed'
-            else 'open' end,
-       case when c.park_slug = 'false-cape-state-park' and c.j = 2
-              then 'The beach section closes 1 April to 31 October for nesting shorebirds.'
-            when c.park_slug = 'forest-hill-park' and c.j = 2
-              then 'Closed while the footbridge over Reedy Creek is rebuilt.' end,
-       case when c.j in (2, 3) then now() - interval '6 days' end,
-       'traced', 'demo seed (generated geometry)', c.difficulty,
-       case when c.shape = 'loop' then 1 end
-  from demo_courses c
-on conflict (id) do nothing;
-
--- ───────────────────────── 3. Races ─────────────────────────
+-- ───────────────────────── 2. Races ─────────────────────────
 -- Real Virginia-area races, dated relative to today so the calendar always
 -- has a past and a future.
 
@@ -355,7 +242,7 @@ select r.id, 'manual', null, r.name, r.race_date, r.dist, r.label,
   from demo_races r
 on conflict (id) do nothing;
 
--- ───────────────────────── 4. Routes ─────────────────────────
+-- ───────────────────────── 3. Routes ─────────────────────────
 -- 42 routes for the runner across road / trail / mixed, some starred, some
 -- private; two public routes for each demo friend.
 
@@ -450,7 +337,7 @@ select 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', r.id, now() - r.n * interval '5 d
  where r.owner_k in ('sam', 'priya', 'diego', 'hannah')
 on conflict do nothing;
 
--- ───────────────────────── 5. The runner's six months ─────────────────────────
+-- ───────────────────────── 4. The runner's six months ─────────────────────────
 -- About five sessions a week for 182 days: easy runs (some on a saved
 -- route), a weekly long run (every third one a trail run in the mountains),
 -- tempo or a bike ride midweek, and a walk or hike. Heart rate is kept: the
@@ -550,7 +437,7 @@ select pg_temp.did('run:runner:race:' || r.k), 'a1b2c3d4-e5f6-7890-abcd-ef123456
                ('rnr-vb-half-past',      5930, 169, 461)) v(k, t, bpm, place) on v.k = r.k
 on conflict (id) do nothing;
 
--- ───────────────────────── 6. Friends' runs (the feed) ─────────────────────────
+-- ───────────────────────── 5. Friends' runs (the feed) ─────────────────────────
 -- Seven weeks for each demo friend, several inside the 14-day feed window,
 -- and one in the last few hours each so "run completed" notices fire.
 
@@ -623,23 +510,49 @@ select f.id, f.user_id,
   from demo_friend_runs f
 on conflict (id) do nothing;
 
--- ───────────────────────── 7. Park course efforts ─────────────────────────
--- Each foot activity is timed on a course in its owner's area: usually their
--- home area, sometimes a neighbouring one (the runner's mountain long runs and
--- hikes count in Shenandoah). A few "local favourite" courses per area take
--- about half of all efforts, so their monthly and season boards have a crowd
--- of runners; the rest spread over the long tail. Alex's and Morgan's recent
--- seed.sql runs are timed too, as extra Richmond regulars.
+-- ───────────────────────── 6. Park course efforts ─────────────────────────
+-- Every effort lands on a REAL catalogue course, loaded from scripts/parks/
+-- by bin/seed-demo.sh before this file runs; seed.sql's fixture park is left
+-- to the fixture. A course counts as near an area when its park's centre is
+-- within 80 km of the area's centre, so a park added to the catalogue later
+-- joins its area's boards with no change here.
+--
+-- 6a. Runs already in the feed. About half of each runner's home-area foot
+-- activities are timed on one course near home that the run is long enough
+-- to cover, and one in five on a trip to a course anywhere. Each park's
+-- shortest course is its "local favourite" and takes about half of those
+-- efforts, so its monthly and season boards have a crowd. Alex's and Morgan's
+-- recent seed.sql runs count too, as extra Richmond regulars.
+--
+-- 6b. Course runs. Every course also gets runs of its own, so the long race
+-- courses (a half, a marathon, a 50K) have boards that no everyday run could
+-- reach: each runner who could cover the distance runs it zero to three
+-- times, more often when the course is near home, and one runner per course
+-- always does, so no board is empty. A few are dated last year so the season
+-- and all-time boards differ.
 
-create temp table demo_hot_courses on commit drop as
-select c.segment_id
-  from demo_courses c
-  join (values ('byrd-park', 1), ('james-river-park-system', 0), ('bryan-park', 1),
-               ('riverview-park', 0), ('ivy-creek-natural-area', 1),
-               ('shenandoah-national-park', 0), ('sky-meadows-state-park', 1),
-               ('first-landing-state-park', 0), ('mount-trashmore-park', 1),
-               ('burke-lake-park', 1), ('great-falls-park', 0)) h(slug, j)
-    on h.slug = c.park_slug and h.j = c.j;
+create temp table demo_areas on commit drop as
+select * from (values
+  ('rva',    37.5407, -77.4360),
+  ('cville', 38.0293, -78.4767),
+  ('shen',   38.5300, -78.4400),
+  ('vb',     36.8529, -75.9780),
+  ('nova',   38.8500, -77.3000)
+) v(region, lat, lng);
+
+create temp table demo_catalogue_courses on commit drop as
+select pc.id as course_id, gs.id as segment_id, gs.name, gs.distance_m, coalesce(gs.elevation_m, 0) as vert,
+       pc.park_id,
+       row_number() over (partition by pc.park_id order by gs.distance_m, pc.slug) = 1 as favourite,
+       array(select a.region from demo_areas a
+              where 111.32 * sqrt(power(p.centroid_lat - a.lat, 2)
+                                  + power((p.centroid_lng - a.lng) * cos(radians(a.lat)), 2)) <= 80) as near
+  from park_courses pc
+  join parks p on p.id = pc.park_id
+  join global_segments gs on gs.id = pc.global_segment_id
+ where pc.park_id <> '5eed0000-0000-4000-8000-0000000000a1'
+   and pc.status = 'open'
+   and gs.distance_m > 0;
 
 create temp table demo_effort_runs on commit drop as
 select r.id as run_id, r.user_id, r.started_at, r.distance_m,
@@ -650,10 +563,8 @@ select r.id as run_id, r.user_id, r.started_at, r.distance_m,
          when r.user_id in ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                             'b2c3d4e5-f6a7-8901-bcde-f23456789012',
                             'c3d4e5f6-a7b8-9012-cdef-345678901234') then 'rva'
-         when pg_temp.rnd('travel:' || r.id) < 0.25 then
-           case u.k when 'sam' then 'cville' when 'priya' then 'rva' when 'diego' then 'cville'
-                    when 'tom' then 'rva' else u.home end
          else u.home end as region,
+       pg_temp.rnd('travel:' || r.id) < 0.2 as travel,
        pg_temp.rnd('hot:' || r.id) < 0.55 as to_hot
   from runs r
   left join demo_users u on u.id = r.user_id
@@ -662,7 +573,10 @@ select r.id as run_id, r.user_id, r.started_at, r.distance_m,
             and r.is_public and r.started_at > now() - interval '45 days'))
    and r.activity_type <> 'cycle'
    and r.distance_m > 0 and r.duration_s > 0
-   and r.started_at > now() - interval '182 days';
+   and r.started_at > now() - interval '182 days'
+   -- A run already timed (seed.sql's fixture efforts, or a 6b course run on
+   -- a second pass) is left alone, which keeps a re-run from adding any.
+   and not exists (select 1 from global_segment_efforts e where e.run_id = r.id);
 
 insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at, matched_by)
 select p.segment_id, p.run_id, p.user_id,
@@ -673,15 +587,79 @@ select p.segment_id, p.run_id, p.user_id,
     select e.*, c.segment_id, c.distance_m as course_m,
            row_number() over (
              partition by e.run_id
-             order by (e.to_hot and c.segment_id in (select segment_id from demo_hot_courses)) desc,
+             order by (e.to_hot and c.favourite) desc,
                       pg_temp.rnd(e.run_id::text || c.segment_id::text)) as rn
       from demo_effort_runs e
-      join demo_courses c on c.region = e.region and c.distance_m <= e.distance_m * 0.95
+      join demo_catalogue_courses c
+        on c.distance_m <= e.distance_m * 0.95
+       and (e.travel or e.region = any (c.near))
+     where e.travel or pg_temp.rnd('timed:' || e.run_id) < 0.5
   ) p
- where p.rn = 1 or (p.rn = 2 and p.distance_m > 12000)
+ where p.rn = 1
 on conflict (global_segment_id, run_id) do nothing;
 
--- ───────────────────────── 8. Kudos, comments, reactions, reviews ─────────────────────────
+create temp table demo_board_runners on commit drop as
+select v.id, v.k, v.home, v.pace_s_per_km, v.max_m
+  from (values
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890'::uuid, 'runner', 'rva', 300, 55000),
+    ('b2c3d4e5-f6a7-8901-bcde-f23456789012'::uuid, 'alex',   'rva', 280, 42500),
+    ('c3d4e5f6-a7b8-9012-cdef-345678901234'::uuid, 'morgan', 'rva', 330, 21500)
+  ) v(id, k, home, pace_s_per_km, max_m)
+union all
+select u.id, u.k, u.home,
+       case u.style when 'marathon' then 285 when 'road' then 295 when 'trail' then 345
+                    when 'cyclist' then 335 when 'beginner' then 420 else 400 end,
+       case u.style when 'marathon' then 42500 when 'road' then 42500 when 'trail' then 55000
+                    when 'cyclist' then 21500 else 10000 end
+  from demo_users u
+ where u.style <> 'walker';
+
+create temp table demo_board_attempts on commit drop as
+with eligible as (
+  select c.*, r.id as user_id, r.k, r.pace_s_per_km,
+         r.home = any (c.near) as near_home,
+         row_number() over (partition by c.course_id order by pg_temp.rnd('board-anchor:' || c.course_id || r.k)) = 1 as anchor
+    from demo_catalogue_courses c
+    join demo_board_runners r on c.distance_m <= r.max_m
+)
+select pg_temp.did('board-run:' || e.course_id || ':' || e.k || ':' || a) as run_id,
+       e.user_id, e.segment_id, e.name, e.distance_m as course_m, e.vert,
+       pg_temp.rnd('board-when:' || e.course_id || e.k || a) as w,
+       e.pace_s_per_km * power(e.distance_m / 10000.0, 0.06)
+         * (0.94 + 0.12 * pg_temp.rnd('board-pace:' || e.course_id || e.k || a)) as pace
+  from eligible e
+  cross join generate_series(1, 3) a
+ where a <= greatest(case when e.anchor then 1 else 0 end, case
+     when pg_temp.rnd('board-n:' || e.course_id || e.k) < case when e.near_home then 0.25 else 0.8 end then 0
+     when pg_temp.rnd('board-n:' || e.course_id || e.k) < case when e.near_home then 0.70 else 0.95 end then 1
+     when e.distance_m > 21100 then 1
+     when pg_temp.rnd('board-n:' || e.course_id || e.k) < 0.97 then 2
+     else 3 end);
+
+alter table demo_board_attempts add column started_at timestamptz, add column time_s int;
+
+update demo_board_attempts b set
+  started_at = pg_temp.va(current_date - case when b.w < 0.15 then 380 + (b.w * 1000)::int
+                                              else 1 + (b.w * 170)::int end,
+                          interval '7 hours' + (b.w * 600)::int * interval '1 minute'),
+  time_s = round(b.course_m / 1000.0 * b.pace)::int;
+
+insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, activity_type,
+                  elevation_gain_m, fastest_5k_s, metadata)
+select b.run_id, b.user_id, b.started_at,
+       b.time_s + 120 + (b.w * 400)::int, round(b.course_m + 200 + b.w * 600),
+       'app', true, 'run', round(b.vert),
+       case when b.course_m >= 5000 then round(5 * b.pace * 0.97)::int end,
+       jsonb_build_object('title', b.name)
+  from demo_board_attempts b
+on conflict (id) do nothing;
+
+insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at, matched_by)
+select b.segment_id, b.run_id, b.user_id, b.time_s, b.started_at + interval '1 minute', 'gate'
+  from demo_board_attempts b
+on conflict (global_segment_id, run_id) do nothing;
+
+-- ───────────────────────── 7. Kudos, comments, reactions, reviews ─────────────────────────
 
 insert into run_kudos (user_id, run_id, given_at)
 select u.id, r.id, least(now() - interval '5 minutes', r.started_at + r.duration_s * interval '1 second'
@@ -774,7 +752,7 @@ select pg_temp.did('review:' || r.id || ':' || u.k), r.id, u.id,
  where r.owner_k = 'runner' and r.is_public
 on conflict do nothing;
 
--- ───────────────────────── 9. Clubs, events, posts ─────────────────────────
+-- ───────────────────────── 8. Clubs, events, posts ─────────────────────────
 
 create temp table demo_clubs on commit drop as
 select pg_temp.did('club:' || slug) as id, slug, name, owner_k, description, label, lat, lng, policy
@@ -883,7 +861,7 @@ select pg_temp.did('post:' || c.slug || ':' || p.n), c.id, coalesce(u.id, ow.id)
   left join demo_users u on u.k = p.author_k
 on conflict (id) do nothing;
 
--- ───────────────────────── 10. Challenges ─────────────────────────
+-- ───────────────────────── 9. Challenges ─────────────────────────
 
 create temp table demo_challenges on commit drop as
 select pg_temp.did('challenge:' || k) as id, k, creator_k, club_slug, title, description, metric, scope,
@@ -932,7 +910,7 @@ select ch.id, u.id, least(now(), ch.starts_at + u.idx * interval '6 hours')
                     or (ch.k = 'dec-daily' and u.k in ('elena'))
 on conflict do nothing;
 
--- ───────────────────────── 11. Messages ─────────────────────────
+-- ───────────────────────── 10. Messages ─────────────────────────
 -- Two direct threads. The conversation row is created by the send trigger.
 
 insert into direct_messages (id, sender_id, recipient_id, body, created_at, read_at)
@@ -954,7 +932,7 @@ select pg_temp.did('dm:' || m.n), s.id, r.id, m.body, now() - m.ago,
  order by m.n
 on conflict (id) do nothing;
 
--- ───────────────────────── 12. Training ─────────────────────────
+-- ───────────────────────── 11. Training ─────────────────────────
 -- seed.sql already gives the runner the active Richmond Half plan; the demo
 -- runs above land on its past days and the matcher links them. This adds the
 -- 10K block finished before it, so plan history has a completed plan.
@@ -988,7 +966,7 @@ select pg_temp.did('plan:fall-10k:workout:' || w || ':' || s.slot), pg_temp.did(
                      (2, 4, 'tempo', 8000, 285), (3, 6, 'long', 12000, 345)) s(slot, dayoff, kind, dist, pace)
 on conflict (id) do nothing;
 
--- ───────────────────────── 13. Gym, food, body, fitness ─────────────────────────
+-- ───────────────────────── 12. Gym, food, body, fitness ─────────────────────────
 
 insert into gym_routines (id, author_id, title, notes, periodisation, exercise_count)
 values
@@ -1090,7 +1068,7 @@ select pg_temp.did('fitness:' || w), 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   from generate_series(1, 25) w
 on conflict (id) do nothing;
 
--- ───────────────────────── 14. Notifications ─────────────────────────
+-- ───────────────────────── 13. Notifications ─────────────────────────
 -- The triggers above raised the runner's kudos, comment, follow, message,
 -- RSVP and run-completed notices at insert time. Give each its source's time
 -- and mark everything older than two days read, so the inbox has a realistic

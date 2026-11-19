@@ -27,7 +27,6 @@ ParkListing _park({
   String agency = 'state',
   String kind = 'park',
   String? websiteUrl,
-  String? kind,
 }) => ParkListing(
   park: ParkRow(
     id: id,

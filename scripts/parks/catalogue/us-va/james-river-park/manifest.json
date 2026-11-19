@@ -1,0 +1,406 @@
+{
+  "park": {
+    "slug": "james-river-park",
+    "name": "James River Park System",
+    "kind": "park",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://jamesriverpark.org/trails/"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks the Forest Hill Park line against the trail signs (the park map is schematic, and the build uses short OSM connectors such as the steps south of the lake). The Buttermilk + North Bank half and marathon are not built yet: they wait on Boulevard Bridge pedestrian access, the closed Texas Beach footbridge and the North Bank reroute, and the OSM junction fixes listed on #1430."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "forest-hill-park-5k",
+      "name": "Forest Hill Park Loop, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4849.5,
+      "lead_in_m": 514.3,
+      "start_line_from_lead_in_start_m": 439,
+      "start_finish": {
+        "lat": 37.516415,
+        "lng": -77.473561
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
+      "source_checked_at": "2026-11-19",
+      "geojson": "forest-hill-park-5k.geojson",
+      "elevation_m": 111,
+      "checkpoints": [
+        {
+          "lat": 37.520213,
+          "lng": -77.47327
+        },
+        {
+          "lat": 37.521155,
+          "lng": -77.474112
+        },
+        {
+          "lat": 37.522519,
+          "lng": -77.470452
+        },
+        {
+          "lat": 37.520046,
+          "lng": -77.469739
+        }
+      ],
+      "waypoint_count": 251,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 440 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 696
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 876
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1000,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "climb",
+            "gain_m": 27,
+            "length_m": 710,
+            "at_m": 1224
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1603
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2000,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2364
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2364
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 2544
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3000,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 280,
+            "at_m": 3666
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4000,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4431
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 4479
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 4772
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 4925
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 4925
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "forest-hill-park-10k",
+      "name": "Forest Hill Park Loop, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4849.5,
+      "lead_in_m": 514.3,
+      "start_line_from_lead_in_start_m": 363.8,
+      "start_finish": {
+        "lat": 37.516708,
+        "lng": -77.474327
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
+      "source_checked_at": "2026-11-19",
+      "geojson": "forest-hill-park-10k.geojson",
+      "elevation_m": 219,
+      "checkpoints": [
+        {
+          "lat": 37.520091,
+          "lng": -77.473072
+        },
+        {
+          "lat": 37.521478,
+          "lng": -77.473653
+        },
+        {
+          "lat": 37.521305,
+          "lng": -77.470297
+        },
+        {
+          "lat": 37.518604,
+          "lng": -77.471218
+        },
+        {
+          "lat": 37.519058,
+          "lng": -77.472703
+        },
+        {
+          "lat": 37.521324,
+          "lng": -77.47271
+        },
+        {
+          "lat": 37.5213,
+          "lng": -77.470616
+        },
+        {
+          "lat": 37.51984,
+          "lng": -77.469428
+        }
+      ],
+      "waypoint_count": 504,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 365 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 771
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 951
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1111,
+            "order": 1,
+            "of": 8
+          },
+          {
+            "kind": "climb",
+            "gain_m": 27,
+            "length_m": 710,
+            "at_m": 1299
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1678
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2222,
+            "order": 2,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2439
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2439
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 2619
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 3,
+            "of": 8
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 280,
+            "at_m": 3741
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4444,
+            "order": 4,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4506
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 4555
+          },
+          {
+            "kind": "climb",
+            "gain_m": 22,
+            "length_m": 390,
+            "at_m": 4609
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 4847
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5556,
+            "order": 5,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 6,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7778,
+            "order": 7,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8889,
+            "order": 8,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 9850
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 9850
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

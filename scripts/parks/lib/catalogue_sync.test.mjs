@@ -59,7 +59,12 @@ test('park dirs are the region/park pairs holding a manifest, sorted', () => {
 test('the committed catalogue is found on disk', () => {
 	assert.deepEqual(
 		findParkDirs(CATALOGUE_ROOT).map((d) => path.relative(CATALOGUE_ROOT, d)),
-		[path.join('us-va', 'deep-run'), path.join('us-va', 'pocahontas'), path.join('us-va', 'virginia-capital-trail')],
+		[
+			path.join('us-va', 'deep-run'),
+			path.join('us-va', 'james-river-park'),
+			path.join('us-va', 'pocahontas'),
+			path.join('us-va', 'virginia-capital-trail'),
+		],
 	);
 });
 

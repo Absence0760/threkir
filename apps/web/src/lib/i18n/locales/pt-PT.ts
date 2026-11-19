@@ -8042,6 +8042,8 @@ export const messages = {
 	"parks.legendStart": "Partida",
 	"parks.legendFinish": "Chegada",
 	"parks.legendStartFinish": "Partida e chegada",
+	"parks.mapJumpLabel": "Ver no mapa",
+	"parks.mapJumpCourse": "Percurso completo",
 	"parks.endsTitle": "Pontos de partida e chegada",
 	"parks.endsCopy": "Copiar",
 	"parks.endsCopyStart": "Copiar as coordenadas da partida",

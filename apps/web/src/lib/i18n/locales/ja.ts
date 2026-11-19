@@ -8038,6 +8038,8 @@ export const messages = {
 	"parks.legendStart": "スタート",
 	"parks.legendFinish": "フィニッシュ",
 	"parks.legendStartFinish": "スタート兼フィニッシュ",
+	"parks.mapJumpLabel": "地図で表示",
+	"parks.mapJumpCourse": "コース全体",
 	"parks.endsTitle": "スタート・フィニッシュ地点",
 	"parks.endsCopy": "コピー",
 	"parks.endsCopyStart": "スタートの座標をコピー",

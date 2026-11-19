@@ -8072,6 +8072,8 @@ export const en = {
 	"parks.legendStart": "Start",
 	"parks.legendFinish": "Finish",
 	"parks.legendStartFinish": "Start and finish",
+	"parks.mapJumpLabel": "Show on the map",
+	"parks.mapJumpCourse": "Whole course",
 	"parks.endsTitle": "Start and finish points",
 	"parks.endsCopy": "Copy",
 	"parks.endsCopyStart": "Copy start coordinates",

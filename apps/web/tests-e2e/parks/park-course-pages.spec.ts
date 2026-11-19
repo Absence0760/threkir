@@ -349,7 +349,25 @@ test.describe('park course pages', () => {
 		await expect(page.getByTestId('park-course-shared-use')).toHaveCount(0);
 	});
 
-	test('an out-and-back has one green-and-red box and a Turn around mark', async ({ page }) => {
+	test('the map jumps to the start, the finish and back to the whole course', async ({ page }) => {
+		await page.goto(`/parks/us-va/${PARK_SLUG}/5k`);
+		await expect(page.getByRole('heading', { level: 1, name: COURSES[3].name })).toBeVisible({ timeout: 15_000 });
+		const jumps = page.getByTestId('park-course-map-jumps');
+		// The icons are hidden from the reader, so each button is named by its word alone.
+		await expect(jumps.getByRole('button')).toHaveCount(3);
+		await expect(jumps.getByTestId('park-course-jump-start')).toHaveAccessibleName('Start');
+		await expect(jumps.getByTestId('park-course-jump-finish')).toHaveAccessibleName('Finish');
+		await expect(jumps.getByTestId('park-course-jump-course')).toHaveAccessibleName('Whole course');
+		const map = page.locator('.run-map');
+		await jumps.getByTestId('park-course-jump-start').click();
+		await expect(map).toHaveAttribute('data-map-target', 'start', { timeout: 10_000 });
+		const close = Number(await map.getAttribute('data-map-zoom'));
+		await jumps.getByTestId('park-course-jump-course').click();
+		await expect(map).toHaveAttribute('data-map-target', 'course', { timeout: 10_000 });
+		expect(Number(await map.getAttribute('data-map-zoom'))).toBeLessThan(close);
+	});
+
+	test('an out-and-back has one start box and a Turn around mark', async ({ page }) => {
 		await page.goto(`/parks/us-va/${PARK_SLUG}/half`);
 		await expect(page.getByRole('heading', { level: 1, name: COURSES[4].name })).toBeVisible({ timeout: 15_000 });
 		const legend = page.getByTestId('park-course-legend');
@@ -357,8 +375,12 @@ test.describe('park course pages', () => {
 		await expect(legend.locator('li[data-kind="startBox"]')).toHaveCount(0);
 		await expect(legend.locator('li[data-kind="finishBox"]')).toHaveCount(0);
 		await expect(legend.locator('li[data-kind="turnaround"]')).toHaveText('Turn around here: your run must pass it');
+		// One box, so one button for it, beside Whole course.
+		const jumps = page.getByTestId('park-course-map-jumps');
+		await expect(jumps.getByRole('button')).toHaveCount(2);
+		await expect(jumps.getByTestId('park-course-jump-startFinish')).toHaveAccessibleName('Start and finish');
 		await expect(page.getByTestId('park-course-ends-instruction')).toHaveText(
-			'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.',
+			'Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.',
 		);
 	});
 });

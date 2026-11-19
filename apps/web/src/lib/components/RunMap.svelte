@@ -29,6 +29,7 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
 	import { minMax } from '#lib/util/min_max.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
 	import { buildCumulative, buildSegment, type SelectedSegment } from '#lib/runs/track_segment.ts';
@@ -261,6 +262,8 @@
 
 	let mapContainer = $state<HTMLDivElement>();
 	let map: maplibregl.Map;
+	/// Whether the first style load, and the entrance fit inside it, has run.
+	let styleLoadedOnce = false;
 	let stopResizeWatch: (() => void) | null = null;
 	let animating = $state(false);
 	let animationFrame: number;
@@ -314,6 +317,40 @@
 		animating = false;
 		cancelAnimationFrame(animationFrame);
 		animationMarker?.remove();
+	}
+
+	/// Fit the camera to `bounds`, as a course page's jump buttons ask: an
+	/// eased move, or a jump when the reader asked for less motion, never
+	/// closer than `maxZoom`. Once the camera settles the container carries
+	/// `data-map-target` and `data-map-zoom`, so a test can see where it went.
+	export function jumpTo(
+		target: string,
+		bounds: { south: number; west: number; north: number; east: number },
+		maxZoom?: number,
+	): void {
+		if (!map) return;
+		// Before the style loads, the entrance fit is still to come and would
+		// undo this jump, so wait for it and jump after.
+		if (!styleLoadedOnce) {
+			map.once('load', () => jumpTo(target, bounds, maxZoom));
+			return;
+		}
+		// Stop a move still in flight (the entrance fit) first: stopping it
+		// fires its own moveend, which would otherwise be read as this one's.
+		map.stop();
+		mapContainer?.removeAttribute('data-map-target');
+		map.once('moveend', () => {
+			mapContainer?.setAttribute('data-map-target', target);
+			mapContainer?.setAttribute('data-map-zoom', map.getZoom().toFixed(2));
+		});
+		map.fitBounds(
+			[
+				[bounds.west, bounds.south],
+				[bounds.east, bounds.north],
+			],
+			// An undefined maxZoom would override the map's own and fit to NaN.
+			{ padding: 50, animate: !motion.reduced, ...(maxZoom === undefined ? {} : { maxZoom }) },
+		);
 	}
 
 	let startMarker: maplibregl.Marker | undefined;
@@ -947,7 +984,10 @@
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
+		map.on('load', () => {
+			applyOverlayStep(overlayDraw.styleReady(true));
+			styleLoadedOnce = true;
+		});
 		// 'idle' fires once a render has settled, never mid-zoom, so the
 		// answer does not flicker while the map moves.
 		map.on('idle', () => {

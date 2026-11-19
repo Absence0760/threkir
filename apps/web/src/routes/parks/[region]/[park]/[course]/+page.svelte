@@ -62,6 +62,8 @@
 		type CourseKeyKind,
 	} from '#lib/parks/course_map.ts';
 	import { gateBoxParts } from '#lib/races/course_gates.ts';
+	import { COURSE_JUMP_MAX_ZOOM, courseJumps, type CourseJumpTarget } from '#lib/parks/course_jump.ts';
+	import { mapBoxInk, mapFinishZoneColour, mapStartZoneColour } from '#lib/routes/basemap_contrast.ts';
 	import { PUBLIC_MAPTILER_KEY } from '$app/env/public';
 	import { basemapIsDarkFromEnv } from '#lib/routes/map-style.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -189,6 +191,23 @@
 		const said = courseBoxInstruction(boxGates, turn !== null, course?.laps);
 		return m(said.key, said.params);
 	});
+	// The buttons under the map that take it to the start, the finish (one
+	// button where they share a box) and back to the whole course.
+	const jumps = $derived(courseJumps({ gates: boxGates, line: mapTrack, endsShared: finishesAtStart(mapTrack) }));
+	let runMap = $state<ReturnType<typeof RunMap>>();
+	let mapLoaded = $state(false);
+	const JUMP_ICON: Record<CourseJumpTarget, string> = {
+		start: 'play_arrow',
+		finish: 'flag',
+		startFinish: 'flag',
+		course: 'route',
+	};
+	const JUMP_LABEL: Record<CourseJumpTarget, () => string> = {
+		start: () => m('parks.legendStart'),
+		finish: () => m('parks.legendFinish'),
+		startFinish: () => m('parks.legendStartFinish'),
+		course: () => m('parks.mapJumpCourse'),
+	};
 	const gateBoxes = $derived(
 		boxGates
 			? {
@@ -433,8 +452,37 @@
 				{#if mapTrack.length >= 2}
 					<section class="map-block" aria-label={m('parks.courseMapLabel')}>
 						<div class="map-wrap">
-							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} bind:distanceBadgesShown={badgesShown} />
+							<RunMap bind:this={runMap} bind:loaded={mapLoaded} track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} bind:distanceBadgesShown={badgesShown} />
 						</div>
+						{#if mapLoaded && jumps.length > 0}
+							<div class="map-jumps" role="group" aria-labelledby="park-map-jumps-label" data-testid="park-course-map-jumps">
+								<span id="park-map-jumps-label" class="map-jumps-label">{m('parks.mapJumpLabel')}</span>
+								{#each jumps as jump (jump.target)}
+									{@const fill =
+										jump.target === 'course'
+											? null
+											: jump.target === 'finish'
+												? mapFinishZoneColour(darkBasemap)
+												: mapStartZoneColour(darkBasemap)}
+									<button
+										type="button"
+										class="btn btn-outline map-jump"
+										data-testid="park-course-jump-{jump.target}"
+										onclick={() =>
+											runMap?.jumpTo(jump.target, jump.bounds, jump.target === 'course' ? undefined : COURSE_JUMP_MAX_ZOOM)}
+									>
+										<span
+											class="material-symbols jump-icon"
+											class:filled={fill !== null}
+											style:background={fill}
+											style:color={fill === null ? null : mapBoxInk(darkBasemap)}
+											aria-hidden="true">{JUMP_ICON[jump.target]}</span
+										>
+										{JUMP_LABEL[jump.target]()}
+									</button>
+								{/each}
+							</div>
+						{/if}
 						<ParkMapLegend items={legendItems} testid="park-course-legend" />
 						{#if credit}
 							<p class="attribution" data-testid="park-course-attribution">
@@ -996,6 +1044,28 @@
 		height: 20rem;
 		border-radius: var(--radius-md);
 		overflow: hidden;
+	}
+	.map-jumps {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		margin: var(--space-sm) 0 0;
+	}
+	.map-jumps-label {
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
+	}
+	.map-jump {
+		min-height: 44px;
+		gap: var(--space-xs);
+	}
+	.jump-icon {
+		font-size: 1.125rem;
+	}
+	.jump-icon.filled {
+		border-radius: 4px;
+		padding: 2px;
 	}
 	.attribution {
 		margin: var(--space-sm) 0 0;

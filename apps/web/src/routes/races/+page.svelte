@@ -3,7 +3,7 @@
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -29,6 +29,7 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
 	import { anyTimeSearchHits, orderAnyTimeCourses, orderAnyTimeParks, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
@@ -38,6 +39,13 @@
 	import { SHAPE_LABEL, STATUS_LABEL, labelKey } from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
+	import {
+		PLACE_LOOKUP_MIN_CHARS,
+		coursePlaceBias,
+		placeLabel,
+		placesNearCourses,
+	} from '#lib/parks/course_place_search.ts';
+	import type { PlaceSearchResult } from '#lib/routes/geocoding_math.ts';
 
 	const SHOWS: { v: RacesShow; k: MessageKey }[] = [
 		{ v: 'all', k: 'races.showAll' },
@@ -313,6 +321,95 @@
 		void loadRecords();
 	});
 
+	// The Courses view's one search matches parks and courses by name from the
+	// list above, and looks places up beside it. A place is only ever offered,
+	// as a "Courses near …" row the runner taps; typing never sorts by one on
+	// its own (decisions § 2591).
+	type PlaceLookup =
+		| { status: 'idle' }
+		| { status: 'loading' }
+		| { status: 'ok'; places: PlaceSearchResult[] }
+		| { status: 'unavailable' };
+	let placeLookup = $state<PlaceLookup>({ status: 'idle' });
+
+	// Where the catalogue is: every course start, and each park's own point.
+	const coursePoints = $derived.by(() => {
+		const out: { lat: number; lng: number }[] = [];
+		for (const c of courses) {
+			const start = courseStart(c);
+			if (start && Number.isFinite(start.lat) && Number.isFinite(start.lng)) out.push(start);
+		}
+		for (const list of coursesByPark.values()) {
+			const park = list[0].park;
+			if (park.centroid_lat !== null && park.centroid_lng !== null) {
+				out.push({ lat: park.centroid_lat, lng: park.centroid_lng });
+			}
+		}
+		return out;
+	});
+
+	$effect(() => {
+		const term = courseQuery.trim();
+		if (show !== 'courses' || term.length < PLACE_LOOKUP_MIN_CHARS || coursesLoading || coursesFailed) {
+			placeLookup = { status: 'idle' };
+			return;
+		}
+		const points = coursePoints;
+		const bias = coursePlaceBias(
+			courses.map((c) => c.park.region_code),
+			points,
+			typeof navigator === 'undefined' ? null : navigator.language,
+		);
+		const controller = new AbortController();
+		placeLookup = { status: 'loading' };
+		void (async () => {
+			try {
+				const { searchPlaces } = await import('#lib/routes/geocoding.ts');
+				const outcome = await searchPlaces(term, 8, controller.signal, bias);
+				if (controller.signal.aborted || outcome.status === 'aborted') return;
+				placeLookup =
+					outcome.status === 'ok'
+						? { status: 'ok', places: placesNearCourses(outcome.results, points) }
+						: { status: 'unavailable' };
+			} catch (e) {
+				if (controller.signal.aborted) return;
+				console.error('place lookup failed', e);
+				placeLookup = { status: 'unavailable' };
+			}
+		})();
+		return () => controller.abort();
+	});
+
+	const placeRows = $derived(placeLookup.status === 'ok' ? placeLookup.places : []);
+	// A place may still be on its way, or is there to pick, so "no park or
+	// course by that name" is not yet "nothing at all".
+	const placesPending = $derived(
+		show === 'courses' && (placeLookup.status === 'loading' || placeRows.length > 0),
+	);
+
+	// What a screen reader hears as the search settles.
+	const courseSearchStatus = $derived.by(() => {
+		if (courseTerms.length === 0 || coursesLoading || coursesFailed) return '';
+		const found = m('races.courseSearchStatus', { n: anyTimeCount });
+		return placeRows.length > 0 ? `${found} ${m('races.placeSuggestionsStatus', { n: placeRows.length })}` : found;
+	});
+
+	let nearControls = $state<HTMLElement | null>(null);
+
+	async function pickPlace(place: PlaceSearchResult) {
+		clearTimeout(placeTimer);
+		center = { lng: place.lng, lat: place.lat };
+		radiusM = undefined;
+		nearPlace = '';
+		nearLabel = placeLabel(place.name);
+		geoError = '';
+		clearSearch();
+		// The row that was pressed goes with the search, so focus lands on what
+		// it set: the near chip, which also undoes it.
+		await tick();
+		nearControls?.querySelector<HTMLElement>('[data-testid="races-near-clear"]')?.focus();
+	}
+
 	// A verified club's admin is pointed at the course suggestions waiting for
 	// them (decisions § 2396). Auxiliary: a failed read shows no link.
 	let suggestionsToReview = $state(0);
@@ -338,7 +435,10 @@
 		}
 		placeTimer = setTimeout(async () => {
 			const { geocodePlace } = await import('#lib/routes/geocoding.ts');
-			const place = await geocodePlace(term);
+			// Ranked nearer the courses, never held to their countries: the race
+			// calendar is not limited to where the parks are.
+			const proximity = coursePlaceBias([], coursePoints).proximity;
+			const place = await geocodePlace(term, undefined, proximity ? { proximity } : undefined);
 			if (place) {
 				center = place.center;
 				radiusM = place.radiusM;
@@ -402,25 +502,6 @@
 
 <svelte:head><title>{m('races.pageTitle')}</title></svelte:head>
 
-<!-- One place field for both homes it has: the Filters sheet, and the top of
-     the courses in the Courses view, where the sheet is hidden with the race
-     calendar. Its description is `races-near-hint`, which each home renders and
-     never both at once. -->
-{#snippet nearInputs()}
-	<div class="near-row">
-		<AppSearchField
-			value={nearPlace}
-			oninput={onNearPlaceInput}
-			label={m('races.nearPlace')}
-			testid="races-near"
-			describedby="races-near-hint"
-		/>
-		<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
-			{m('discover.useMyLocation')}
-		</button>
-	</div>
-{/snippet}
-
 {#snippet nearChip()}
 	<button
 		type="button"
@@ -441,11 +522,11 @@
 {#snippet raceSearch()}
 	<AppSearchField
 		bind:value={query}
-		label={m(show === 'races' ? 'races.searchPlaceholder' : show === 'courses' ? 'parks.searchPlaceholder' : 'races.searchAllPlaceholder')}
+		label={m(show === 'races' ? 'races.searchPlaceholder' : show === 'courses' ? 'races.searchCoursesPlaceholder' : 'races.searchAllPlaceholder')}
 		testid="races-search"
 		describedby="races-search-desc"
 	/>
-	<span class="visually-hidden" id="races-search-desc">{m('races.searchHint')}</span>
+	<span class="visually-hidden" id="races-search-desc">{m(show === 'courses' ? 'races.searchCoursesHint' : 'races.searchHint')}</span>
 {/snippet}
 
 <!-- The Filters sheet. Every control's explanation sits here, beside it and
@@ -466,7 +547,18 @@
 
 	<section class="sheet-field" aria-labelledby="races-near-heading">
 		<h3 id="races-near-heading">{m('discover.nearLabel')}</h3>
-		{@render nearInputs()}
+		<div class="near-row">
+			<AppSearchField
+				value={nearPlace}
+				oninput={onNearPlaceInput}
+				label={m('races.nearPlace')}
+				testid="races-near"
+				describedby="races-near-hint"
+			/>
+			<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
+				{m('discover.useMyLocation')}
+			</button>
+		</div>
 		<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
 		{#if geoError}
 			<p class="near-error" role="status">{geoError}</p>
@@ -618,24 +710,28 @@
 					{/if}
 				</div>
 				{#if show === 'courses'}
-					<p class="section-intro" id="races-near-hint">{m('races.anyTimeIntroCourses')}</p>
+					<p class="section-intro">{m('races.anyTimeIntroCourses')}</p>
 				{:else}
 					<p class="section-intro">{m('races.anyTimeIntro')}</p>
 				{/if}
 			</div>
 
-			<!-- The race filters are hidden here, so the place that orders the
-			     courses comes with them. -->
+			<!-- The race filters are hidden here. The search above finds places
+			     too, so all this view adds is the way to use the reader's own
+			     location, and the chip saying what the courses are ordered by. -->
 			{#if show === 'courses'}
-				<div class="filters" data-testid="races-any-time-near">
-					{@render nearInputs()}
-					{#if nearLabel}
-						<div class="active-filters">{@render nearChip()}</div>
-					{/if}
+				<div class="filters" data-testid="races-any-time-near" bind:this={nearControls}>
+					<div class="active-filters">
+						{#if nearLabel}{@render nearChip()}{/if}
+						<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
+							{m('discover.useMyLocation')}
+						</button>
+					</div>
 					{#if geoError}
 						<p class="near-error" role="status">{geoError}</p>
 					{/if}
 				</div>
+				<p class="visually-hidden" role="status" data-testid="races-course-search-status">{courseSearchStatus}</p>
 			{/if}
 
 			{#if coursesLoading}
@@ -645,10 +741,16 @@
 					<span>{m('parks.loadFailed')}</span>
 					<button type="button" class="btn btn-outline" onclick={loadCourses}>{m('parks.retry')}</button>
 				</div>
+			{:else if anyTimeCount === 0 && courseTerms.length > 0 && placesPending}
+				<p class="state-msg" data-testid="races-any-time-no-name-match">
+					{m('races.anyTimeNoNameMatch', { query: courseQuery.trim() })}
+				</p>
 			{:else if anyTimeCount === 0 && courseTerms.length > 0}
 				<EmptyState
 					icon="search_off"
-					title={m('races.anyTimeNoMatch', { query: courseQuery.trim() })}
+					title={show === 'courses' && placeLookup.status === 'ok'
+						? m('races.anyTimeNoMatchAnywhere', { query: courseQuery.trim() })
+						: m('races.anyTimeNoMatch', { query: courseQuery.trim() })}
 					data-testid="races-any-time-no-match"
 				>
 					{#snippet actions()}
@@ -733,6 +835,33 @@
 						</li>
 					{/each}
 				</ul>
+				{/if}
+			{/if}
+
+			{#if show === 'courses' && courseTerms.length > 0 && !coursesLoading && !coursesFailed}
+				{#if placeRows.length > 0}
+					<div class="place-suggestions" data-testid="races-place-suggestions">
+						<SectionHeader label={m('races.placeSuggestionsHeading')} id="races-places-heading" level={3} class="races-any-time-head" />
+						<ul class="place-list" aria-labelledby="races-places-heading">
+							{#each placeRows as place (place.name)}
+								<li>
+									<ListCard
+										onclick={() => pickPlace(place)}
+										title={m('races.placeSuggestion', { place: placeLabel(place.name) })}
+										dense
+										chevron
+										testid="races-place-suggestion"
+									>
+										{#snippet leading()}<span class="material-symbols place-icon" aria-hidden="true">near_me</span>{/snippet}
+									</ListCard>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{:else if placeLookup.status === 'loading'}
+					<p class="state-msg" data-testid="races-place-loading">{m('races.placeLookupLoading')}</p>
+				{:else if placeLookup.status === 'unavailable'}
+					<p class="near-error" data-testid="races-place-unavailable">{m('races.placeLookupFailed')}</p>
 				{/if}
 			{/if}
 		</section>
@@ -922,6 +1051,18 @@
 		gap: 0.4rem;
 		align-items: stretch;
 		flex-wrap: wrap;
+	}
+	.place-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.place-icon {
+		color: var(--color-primary);
+		font-size: 1.2rem;
 	}
 	.near-locate {
 		flex-shrink: 0;

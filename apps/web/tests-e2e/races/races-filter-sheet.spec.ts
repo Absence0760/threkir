@@ -127,10 +127,12 @@ test.describe('/races — FilterBar and the Filters sheet', () => {
 		await expect(page.getByTestId('races-show-courses')).toHaveAttribute('aria-pressed', 'true', {
 			timeout: 10_000,
 		});
-		const search = page.getByRole('searchbox', { name: 'Search parks and courses…' });
+		const search = page.getByRole('searchbox', { name: 'Search parks, courses or places…' });
 		await expect(search).toBeVisible();
-		await expect(search).toHaveAccessibleDescription(/park courses by name, park or state/);
+		await expect(search).toHaveAccessibleDescription(/Finds parks and courses by name as you type/);
 		await expect(page.getByTestId('races-filters-toggle')).toHaveCount(0);
-		await expect(page.getByTestId('races-any-time').getByTestId('races-near')).toBeVisible();
+		// One search box: no second, look-alike place field beside the parks.
+		await expect(page.getByTestId('races-near')).toHaveCount(0);
+		await expect(page.getByTestId('races-any-time').getByTestId('races-use-location')).toBeVisible();
 	});
 });

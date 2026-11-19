@@ -297,7 +297,8 @@ because a course is something you go and do, not a stretch you happen to run.
   course count and distance range and opens the park page, which lists the
   courses with their maps, climb, difficulty and this season's records.
   Parks are ordered nearest first once the runner sets a place or uses their
-  location under Filters (the same point the race search uses), measured to
+  location (under Filters in All, or from the search's place rows and Use my
+  location in Courses; the same point the race search uses), measured to
   the park's nearest course start (its centroid when no course has one),
   otherwise by region then name; a park whose courses are all closed comes
   last. When the list is cut short (All shows eight), the section heading
@@ -315,7 +316,10 @@ because a course is something you go and do, not a stretch you happen to run.
   with the help and overflow actions on its row (mobile). It finds races by
   name (the `search_race_listings` RPC, as before), parks by name and place
   (the region's name or code), and courses by their own name, every word
-  of the query matching somewhere, case and accents ignored
+  of the query starting a word of the name or place ("belle" finds Belle
+  Isle State Park, "swift cr" Swift Creek; "ark" does not find every park),
+  case and accents ignored, the cases shared by both sides in
+  `fixtures/park_search_cases.json`
   (`parkSearchTerms` / `parkSearchMatches` / `anyTimeSearchHits` in the
   `any_time_courses` parity pair, on the catalogue's `fold`). A park whose
   name or place matches is listed as its park card; a course that matches
@@ -351,12 +355,31 @@ because a course is something you go and do, not a stretch you happen to run.
   settles for 250 ms before either list changes; the race search is not run
   while Courses hides the races, and runs when they show again. The hint
   names what the view finds ("Search races, parks and courses…" in All,
-  "Search parks and courses…" in Courses, "Search races by name…" in Races).
-  No match says "No courses match “…”" with Clear search. The Courses view's
-  park row follows the search. A switch under the intro, **All · Races · Courses**, shows both or
+  "Search parks, courses or places…" in Courses, "Search races by name…" in
+  Races). No match says "No courses match “…”" with Clear search. The Courses
+  view's park row follows the search.
+- **Places in the Courses search** (web, decisions § 2591): Courses has one
+  search box, never a second place field beside it. Names match first, from
+  the list already loaded, with no geocoder round trip. From three
+  characters the same words are also looked up as a place
+  (`searchPlaces` with a `PlaceBias`: held to the countries the catalogue
+  has parks in plus the reader's locale region, ranked near the catalogue's
+  centre), and any place with a course within 1,000 km is offered below the
+  matches as a "Courses near …" row (`course_place_search.ts`). A place is
+  never applied by typing: tapping its row clears the search, sets the
+  "Near: …" chip (focus moves to it; removing it undoes it) and orders the
+  parks from it. With no name match the view says "No parks or courses are
+  called “…”" above the place rows, or "No parks, courses or places called
+  “…”" when there are none; a failed lookup says so and leaves the name
+  matches standing. A hidden status line announces the counts. Use my
+  location sits beside the chip. The race Filters sheet (All and Races)
+  keeps its own labelled "Near a place…" field for the race calendar,
+  ranked near the courses but not held to their countries. Mobile has never
+  had a place field on this tab (it orders by the phone's fix), so it shares
+  only the matching rule.
+- **Show switch.** A switch under the intro, **All · Races · Courses**, shows both or
   either alone (decisions § 2480). Courses hides the race calendar and its
-  filters, lists every course rather than eight, and puts the place field and
-  Use my location at the top of the courses so they still order them. On web
+  filters and lists every course rather than eight. On web
   the choice is `?show=races|courses` (none, or an unknown value, is All),
   written by a shallow navigation, so a link, a refresh and back from a course
   page reopen it; on mobile it is the tab's own state and the courses are

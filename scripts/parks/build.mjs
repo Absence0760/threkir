@@ -37,7 +37,7 @@ import {
 	curatedGates,
 	distanceDeviation,
 	elevationGainM,
-	assertFinishAtTrailEnd,
+	assertViaEndsAtTrailEnd,
 	lapCourse,
 	linearCourse,
 	pathLengthM,
@@ -326,9 +326,9 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 	} catch (err) {
 		throw fail(err);
 	}
-	if (race.finish_at_trail_end === true) {
+	if (race.via_ends_at_trail_end === true) {
 		try {
-			assertFinishAtTrailEnd(cut.sequence, cut.ways);
+			assertViaEndsAtTrailEnd(cut.fullSequence, ways);
 		} catch (err) {
 			throw fail(err);
 		}

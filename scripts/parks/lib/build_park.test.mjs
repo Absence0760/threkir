@@ -56,7 +56,7 @@ function spec() {
 		},
 		courses: [],
 		race_courses: [
-			race({ slug: 'p2p', name: 'Test Trail, point to point', course_shape: 'point_to_point', anchor: 'via_end', finish_at_trail_end: true, checkpoint_count: 2 }),
+			race({ slug: 'p2p', name: 'Test Trail, point to point', course_shape: 'point_to_point', anchor: 'via_end', via_ends_at_trail_end: true, checkpoint_count: 2 }),
 			race({ slug: 'oab', name: 'Test Trail, out and back', course_shape: 'out_and_back', anchor: 'via_start', checkpoint_count: 3 }),
 		],
 	};
@@ -120,14 +120,22 @@ test('the build refuses a bare cycleway with no foot confirmation', () => {
 	assert.throws(() => build(s), /p2p: the course runs on way\(s\) not open to people on foot: way 31 \(highway=cycleway\)/);
 });
 
+test('a course anchored at the trail end can finish short of it, and the guard still reads the real end', () => {
+	const s = spec();
+	s.race_courses[0].offset_m = 50;
+	const p2p = build(s)('manifest.json').race_courses[0];
+	assert.equal(p2p.distance_m, 5000);
+	assert.ok(Math.abs(p2p.finish.lng - (0.06 - 50 / 111194.93)) < 1e-6, 'finishes 50 m before the trail end');
+});
+
 test('the build refuses an out-and-back with an even checkpoint count', () => {
 	const s = spec();
 	s.race_courses[1].checkpoint_count = 2;
 	assert.throws(() => build(s), /oab: an out-and-back needs an odd checkpoint_count/);
 });
 
-test('the build refuses a finish_at_trail_end course that stops short of the end', () => {
+test('the build refuses a via_ends_at_trail_end course whose via stops short of the end', () => {
 	const s = spec();
 	s.race_courses[0].via = [1, 60];
-	assert.throws(() => build(s), /p2p: finish_at_trail_end, but the finish \(node 60\) joins 2 edges/);
+	assert.throws(() => build(s), /p2p: via_ends_at_trail_end, but the via's last node \(node 60\) joins 2 edges/);
 });

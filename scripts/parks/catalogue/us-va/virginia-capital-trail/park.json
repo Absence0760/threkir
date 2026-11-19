@@ -674,11 +674,11 @@
         11322668035
       ],
       "anchor": "via_end",
-      "offset_m": 0,
-      "finish_at_trail_end": true,
-      "start_note": "Start on the trail about 1.3 km east of the Herring Creek Trailhead and run east; the finish is beside the Jamestown Trailhead lot at the end of the trail. Needs a car at each end.",
+      "offset_m": 50,
+      "via_ends_at_trail_end": true,
+      "start_note": "Start on the trail about 1.4 km east of the Herring Creek Trailhead and run east; the finish is on the trail 50 m before its end, by the Jamestown Trailhead restrooms, clear of Colonial Parkway. Needs a car at each end.",
       "route_guide": {
-        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.3 km east along the trail to the start line. The finish is at the Jamestown Trailhead lot by Jamestown Settlement, at the end of the trail.",
+        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.4 km east along the trail to the start line. The finish is on the trail by the Jamestown Trailhead restrooms, 50 m before the trail meets Colonial Parkway.",
         "ground_checked_at": null
       },
       "checkpoint_count": 12

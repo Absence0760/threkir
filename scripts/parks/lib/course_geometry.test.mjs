@@ -16,7 +16,7 @@ import {
 	footAccessRefusal,
 	haversineM,
 	lapCourse,
-	assertFinishAtTrailEnd,
+	assertViaEndsAtTrailEnd,
 	cutSequence,
 	linearCourse,
 	pathLengthM,
@@ -545,9 +545,9 @@ test('assertTrailReview refuses a foot confirmation on an unreviewed way or with
 	assert.throws(() => assertTrailReview(square, loopWays, reviewed({ foot_confirmed: { 10: ' ' } })), /needs the land manager's word/);
 });
 
-test('assertFinishAtTrailEnd accepts a dead end and refuses a node the trail runs on past', () => {
-	assert.doesNotThrow(() => assertFinishAtTrailEnd([3, 4, 5, 6], lineWays));
-	assert.throws(() => assertFinishAtTrailEnd([2, 3, 4, 5], lineWays), /node 5\) joins 2 edges/);
+test('assertViaEndsAtTrailEnd accepts a via ending on a dead end and refuses one the trail runs on past', () => {
+	assert.doesNotThrow(() => assertViaEndsAtTrailEnd([3, 4, 5, 6], lineWays));
+	assert.throws(() => assertViaEndsAtTrailEnd([2, 3, 4, 5], lineWays), /node 5\) joins 2 edges/);
 });
 
 test('cutSequence splits an edge in every way that holds it, so a shared stretch is checked as each', () => {

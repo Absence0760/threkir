@@ -485,19 +485,21 @@ function splitEdge(ways, a, b, id) {
 }
 
 /**
- * Refuse a course that says it finishes at the trail's end when its last node
- * is not a dead end of the listed ways. Picking the end by eye (the most
- * easterly node) put the Capital Trail's Jamestown finish 250 m short, mid-way
- * along a way and just across a highway (decisions § 2581).
+ * Refuse a course that says its via path ends at the trail's end when the
+ * via's last node is not a dead end of the listed ways. A course anchored there
+ * is measured back from the real end, `offset_m` short of it so the finish
+ * line stays clear of whatever lies past the trail. Picking the end by eye (the
+ * most easterly node) once put the Capital Trail's Jamestown finish 250 m
+ * short, mid-way along a way and just across a highway (decisions § 2581).
  *
- * @param {number[]} sequence
+ * @param {number[]} viaSequence the full traced via path
  * @param {SnapshotWay[]} ways
  */
-export function assertFinishAtTrailEnd(sequence, ways) {
-	const end = sequence[sequence.length - 1];
+export function assertViaEndsAtTrailEnd(viaSequence, ways) {
+	const end = viaSequence[viaSequence.length - 1];
 	const degree = adjacency(ways).get(end)?.size ?? 0;
 	if (degree !== 1) {
-		throw new Error(`finish_at_trail_end, but the finish (node ${end}) joins ${degree} edges of the listed ways, not 1; the trail goes on past it`);
+		throw new Error(`via_ends_at_trail_end, but the via's last node (node ${end}) joins ${degree} edges of the listed ways, not 1; the trail goes on past it`);
 	}
 }
 

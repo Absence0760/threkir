@@ -28,6 +28,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** @type {readonly DevOnlyModule[]} */
 export const DEV_ONLY_MODULES = [
 	{ source: 'apps/web/src/lib/routes/dev_basemap_fallback.ts', marker: '[dev-basemap]' },
+	{ source: 'apps/web/src/lib/auth/dev_accounts.ts', marker: 'runner@test.com' },
 ];
 
 /// The registered modules whose marker no longer occurs in their source.

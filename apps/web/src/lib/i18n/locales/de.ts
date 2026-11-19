@@ -7985,6 +7985,7 @@ export const messages = {
 	"parks.agencyState": "State Park",
 	"parks.agencyCounty": "County Park",
 	"parks.agencyOther": "Park",
+	"parks.kindTrail": "Weg",
 	"parks.shapeLoop": "Rundstrecke",
 	"parks.shapeOutAndBack": "Hin und zurück",
 	"parks.shapePointToPoint": "Von A nach B",

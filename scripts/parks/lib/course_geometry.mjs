@@ -220,13 +220,20 @@ export function walkedWays(sequence, ways) {
  * Refuse a traced course whose line runs along any way that is not open on
  * foot. Only the ways the sequence actually walks are checked.
  *
+ * `footConfirmed` (the park's `trail_review.foot_confirmed`) lifts exactly one
+ * refusal: `highway=cycleway` with no foot tag, on a way the land manager
+ * says is a shared-use path open to people on foot. OSM often maps a paved
+ * multi-use trail that way (most of the Virginia Capital Trail's Jamestown
+ * end). Any other reason, or a cycleway that also carries one, still refuses.
+ *
  * @param {number[]} sequence
  * @param {SnapshotWay[]} ways
+ * @param {Record<string, string>} [footConfirmed]
  */
-export function assertFootAccess(sequence, ways) {
+export function assertFootAccess(sequence, ways, footConfirmed = {}) {
 	const refused = walkedWays(sequence, ways)
 		.map((way) => ({ way, reason: footAccessRefusal(way.tags ?? {}) }))
-		.filter((r) => r.reason !== null);
+		.filter((r) => r.reason !== null && !(r.reason === 'highway=cycleway' && String(r.way.id) in footConfirmed));
 	if (refused.length > 0) {
 		throw new Error(
 			`the course runs on way(s) not open to people on foot: ${refused
@@ -243,6 +250,7 @@ export function assertFootAccess(sequence, ways) {
  *   designated: number[],
  *   refused: Record<string, string>,
  *   fords?: number[],
+ *   foot_confirmed?: Record<string, string>,
  * }} TrailReview
  */
 
@@ -269,6 +277,10 @@ export function assertTrailReview(sequence, ways, review) {
 	const fords = new Set(review.fords ?? []);
 	const unlisted = [...fords].filter((id) => !designated.has(id));
 	if (unlisted.length > 0) throw new Error(`trail_review lists ford(s) ${unlisted.join(', ')} that are not designated`);
+	for (const [id, reason] of Object.entries(review.foot_confirmed ?? {})) {
+		if (!designated.has(Number(id))) throw new Error(`trail_review foot_confirmed lists way ${id}, which is not designated`);
+		if (typeof reason !== 'string' || reason.trim() === '') throw new Error(`trail_review foot_confirmed way ${id} needs the land manager's word as its reason`);
+	}
 
 	const walked = walkedWays(sequence, ways);
 	/** @type {string[]} */
@@ -386,6 +398,155 @@ export function lapCourse({ leadIn, loop, laps }) {
 	for (let i = 0; i < laps; i++) out.push(...loop.slice(1));
 	out.push(...leadIn.slice(0, -1).reverse());
 	return out;
+}
+
+/** Course shapes a race course spec can name. */
+export const RACE_COURSE_SHAPES = Object.freeze(['loop', 'out_and_back', 'point_to_point']);
+
+/**
+ * @typedef {{ sequence: number[], nodes: Record<string, SnapshotNode>, ways: SnapshotWay[] }} CutCourse
+ */
+
+/**
+ * `sequence` from `fromM` to `toM` metres along it, as a node path. Where a
+ * cut falls between two nodes it gets a synthetic node (a negative id, never
+ * an OSM one) on that edge, with its elevation interpolated, and the way the
+ * edge belongs to gains it, so the walked-way checks and the route guide see
+ * the cut course exactly and no more.
+ *
+ * @param {CutCourse & { fromM: number, toM: number }} input
+ * @returns {CutCourse}
+ */
+export function cutSequence({ sequence, nodes, ways, fromM, toM }) {
+	const total = pathLengthM(toPoints(sequence, nodes));
+	if (fromM < 0 || toM > total + 1e-6 || fromM >= toM) {
+		throw new Error(`cannot cut ${fromM.toFixed(1)}-${toM.toFixed(1)} m from a ${total.toFixed(1)} m line`);
+	}
+	/** @type {Record<string, SnapshotNode>} */
+	const outNodes = { ...nodes };
+	let outWays = ways;
+	let nextId = Math.min(0, ...Object.keys(nodes).map(Number)) - 1;
+
+	/**
+	 * The index of the node at `m` in `seq`, inserting one if needed.
+	 * @param {number[]} seq
+	 * @param {number} m
+	 */
+	const nodeAt = (seq, m) => {
+		let walked = 0;
+		for (let i = 1; i < seq.length; i++) {
+			const a = outNodes[String(seq[i - 1])];
+			const b = outNodes[String(seq[i])];
+			const step = haversineM({ lat: a.lat, lng: a.lon }, { lat: b.lat, lng: b.lon });
+			if (Math.abs(m - walked) < 1e-6) return i - 1;
+			if (walked + step > m + 1e-6) {
+				const t = (m - walked) / step;
+				const id = nextId--;
+				outNodes[String(id)] = {
+					lat: a.lat + t * (b.lat - a.lat),
+					lon: a.lon + t * (b.lon - a.lon),
+					ele: a.ele != null && b.ele != null ? Math.round((a.ele + t * (b.ele - a.ele)) * 10) / 10 : (a.ele ?? null),
+				};
+				outWays = splitEdge(outWays, seq[i - 1], seq[i], id);
+				seq.splice(i, 0, id);
+				return i;
+			}
+			walked += step;
+		}
+		return seq.length - 1;
+	};
+	const seq = [...sequence];
+	// A synthetic node lies on the line, so inserting the start one moves no
+	// distance along it and the end is found after it.
+	const start = nodeAt(seq, fromM);
+	const end = nodeAt(seq, toM);
+	return { sequence: seq.slice(start, end + 1), nodes: outNodes, ways: outWays };
+}
+
+/**
+ * @param {SnapshotWay[]} ways
+ * @param {number} a
+ * @param {number} b
+ * @param {number} id
+ */
+function splitEdge(ways, a, b, id) {
+	// Every way holding the edge gets the node, so a stretch two ways share
+	// (a duplicated or overlapping OSM way) is still checked as both.
+	return ways.map((way) => {
+		for (let i = 1; i < way.nodes.length; i++) {
+			const p = way.nodes[i - 1];
+			const q = way.nodes[i];
+			if ((p === a && q === b) || (p === b && q === a)) {
+				return { ...way, nodes: [...way.nodes.slice(0, i), id, ...way.nodes.slice(i)] };
+			}
+		}
+		return way;
+	});
+}
+
+/**
+ * Refuse a course that says its via path ends at the trail's end when the
+ * via's last node is not a dead end of the listed ways. A course anchored there
+ * is measured back from the real end, `offset_m` short of it so the finish
+ * line stays clear of whatever lies past the trail. Picking the end by eye (the
+ * most easterly node) once put the Capital Trail's Jamestown finish 250 m
+ * short, mid-way along a way and just across a highway (decisions § 2581).
+ *
+ * @param {number[]} viaSequence the full traced via path
+ * @param {SnapshotWay[]} ways
+ */
+export function assertViaEndsAtTrailEnd(viaSequence, ways) {
+	const end = viaSequence[viaSequence.length - 1];
+	const degree = adjacency(ways).get(end)?.size ?? 0;
+	if (degree !== 1) {
+		throw new Error(`via_ends_at_trail_end, but the via's last node (node ${end}) joins ${degree} edges of the listed ways, not 1; the trail goes on past it`);
+	}
+}
+
+/**
+ * A linear race course along the path `via` traces: `point_to_point` runs
+ * exactly `distanceM` from one point to another, `out_and_back` runs half of
+ * it out, turns, and comes back the same way to the start. `anchor` says which
+ * end of the via path the course is measured from and `offsetM` how far in
+ * from that end it starts (`point_to_point` anchored at `via_end` finishes
+ * `offsetM` before the via path's last node). An out-and-back is anchored at
+ * `via_start`, which is where it starts and finishes.
+ *
+ * @param {{
+ *   ways: SnapshotWay[], nodes: Record<string, SnapshotNode>, via: number[],
+ *   shape: 'out_and_back' | 'point_to_point', distanceM: number,
+ *   anchor: 'via_start' | 'via_end', offsetM: number,
+ * }} input
+ * @returns {CutCourse & { fullSequence: number[], turnM: number | null }}
+ */
+export function linearCourse({ ways, nodes, via, shape, distanceM, anchor, offsetM }) {
+	if (anchor !== 'via_start' && anchor !== 'via_end') throw new Error(`anchor must be via_start or via_end, got ${anchor}`);
+	if (!Number.isFinite(offsetM) || offsetM < 0) throw new Error(`offset_m must be a distance of 0 or more, got ${offsetM}`);
+	const full = traceVia({ ways, nodes, via });
+	const total = pathLengthM(toPoints(full, nodes));
+	if (shape === 'point_to_point') {
+		const fromM = anchor === 'via_start' ? offsetM : total - offsetM - distanceM;
+		const toM = fromM + distanceM;
+		if (fromM < 0 || toM > total + 1e-6) {
+			throw new Error(`the via path is ${total.toFixed(1)} m, too short for ${distanceM} m from ${anchor} at offset ${offsetM} m; extend the via`);
+		}
+		return { ...cutSequence({ sequence: full, nodes, ways, fromM, toM: Math.min(toM, total) }), fullSequence: full, turnM: null };
+	}
+	if (shape === 'out_and_back') {
+		if (anchor !== 'via_start') throw new Error('an out-and-back starts and finishes at the via start; anchor it at via_start');
+		const turnAt = offsetM + distanceM / 2;
+		if (turnAt > total + 1e-6) {
+			throw new Error(`the via path is ${total.toFixed(1)} m, short of the ${turnAt.toFixed(1)} m turn; extend the via`);
+		}
+		const out = cutSequence({ sequence: full, nodes, ways, fromM: offsetM, toM: Math.min(turnAt, total) });
+		return {
+			...out,
+			sequence: [...out.sequence, ...out.sequence.slice(0, -1).reverse()],
+			fullSequence: full,
+			turnM: distanceM / 2,
+		};
+	}
+	throw new Error(`a linear course is out_and_back or point_to_point, got ${shape}`);
 }
 
 /**

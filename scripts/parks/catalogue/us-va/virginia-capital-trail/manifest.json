@@ -1,0 +1,1399 @@
+{
+  "park": {
+    "slug": "virginia-capital-trail",
+    "name": "Virginia Capital Trail",
+    "kind": "trail",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.virginiacapitaltrail.org",
+    "osm_boundary": "relation/8010285"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Owner checks open (#1432): the road stretches on Herring Creek Road and Courthouse Road, mile 0 at Jamestown, and event permits."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "capital-trail-four-mile-creek-5k",
+      "name": "Four Mile Creek, 5 km",
+      "race_distance": "5k",
+      "course_shape": "out_and_back",
+      "distance_m": 5000,
+      "start_finish": {
+        "lat": 37.435446,
+        "lng": -77.329268
+      },
+      "turn_at_m": 2500,
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/880369053,way/880386556,way/1415052808,way/1415052809,way/1428146918,way/1428152047,way/1428152048",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-four-mile-creek-5k.geojson",
+      "elevation_m": 9,
+      "checkpoints": [
+        {
+          "lat": 37.43108,
+          "lng": -77.317102
+        },
+        {
+          "lat": 37.426662,
+          "lng": -77.304387
+        }
+      ],
+      "waypoint_count": 87,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Four Mile Creek Trailhead on New Market Road (Route 5). Restrooms and water are at the trailhead. The start line is on the trail beside the lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 411
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 2
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 2
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4453
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-four-mile-creek-10k",
+      "name": "Four Mile Creek, 10 km",
+      "race_distance": "10k",
+      "course_shape": "out_and_back",
+      "distance_m": 10000,
+      "start_finish": {
+        "lat": 37.435446,
+        "lng": -77.329268
+      },
+      "turn_at_m": 5000,
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/424824141,way/880369053,way/880386556,way/880386557,way/1415052808,way/1415052809,way/1428146918,way/1428152047,way/1428152048,way/1550933947,way/1550933948",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-four-mile-creek-10k.geojson",
+      "elevation_m": 33,
+      "checkpoints": [
+        {
+          "lat": 37.429719,
+          "lng": -77.312742
+        },
+        {
+          "lat": 37.421907,
+          "lng": -77.298086
+        },
+        {
+          "lat": 37.410738,
+          "lng": -77.285905
+        }
+      ],
+      "waypoint_count": 177,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Four Mile Creek Trailhead on New Market Road (Route 5). Restrooms and water are at the trailhead. The start line is on the trail beside the lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 411
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1667,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3469
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5000,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6503
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9453
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-four-mile-creek-half",
+      "name": "Four Mile Creek, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "out_and_back",
+      "distance_m": 21097.5,
+      "start_finish": {
+        "lat": 37.435446,
+        "lng": -77.329268
+      },
+      "turn_at_m": 10548.7,
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/424824141,way/531825845,way/880369053,way/880386556,way/880386557,way/1088461493,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1415052808,way/1415052809,way/1428146918,way/1428152047,way/1428152048,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-four-mile-creek-half.geojson",
+      "elevation_m": 63,
+      "checkpoints": [
+        {
+          "lat": 37.426308,
+          "lng": -77.302949
+        },
+        {
+          "lat": 37.409286,
+          "lng": -77.283398
+        },
+        {
+          "lat": 37.400028,
+          "lng": -77.257388
+        },
+        {
+          "lat": 37.383598,
+          "lng": -77.242119
+        }
+      ],
+      "waypoint_count": 421,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Four Mile Creek Trailhead on New Market Road (Route 5). Restrooms and water are at the trailhead. The start line is on the trail beside the lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 411
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2637,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3469
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5274,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7069
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7912,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8458
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9184
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9655
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10549,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11387
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11798
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12611
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13999
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 17600
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20550
+          },
+          {
+            "kind": "finish",
+            "at_m": 21097
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-four-mile-creek-marathon",
+      "name": "Four Mile Creek, marathon distance",
+      "race_distance": "marathon",
+      "course_shape": "out_and_back",
+      "distance_m": 42195,
+      "start_finish": {
+        "lat": 37.435446,
+        "lng": -77.329268
+      },
+      "turn_at_m": 21097.5,
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19935964,way/424824141,way/531825844,way/531825845,way/531855347,way/880369053,way/880386556,way/880386557,way/1088461493,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1428146918,way/1428152047,way/1428152048,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-four-mile-creek-marathon.geojson",
+      "elevation_m": 127,
+      "checkpoints": [
+        {
+          "lat": 37.420548,
+          "lng": -77.296931
+        },
+        {
+          "lat": 37.405161,
+          "lng": -77.264471
+        },
+        {
+          "lat": 37.383598,
+          "lng": -77.242119
+        },
+        {
+          "lat": 37.361864,
+          "lng": -77.226455
+        },
+        {
+          "lat": 37.341293,
+          "lng": -77.21206
+        },
+        {
+          "lat": 37.33277,
+          "lng": -77.181082
+        }
+      ],
+      "waypoint_count": 850,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Four Mile Creek Trailhead on New Market Road (Route 5). Restrooms and water are at the trailhead. The start line is on the trail beside the lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 411
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3469
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3516,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7033,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7069
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8458
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9184
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9655
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10549,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 14065,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17581,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Herring Creek Road",
+            "at_m": 20683
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 20773
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Virginia Capital Trail",
+            "at_m": 20973
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 21098,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 21222
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Herring Creek Road",
+            "at_m": 21422
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Virginia Capital Trail",
+            "at_m": 21512
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 32484
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 32896
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 33709
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 35096
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 38698
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 41648
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-four-mile-creek-to-herring-creek-half",
+      "name": "Four Mile Creek to Herring Creek, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "point_to_point",
+      "distance_m": 21097.5,
+      "start": {
+        "lat": 37.435446,
+        "lng": -77.329268
+      },
+      "finish": {
+        "lat": 37.33277,
+        "lng": -77.181082
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19935964,way/424824141,way/531825844,way/531825845,way/531855347,way/880369053,way/880386556,way/880386557,way/1088461493,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1428146918,way/1428152047,way/1428152048,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-four-mile-creek-to-herring-creek-half.geojson",
+      "elevation_m": 58,
+      "checkpoints": [
+        {
+          "lat": 37.424494,
+          "lng": -77.299537
+        },
+        {
+          "lat": 37.406977,
+          "lng": -77.275435
+        },
+        {
+          "lat": 37.395269,
+          "lng": -77.247808
+        },
+        {
+          "lat": 37.377351,
+          "lng": -77.22838
+        },
+        {
+          "lat": 37.353407,
+          "lng": -77.229386
+        },
+        {
+          "lat": 37.340262,
+          "lng": -77.206737
+        }
+      ],
+      "waypoint_count": 428,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Four Mile Creek Trailhead on New Market Road (Route 5). Restrooms and water are at the trailhead. The start line is on the trail beside the lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 411
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3014,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3469
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6028,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7069
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8458
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9042,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9184
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9655
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12056,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15070,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18084,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Herring Creek Road",
+            "at_m": 20683
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 20773
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Virginia Capital Trail",
+            "at_m": 20973
+          },
+          {
+            "kind": "finish",
+            "at_m": 21098
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-shiplock-marathon",
+      "name": "Great Shiplock Park east, marathon distance",
+      "race_distance": "marathon",
+      "course_shape": "point_to_point",
+      "distance_m": 42195,
+      "start": {
+        "lat": 37.526563,
+        "lng": -77.421025
+      },
+      "finish": {
+        "lat": 37.332862,
+        "lng": -77.149898
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19935964,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-shiplock-marathon.geojson",
+      "elevation_m": 156,
+      "checkpoints": [
+        {
+          "lat": 37.501466,
+          "lng": -77.409142
+        },
+        {
+          "lat": 37.477668,
+          "lng": -77.390924
+        },
+        {
+          "lat": 37.454255,
+          "lng": -77.370497
+        },
+        {
+          "lat": 37.445706,
+          "lng": -77.343505
+        },
+        {
+          "lat": 37.448203,
+          "lng": -77.325935
+        },
+        {
+          "lat": 37.430151,
+          "lng": -77.313744
+        },
+        {
+          "lat": 37.411811,
+          "lng": -77.28755
+        },
+        {
+          "lat": 37.398953,
+          "lng": -77.256457
+        },
+        {
+          "lat": 37.37939,
+          "lng": -77.236456
+        },
+        {
+          "lat": 37.357746,
+          "lng": -77.227917
+        },
+        {
+          "lat": 37.341192,
+          "lng": -77.209647
+        },
+        {
+          "lat": 37.332311,
+          "lng": -77.181365
+        }
+      ],
+      "waypoint_count": 803,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 580
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2615
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3246,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6492,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8579
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8867
+          },
+          {
+            "kind": "climb",
+            "gain_m": 12,
+            "length_m": 300,
+            "at_m": 8885
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9737,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12891
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12983,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13201
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16229,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18320
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19475,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 21378
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22720,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24977
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25966,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 26367
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27093
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27564
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29212,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32458,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35703,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Herring Creek Road",
+            "at_m": 38592
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 38681
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Virginia Capital Trail",
+            "at_m": 38882
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38949,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-shiplock-50k",
+      "name": "Great Shiplock Park east, 50 km",
+      "race_distance": "50k",
+      "course_shape": "point_to_point",
+      "distance_m": 50000,
+      "start": {
+        "lat": 37.526563,
+        "lng": -77.421025
+      },
+      "finish": {
+        "lat": 37.343837,
+        "lng": -77.070318
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19928705,way/19935964,way/19935971,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855345,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1066422653,way/1066422654,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1133258813,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414448657,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-shiplock-50k.geojson",
+      "elevation_m": 178,
+      "checkpoints": [
+        {
+          "lat": 37.500826,
+          "lng": -77.408566
+        },
+        {
+          "lat": 37.476154,
+          "lng": -77.390379
+        },
+        {
+          "lat": 37.452863,
+          "lng": -77.368097
+        },
+        {
+          "lat": 37.447957,
+          "lng": -77.340771
+        },
+        {
+          "lat": 37.445003,
+          "lng": -77.325599
+        },
+        {
+          "lat": 37.427993,
+          "lng": -77.308452
+        },
+        {
+          "lat": 37.408634,
+          "lng": -77.281907
+        },
+        {
+          "lat": 37.394879,
+          "lng": -77.250967
+        },
+        {
+          "lat": 37.377299,
+          "lng": -77.227982
+        },
+        {
+          "lat": 37.350436,
+          "lng": -77.230724
+        },
+        {
+          "lat": 37.336038,
+          "lng": -77.202392
+        },
+        {
+          "lat": 37.338102,
+          "lng": -77.173466
+        },
+        {
+          "lat": 37.330715,
+          "lng": -77.138848
+        },
+        {
+          "lat": 37.33184,
+          "lng": -77.102353
+        }
+      ],
+      "waypoint_count": 894,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 50 m east along the trail to the start line, clear of the road. Run east, away from the closed section toward the Floodwall.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 580
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2615
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 1,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 2,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8579
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8867
+          },
+          {
+            "kind": "climb",
+            "gain_m": 12,
+            "length_m": 300,
+            "at_m": 8885
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10000,
+            "order": 3,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12891
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13201
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 13333,
+            "order": 4,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16667,
+            "order": 5,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18320
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20000,
+            "order": 6,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 21378
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 23333,
+            "order": 7,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24977
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 26367
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26667,
+            "order": 8,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27093
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27564
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30000,
+            "order": 9,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 33333,
+            "order": 10,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 36667,
+            "order": 11,
+            "of": 14
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Herring Creek Road",
+            "at_m": 38592
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 38681
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Virginia Capital Trail",
+            "at_m": 38882
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40000,
+            "order": 12,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 43333,
+            "order": 13,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 46667,
+            "order": 14,
+            "of": 14
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Courthouse Road",
+            "at_m": 49192
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Virginia Capital Trail",
+            "at_m": 49756
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 49959
+          },
+          {
+            "kind": "finish",
+            "at_m": 50000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-jamestown-marathon",
+      "name": "Herring Creek to Jamestown, marathon distance",
+      "race_distance": "marathon",
+      "course_shape": "point_to_point",
+      "distance_m": 42195,
+      "start": {
+        "lat": 37.337817,
+        "lng": -77.174391
+      },
+      "finish": {
+        "lat": 37.228292,
+        "lng": -76.781694
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19928705,way/19935971,way/294875026,way/294875039,way/531855345,way/531855347,way/600835130,way/600835131,way/1066422653,way/1066422654,way/1133258813,way/1202360708,way/1202360709,way/1202360710,way/1202360711,way/1221203690,way/1221203691,way/1221203694,way/1221203695,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1364573838,way/1364573839,way/1414448648,way/1414448649,way/1414448657,way/1414448658,way/1414448659,way/1414448660,way/1414491027,way/1414491028",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-jamestown-marathon.geojson",
+      "elevation_m": 81,
+      "checkpoints": [
+        {
+          "lat": 37.330083,
+          "lng": -77.140672
+        },
+        {
+          "lat": 37.331652,
+          "lng": -77.105313
+        },
+        {
+          "lat": 37.341785,
+          "lng": -77.072821
+        },
+        {
+          "lat": 37.336801,
+          "lng": -77.041808
+        },
+        {
+          "lat": 37.330918,
+          "lng": -77.010661
+        },
+        {
+          "lat": 37.323845,
+          "lng": -76.978354
+        },
+        {
+          "lat": 37.302925,
+          "lng": -76.953642
+        },
+        {
+          "lat": 37.285831,
+          "lng": -76.924173
+        },
+        {
+          "lat": 37.266963,
+          "lng": -76.896191
+        },
+        {
+          "lat": 37.262059,
+          "lng": -76.862946
+        },
+        {
+          "lat": 37.253784,
+          "lng": -76.828625
+        },
+        {
+          "lat": 37.253262,
+          "lng": -76.79498
+        }
+      ],
+      "waypoint_count": 549,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Herring Creek Trailhead and walk about 1.5 km east along the trail to the start line. The finish is on the trail about 100 m before it meets Colonial Parkway at the Jamestown Trailhead.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3246,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6492,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Courthouse Road",
+            "at_m": 9280
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9737,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Virginia Capital Trail",
+            "at_m": 9845
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10047
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11257
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12983,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13541
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16229,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 17682
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19475,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22720,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25966,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29212,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 30728
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32458,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35703,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 37119
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38949,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 39423
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 39672
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

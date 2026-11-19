@@ -7980,6 +7980,7 @@ export const messages = {
 	"parks.agencyState": "州立公園",
 	"parks.agencyCounty": "郡立公園",
 	"parks.agencyOther": "公園",
+	"parks.kindTrail": "トレイル",
 	"parks.shapeLoop": "周回",
 	"parks.shapeOutAndBack": "往復",
 	"parks.shapePointToPoint": "片道",

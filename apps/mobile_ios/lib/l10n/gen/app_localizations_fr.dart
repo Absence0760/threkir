@@ -22687,6 +22687,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksAgencyOther => 'Parc';
 
   @override
+  String get parksKindTrail => 'Sentier';
+
+  @override
   String get parksShapeLoop => 'Boucle';
 
   @override

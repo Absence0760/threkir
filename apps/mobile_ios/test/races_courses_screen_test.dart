@@ -71,6 +71,7 @@ ParkListing _park(String id, String name) => ParkListing(
         id: id,
         slug: name.toLowerCase().replaceAll(' ', '-'),
         name: name,
+        kind: 'park',
         agency: 'state',
         regionCode: 'US-VA',
         countryCode: 'US',

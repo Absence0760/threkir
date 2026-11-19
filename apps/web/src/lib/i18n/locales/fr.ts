@@ -7985,6 +7985,7 @@ export const messages = {
 	"parks.agencyState": "Parc d'État",
 	"parks.agencyCounty": "Parc de comté",
 	"parks.agencyOther": "Parc",
+	"parks.kindTrail": "Sentier",
 	"parks.shapeLoop": "Boucle",
 	"parks.shapeOutAndBack": "Aller-retour",
 	"parks.shapePointToPoint": "Point à point",

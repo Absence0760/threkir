@@ -71,6 +71,7 @@ class _OpeningApi extends _FakeApi {
           id: 'p1',
           slug: parkSlug,
           name: 'Pocahontas State Park',
+          kind: 'park',
           agency: 'state',
           regionCode: 'US-VA',
           countryCode: 'US',

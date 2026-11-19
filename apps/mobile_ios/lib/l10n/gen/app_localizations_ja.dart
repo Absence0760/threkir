@@ -21073,6 +21073,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksAgencyOther => '公園';
 
   @override
+  String get parksKindTrail => 'トレイル';
+
+  @override
   String get parksShapeLoop => '周回';
 
   @override

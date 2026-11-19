@@ -1158,9 +1158,9 @@ Who listed a race and where its course came from. `race_source.ts` takes the cat
 
 The signed-in runner's `show_mascot` outside the settings page. The reading rules live in the rune-free `mascot_pref_read.ts` with the user id and the settings cache passed in; `mascot_pref.ts` wires `auth.user?.id`, `peekCachedSettings` and `loadSettings` (pinned by a source-read case). Covers signed out and a cold cache as unknown, a stored true / false and the device override, the server answer winning, a failed read falling back to the cache, peek and load agreeing on one stored value, and storage that throws (a private window) reading as unknown rather than crashing the empty state or rejecting the load.
 
-### `apps/web/src/lib/parks/park_labels.test.ts` — 6 tests
+### `apps/web/src/lib/parks/park_labels.test.ts` — 8 tests
 
-The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null) and `courseCredit` (course text, else the source label, else nothing).
+The park and course label maps against their vocabularies: each of `AGENCY_LABEL`, `SHAPE_LABEL`, `STATUS_LABEL`, `DIFFICULTY_LABEL`, `ATTRIBUTION_LABEL` covers exactly the values of the const array `check_constraint_unions.mjs` pins to its CHECK, no two values share a key, and every key is a non-empty, placeholder-free string in every locale. Also `labelKey` (unknown, empty and inherited values are null), `courseCredit` (course text, else the source label, else nothing), and `parkTypeKey` (was 6: a trail reads "Trail" whoever runs it, a park its agency, and the Trail label is in every locale; decisions § 2581).
 
 ### `apps/web/src/lib/segments/effort_rank.test.ts` — 19 tests
 
@@ -1551,7 +1551,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,688 declared tests across 700 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,690 declared tests across 700 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

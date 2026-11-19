@@ -88,6 +88,7 @@ class _CatalogueApi extends ApiClient {
           id: 'p1',
           slug: 'beaver-lake',
           name: 'Beaver Lake Park',
+          kind: 'park',
           agency: 'state',
           regionCode: 'US-VA',
           countryCode: 'US',

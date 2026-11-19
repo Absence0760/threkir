@@ -25,11 +25,11 @@
 	import { referrerBack } from '#lib/util/referrer_back.svelte.ts';
 	import { BACK_PLACE_KEY } from '#lib/util/back_target.ts';
 	import {
-		AGENCY_LABEL,
 		DIFFICULTY_LABEL,
 		SHAPE_LABEL,
 		STATUS_LABEL,
 		labelKey,
+		parkTypeKey,
 	} from '#lib/parks/park_labels.ts';
 	import {
 		courseDisplayNames,
@@ -267,7 +267,7 @@
 			data-testid="park-not-found"
 		/>
 	{:else}
-		{@const agencyKey = labelKey(AGENCY_LABEL, park.agency)}
+		{@const agencyKey = parkTypeKey(park.kind, park.agency)}
 		<header class="detail-header">
 			<h1>{park.name}</h1>
 			<ul class="meta" data-testid="park-meta">

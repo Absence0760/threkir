@@ -5,7 +5,7 @@
 // Distance alone cannot tell a finish beside a road from one that runs into
 // it: most of the Virginia Capital Trail sits 8-12 m from Route 5, which is
 // fine, while its last node sat 5 m from Colonial Parkway with the road
-// straight ahead (decisions § 2581). So each end is also measured along where
+// straight ahead (PR #1435). So each end is also measured along where
 // a runner actually goes: the runout past the finish, and the waiting area
 // behind the start, `RUNOUT_M` along the direction of travel, flagged only when
 // that stretch reaches a roadway.

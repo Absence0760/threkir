@@ -5,7 +5,7 @@
 // behind a start). A runout that reaches a roadway (within 3 m of its centre
 // line) is marked REVIEW: look at it on the map, and move the end back along the trail (`offset_m`)
 // if runners would finish into traffic. The Virginia Capital Trail's last node, 5 m from Colonial Parkway,
-// was caught by eye (decisions § 2581).
+// was caught by eye (PR #1435).
 //
 // Network step, like fetch_snapshot.mjs: one OSM API 0.6 `map` request per
 // distinct end, a ~150 m box. Reads the built manifest and GeoJSON.

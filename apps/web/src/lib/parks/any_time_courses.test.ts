@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
 	anyTimeSearchHits,
 	orderAnyTimeCourses,
@@ -105,6 +108,30 @@ test('parkSearchMatches: every word in the course, its park or its place', () =>
 	assert.equal(parkSearchMatches(parkSearchTerms('us-va'), beaver), true);
 	assert.equal(parkSearchMatches(parkSearchTerms('beaver swift'), beaver), false);
 	assert.equal(parkSearchMatches(parkSearchTerms('maryland'), beaver), false);
+});
+
+interface ParkSearchCase {
+	query: string;
+	target: { courseName?: string; parkName: string; regionCode: string };
+	expected: boolean;
+}
+
+// The TS reader of fixtures/park_search_cases.json, the case table this pair
+// shares with test/any_time_courses_test.dart.
+const parkSearchCases = (
+	JSON.parse(
+		readFileSync(
+			join(dirname(fileURLToPath(import.meta.url)), '../../../../../fixtures/park_search_cases.json'),
+			'utf8',
+		),
+	) as { cases: ParkSearchCase[] }
+).cases;
+
+test('parkSearchMatches: each word starts a word of the name or place (shared fixture)', () => {
+	assert.ok(parkSearchCases.length > 0);
+	for (const c of parkSearchCases) {
+		assert.equal(parkSearchMatches(parkSearchTerms(c.query), c.target), c.expected, JSON.stringify(c));
+	}
 });
 
 test('parkSearchMatches: no words match everything; a park alone is asked by its name and place', () => {

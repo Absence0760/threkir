@@ -192,11 +192,27 @@ export function parkSearchTerms(query: string): string[] {
 		.filter((t) => t.length > 0);
 }
 
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
 /**
- * Whether every one of `terms` is in the course's name, its park's name or
- * the park's place (the region's name or code), so "pocahontas 5k" and
- * "virginia beaver" both find a course. With no `courseName` it asks about
- * the park alone.
+ * Whether `term` starts a word somewhere in `text`: at its start, or after a
+ * character that is neither a letter nor a digit. "belle" starts a word of
+ * "belle isle state park" and "va" one of "us-va"; "ark" starts none, so it
+ * does not find every park.
+ */
+function startsAWord(text: string, term: string): boolean {
+	for (let i = text.indexOf(term); i !== -1; i = text.indexOf(term, i + 1)) {
+		if (i === 0 || !WORD_CHAR.test(text[i - 1])) return true;
+	}
+	return false;
+}
+
+/**
+ * Whether every one of `terms` starts a word of the course's name, its park's
+ * name or the park's place (the region's name or code), so "pocahontas 5k",
+ * "virginia beaver" and "swift cr" all find a course while "ark" does not
+ * find every park. With no `courseName` it asks about the park alone. The
+ * cases are `fixtures/park_search_cases.json`, read on both sides.
  */
 export function parkSearchMatches(
 	terms: readonly string[],
@@ -206,5 +222,5 @@ export function parkSearchMatches(
 	const text = fold(
 		[target.courseName ?? '', target.parkName, regionName(target.regionCode), target.regionCode].join(' '),
 	);
-	return terms.every((t) => text.includes(t));
+	return terms.every((t) => startsAWord(text, t));
 }

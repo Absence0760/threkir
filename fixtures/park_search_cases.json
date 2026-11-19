@@ -1,0 +1,32 @@
+{
+ "spec": "park_search v1",
+ "reference": "parkSearchTerms + parkSearchMatches: every word of the query starts a word of the course name, park name or place, case and accents ignored",
+ "readers": [
+  "apps/web/src/lib/parks/any_time_courses.test.ts",
+  "apps/mobile_android/test/any_time_courses_test.dart"
+ ],
+ "schema": {
+  "cases": "{query, target: {courseName?, parkName, regionCode}, expected}: parkSearchMatches(parkSearchTerms(query), target)."
+ },
+ "cases": [
+  { "query": "belle", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "BELLE isle", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "isle", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "elle", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": false },
+  { "query": "ark", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": false },
+  { "query": "belle maryland", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": false },
+  { "query": "swift", "target": { "courseName": "Swift Creek Lake Loop", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "swift cr", "target": { "courseName": "Swift Creek Lake Loop", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "reek", "target": { "courseName": "Swift Creek Lake Loop", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": false },
+  { "query": "lake", "target": { "courseName": "Swiftlake Loop", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": false },
+  { "query": "pocahontas 5k", "target": { "courseName": "Pocahontas 5K", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "virginia", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "us-va", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "va", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "cafe", "target": { "parkName": "Café Creek Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "CAFÉ", "target": { "parkName": "Cafe Creek Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "den", "target": { "parkName": "Bear's Den Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "trail", "target": { "courseName": "Out-and-back (trail)", "parkName": "Pocahontas State Park", "regionCode": "US-VA" }, "expected": true },
+  { "query": "", "target": { "parkName": "Belle Isle State Park", "regionCode": "US-VA" }, "expected": true }
+ ]
+}

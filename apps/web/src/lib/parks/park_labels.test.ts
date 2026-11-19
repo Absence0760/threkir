@@ -9,9 +9,11 @@ import {
 	ATTRIBUTION_LABEL,
 	DIFFICULTY_LABEL,
 	SHAPE_LABEL,
+	KIND_LABEL,
 	STATUS_LABEL,
 	courseCredit,
 	labelKey,
+	parkTypeKey,
 } from './park_labels.ts';
 import {
 	COURSE_DIFFICULTIES,
@@ -19,6 +21,7 @@ import {
 	COURSE_STATUSES,
 	GEOMETRY_SOURCES,
 	PARK_AGENCIES,
+	PARK_KINDS,
 } from './park_courses.ts';
 
 // Each map against the vocabulary it labels. The vocabularies are the client
@@ -81,4 +84,22 @@ test('courseCredit: the course text wins, else the source label, else nothing', 
 	assert.deepEqual(courseCredit(null, 'traced'), { key: 'parks.attributionTraced' });
 	assert.equal(courseCredit(null, 'gpsies'), null);
 	assert.equal(courseCredit(undefined, null), null);
+});
+
+test('a trail reads Trail whoever runs it, and a park reads as its agency', () => {
+	assert.deepEqual(Object.keys(KIND_LABEL).sort(), [...PARK_KINDS].sort());
+	assert.equal(parkTypeKey('trail', 'other'), 'parks.kindTrail');
+	assert.equal(parkTypeKey('trail', 'state'), 'parks.kindTrail');
+	assert.equal(parkTypeKey('park', 'state'), 'parks.agencyState');
+	assert.equal(parkTypeKey('park', 'other'), 'parks.agencyOther');
+	assert.equal(parkTypeKey(undefined, 'county'), 'parks.agencyCounty');
+	assert.equal(parkTypeKey('forest', 'nps'), 'parks.agencyNps');
+	assert.equal(parkTypeKey('park', 'mystery'), null);
+});
+
+test('the Trail label is a non-empty string in every locale', async () => {
+	for (const loc of SUPPORTED_LOCALES) {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		assert.ok(dict['parks.kindTrail']?.trim(), `${loc}: parks.kindTrail is missing`);
+	}
 });

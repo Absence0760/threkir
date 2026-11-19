@@ -7984,6 +7984,7 @@ export const messages = {
 	"parks.agencyState": "Parque estatal",
 	"parks.agencyCounty": "Parque del condado",
 	"parks.agencyOther": "Parque",
+	"parks.kindTrail": "Sendero",
 	"parks.shapeLoop": "Circular",
 	"parks.shapeOutAndBack": "Ida y vuelta",
 	"parks.shapePointToPoint": "De punto a punto",

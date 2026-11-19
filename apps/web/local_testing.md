@@ -51,6 +51,8 @@ This creates a test user and populates all tables. Log in with:
 - **Email:** `runner@test.com`
 - **Password:** `testtest`
 
+Or skip typing: under `vite dev` against the local stack, `/login` shows a **Dev sign-in** panel with one button per seed account (Runner, Alex, Morgan). It is dev-only. The login page imports it inside an `import.meta.env.DEV` branch, it hides unless `PUBLIC_SUPABASE_URL` is a loopback address, and `scripts/check_web_dev_only_code.mjs` fails the build if the accounts (`apps/web/src/lib/auth/dev_accounts.ts`) ever reach a production bundle.
+
 See [../backend/local_testing.md](../backend/local_testing.md) for details on what the seed includes.
 
 ---

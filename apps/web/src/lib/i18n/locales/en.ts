@@ -8013,6 +8013,7 @@ export const en = {
 	"parks.agencyState": "State park",
 	"parks.agencyCounty": "County park",
 	"parks.agencyOther": "Park",
+	"parks.kindTrail": "Trail",
 	"parks.shapeLoop": "Loop",
 	"parks.shapeOutAndBack": "Out and back",
 	"parks.shapePointToPoint": "Point to point",

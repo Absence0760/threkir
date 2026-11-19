@@ -5,6 +5,7 @@ import type {
 	CourseStatus,
 	GeometrySource,
 	ParkAgency,
+	ParkKind,
 } from './park_courses.ts';
 
 // Each value names its catalogue key literally, so the area-catalogue split
@@ -16,6 +17,25 @@ export const AGENCY_LABEL: Record<ParkAgency, MessageKey> = {
 	county: 'parks.agencyCounty',
 	other: 'parks.agencyOther',
 };
+
+/**
+ * A catalogue entry's kind, where it names the place: a trail reads "Trail"
+ * whoever runs it, and a park reads as its agency (`null` here).
+ */
+export const KIND_LABEL: Record<ParkKind, MessageKey | null> = {
+	park: null,
+	trail: 'parks.kindTrail',
+};
+
+/**
+ * What a park card and page call the place: "Trail" for a trail, else the
+ * agency's label ("State park"). Null for values outside both vocabularies.
+ */
+export function parkTypeKey(kind: string | null | undefined, agency: string | null | undefined): MessageKey | null {
+	const kindKey =
+		kind != null && Object.prototype.hasOwnProperty.call(KIND_LABEL, kind) ? KIND_LABEL[kind as ParkKind] : null;
+	return kindKey ?? labelKey(AGENCY_LABEL, agency);
+}
 
 export const SHAPE_LABEL: Record<CourseShape, MessageKey> = {
 	loop: 'parks.shapeLoop',

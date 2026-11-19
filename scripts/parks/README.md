@@ -33,6 +33,7 @@ scripts/parks/
 4. `node scripts/parks/fetch_snapshot.mjs scripts/parks/catalogue/<region>/<park>`
 5. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>`. The build refuses a course whose traced distance is more than 5 % off the published figure.
 6. Review the `.geojson` on a map (geojson.io, or drop it into QGIS) against the park's trail map before committing.
+7. `node scripts/parks/course_end_roads.mjs scripts/parks/catalogue/<region>/<park>` (network: one OSM API request per course end). For every start and finish it prints the nearest road at the end and along its runout: the 30 m past a finish where runners slow down, and the 30 m behind a start where they wait. `REVIEW` means that runout reaches a roadway. Look at it on the map, and move the end along the trail (`offset_m`, extending the `via` if needed) until runners neither wait in nor finish into traffic. A trail running beside a road is fine; one ending at a road is not. The check's thresholds are in `lib/road_proximity.mjs`. It is a review aid, not a build refusal: an end on a park's own access road can be deliberate, as at Swift Creek.
 
 Every `park.json` declares its `release` (decisions § 2460): `{ "status": "staged", "reason": "..." }` for a park that must not load yet, or `{ "status": "live" }`. A new park starts staged until its owner checks are done; there is no default, and a missing or unknown release fails the build. See *Loading a park* for what staging does and how to unstage.
 
@@ -40,9 +41,11 @@ Name a course after the park and its distance ("Deep Run Park, 5 km", "Swift Cre
 
 `node scripts/parks/build.mjs --check <dir>` fails when a committed output no longer matches its spec and snapshot.
 
+Every `park.json` `park` names its `kind`: `park`, or `trail` for a long trail through several parks that belongs to none (the Virginia Capital Trail). `agency` still says who runs it (`other` for the Capital Trail, a VDOT trail). The payload check refuses a missing or unknown kind, and the clients label a trail "Trail" in place of its agency.
+
 A National Park Service unit (`"agency": "nps"` in `park.json`'s `park`) also needs its `nps_park_code`, the NPS Data API `parkCode` (`shen` for Shenandoah, the code in the unit's nps.gov URL). The payload check refuses an `nps` park without one and any other park with one. The daily closures sweep reads the unit's NPS alerts by that code and flags its courses for review (decisions § 2454).
 
-Only loop courses are built so far. Out-and-back and point-to-point courses (the rail trails) are added when the first one is specced.
+A trail course (`courses`) is a loop. A point-to-point or out-and-back course on a rail trail is a race course (see *Linear race courses*).
 
 ## Route guides
 
@@ -104,9 +107,24 @@ A park course is the trail as it is, whatever its length. A race course must mea
 - The build cuts the same length off both ends of lead-in + laps + lead-in, so the course measures exactly the race distance. That puts the shared start/finish line on the lead-in. It refuses a course that comes up short, or one where the start line would land past the lead-in onto the loop. Lengthen or shorten the lead-in, or pick another loop.
 - The line follows the route, never the other way round. The database trigger that places a course's start and end lines aims each at the point 25 m along the course (`GATE_BEARING_LOOK_AHEAD_M`, mirroring `c_along` in `private.course_end_bearing`; a unit test reads the migration), so a bend within 25 m of an end skews its line. The build derives each bearing from the built points the same way and compares it with the course's direction over its first and last 5 m. Where the two are more than 10 degrees apart, the course's `manifest.json` entry gets a curated `start_gate` / `end_gate` (`lat`, `lng`, `bearing_deg`, `half_width_m`) for that end: on the course's end point, facing the course's direction over those 5 m, with the trigger's 15 m half-width (`GATE_HALF_WIDTH_SEGMENT_M`, mirroring `c_half_width`). The load writes it as a curator line, which the trigger never re-derives. An end within 10 degrees gets no curated line, so the trigger stays its only source. The build still refuses an end with under 10 m of line (`GATE_BEARING_MIN_LINE_M`, `c_min`): the trigger would place no line there at all. The Swift Creek 10K is the one curated course today: its line sits 14 m before the turn off the service road and derives 36.2 degrees off, so both its ends carry a curated line at 68.4 and 248.4 degrees.
 
+Every race course names its `course_shape`: `loop` (above), or `point_to_point` / `out_and_back` (below).
+
 Finding a loop that fits is a search over the park's trail graph. For L the loop length, N the laps, D the race distance and S the lead-in length, a loop fits when (D - 2S) / N <= L < D / N.
 
 The loop need not be one ring. Deep Run Park's `loop_via` goes twice round the ponds, out and back on the woods path, and once more round, with `laps` 1 (it is not N identical laps). Where part of a loop repeats, the length guard cannot catch a skipped repeat (one pond lap is 13 % of the course, under its 25 %), so space the checkpoints closer than the repeated part's length: then each repeat holds a checkpoint earlier in the ring than the one before it, which only another pass reaches. Deep Run Park has 13 (`checkpoints_per_lap` with `laps` 1), and `park_course_real_geometry.test.ts` fails if a run that leaves out any pond lap is timed.
+
+### Linear race courses
+
+A rail trail gives runs no park loop can: a marathon with no laps. A `point_to_point` or `out_and_back` race course replaces `lead_in_via` / `loop_via` / `laps` with:
+
+- `via`: OSM node ids along `osm_ways`, in running order, the same way the loop pins work. On a trail with no branches two nodes are enough.
+- `anchor` and `offset_m`: which end of the via path the course is measured from (`via_start` or `via_end`) and how far in from that end it starts or finishes. A `point_to_point` anchored at `via_start` starts `offset_m` along the via path and runs exactly the race distance; anchored at `via_end` it finishes `offset_m` before the via path's last node (the Jamestown marathon finishes at the trail's mile 0). An `out_and_back` is anchored at `via_start`, which is its start and finish, and turns at half the distance.
+- `via_ends_at_trail_end` (optional, `true`): the via path ends at the trail's end, and the build refuses it unless the via's last node is a dead end of `osm_ways`. Set it whenever a course is measured from the trail's end; picking that node by eye (the most easterly one) once put a finish 250 m short of the end, across a highway. Pair it with `offset_m` when the trail ends at a road: the Jamestown marathon finishes 50 m before the end so the finish line and the runout stay on the trail, clear of Colonial Parkway.
+- `checkpoint_count`: evenly spaced. On an `out_and_back` they sit on the way out only, the last exactly on the turn, so none lands on top of another (the way back passes the same places) and a runner who turns early is never timed.
+
+Where a cut falls between two OSM nodes, the build adds a synthetic node there (a negative id, never an OSM one; `cutSequence` in `lib/course_geometry.mjs`), so the foot-access and trail-review checks, and the route guide, see exactly the course and no more of the via path. A linear course's guide has no direction step. Its manifest entry carries `start` and `finish` (point to point) or `start_finish` and `turn_at_m` (out and back) instead of the loop fields.
+
+OSM often maps a paved multi-use trail as `highway=cycleway` with no foot tag, which the build refuses. Where the land manager says the path is open on foot, record each such way in `trail_review.foot_confirmed` (way id to the land manager's word, with its source in `source_urls`). It lifts only that one refusal; any other reason on the way still refuses. Better still, fix the tag on OSM and drop the entry on the next snapshot.
 
 ## Loading a park
 

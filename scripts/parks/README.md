@@ -33,6 +33,7 @@ scripts/parks/
 4. `node scripts/parks/fetch_snapshot.mjs scripts/parks/catalogue/<region>/<park>`
 5. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>`. The build refuses a course whose traced distance is more than 5 % off the published figure.
 6. Review the `.geojson` on a map (geojson.io, or drop it into QGIS) against the park's trail map before committing.
+7. `node scripts/parks/course_end_roads.mjs scripts/parks/catalogue/<region>/<park>` (network: one OSM API request per course end). For every start and finish it prints the nearest road at the end and along its runout: the 30 m past a finish where runners slow down, and the 30 m behind a start where they wait. `REVIEW` means that runout reaches a roadway. Look at it on the map, and move the end along the trail (`offset_m`, extending the `via` if needed) until runners neither wait in nor finish into traffic. A trail running beside a road is fine; one ending at a road is not. The check's thresholds are in `lib/road_proximity.mjs`. It is a review aid, not a build refusal: an end on a park's own access road can be deliberate, as at Swift Creek.
 
 Every `park.json` declares its `release` (decisions § 2460): `{ "status": "staged", "reason": "..." }` for a park that must not load yet, or `{ "status": "live" }`. A new park starts staged until its owner checks are done; there is no default, and a missing or unknown release fails the build. See *Loading a park* for what staging does and how to unstage.
 

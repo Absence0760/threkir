@@ -57,7 +57,9 @@
 		checkpointPinColour,
 		courseBoxGates,
 		courseBoxInstruction,
+		courseKeyKinds,
 		finishesAtStart,
+		type CourseKeyKind,
 	} from '#lib/parks/course_map.ts';
 	import { gateBoxParts } from '#lib/races/course_gates.ts';
 	import { PUBLIC_MAPTILER_KEY } from '$app/env/public';
@@ -318,33 +320,30 @@
 		};
 	});
 	const turnaround = $derived(turn ? { lat: turn.lat, lng: turn.lng, label: m('parks.turnAround') } : null);
-	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
-		// The boxes replace the pins on the map, so the key names the boxes.
-		const items: ParkMapLegendItem[] = boxGates
-			? boxesMerged
-				? [{ kind: 'startFinishBox', label: m('parks.legendStartFinish') }]
-				: [
-						{ kind: 'startBox', label: m('parks.legendStart') },
-						{ kind: 'finishBox', label: m('parks.legendFinish') },
-					]
-			: finishesAtStart(mapTrack)
-				? [{ kind: 'startFinish', label: m('parks.legendStartFinish') }]
-				: [
-						{ kind: 'start', label: m('parks.legendStart') },
-						{ kind: 'finish', label: m('parks.legendFinish') },
-					];
-		if (checkpointPins.length > 0) items.push({ kind: 'checkpoint', label: m('parks.legendCheckpoint') });
-		if (turnaround) items.push({ kind: 'turnaround', label: m('parks.legendTurnAround') });
-		const unitM = getUnit() === 'mi' ? 1609.344 : 1000;
-		if (Number(course?.segment.distance_m) >= unitM) {
-			items.push({
-				kind: 'distance',
-				label: getUnit() === 'mi' ? m('parks.legendMileMarker') : m('parks.legendKmMarker'),
-			});
-		}
-		items.push({ kind: 'direction', label: m('parks.legendDirection') });
-		return items;
-	});
+	// Whether the map draws any km / mile badge right now: they thin with the
+	// zoom and give way to checkpoint dots, so the key asks the map.
+	let badgesShown = $state(false);
+	const KEY_LABEL: Record<CourseKeyKind, () => string> = {
+		start: () => m('parks.legendStart'),
+		finish: () => m('parks.legendFinish'),
+		startFinish: () => m('parks.legendStartFinish'),
+		startBox: () => m('parks.legendStart'),
+		finishBox: () => m('parks.legendFinish'),
+		startFinishBox: () => m('parks.legendStartFinish'),
+		checkpoint: () => m('parks.legendCheckpoint'),
+		turnaround: () => m('parks.legendTurnAround'),
+		distance: () => (getUnit() === 'mi' ? m('parks.legendMileMarker') : m('parks.legendKmMarker')),
+		direction: () => m('parks.legendDirection'),
+	};
+	const legendItems = $derived<ParkMapLegendItem[]>(
+		courseKeyKinds({
+			boxes: !boxGates ? 'none' : boxesMerged ? 'merged' : 'apart',
+			finishesAtStart: finishesAtStart(mapTrack),
+			checkpointMarkers: checkpointPins.length,
+			turnaround: turnaround !== null,
+			badgesShown,
+		}).map((kind) => ({ kind, label: KEY_LABEL[kind]() })),
+	);
 	// The profile and the map share an index, so the profile needs a height
 	// on every point of the line or none at all.
 	const elevations = $derived.by<number[] | null>(() => {
@@ -433,7 +432,7 @@
 				{#if mapTrack.length >= 2}
 					<section class="map-block" aria-label={m('parks.courseMapLabel')}>
 						<div class="map-wrap">
-							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} />
+							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} bind:distanceBadgesShown={badgesShown} />
 						</div>
 						<ParkMapLegend items={legendItems} testid="park-course-legend" />
 						{#if credit}

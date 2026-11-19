@@ -160,6 +160,10 @@
 		/// zoomed in, the checkpoint names only once zoomed in, and no badge
 		/// under a checkpoint dot. Null = every map's usual layers.
 		courseOverview?: { lapM: number | null; badgeAtOverview: (label: number) => boolean } | null;
+		/// Bindable: whether the map draws at least one km / mile badge, read
+		/// once each render settles (after a zoom, a style swap or the first
+		/// load), so a map key can name the badges only while they are there.
+		distanceBadgesShown?: boolean;
 	}
 	let {
 		track = [],
@@ -184,6 +188,7 @@
 		gateBoxes = null,
 		turnaround = null,
 		courseOverview = null,
+		distanceBadgesShown = $bindable(false),
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
@@ -944,6 +949,13 @@
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
+		// 'idle' fires once a render has settled, never mid-zoom, so the
+		// answer does not flicker while the map moves.
+		map.on('idle', () => {
+			const layers = ['distance-marker', 'distance-marker-detail'].filter((id) => map.getLayer(id));
+			const shown = layers.length > 0 && map.queryRenderedFeatures({ layers }).length > 0;
+			if (shown !== distanceBadgesShown) distanceBadgesShown = shown;
+		});
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera

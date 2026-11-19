@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { badgeAtOverview, courseBoxGates, courseBoxInstruction, distinctStarts, finishesAtStart } from './course_map';
+import { badgeAtOverview, courseBoxGates, courseKeyKinds, courseBoxInstruction, distinctStarts, finishesAtStart } from './course_map';
 
 const M_PER_DEG_LAT = 111_320;
 const north = (lat: number, m: number) => lat + m / M_PER_DEG_LAT;
@@ -70,4 +70,18 @@ test('badgeAtOverview: a short lap shows every badge, a long one every 5th', () 
 		[1, 4, 5, 6, 10, 15, 24, 25].map((k) => badgeAtOverview(k, 24.9)),
 		[false, false, true, false, true, true, false, true],
 	);
+});
+
+test('courseKeyKinds: the key names only what the map draws', () => {
+	const base = { boxes: 'apart' as const, finishesAtStart: false, checkpointMarkers: 0, turnaround: false, badgesShown: false };
+	assert.deepEqual(courseKeyKinds(base), ['startBox', 'finishBox', 'direction']);
+	assert.deepEqual(courseKeyKinds({ ...base, boxes: 'merged', checkpointMarkers: 3, turnaround: true, badgesShown: true }), [
+		'startFinishBox',
+		'checkpoint',
+		'turnaround',
+		'distance',
+		'direction',
+	]);
+	assert.deepEqual(courseKeyKinds({ ...base, boxes: 'none', finishesAtStart: true }), ['startFinish', 'direction']);
+	assert.deepEqual(courseKeyKinds({ ...base, boxes: 'none' }), ['start', 'finish', 'direction']);
 });

@@ -171,11 +171,12 @@ test.describe('park course pages', () => {
 
 		const legend = page.getByTestId('park-course-legend');
 		await expect(legend).toHaveAttribute('aria-label', 'Map key');
+		// The key names only what the map draws; whether a km badge is drawn
+		// depends on the zoom (courseKeyKinds, unit-tested).
 		await expect(legend.locator('li')).toContainText([
 			'Start',
 			'Finish',
 			'Checkpoint: your run must pass it',
-			'Kilometre marker',
 			'Direction to run',
 		]);
 		// The segment's stored lines (derived from its line by the trigger) are

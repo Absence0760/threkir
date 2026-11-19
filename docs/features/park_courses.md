@@ -423,7 +423,10 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   names, and each dot holds its place in the symbol collision pass so no
   badge is drawn under one. One zoom step in, every badge and every name
   appears. The phone's course map draws no badges and numbers its dots. The
-  key lists the start and finish (below), the
+  key names only what the map draws at that moment (`courseKeyKinds`): the
+  km or mile badges only while at least one is on screen, which `RunMap`
+  reports once each render settles (`distanceBadgesShown`), so it updates as
+  the reader zooms without flickering mid-move. The key lists the start and finish (below), the
   checkpoints, the turn-around, the kilometre or mile badges and the ▶
   direction arrows. An elevation profile, linked to the map, shows when every
   point has a height. The credit is one line (below). "Navigate this course"

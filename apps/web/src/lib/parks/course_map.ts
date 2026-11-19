@@ -119,3 +119,47 @@ export const OVERVIEW_BADGE_FULL_UNITS = 10;
 export function badgeAtOverview(label: number, lapUnits: number): boolean {
 	return lapUnits <= OVERVIEW_BADGE_FULL_UNITS || label % 5 === 0;
 }
+
+/** A mark a course map's key can name. */
+export type CourseKeyKind =
+	| 'start'
+	| 'finish'
+	| 'startFinish'
+	| 'startBox'
+	| 'finishBox'
+	| 'startFinishBox'
+	| 'checkpoint'
+	| 'turnaround'
+	| 'distance'
+	| 'direction';
+
+/**
+ * What a course map's key lists: only the marks the map draws at this moment
+ * (decisions § 2582), so nobody hunts for one that is not there. The start
+ * and finish are the boxes when the course has them, else the pins (one when
+ * the line closes on itself); checkpoints and the turn-around when there are
+ * any; the km / mile badges only while the map shows at least one, which the
+ * map reports once a render settles; the direction arrows whenever there is
+ * a line.
+ */
+export function courseKeyKinds(input: {
+	boxes: 'none' | 'apart' | 'merged';
+	finishesAtStart: boolean;
+	checkpointMarkers: number;
+	turnaround: boolean;
+	badgesShown: boolean;
+}): CourseKeyKind[] {
+	const kinds: CourseKeyKind[] =
+		input.boxes === 'merged'
+			? ['startFinishBox']
+			: input.boxes === 'apart'
+				? ['startBox', 'finishBox']
+				: input.finishesAtStart
+					? ['startFinish']
+					: ['start', 'finish'];
+	if (input.checkpointMarkers > 0) kinds.push('checkpoint');
+	if (input.turnaround) kinds.push('turnaround');
+	if (input.badgesShown) kinds.push('distance');
+	kinds.push('direction');
+	return kinds;
+}

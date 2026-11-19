@@ -67,7 +67,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
   segment pages (web and mobile) read it through `fetchParkCourseCredit` and
   show it once under the description; the `/share/course` lookup carries it with
   `laps`.
-- **Parks:** `slug`, `name`, `agency` (`nps` / `state` / `county` / `other`),
+- **Parks:** `slug`, `name`, `kind` (`park` / `trail`: a long trail through
+  several parks that belongs to none, such as the Virginia Capital Trail, is
+  its own catalogue entry; cards and the park page call it "Trail" in place of
+  the agency label; decisions § 2581), `agency` (`nps` / `state` / `county` / `other`),
   `nps_park_code` (the NPS Data API `parkCode`, `shen`; only on an `nps` park,
   required there by the catalogue check, which the closures sweep reads),
   `region_code` (ISO 3166-2, `US-VA`; the URL segment is its lower case),

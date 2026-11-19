@@ -40,6 +40,8 @@ Name a course after the park and its distance ("Deep Run Park, 5 km", "Swift Cre
 
 `node scripts/parks/build.mjs --check <dir>` fails when a committed output no longer matches its spec and snapshot.
 
+Every `park.json` `park` names its `kind`: `park`, or `trail` for a long trail through several parks that belongs to none (the Virginia Capital Trail). `agency` still says who runs it (`other` for the Capital Trail, a VDOT trail). The payload check refuses a missing or unknown kind, and the clients label a trail "Trail" in place of its agency.
+
 A National Park Service unit (`"agency": "nps"` in `park.json`'s `park`) also needs its `nps_park_code`, the NPS Data API `parkCode` (`shen` for Shenandoah, the code in the unit's nps.gov URL). The payload check refuses an `nps` park without one and any other park with one. The daily closures sweep reads the unit's NPS alerts by that code and flags its courses for review (decisions § 2454).
 
 A trail course (`courses`) is a loop. A point-to-point or out-and-back course on a rail trail is a race course (see *Linear race courses*).

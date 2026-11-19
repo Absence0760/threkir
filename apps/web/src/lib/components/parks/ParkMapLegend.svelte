@@ -17,6 +17,9 @@
 	export interface ParkMapLegendItem {
 		kind: ParkMapLegendKind;
 		label: string;
+		/// Makes the entry a button: a park course's start and finish entries
+		/// take the map to that box. `label` is the button's accessible name.
+		action?: { label: string; run: () => void };
 	}
 </script>
 
@@ -24,7 +27,8 @@
 	// The key under a park course map (issue #1352): each mark the map draws,
 	// drawn again in the colours the map paints it, with its meaning in text.
 	// The swatches are decoration; the list of labels is what a screen reader
-	// gets, under the list's own name.
+	// gets, under the list's own name. An entry with an action is a button
+	// that looks like the other entries, its hit area padded out to 44 px.
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
 	import { basemapIsDarkFromEnv } from '#lib/routes/map-style.svelte.ts';
@@ -76,55 +80,67 @@
 <ul class="legend" aria-label={m('parks.mapKey')} data-testid={testid}>
 	{#each items as item (item.kind)}
 		<li data-kind={item.kind}>
-			{#if item.kind === 'start' || item.kind === 'trailhead'}
-				{#if item.kind === 'start'}
-					{@render pin(mapStartColour(dark))}
-				{:else}
-					<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
-						<circle cx="8" cy="8" r="6" fill={mapStartColour(dark)} stroke={mapOverlayOutline(dark)} stroke-width="2" />
-					</svg>
-				{/if}
-			{:else if item.kind === 'finish' || item.kind === 'startFinish'}
-				{@render pin(mapFinishColour(dark))}
-			{:else if item.kind === 'startBox' || item.kind === 'finishBox' || item.kind === 'startFinishBox'}
-				<svg viewBox="0 0 24 16" class="swatch wide" aria-hidden="true" focusable="false">
-					{@render boxPart(item.kind === 'startBox' ? 'start' : item.kind === 'finishBox' ? 'finish' : 'both')}
-				</svg>
-			{:else if item.kind === 'turnaround'}
-				<span class="swatch tag" style:border-color={mapOverlayOutline(dark)} style:background={mapLabelHalo(dark)}>
-					<!-- Static markup from the palette only. -->
-					{@html turnaroundSvg(mapLabelInk(dark))}
-				</span>
-			{:else if item.kind === 'checkpoint'}
-				<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
-					<circle cx="8" cy="8" r="6" fill={checkpointPinColour(dark)} stroke={mapOverlayOutline(dark)} stroke-width="2" />
-				</svg>
-			{:else if item.kind === 'distance'}
-				<svg viewBox="0 0 24 24" class="swatch" aria-hidden="true" focusable="false">
-					<circle cx="12" cy="12" r="10" fill={mapLabelHalo(dark)} stroke={mapTrackLine(dark)} stroke-width="2" />
-					<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" fill={mapLabelInk(dark)}>1</text>
-				</svg>
-			{:else if item.kind === 'direction'}
-				<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
-					<polygon points="3,2 14,8 3,14" fill={MAP_ARROW_INK} stroke={MAP_ARROW_OUTLINE} stroke-width="1.5" />
-				</svg>
+			{#if item.action}
+				{@const action = item.action}
+				<button type="button" class="pick" aria-label={action.label} onclick={action.run}>
+					{@render mark(item)}
+					<span>{item.label}</span>
+				</button>
 			{:else}
-				<svg viewBox="0 0 24 12" class="swatch wide" aria-hidden="true" focusable="false">
-					<line
-						x1="2"
-						y1="6"
-						x2="22"
-						y2="6"
-						stroke={item.kind === 'focusedLine' ? mapAccentColour(dark) : mapTrackLine(dark)}
-						stroke-width="4"
-						stroke-linecap="round"
-					/>
-				</svg>
+				{@render mark(item)}
+				<span>{item.label}</span>
 			{/if}
-			<span>{item.label}</span>
 		</li>
 	{/each}
 </ul>
+
+{#snippet mark(item: ParkMapLegendItem)}
+	{#if item.kind === 'start' || item.kind === 'trailhead'}
+		{#if item.kind === 'start'}
+			{@render pin(mapStartColour(dark))}
+		{:else}
+			<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
+				<circle cx="8" cy="8" r="6" fill={mapStartColour(dark)} stroke={mapOverlayOutline(dark)} stroke-width="2" />
+			</svg>
+		{/if}
+	{:else if item.kind === 'finish' || item.kind === 'startFinish'}
+		{@render pin(mapFinishColour(dark))}
+	{:else if item.kind === 'startBox' || item.kind === 'finishBox' || item.kind === 'startFinishBox'}
+		<svg viewBox="0 0 24 16" class="swatch wide" aria-hidden="true" focusable="false">
+			{@render boxPart(item.kind === 'startBox' ? 'start' : item.kind === 'finishBox' ? 'finish' : 'both')}
+		</svg>
+	{:else if item.kind === 'turnaround'}
+		<span class="swatch tag" style:border-color={mapOverlayOutline(dark)} style:background={mapLabelHalo(dark)}>
+			<!-- Static markup from the palette only. -->
+			{@html turnaroundSvg(mapLabelInk(dark))}
+		</span>
+	{:else if item.kind === 'checkpoint'}
+		<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
+			<circle cx="8" cy="8" r="6" fill={checkpointPinColour(dark)} stroke={mapOverlayOutline(dark)} stroke-width="2" />
+		</svg>
+	{:else if item.kind === 'distance'}
+		<svg viewBox="0 0 24 24" class="swatch" aria-hidden="true" focusable="false">
+			<circle cx="12" cy="12" r="10" fill={mapLabelHalo(dark)} stroke={mapTrackLine(dark)} stroke-width="2" />
+			<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" fill={mapLabelInk(dark)}>1</text>
+		</svg>
+	{:else if item.kind === 'direction'}
+		<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
+			<polygon points="3,2 14,8 3,14" fill={MAP_ARROW_INK} stroke={MAP_ARROW_OUTLINE} stroke-width="1.5" />
+		</svg>
+	{:else}
+		<svg viewBox="0 0 24 12" class="swatch wide" aria-hidden="true" focusable="false">
+			<line
+				x1="2"
+				y1="6"
+				x2="22"
+				y2="6"
+				stroke={item.kind === 'focusedLine' ? mapAccentColour(dark) : mapTrackLine(dark)}
+				stroke-width="4"
+				stroke-linecap="round"
+			/>
+		</svg>
+	{/if}
+{/snippet}
 
 <style>
 	.legend {
@@ -141,6 +157,35 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+	.pick {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0;
+		border: 0;
+		background: none;
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+	}
+	/* The hit area, 44 px tall and a little wider, without a bigger look. */
+	.pick::before {
+		content: '';
+		position: absolute;
+		inset-inline: -0.25rem;
+		top: 50%;
+		height: 44px;
+		transform: translateY(-50%);
+	}
+	.pick:hover span {
+		text-decoration: underline;
+	}
+	.pick:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+		border-radius: 2px;
 	}
 	.swatch {
 		flex: none;

@@ -349,22 +349,36 @@ test.describe('park course pages', () => {
 		await expect(page.getByTestId('park-course-shared-use')).toHaveCount(0);
 	});
 
-	test('the map jumps to the start, the finish and back to the whole course', async ({ page }) => {
+	test('the start and finish tags, their key entries and the Whole course control move the map', async ({ page }) => {
 		await page.goto(`/parks/us-va/${PARK_SLUG}/5k`);
 		await expect(page.getByRole('heading', { level: 1, name: COURSES[3].name })).toBeVisible({ timeout: 15_000 });
-		const jumps = page.getByTestId('park-course-map-jumps');
-		// The icons are hidden from the reader, so each button is named by its word alone.
-		await expect(jumps.getByRole('button')).toHaveCount(3);
-		await expect(jumps.getByTestId('park-course-jump-start')).toHaveAccessibleName('Start');
-		await expect(jumps.getByTestId('park-course-jump-finish')).toHaveAccessibleName('Finish');
-		await expect(jumps.getByTestId('park-course-jump-course')).toHaveAccessibleName('Whole course');
 		const map = page.locator('.run-map');
-		await jumps.getByTestId('park-course-jump-start').click();
+		// The tags on the map are the buttons, named for what they do.
+		const startTag = map.getByRole('button', { name: 'Show the start on the map' });
+		await expect(startTag).toHaveText('Start', { timeout: 15_000 });
+		await expect(map.getByRole('button', { name: 'Show the finish on the map' })).toHaveText('Finish');
+		const whole = map.getByRole('button', { name: 'Show the whole course' });
+		await expect(whole).toHaveAttribute('title', 'Show the whole course');
+		await expect(page.getByText('Show on the map')).toHaveCount(0);
+
+		await startTag.click();
 		await expect(map).toHaveAttribute('data-map-target', 'start', { timeout: 10_000 });
 		const close = Number(await map.getAttribute('data-map-zoom'));
-		await jumps.getByTestId('park-course-jump-course').click();
+		await whole.click();
 		await expect(map).toHaveAttribute('data-map-target', 'course', { timeout: 10_000 });
 		expect(Number(await map.getAttribute('data-map-zoom'))).toBeLessThan(close);
+
+		// The key's entries jump the same way, from the keyboard too, and still
+		// read as the key's words.
+		const legend = page.getByTestId('park-course-legend');
+		const keyFinish = legend.getByRole('button', { name: 'Show the finish on the map' });
+		await expect(keyFinish).toHaveText('Finish');
+		await keyFinish.focus();
+		await page.keyboard.press('Enter');
+		await expect(map).toHaveAttribute('data-map-target', 'finish', { timeout: 10_000 });
+		await legend.getByRole('button', { name: 'Show the start on the map' }).click();
+		await expect(map).toHaveAttribute('data-map-target', 'start', { timeout: 10_000 });
+		await expect(legend.getByRole('button')).toHaveCount(2);
 	});
 
 	test('an out-and-back has one start box and a Turn around mark', async ({ page }) => {
@@ -375,10 +389,13 @@ test.describe('park course pages', () => {
 		await expect(legend.locator('li[data-kind="startBox"]')).toHaveCount(0);
 		await expect(legend.locator('li[data-kind="finishBox"]')).toHaveCount(0);
 		await expect(legend.locator('li[data-kind="turnaround"]')).toHaveText('Turn around here: your run must pass it');
-		// One box, so one button for it, beside Whole course.
-		const jumps = page.getByTestId('park-course-map-jumps');
-		await expect(jumps.getByRole('button')).toHaveCount(2);
-		await expect(jumps.getByTestId('park-course-jump-startFinish')).toHaveAccessibleName('Start and finish');
+		// One box, so one tag on the map and one key entry jump to it.
+		await expect(
+			page.locator('.run-map').getByRole('button', { name: 'Show the start and finish on the map' }),
+		).toHaveText('Start and finish', { timeout: 15_000 });
+		await expect(legend.getByRole('button', { name: 'Show the start and finish on the map' })).toHaveText(
+			'Start and finish',
+		);
 		await expect(page.getByTestId('park-course-ends-instruction')).toHaveText(
 			'Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.',
 		);

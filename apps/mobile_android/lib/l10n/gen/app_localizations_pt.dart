@@ -22694,6 +22694,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksStatShape => 'Formato';
 
   @override
+  String get parksStatLaps => 'Voltas';
+
+  @override
+  String get parksPreviewHint => 'Escolha um percurso para o ver no mapa.';
+
+  @override
+  String get parksOpenCourse => 'Abrir percurso';
+
+  @override
+  String get parksPreviewClose => 'Fechar pré-visualização';
+
+  @override
+  String get parksNoTimesYet =>
+      'Ainda não há tempos aqui nesta época. O seu pode ser o primeiro.';
+
+  @override
   String get parksStatSurface => 'Piso';
 
   @override
@@ -46858,6 +46874,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksStatShape => 'Formato';
+
+  @override
+  String get parksStatLaps => 'Voltas';
+
+  @override
+  String get parksPreviewHint => 'Escolha um percurso para vê-lo no mapa.';
+
+  @override
+  String get parksOpenCourse => 'Abrir percurso';
+
+  @override
+  String get parksPreviewClose => 'Fechar prévia';
+
+  @override
+  String get parksNoTimesYet =>
+      'Ainda não há tempos aqui nesta temporada. O seu pode ser o primeiro.';
 
   @override
   String get parksStatSurface => 'Piso';

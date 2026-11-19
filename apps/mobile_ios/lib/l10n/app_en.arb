@@ -28992,6 +28992,26 @@
   "@parksStatShape": {
     "description": "Park courses (#1313): web key parks.statShape."
   },
+  "parksStatLaps": "Laps",
+  "@parksStatLaps": {
+    "description": "Park courses (#1313): web key parks.statLaps."
+  },
+  "parksPreviewHint": "Pick a course to see it on the map.",
+  "@parksPreviewHint": {
+    "description": "Park courses (#1313): web key parks.previewHint."
+  },
+  "parksOpenCourse": "Open course",
+  "@parksOpenCourse": {
+    "description": "Park courses (#1313): web key parks.openCourse."
+  },
+  "parksPreviewClose": "Close preview",
+  "@parksPreviewClose": {
+    "description": "Park courses (#1313): web key parks.previewClose."
+  },
+  "parksNoTimesYet": "No times here yet this season. Yours could be the first.",
+  "@parksNoTimesYet": {
+    "description": "Park courses (#1313): web key parks.noTimesYet."
+  },
   "parksStatSurface": "Surface",
   "@parksStatSurface": {
     "description": "Park courses (#1313): web key parks.statSurface."

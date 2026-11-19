@@ -22669,6 +22669,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksStatShape => 'Forma';
 
   @override
+  String get parksStatLaps => 'Vueltas';
+
+  @override
+  String get parksPreviewHint => 'Elige un recorrido para verlo en el mapa.';
+
+  @override
+  String get parksOpenCourse => 'Abrir recorrido';
+
+  @override
+  String get parksPreviewClose => 'Cerrar vista previa';
+
+  @override
+  String get parksNoTimesYet =>
+      'Todavía no hay tiempos aquí esta temporada. El tuyo podría ser el primero.';
+
+  @override
   String get parksStatSurface => 'Superficie';
 
   @override

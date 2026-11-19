@@ -552,10 +552,33 @@ void main() {
         _inCard('a', find.text('Fastest in 2026: 25:00 by Bea')),
         findsOneWidget,
       );
+      // A course with no time stays quiet, and so does the park once any
+      // course has one.
+      expect(_inCard('b', find.textContaining('No time')), findsNothing);
+      expect(find.byKey(const Key('park-no-times-yet')), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('with no time on any course, the park says so once and no '
+        'card repeats it', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkScreen(
+            api: _ParksApi(
+              courses: [_course(id: 'a'), _course(id: 'b', name: 'Bluff')],
+            ),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          ),
+        ),
+      );
+      await _settle(tester);
       expect(
-        _inCard('b', find.textContaining('No time yet this season')),
+        find.text('No times here yet this season. Yours could be the first.'),
         findsOneWidget,
       );
+      expect(_inCard('a', find.textContaining('No time')), findsNothing);
+      expect(_inCard('b', find.textContaining('No time')), findsNothing);
       await _unmount(tester);
     });
 
@@ -844,6 +867,11 @@ void main() {
       );
       await _settle(tester);
       await tester.tap(find.text('Lake Loop'));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      // The card previews; Open course is what opens the course.
+      expect(find.byType(ParkCourseScreen), findsNothing);
+      await tester.tap(find.byKey(const Key('park-preview-open')));
       await _settle(tester);
       await tester.pump(const Duration(seconds: 1));
       expect(find.byType(ParkCourseScreen), findsOneWidget);

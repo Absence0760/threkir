@@ -22676,6 +22676,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksStatShape => 'Form';
 
   @override
+  String get parksStatLaps => 'Runden';
+
+  @override
+  String get parksPreviewHint =>
+      'Wähle eine Strecke, um sie auf der Karte zu sehen.';
+
+  @override
+  String get parksOpenCourse => 'Strecke öffnen';
+
+  @override
+  String get parksPreviewClose => 'Vorschau schließen';
+
+  @override
+  String get parksNoTimesYet =>
+      'In dieser Saison hier noch keine Zeiten. Deine könnte die erste sein.';
+
+  @override
   String get parksStatSurface => 'Untergrund';
 
   @override

@@ -22732,6 +22732,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksStatShape => 'Forme';
 
   @override
+  String get parksStatLaps => 'Tours';
+
+  @override
+  String get parksPreviewHint =>
+      'Choisissez un parcours pour le voir sur la carte.';
+
+  @override
+  String get parksOpenCourse => 'Ouvrir le parcours';
+
+  @override
+  String get parksPreviewClose => 'Fermer l\'aperçu';
+
+  @override
+  String get parksNoTimesYet =>
+      'Aucun temps ici cette saison pour l\'instant. Le vôtre pourrait être le premier.';
+
+  @override
   String get parksStatSurface => 'Revêtement';
 
   @override

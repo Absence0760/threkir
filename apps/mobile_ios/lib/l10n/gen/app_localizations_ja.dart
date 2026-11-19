@@ -21118,6 +21118,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksStatShape => '形状';
 
   @override
+  String get parksStatLaps => '周回数';
+
+  @override
+  String get parksPreviewHint => 'コースを選ぶと地図に表示されます。';
+
+  @override
+  String get parksOpenCourse => 'コースを開く';
+
+  @override
+  String get parksPreviewClose => 'プレビューを閉じる';
+
+  @override
+  String get parksNoTimesYet => '今シーズンはここにまだタイムがありません。最初のタイムを残せるかもしれません。';
+
+  @override
   String get parksStatSurface => '路面';
 
   @override

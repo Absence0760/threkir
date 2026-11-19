@@ -52,6 +52,7 @@ import 'public_route_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart' show currentBasemapIsDark;
 import '../widgets/park_course_map.dart';
+import '../widgets/park_course_preview_sheet.dart';
 import '../widgets/park_course_report_sheet.dart';
 import '../widgets/segments_panel.dart' show SegmentTierFilters;
 import '../widgets/sign_in_required_state.dart';
@@ -563,8 +564,8 @@ List<Widget> courseFactPills(
   ];
 }
 
-String _recordLine(AppLocalizations l10n, ParkCourseRecord? r) {
-  if (r == null) return l10n.racesAnyTimeNoTimeYet;
+String? _recordLine(AppLocalizations l10n, ParkCourseRecord? r) {
+  if (r == null) return null;
   final name = r.displayName?.trim();
   return name != null && name.isNotEmpty
       ? l10n.racesAnyTimeFastestBy(
@@ -606,6 +607,7 @@ class _ParkScreenState extends State<ParkScreen> {
   bool _loading = true;
   bool _error = false;
   Map<String, ParkCourseRecord> _records = const {};
+  bool _recordsLoaded = false;
   bool _recordsFailed = false;
   // How many ran each course this month where the park is: an auxiliary read
   // of its own, like the records. A course nobody ran has no entry and no line.
@@ -675,7 +677,12 @@ class _ParkScreenState extends State<ParkScreen> {
     try {
       final records =
           await api.fetchParkCourseRecords().timeout(kBackendLoadTimeout);
-      if (mounted) setState(() => _records = records);
+      if (mounted) {
+        setState(() {
+          _records = records;
+          _recordsLoaded = true;
+        });
+      }
     } catch (e) {
       debugPrint('park page: course records read failed: $e');
       if (mounted) setState(() => _recordsFailed = true);
@@ -691,6 +698,12 @@ class _ParkScreenState extends State<ParkScreen> {
             fromPark: true,
           ),
         ),
+      );
+
+  void _preview(ParkCourseListing c) => showParkCoursePreviewSheet(
+        context,
+        course: c,
+        onOpen: () => _open(c),
       );
 
   @override
@@ -773,6 +786,23 @@ class _ParkScreenState extends State<ParkScreen> {
                             label: l10n.parksCourseCount(_courses.length),
                           ),
                         ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(l10n.parksPreviewHint, style: muted),
+                        ),
+                        // One line for the park rather than "no time yet" on
+                        // every card.
+                        if (signedIn &&
+                            _recordsLoaded &&
+                            !_recordsFailed &&
+                            !_courses.any(
+                              (c) => _records.containsKey(c.course.id),
+                            ))
+                          Padding(
+                            key: const Key('park-no-times-yet'),
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(l10n.parksNoTimesYet, style: muted),
+                          ),
                         if (_recordsFailed)
                           Padding(
                             key: const Key('park-records-failed'),
@@ -827,7 +857,7 @@ class _ParkScreenState extends State<ParkScreen> {
                               l10n,
                               _monthRunners[_courses[i].course.id],
                             ),
-                            onTap: () => _open(_courses[i]),
+                            onTap: () => _preview(_courses[i]),
                           ),
                       ],
                       const SizedBox(height: 24),
@@ -876,7 +906,7 @@ class _ParkCourseCard extends StatelessWidget {
               child: TrackPreview(points: geometry),
             )
           : null,
-      title: segment.name,
+      title: courseDisplayName(segment.name),
       // The course's colour on the park map, so the card names its line.
       badge: ExcludeSemantics(
         child: DecoratedBox(

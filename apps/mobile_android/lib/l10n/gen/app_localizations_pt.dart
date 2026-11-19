@@ -23520,6 +23520,16 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoad(String at, String length) {
+    return '$at: siga pela estrada durante $length. Atenção aos carros.';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at: siga pela estrada $name durante $length. Atenção aos carros.';
+  }
+
+  @override
   String parkGuideBridge(String at) {
     return '$at: atravesse a ponte.';
   }
@@ -47684,6 +47694,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String parkGuideStraightPath(String at) {
     return '$at: siga em frente pela trilha.';
+  }
+
+  @override
+  String parkGuideRoad(String at, String length) {
+    return '$at: siga pela estrada por $length. Cuidado com os carros.';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at: siga pela estrada $name por $length. Cuidado com os carros.';
   }
 
   @override

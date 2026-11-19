@@ -6267,6 +6267,8 @@
   "parkGuideLeftPath": "{at}: vire à esquerda na trilha.",
   "parkGuideRightPath": "{at}: vire à direita na trilha.",
   "parkGuideStraightPath": "{at}: siga em frente pela trilha.",
+  "parkGuideRoad": "{at}: siga pela estrada por {length}. Cuidado com os carros.",
+  "parkGuideRoadNamed": "{at}: siga pela estrada {name} por {length}. Cuidado com os carros.",
   "parkGuideBridge": "{at}: atravesse a ponte.",
   "parkGuideFord": "{at}: atravesse o vau. Não há ponte, então espere água.",
   "parkGuideSurfacePaved": "{at}: asfaltado a partir daqui.",

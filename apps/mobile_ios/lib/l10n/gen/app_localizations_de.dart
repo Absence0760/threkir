@@ -23496,6 +23496,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoad(String at, String length) {
+    return '$at: folge der Straße $length weit. Achte auf Autos.';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at: folge der Straße $name $length weit. Achte auf Autos.';
+  }
+
+  @override
   String parkGuideBridge(String at) {
     return '$at: über die Brücke.';
   }

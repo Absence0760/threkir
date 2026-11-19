@@ -156,6 +156,16 @@ RouteGuideStep? _readStep(Object? raw) {
               way: target.way,
             )
           : null;
+    case 'road':
+      final length = _whole(s['length_m']);
+      if (length == null || length < 1) return null;
+      if (!s.containsKey('name')) {
+        return RouteGuideStep(kind: 'road', atM: atM, lengthM: length);
+      }
+      final name = _label(s['name']);
+      return name == null
+          ? null
+          : RouteGuideStep(kind: 'road', atM: atM, lengthM: length, name: name);
     case 'crossing':
       final crossing = _oneOf(kGuideCrossings, s['crossing']);
       return crossing == null
@@ -240,6 +250,8 @@ const List<String> kGuideLineKeys = [
   'leftPath',
   'rightPath',
   'straightPath',
+  'road',
+  'roadNamed',
   'bridge',
   'ford',
   'surfacePaved',
@@ -325,6 +337,10 @@ List<GuideLine> routeGuideLines(RouteGuide guide) {
         rest.add(s.name != null
             ? GuideLine('${s.turn}Named', at: s.atM, name: s.name)
             : GuideLine('${s.turn}${_waySuffix[s.way]}', at: s.atM));
+      case 'road':
+        rest.add(s.name != null
+            ? GuideLine('roadNamed', at: s.atM, name: s.name, length: s.lengthM)
+            : GuideLine('road', at: s.atM, length: s.lengthM));
       case 'crossing':
         rest.add(GuideLine(s.crossing!, at: s.atM));
       case 'surface':
@@ -409,6 +425,8 @@ const Map<String, String> guideEn = {
   'leftPath': '{at}: turn left onto the path.',
   'rightPath': '{at}: turn right onto the path.',
   'straightPath': '{at}: continue straight along the path.',
+  'road': '{at}: follow the road for {length}. Watch for cars.',
+  'roadNamed': '{at}: follow the road, {name}, for {length}. Watch for cars.',
   'bridge': '{at}: cross the bridge.',
   'ford': '{at}: cross the ford. There is no bridge, so expect water.',
   'surfacePaved': '{at}: paved from here.',
@@ -482,6 +500,8 @@ String guideLineMessage(
     'leftPath' => l10n.parkGuideLeftPath(s('at')),
     'rightPath' => l10n.parkGuideRightPath(s('at')),
     'straightPath' => l10n.parkGuideStraightPath(s('at')),
+    'road' => l10n.parkGuideRoad(s('at'), s('length')),
+    'roadNamed' => l10n.parkGuideRoadNamed(s('at'), s('name'), s('length')),
     'bridge' => l10n.parkGuideBridge(s('at')),
     'ford' => l10n.parkGuideFord(s('at')),
     'surfacePaved' => l10n.parkGuideSurfacePaved(s('at')),

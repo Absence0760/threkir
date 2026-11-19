@@ -21883,6 +21883,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoad(String at, String length) {
+    return '$at：道路を$length進みます。車に注意してください。';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at：道路（$name）を$length進みます。車に注意してください。';
+  }
+
+  @override
   String parkGuideBridge(String at) {
     return '$at：橋を渡ります。';
   }

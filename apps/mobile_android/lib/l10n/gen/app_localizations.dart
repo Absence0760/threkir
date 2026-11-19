@@ -36603,6 +36603,18 @@ abstract class AppLocalizations {
   /// **'{at}: continue straight along the path.'**
   String parkGuideStraightPath(String at);
 
+  /// Park course route guide (#1430, web parks.guide.road): the course follows a road for a short stretch between two pieces of trail.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: follow the road for {length}. Watch for cars.'**
+  String parkGuideRoad(String at, String length);
+
+  /// Park course route guide (#1430, web parks.guide.roadNamed): as parkGuideRoad, with the road's name from OpenStreetMap.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: follow the road, {name}, for {length}. Watch for cars.'**
+  String parkGuideRoadNamed(String at, String name, String length);
+
   /// Park course route guide (#1344, web parks.guide.bridge).
   ///
   /// In en, this message translates to:

@@ -296,7 +296,7 @@
 	const darkBasemap = $derived(basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY ?? '', prefersDark));
 	const checkpointPins = $derived<MapMarkerPin[]>(
 		marks
-			.filter((k) => k.kind === 'numbers')
+			.filter((k) => k.kind === 'numbered')
 			.map((k) => ({
 				id: `checkpoint-${k.numbers[0]}`,
 				label: m('parks.checkpointShort', { n: k.numbers.join(', ') }),

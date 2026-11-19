@@ -146,7 +146,7 @@ export function addCourseGateLayers(
 	});
 }
 
-export type GateBoxFeatureKind = 'box' | 'edge';
+export type GateBoxFeatureKind = 'area' | 'edge';
 
 export interface GateBoxFeatureProps {
 	which: GateWhich;
@@ -170,7 +170,7 @@ export function courseGateBoxGeoJSON(
 		features.push({
 			type: 'Feature',
 			geometry: { type: 'Polygon', coordinates: [ring(p.box)] },
-			properties: { which: p.which, kind: 'box' },
+			properties: { which: p.which, kind: 'area' },
 		});
 	}
 	for (const p of parts) {
@@ -214,14 +214,14 @@ export function addCourseGateBoxLayers(
 		id: `${sourceId}-fill`,
 		type: 'fill',
 		source: sourceId,
-		filter: kindIs('box'),
+		filter: kindIs('area'),
 		paint: { 'fill-color': colour, 'fill-opacity': MAP_ZONE_FILL_OPACITY },
 	});
 	map.addLayer({
 		id: `${sourceId}-outline`,
 		type: 'line',
 		source: sourceId,
-		filter: kindIs('box'),
+		filter: kindIs('area'),
 		layout: { 'line-join': 'round' },
 		paint: { 'line-color': colour, 'line-width': 2 },
 	});

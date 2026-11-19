@@ -63,7 +63,7 @@ function kinds(fc: ReturnType<typeof courseGateBoxGeoJSON>): string[] {
 
 test('boxes apart: a box and its edge each, the start box behind its line', () => {
 	const fc = courseGateBoxGeoJSON(north, { ...north, lat: 100 * M });
-	assert.deepEqual(kinds(fc), ['start:box', 'finish:box', 'start:edge', 'finish:edge']);
+	assert.deepEqual(kinds(fc), ['start:area', 'finish:area', 'start:edge', 'finish:edge']);
 	const ring = (fc.features[0].geometry as { coordinates: number[][][] }).coordinates[0];
 	// A closed ring: the edge on the line, then 10 m back (south).
 	assert.equal(ring.length, 5);
@@ -76,7 +76,7 @@ test('boxes apart: a box and its edge each, the start box behind its line', () =
 
 test('an out-and-back is one box: two halves behind the start line, side by side', () => {
 	const fc = courseGateBoxGeoJSON(north, { ...north, bearingDeg: 180 });
-	assert.deepEqual(kinds(fc), ['start:box', 'finish:box', 'start:edge', 'finish:edge']);
+	assert.deepEqual(kinds(fc), ['start:area', 'finish:area', 'start:edge', 'finish:edge']);
 	const xs = (i: number) => (fc.features[i].geometry as { coordinates: number[][][] }).coordinates[0].map((c) => c[0]);
 	const ys = (i: number) => (fc.features[i].geometry as { coordinates: number[][][] }).coordinates[0].map((c) => c[1]);
 	assert.ok(Math.max(...xs(0)) <= 1e-12 && Math.min(...xs(1)) >= -1e-12);

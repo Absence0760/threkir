@@ -23,7 +23,7 @@
   "warnings": "{which, gate, route, selfCross, mode, expected}: gate and route are nullable; expected is the warning codes in order.",
   "preflight": "{mode, courses, expected}: each course {id, startGate, finishGate, hasFinishPoint, selfCross, route}, gates nullable and carrying a source; expected is the issues in order, each {courseId, code, severity, which} with which null except on gate_far_from_route; blocks is preflightBlocks of the result.",
   "pointAlong": "{gate, f, point}: the point at f of the half-width along the line, -1 its left end, 1 its right end.",
-  "box": "{gate, depthM, side, from, to, corners}: the box on `side` (behind or ahead) of the line, from `from` to `to` along it; corners are the line edge's left then right end, then the far right and far left corners.",
+  "boxCorners": "{gate, depthM, side, from, to, corners}: the box on `side` (behind or ahead) of the line, from `from` to `to` along it; corners are the line edge's left then right end, then the far right and far left corners.",
   "sharedSpot": "{start, finish, shared}: whether the two lines sit at one spot (centres within sharedSpotM, facing within sharedSpotDeg of the same way or of opposite ways).",
   "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart, adjacent or merged; each part is {which, box, line: [a, b]}, start then finish; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side."
  },
@@ -1066,7 +1066,7 @@
    }
   }
  ],
- "box": [
+ "boxCorners": [
   {
    "note": "north, half-width 10, 10 m behind: the edge runs 10 m west to 10 m east, the box reaches 10 m south",
    "gate": {

@@ -432,8 +432,8 @@ test('checkpointMarks: a pair 38 m apart on a 2 km course share one marker', () 
 	assert.deepEqual(
 		marks.map((m) => [m.kind, m.numbers]),
 		[
-			['numbers', [1, 2]],
-			['numbers', [3]],
+			['numbered', [1, 2]],
+			['numbered', [3]],
 		],
 	);
 	assert.deepEqual([marks[0].lat, marks[0].lng], [cpAt(500).lat, -77]);
@@ -448,7 +448,7 @@ test('checkpointMarks: an out-and-back marks its last checkpoint as the turn, ne
 	assert.deepEqual(
 		marks.map((m) => [m.kind, m.numbers]),
 		[
-			['numbers', [1]],
+			['numbered', [1]],
 			['turn', [2]],
 		],
 	);
@@ -468,7 +468,7 @@ test('checkpointMarks: a short course still merges within 25 m, and only within 
 
 test('checkpointMarks: no checkpoints, no marks; a loop has no turn', () => {
 	assert.deepEqual(checkpointMarks({ checkpoints: [], line: [cpAt(0), cpAt(100)], shape: 'out_and_back' }), []);
-	assert.ok(checkpointMarks({ checkpoints: [cpAt(50)], line: [cpAt(0), cpAt(100)], shape: 'loop' }).every((m) => m.kind === 'numbers'));
+	assert.ok(checkpointMarks({ checkpoints: [cpAt(50)], line: [cpAt(0), cpAt(100)], shape: 'loop' }).every((m) => m.kind === 'numbered'));
 });
 
 const fordGuide = parseRouteGuide({

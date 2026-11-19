@@ -232,7 +232,8 @@ class _BoxMarker extends StatelessWidget {
       maxScaleFactor: 1.3,
       child: ExcludeSemantics(
         child: DecoratedBox(
-          decoration: BoxDecoration(
+          // A pill on the map, not a card: a stadium shape.
+          decoration: ShapeDecoration(
             color: switch (which) {
               GateWhich.start => start,
               GateWhich.finish => finish,
@@ -244,10 +245,11 @@ class _BoxMarker extends StatelessWidget {
                     stops: const [0, 0.5, 0.5, 1],
                   )
                 : null,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              width: 2,
-              color: mapOverlayOutline(darkBasemap: darkBasemap),
+            shape: StadiumBorder(
+              side: BorderSide(
+                width: 2,
+                color: mapOverlayOutline(darkBasemap: darkBasemap),
+              ),
             ),
           ),
           child: Padding(
@@ -324,9 +326,10 @@ class _CheckpointMarker extends StatelessWidget {
         .textTheme
         .labelSmall
         ?.copyWith(color: ink, fontWeight: FontWeight.w700);
+    // A numbered dot on the map, widened to a stadium when two checkpoints
+    // share it; not a status pill.
     return DecoratedBox(
-      decoration: BoxDecoration(
-          color: fill, borderRadius: BorderRadius.circular(999)),
+      decoration: ShapeDecoration(color: fill, shape: const StadiumBorder()),
       child: Padding(
         padding: const EdgeInsets.all(3),
         child: FittedBox(
@@ -357,10 +360,10 @@ class _TurnMarker extends StatelessWidget {
       maxScaleFactor: 1.3,
       child: ExcludeSemantics(
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        // A pill on the map, not a card: a stadium shape.
+        decoration: ShapeDecoration(
           color: basemapVoidColour(darkBasemap: darkBasemap),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(width: 2, color: ink),
+          shape: StadiumBorder(side: BorderSide(width: 2, color: ink)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(6, 2, 10, 2),

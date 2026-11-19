@@ -23,7 +23,7 @@ const _sections = [
   'warnings',
   'preflight',
   'pointAlong',
-  'box',
+  'boxCorners',
   'sharedSpot',
   'boxParts',
 ];
@@ -256,7 +256,7 @@ void main() {
   });
 
   test('gateBox', () {
-    for (final c in _section('box')) {
+    for (final c in _section('boxCorners')) {
       final got = gateBox(
         _gate(c['gate']),
         _num(c['depthM']),

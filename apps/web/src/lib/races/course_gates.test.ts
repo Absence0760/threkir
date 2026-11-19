@@ -55,7 +55,7 @@ const SECTIONS = [
 	'warnings',
 	'preflight',
 	'pointAlong',
-	'box',
+	'boxCorners',
 	'sharedSpot',
 	'boxParts',
 ];
@@ -233,7 +233,7 @@ function nearPoints(actual: GatePoint[], expected: Obj[], what: string) {
 }
 
 test('gateBox', () => {
-	for (const c of cases('box')) {
+	for (const c of cases('boxCorners')) {
 		const got = gateBox(
 			gate(c.gate as Obj),
 			c.depthM as number,

@@ -555,7 +555,7 @@ export const CHECKPOINT_MERGE_MIN_M = 25;
 
 /** A checkpoint marker on a course map: one or more numbers, or an out-and-back's turn. */
 export interface CheckpointMark {
-	kind: 'numbers' | 'turn';
+	kind: 'numbered' | 'turn';
 	/** The 1-based checkpoint numbers it stands for, in course order. */
 	numbers: number[];
 	lat: number;
@@ -594,7 +594,7 @@ export function checkpointMarks(input: {
 		if (i === turn) return;
 		const near = marks.find((m) => haversineMetres(m.lat, m.lng, c.lat, c.lng) < mergeM);
 		if (near) near.numbers.push(i + 1);
-		else marks.push({ kind: 'numbers', numbers: [i + 1], lat: c.lat, lng: c.lng });
+		else marks.push({ kind: 'numbered', numbers: [i + 1], lat: c.lat, lng: c.lng });
 	});
 	if (turn >= 0) marks.push({ kind: 'turn', numbers: [turn + 1], lat: checkpoints[turn].lat, lng: checkpoints[turn].lng });
 	return marks;

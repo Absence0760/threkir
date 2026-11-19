@@ -3227,7 +3227,7 @@ Migration `20271230001390` ([decisions § 2542](../architecture/decisions.md)): 
 
 Not refreshed later, like every section below the divider.
 
-- `apps/web/src/lib/races/course_gates.test.ts` and `apps/mobile_android/test/course_gates_test.dart` — 15 tests each: the `course_gates` case table's new `pointAlong`, `box`, `sharedSpot` and `boxParts` sections (a box behind the start line and past the finish line, an out-and-back's one split box, a loop's two boxes edge to edge, where each name tag goes and which way it points).
+- `apps/web/src/lib/races/course_gates.test.ts` and `apps/mobile_android/test/course_gates_test.dart` — 15 tests each: the `course_gates` case table's new `pointAlong`, `boxCorners`, `sharedSpot` and `boxParts` sections (a box behind the start line and past the finish line, an out-and-back's one split box, a loop's two boxes edge to edge, where each name tag goes).
 - `apps/web/src/lib/races/course_gate_layers.test.ts` — 7 tests: the boxes' GeoJSON, an out-and-back's two halves side by side behind the start line, and the flags differing by shape.
 - `apps/web/src/lib/parks/park_courses.test.ts` and `apps/mobile_android/test/park_courses_test.dart` — 50 tests each: `checkpointMarks` (a 38 m pair sharing a marker, an out-and-back's last checkpoint as its turn, the 25 m floor) and `courseNotices` (a park's hours, a paved or long trail, a ford leading, only an explicit trail being one).
 - `apps/web/src/lib/parks/route_guide.test.ts` and `apps/mobile_android/test/route_guide_test.dart` — 29 tests each: the `route_guide` case table's `views` (the short view and the grouped full guide).

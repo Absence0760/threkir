@@ -56,16 +56,16 @@ The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 ro
 
 ### Demo data (optional)
 
-To click through every page with realistic data (a crowd of runners in the feed, 34 Virginia parks with 172 park courses and their monthly boards, races, 58 routes, six months of activities, clubs with events, challenges, messages, a past plan, gym, food and weight history), load the demo dataset on top of the seed:
+To click through every page with realistic data (a crowd of runners in the feed, the real park catalogue with a board on every course, races, 58 routes, six months of activities, clubs with events, challenges, messages, a past plan, gym, food and weight history), load the demo dataset on top of the seed:
 
 ```bash
 supabase db reset
 ../../bin/seed-demo.sh            # from apps/backend; add --db-url <url> for a stack on other ports
 ```
 
-Real park courses (the ones `scripts/parks/` builds, such as the Capital Trail and Pocahontas) get boards too, but only those already in the database when the script runs: load them first, then run it. Running it again after loading more courses fills their boards and leaves the rest alone.
+The script first loads the real park catalogue: every park committed under `scripts/parks/catalogue/`, staged ones included (Deep Run Park, the Virginia Capital Trail, Pocahontas), through the same SQL the backend release runs (`scripts/parks/local_load.mjs`). No park or course is invented. Because no local stack has the official club, it creates one (`threkir`, the id in `scripts/parks/publisher.json`, verified, owned by `runner@test.com`), which then appears in the club lists. The demo runs are then timed on those courses, so every course has a board. A park added to the catalogue later loads on the next run, and its boards fill in.
 
-It refuses any host other than `localhost`, `127.0.0.1` or `::1`, is safe to run twice (the second run adds nothing), and is dated relative to the day it runs; to move the dates forward, reset and run it again. Every demo runner signs in with `testtest` (for example `sam.patel@test.com`). Demo runs have no GPS track, and the park course lines are generated, not surveyed. Never use it for test fixtures: specs count against `seed.sql` alone ([decisions § 2521](../../docs/architecture/decisions.md)).
+It refuses any host other than `localhost`, `127.0.0.1` or `::1`, is safe to run twice (the second run adds nothing), and is dated relative to the day it runs; to move the dates forward, reset and run it again. Every demo runner signs in with `testtest` (for example `sam.patel@test.com`). Demo runs have no GPS track, so a demo effort is planted on its course rather than matched from a trace. Never use it for test fixtures: specs count against `seed.sql` alone ([decisions § 2521](../../docs/architecture/decisions.md)).
 
 ### Regenerate client row types
 

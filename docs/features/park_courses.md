@@ -749,6 +749,8 @@ A linear race course on a rail trail (the Virginia Capital Trail's, decisions
 only, the last on the turn (the way back passes the same places, so a second
 set would overlap the first). Neither has `laps`.
 
+On a local stack, `bin/seed-demo.sh` runs the same load over every committed park, staged ones too, as a local copy of the official club it creates (owned by `runner@test.com`); `scripts/parks/local_load.mjs` prints that SQL (decisions § 2590).
+
 Shipping a park, or a change to one:
 
 1. Build and review it under `scripts/parks/` and merge it. The official club

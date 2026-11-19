@@ -22649,6 +22649,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksAgencyOther => 'Parque';
 
   @override
+  String get parksKindTrail => 'Trilho';
+
+  @override
   String get parksShapeLoop => 'Circular';
 
   @override
@@ -46813,6 +46816,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksAgencyOther => 'Parque';
+
+  @override
+  String get parksKindTrail => 'Trilha';
 
   @override
   String get parksShapeLoop => 'Circular';

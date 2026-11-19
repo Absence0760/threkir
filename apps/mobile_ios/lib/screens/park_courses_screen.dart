@@ -368,7 +368,7 @@ class ParkCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(park.name, style: theme.textTheme.titleMedium),
-                        Text(agencyLabel(l10n, park.agency), style: muted),
+                        Text(parkTypeLabel(l10n, park.kind, park.agency), style: muted),
                         if (summary != null)
                           Text(
                             summary,
@@ -449,6 +449,14 @@ List<ParkCourseListing> sortedParkCourses(List<ParkCourseListing> courses) =>
 String courseDistanceForPref(double metres) =>
     courseDistanceLabel(metres, activeDistanceUnit) ??
     formatDistanceForPref(metres);
+
+/// What a park card and page call the place: "Trail" for a trail whoever
+/// runs it, else the agency's label. Mirrors web `parkTypeKey`.
+String parkTypeLabel(AppLocalizations l10n, String kind, String agency) =>
+    switch (kind) {
+      'trail' => l10n.parksKindTrail,
+      _ => agencyLabel(l10n, agency),
+    };
 
 String agencyLabel(AppLocalizations l10n, String agency) => switch (agency) {
   'nps' => l10n.parksAgencyNps,
@@ -740,7 +748,7 @@ class _ParkScreenState extends State<ParkScreen> {
                             children: [
                               Text(
                                 '${regionName(park.regionCode)} · '
-                                '${agencyLabel(l10n, park.agency)}',
+                                '${parkTypeLabel(l10n, park.kind, park.agency)}',
                                 style: muted,
                               ),
                               if (website != null &&

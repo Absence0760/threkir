@@ -6033,6 +6033,7 @@
   "parksAgencyState": "State Park",
   "parksAgencyCounty": "County Park",
   "parksAgencyOther": "Park",
+  "parksKindTrail": "Weg",
   "parksShapeLoop": "Rundstrecke",
   "parksShapeOutAndBack": "Hin und zurück",
   "parksShapePointToPoint": "Von A nach B",

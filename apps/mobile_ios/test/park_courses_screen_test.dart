@@ -24,12 +24,14 @@ ParkListing _park({
   required String name,
   String region = 'US-VA',
   String agency = 'state',
+  String kind = 'park',
   String? websiteUrl,
 }) => ParkListing(
   park: ParkRow(
     id: id,
     slug: name.toLowerCase().replaceAll(' ', '-'),
     name: name,
+    kind: kind,
     agency: agency,
     regionCode: region,
     countryCode: 'US',
@@ -406,6 +408,26 @@ void main() {
   ];
 
   group('ParksScreen', () {
+    testWidgets('a trail card reads Trail, whoever runs it', (tester) async {
+      final api = _ParksApi(
+        parks: [
+          _park(
+            id: 't1',
+            name: 'Virginia Capital Trail',
+            kind: 'trail',
+            agency: 'other',
+          ),
+          _park(id: 'p1', name: 'Pocahontas State Park'),
+        ],
+        courses: const [],
+      );
+      await tester.pumpWidget(_host(ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.text('Trail'), findsOneWidget);
+      expect(find.text('Park'), findsNothing);
+      expect(find.text('State park'), findsOneWidget);
+    });
+
     testWidgets('groups parks under their region, each a card with its '
         'courses, count and distance range', (tester) async {
       final api = _ParksApi(

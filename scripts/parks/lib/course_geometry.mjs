@@ -470,14 +470,13 @@ export function cutSequence({ sequence, nodes, ways, fromM, toM }) {
  * @param {number} id
  */
 function splitEdge(ways, a, b, id) {
-	let done = false;
+	// Every way holding the edge gets the node, so a stretch two ways share
+	// (a duplicated or overlapping OSM way) is still checked as both.
 	return ways.map((way) => {
-		if (done) return way;
 		for (let i = 1; i < way.nodes.length; i++) {
 			const p = way.nodes[i - 1];
 			const q = way.nodes[i];
 			if ((p === a && q === b) || (p === b && q === a)) {
-				done = true;
 				return { ...way, nodes: [...way.nodes.slice(0, i), id, ...way.nodes.slice(i)] };
 			}
 		}

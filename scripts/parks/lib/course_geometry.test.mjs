@@ -549,3 +549,12 @@ test('assertFinishAtTrailEnd accepts a dead end and refuses a node the trail run
 	assert.doesNotThrow(() => assertFinishAtTrailEnd([3, 4, 5, 6], lineWays));
 	assert.throws(() => assertFinishAtTrailEnd([2, 3, 4, 5], lineWays), /node 5\) joins 2 edges/);
 });
+
+test('cutSequence splits an edge in every way that holds it, so a shared stretch is checked as each', () => {
+	/** @type {import('./course_geometry.mjs').SnapshotWay[]} */
+	const shared = [...lineWays, { id: 22, nodes: [2, 3], tags: { highway: 'cycleway', informal: 'yes' } }];
+	const cut = cutSequence({ sequence: [1, 2, 3, 4, 5, 6], nodes: lineNodes, ways: shared, fromM: 0, toM: 1.5 * hop });
+	assert.deepEqual(cut.sequence, [1, 2, -1]);
+	assert.deepEqual(cut.ways.map((w) => w.nodes), [[1, 2, -1, 3], [3, 4, 5, 6], [2, -1, 3]]);
+	assert.throws(() => assertFootAccess(cut.sequence, cut.ways), /way 22 \(informal=yes/);
+});

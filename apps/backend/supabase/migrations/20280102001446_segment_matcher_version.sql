@@ -1,5 +1,5 @@
 -- The catalogue matcher version the backend deploys (issue #1446, decisions
--- § 2583). Matcher version 4 times a park course by its drawn start and
+-- § 2589). Matcher version 4 times a park course by its drawn start and
 -- finish boxes; the release ops task
 -- apps/backend/ops/tasks/20280102001446_rematch_segments_matcher_v4.sql
 -- re-matches old efforts with it, and reads this function so that a sync
@@ -23,4 +23,4 @@ revoke execute on function private.segment_matcher_version() from public, anon, 
 
 comment on function private.segment_matcher_version() is
   'The GLOBAL_SEGMENT_MATCHER_VERSION the deployed segment-match function carries; read by the release ops task '
-  'that re-matches efforts after a matcher change (decisions § 2583).';
+  'that re-matches efforts after a matcher change (decisions § 2589).';

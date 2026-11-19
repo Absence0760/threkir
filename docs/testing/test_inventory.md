@@ -3197,7 +3197,7 @@ The automated net that replaces the hand test "record a run over one course and 
 
 ### `apps/web/src/lib/parks/course_box_timing.test.ts` — 6 tests
 
-The box timing rule (issue #1446, decisions § 2583) on every catalogue course (Pocahontas, Deep Run, the Virginia Capital Trail): seeded runs from `parks/course_box_timing_sim.ts` with 3 m of drifting GPS error, scored by the matcher the server bundles. Holds a minimum timed rate for stopping 5 m past, 1 m past and 3 m short of the finish (inside the shared box), starting on the line and 0.5 m behind it, a fix every 5 s and 15 s, and a 90 s gap across the finish; no time for stopping halfway, skipping the middle fifth or a third; a 50K at 8.7 h timed within 2 % of line to line less the shared box; and a gap-crossed finish within 15 s of the same run without the gap. Run with `npx tsx --test src/lib/parks/course_box_timing.test.ts` from `apps/web` (about 5 s).
+The box timing rule (issue #1446, decisions § 2589) on every catalogue course (Pocahontas, Deep Run, the Virginia Capital Trail): seeded runs from `parks/course_box_timing_sim.ts` with 3 m of drifting GPS error, scored by the matcher the server bundles. Holds a minimum timed rate for stopping 5 m past, 1 m past and 3 m short of the finish (inside the shared box), starting on the line and 0.5 m behind it, a fix every 5 s and 15 s, and a 90 s gap across the finish; no time for stopping halfway, skipping the middle fifth or a third; a 50K at 8.7 h timed within 2 % of line to line less the shared box; and a gap-crossed finish within 15 s of the same run without the gap. Run with `npx tsx --test src/lib/parks/course_box_timing.test.ts` from `apps/web` (about 5 s).
 
 ### `apps/web/src/lib/parks/course_run_fixture.test.ts` — 7 tests
 

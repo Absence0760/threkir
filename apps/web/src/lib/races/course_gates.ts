@@ -248,7 +248,7 @@ export function gateBoxParts(
 
 /**
  * The edges a course is timed by, read off the boxes gateBoxParts draws
- * (decisions § 2583): leaving the start box forward is a forward crossing of
+ * (decisions § 2589): leaving the start box forward is a forward crossing of
  * `startExit`, with the box behind it; entering the finish box is a forward
  * crossing of `finishEntry`, with the box `depthM` ahead of it. Apart, they are
  * the start and finish lines themselves. At a shared spot, the exit is the
@@ -270,7 +270,7 @@ function edgeGate(a: GatePoint, b: GatePoint, bearingDeg: number, halfWidthM: nu
 	return { lat: mid.lat, lng: mid.lng, bearingDeg: normalizeBearing(bearingDeg), halfWidthM };
 }
 
-/** The timing edges of a course with both lines (decisions § 2583). */
+/** The timing edges of a course with both lines (decisions § 2589). */
 export function gateTimingEdges(start: Gate, finish: Gate, depthM: number = COURSE_GATE_BOX_DEPTH_M): GateTimingEdges {
 	const { layout, parts } = gateBoxParts(start, finish, depthM);
 	if (layout === 'shared') {

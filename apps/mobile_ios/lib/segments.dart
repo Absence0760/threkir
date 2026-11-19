@@ -130,12 +130,12 @@ EffortResult? _effortFromIndex(
 /// crossings and reads only on-track fixes (issue #1308); 3 times every
 /// complete lap of a loop, so a run's fastest lap is its effort (§ 2465); 4
 /// times by the drawn start and finish boxes, with GPS slack at either end of
-/// the recording and a longer gap across the finish (§ 2583).
+/// the recording and a longer gap across the finish (§ 2589).
 const int kGlobalSegmentMatcherVersion = 4;
 
 /// How far past the start box's exit edge a recording's first fix, or short
 /// of the finish box a recording's last stretch, may sit and still count: the
-/// GPS error of a phone standing at the line (decisions § 2583). Mirrors
+/// GPS error of a phone standing at the line (decisions § 2589). Mirrors
 /// `GLOBAL_SEGMENT_BOX_SLACK_M`.
 const double kGlobalSegmentBoxSlackM = 5;
 
@@ -205,7 +205,7 @@ class GlobalSegmentGeometry {
 /// Two rules, chosen per segment:
 ///
 /// - **Boxes** (a segment with a usable start and end line, decisions
-///   § 2402, § 2583): the start and finish boxes a course map draws
+///   § 2402, § 2589): the start and finish boxes a course map draws
 ///   ([gateTimingEdges]). The clock starts when the run leaves the start box
 ///   forward and stops when it next enters the finish box, both interpolated
 ///   between fixes, with the covered distance between them within 25% of the

@@ -678,7 +678,7 @@ void main() {
     expect(kGlobalSegmentMatcherVersion, 4);
   });
 
-  test('the box rule constants match the web twin (decisions § 2583)', () {
+  test('the box rule constants match the web twin (decisions § 2589)', () {
     expect(kGlobalSegmentBoxSlackM, 5);
     expect(kGlobalSegmentFinishMaxGapS, 300);
     expect(kGlobalSegmentGapSpeedMin, 0.4);

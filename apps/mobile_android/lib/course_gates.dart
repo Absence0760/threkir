@@ -284,7 +284,7 @@ class GateBoxMarker {
 }
 
 /// The edges a course is timed by, read off the boxes [gateBoxParts] draws
-/// (decisions § 2583): leaving the start box forward is a forward crossing of
+/// (decisions § 2589): leaving the start box forward is a forward crossing of
 /// [startExit], with the box behind it; entering the finish box is a forward
 /// crossing of [finishEntry], with the box [depthM] ahead of it. Apart, they
 /// are the start and finish lines themselves. At a shared spot, the exit is
@@ -318,7 +318,7 @@ Gate _edgeGate(GatePoint a, GatePoint b, double bearingDeg, double halfWidthM) {
   );
 }
 
-/// The timing edges of a course with both lines (decisions § 2583). Twin of
+/// The timing edges of a course with both lines (decisions § 2589). Twin of
 /// web's `gateTimingEdges`.
 GateTimingEdges gateTimingEdges(
   Gate start,

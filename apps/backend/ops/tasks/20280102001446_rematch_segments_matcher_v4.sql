@@ -1,7 +1,7 @@
 -- Re-match every run near an open catalogue segment with the matcher this
 -- release deploys (matcher version 4: a course is timed by its drawn start
 -- and finish boxes, with GPS slack at either end of the recording and a
--- longer gap across the finish; issue #1446, decisions § 2583). The web
+-- longer gap across the finish; issue #1446, decisions § 2589). The web
 -- fallback already re-matches a run its owner opens (its metadata stamp is
 -- behind); this reaches the runs nobody opens, the way version 3's task did
 -- (20271219001313_rematch_segments_matcher_v3, decisions § 2465).

@@ -133,7 +133,7 @@ Every run is scored on the server (decisions § 2392):
   trigger, or placed by a curator), and the course map draws a box on each
   (decisions § 2582). The matcher times by those same boxes, read off them by
   `gateTimingEdges` in the `course_gates` pair (matcher version 4, decisions
-  § 2583): the clock starts when the run leaves the start box going forward
+  § 2589): the clock starts when the run leaves the start box going forward
   and stops when it next enters the finish box, both interpolated between
   fixes, with the covered distance within 25 % of the course length and every
   checkpoint passed in order between the two. Where the boxes are apart, those
@@ -189,7 +189,7 @@ Every run is scored on the server (decisions § 2392):
   (decisions § 2465); version 4 (the boxes) with
   `20280102001446_rematch_segments_matcher_v4`, which reads
   `private.segment_matcher_version()` from the same release's migration so a
-  sync dispatched before that release leaves it pending (decisions § 2583). A
+  sync dispatched before that release leaves it pending (decisions § 2589). A
   later version bump adds its own task and bumps that function.
 - **Launch backfill.** After loading a course, run
   `select enqueue_segment_backfill('<global_segment_id>');` as an admin or the
@@ -494,7 +494,7 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   ahead), its line chequered like the finish edge, with one "Start and
   finish" tag in the same colour and one "Start and finish" key entry. Never
   a green half and a red half at one spot: a runner reads that as half start,
-  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair, and the matcher times by the same boxes (`gateTimingEdges`, decisions § 2583); the
+  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair, and the matcher times by the same boxes (`gateTimingEdges`, decisions § 2589); the
   colours are `mapStartZoneColour` / `mapFinishZoneColour` (measured in
   `basemap_contrast.test.ts` and `live_run_map_tile_url_test.dart`: each
   clears 3:1 on every ground of its basemap, the pair keeps a lightness gap
@@ -1086,7 +1086,7 @@ These gate going live, not the code:
       closed courses) in the release that ships matcher version 3, after the
       functions deploy (decisions § 2465). Until it has run, boards may still
       show the "measured the old way" note.
-- [ ] Matcher version 4 (the boxes, decisions § 2583) re-matches old efforts
+- [ ] Matcher version 4 (the boxes, decisions § 2589) re-matches old efforts
       through the ops task `20280102001446_rematch_segments_matcher_v4` in the
       backend release that ships it. Don't dispatch a committing production
       sync from `main` between the merge and that release expecting it to run:
@@ -1218,7 +1218,7 @@ These gate going live, not the code:
   production job worker is draining `segment_match`, whether the deployed
   function carries the current bundle, and whether production's rows match the
   manifest.
-- Boxes (#1446, decisions § 2583): `parks/course_box_timing.test.ts` (seeded
+- Boxes (#1446, decisions § 2589): `parks/course_box_timing.test.ts` (seeded
   runs over every catalogue course, from `parks/course_box_timing_sim.ts`: the
   timed rate for each way of starting and stopping, sparse fixes, a gap at the
   finish and a 50K, and no time for stopping halfway or a cut), the box cases

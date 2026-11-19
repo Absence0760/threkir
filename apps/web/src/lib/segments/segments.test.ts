@@ -872,7 +872,7 @@ test('a circle match reports matched_by zone, and the matcher version is past th
 	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 4);
 });
 
-test('the box rule constants match the Dart twin (decisions § 2583)', () => {
+test('the box rule constants match the Dart twin (decisions § 2589)', () => {
 	assert.equal(GLOBAL_SEGMENT_BOX_SLACK_M, 5);
 	assert.equal(GLOBAL_SEGMENT_FINISH_MAX_GAP_S, 300);
 	assert.equal(GLOBAL_SEGMENT_GAP_SPEED_MIN, 0.4);

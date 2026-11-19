@@ -1,5 +1,5 @@
 // Seeded GPS runs over the real catalogue courses for the box timing rule
-// (issue #1446, decisions § 2583): how often a run that did the course gets a
+// (issue #1446, decisions § 2589): how often a run that did the course gets a
 // time when it stops just past or just short of the finish, starts recording
 // on the start line, records sparse fixes, loses GPS at the finish, or is a
 // 50K. Not a test file itself, and not shipped: course_box_timing.test.ts

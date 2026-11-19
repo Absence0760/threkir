@@ -1,5 +1,5 @@
 // The box timing rule on the real catalogue courses (issue #1446, decisions
-// § 2583): seeded runs with a 3 m drifting GPS error, scored by the matcher
+// § 2589): seeded runs with a 3 m drifting GPS error, scored by the matcher
 // the server bundles. A run that did the course is timed when it stops just
 // past or just short of the finish, starts recording on the start line,
 // records a fix every 5 or 15 s, loses GPS for 90 s across the finish, or is

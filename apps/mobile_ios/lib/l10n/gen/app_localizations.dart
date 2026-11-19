@@ -35478,8 +35478,20 @@ abstract class AppLocalizations {
   /// Park courses (#1313): web key parks.safetyNotice.
   ///
   /// In en, this message translates to:
-  /// **'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.'**
+  /// **'Follow the course line on the map and pass every checkpoint in order, or your time won\'t count.'**
   String get parksSafetyNotice;
+
+  /// Before-you-run callout on a park course page, the second plain line: finish before the park closes (web parks.noticeParkHours).
+  ///
+  /// In en, this message translates to:
+  /// **'Finish before the park closes.'**
+  String get parksNoticeParkHours;
+
+  /// Before-you-run callout, the small secondary line: a time trial on open trails, not a marshalled race (web parks.noticeOpenTrail).
+  ///
+  /// In en, this message translates to:
+  /// **'A time trial on open trails, not a race. Nobody marshals it.'**
+  String get parksNoticeOpenTrail;
 
   /// Park courses: non-affiliation notice under the attribution on the park and course screens; web key parks.notAffiliated.
   ///
@@ -35574,14 +35586,8 @@ abstract class AppLocalizations {
   /// Title of a park course board nobody has a time on yet; replaces the filters (#1352).
   ///
   /// In en, this message translates to:
-  /// **'No times yet. Yours could be the first.'**
+  /// **'No times yet. Run it with Threkir and yours shows up here.'**
   String get parksBoardEmptyTitle;
-
-  /// Body under parksBoardEmptyTitle: how a time gets onto the board (#1352).
-  ///
-  /// In en, this message translates to:
-  /// **'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.'**
-  String get parksBoardEmptyBody;
 
   /// Screen-reader name of the key under a park course map (#1352).
   ///
@@ -35684,6 +35690,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Direction to run'**
   String get parksLegendDirection;
+
+  /// The one instruction on a park course page (decisions § 2581): start recording inside the green box on the map, follow the map's direction arrows to the red box; with n over 1, round the loop n times first. n is the course's laps (1 for one). Plain words a first-timer or a child follows; never 'gate', 'line' or 'timing'.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1 {Start recording in the green box. Follow the arrows to the red box.} other {Start recording in the green box. Follow the arrows round the loop {n} times and finish in the red box.}}'**
+  String parksBoxesApart(int n);
+
+  /// As parksBoxesApart, for a course whose start and finish are one box drawn half green and half red: finish back in that box; with n over 1, after n laps of the loop.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1 {Start recording in the green-and-red box. Follow the arrows and finish back in it.} other {Start recording in the green-and-red box. Follow the arrows round the loop {n} times and finish back in it.}}'**
+  String parksBoxesShared(int n);
+
+  /// The main button in the start and finish block: opens the maps app with directions to the start.
+  ///
+  /// In en, this message translates to:
+  /// **'Get directions to the start'**
+  String get parksEndsGetDirections;
+
+  /// The heading of the folded-away start and finish coordinates, under the directions button.
+  ///
+  /// In en, this message translates to:
+  /// **'Coordinates'**
+  String get parksEndsCoordinates;
+
+  /// The tag on an out-and-back course's map at its last checkpoint, the point to turn around at, with a U-turn icon. A short sign word, as on a race course.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn around'**
+  String get parksTurnAround;
+
+  /// Map key item on an out-and-back course: the Turn around mark, the last checkpoint, which the run must reach (web parks.legendTurnAround).
+  ///
+  /// In en, this message translates to:
+  /// **'Turn around here: your run must pass it'**
+  String get parksLegendTurnAround;
+
+  /// The one instruction on an out-and-back course page: start recording in the start-and-finish box, follow the arrows to the Turn around mark on the map (parksTurnAround, named as it appears there), and come back to the box.
+  ///
+  /// In en, this message translates to:
+  /// **'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.'**
+  String get parksBoxesOutAndBack;
 
   /// Screen-reader label of a park course map (#1352); n is its checkpoint count.
   ///
@@ -36662,6 +36710,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{at}: finish.'**
   String parkGuideFinish(String at);
+
+  /// Park course route guide, short view (decisions § 2581, web parks.guide.laps): how many laps of the loop the course is.
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}'**
+  String parkGuideLaps(int total);
+
+  /// Park course route guide, full view (web parks.guide.repeatLoop): what a lap after the first says, instead of its steps again.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat the loop.'**
+  String get parkGuideRepeatLoop;
+
+  /// Park course route guide, full view (web parks.guide.lapHeader): the heading over one lap's steps.
+  ///
+  /// In en, this message translates to:
+  /// **'Lap {n}'**
+  String parkGuideLapHeader(int n);
+
+  /// Park course route guide, full view (web parks.guide.kmHeader): the heading over one stretch of a course without laps, two formatted distances along it.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} to {to}'**
+  String parkGuideKmHeader(String from, String to);
+
+  /// Park course route guide (web parks.guide.showAll): the fold that opens every step, under the short view.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all steps'**
+  String get parkGuideShowAll;
 
   /// Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)
   ///

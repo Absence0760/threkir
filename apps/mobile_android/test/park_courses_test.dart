@@ -457,4 +457,74 @@ void main() {
       expect(formatLatLng((lat: -0.000001, lng: 0)), '0.00000, 0.00000');
     });
   });
+
+  group('checkpointMarks', () {
+    const m = 1 / 111195;
+    ({double lat, double lng}) at(double metres) =>
+        (lat: 37 + metres * m, lng: -77.0);
+    List<List<int>> numbers(List<CheckpointMark> marks) =>
+        [for (final k in marks) k.numbers];
+
+    test('a pair 38 m apart on a 2 km course share one marker', () {
+      final marks = checkpointMarks(
+        checkpoints: [at(500), at(538), at(1000)],
+        line: [at(0), at(2000)],
+        shape: 'loop',
+      );
+      expect(numbers(marks), [
+        [1, 2],
+        [3],
+      ]);
+      expect([for (final k in marks) k.isTurn], [false, false]);
+      expect((marks.first.lat, marks.first.lng), (at(500).lat, -77.0));
+    });
+
+    test('an out-and-back marks its last checkpoint as the turn, never merged',
+        () {
+      final marks = checkpointMarks(
+        checkpoints: [at(980), at(1000)],
+        line: [at(0), at(1000), at(0)],
+        shape: 'out_and_back',
+      );
+      expect(numbers(marks), [
+        [1],
+        [2],
+      ]);
+      expect([for (final k in marks) k.isTurn], [false, true]);
+    });
+
+    test('a short course still merges within 25 m, and only within it', () {
+      final line = [at(0), at(200)];
+      expect(
+        numbers(checkpointMarks(
+            checkpoints: [at(50), at(70)], line: line, shape: 'loop')),
+        [
+          [1, 2],
+        ],
+      );
+      expect(
+        numbers(checkpointMarks(
+            checkpoints: [at(50), at(80)], line: line, shape: 'loop')),
+        [
+          [1],
+          [2],
+        ],
+      );
+    });
+
+    test('no checkpoints, no marks; a loop has no turn', () {
+      expect(
+          checkpointMarks(
+              checkpoints: const [],
+              line: [at(0), at(100)],
+              shape: 'out_and_back'),
+          isEmpty);
+      expect(
+        checkpointMarks(
+                checkpoints: [at(50)], line: [at(0), at(100)], shape: 'loop')
+            .every((k) => !k.isTurn),
+        isTrue,
+      );
+    });
+  });
 }

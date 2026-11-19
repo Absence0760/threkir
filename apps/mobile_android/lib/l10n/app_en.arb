@@ -29071,9 +29071,17 @@
   "@parksBoardFailed": {
     "description": "Park courses (#1313): web key parks.boardFailed."
   },
-  "parksSafetyNotice": "Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.",
+  "parksSafetyNotice": "Follow the course line on the map and pass every checkpoint in order, or your time won't count.",
   "@parksSafetyNotice": {
     "description": "Park courses (#1313): web key parks.safetyNotice."
+  },
+  "parksNoticeParkHours": "Finish before the park closes.",
+  "@parksNoticeParkHours": {
+    "description": "Before-you-run callout on a park course page, the second plain line: finish before the park closes (web parks.noticeParkHours)."
+  },
+  "parksNoticeOpenTrail": "A time trial on open trails, not a race. Nobody marshals it.",
+  "@parksNoticeOpenTrail": {
+    "description": "Before-you-run callout, the small secondary line: a time trial on open trails, not a marshalled race (web parks.noticeOpenTrail)."
   },
   "parksNotAffiliated": "Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.",
   "@parksNotAffiliated": {
@@ -29145,13 +29153,9 @@
   "@parksElevationProfile": {
     "description": "Heading over a park course's elevation chart (#1352)."
   },
-  "parksBoardEmptyTitle": "No times yet. Yours could be the first.",
+  "parksBoardEmptyTitle": "No times yet. Run it with Threkir and yours shows up here.",
   "@parksBoardEmptyTitle": {
     "description": "Title of a park course board nobody has a time on yet; replaces the filters (#1352)."
-  },
-  "parksBoardEmptyBody": "Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.",
-  "@parksBoardEmptyBody": {
-    "description": "Body under parksBoardEmptyTitle: how a time gets onto the board (#1352)."
   },
   "parksLegendTitle": "Map key",
   "@parksLegendTitle": {
@@ -29220,6 +29224,44 @@
   "parksLegendDirection": "Direction to run",
   "@parksLegendDirection": {
     "description": "Map key item: the arrows along the course line (#1352)."
+  },
+  "parksBoxesApart": "{n, plural, =1 {Start recording in the green box. Follow the arrows to the red box.} other {Start recording in the green box. Follow the arrows round the loop {n} times and finish in the red box.}}",
+  "@parksBoxesApart": {
+    "description": "The one instruction on a park course page (decisions § 2581): start recording inside the green box on the map, follow the map's direction arrows to the red box; with n over 1, round the loop n times first. n is the course's laps (1 for one). Plain words a first-timer or a child follows; never 'gate', 'line' or 'timing'.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksBoxesShared": "{n, plural, =1 {Start recording in the green-and-red box. Follow the arrows and finish back in it.} other {Start recording in the green-and-red box. Follow the arrows round the loop {n} times and finish back in it.}}",
+  "@parksBoxesShared": {
+    "description": "As parksBoxesApart, for a course whose start and finish are one box drawn half green and half red: finish back in that box; with n over 1, after n laps of the loop.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksEndsGetDirections": "Get directions to the start",
+  "@parksEndsGetDirections": {
+    "description": "The main button in the start and finish block: opens the maps app with directions to the start."
+  },
+  "parksEndsCoordinates": "Coordinates",
+  "@parksEndsCoordinates": {
+    "description": "The heading of the folded-away start and finish coordinates, under the directions button."
+  },
+  "parksTurnAround": "Turn around",
+  "@parksTurnAround": {
+    "description": "The tag on an out-and-back course's map at its last checkpoint, the point to turn around at, with a U-turn icon. A short sign word, as on a race course."
+  },
+  "parksLegendTurnAround": "Turn around here: your run must pass it",
+  "@parksLegendTurnAround": {
+    "description": "Map key item on an out-and-back course: the Turn around mark, the last checkpoint, which the run must reach (web parks.legendTurnAround)."
+  },
+  "parksBoxesOutAndBack": "Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.",
+  "@parksBoxesOutAndBack": {
+    "description": "The one instruction on an out-and-back course page: start recording in the start-and-finish box, follow the arrows to the Turn around mark on the map (parksTurnAround, named as it appears there), and come back to the box."
   },
   "parksMapCourseLabel": "{n, plural, =0 {Course map. The key below names each mark.} one {Course map with 1 checkpoint. The key below names each mark.} other {Course map with {n} checkpoints. The key below names each mark.}}",
   "@parksMapCourseLabel": {
@@ -30231,6 +30273,44 @@
         "type": "String"
       }
     }
+  },
+  "parkGuideLaps": "{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}",
+  "@parkGuideLaps": {
+    "description": "Park course route guide, short view (decisions § 2581, web parks.guide.laps): how many laps of the loop the course is.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideRepeatLoop": "Repeat the loop.",
+  "@parkGuideRepeatLoop": {
+    "description": "Park course route guide, full view (web parks.guide.repeatLoop): what a lap after the first says, instead of its steps again."
+  },
+  "parkGuideLapHeader": "Lap {n}",
+  "@parkGuideLapHeader": {
+    "description": "Park course route guide, full view (web parks.guide.lapHeader): the heading over one lap's steps.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideKmHeader": "{from} to {to}",
+  "@parkGuideKmHeader": {
+    "description": "Park course route guide, full view (web parks.guide.kmHeader): the heading over one stretch of a course without laps, two formatted distances along it.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideShowAll": "Show all steps",
+  "@parkGuideShowAll": {
+    "description": "Park course route guide (web parks.guide.showAll): the fold that opens every step, under the short view."
   },
   "parkCourseReportAction": "Report a problem with this course",
   "@parkCourseReportAction": {

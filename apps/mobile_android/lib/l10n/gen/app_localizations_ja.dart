@@ -21179,7 +21179,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      '標識のあるトレイルから外れないでください。計測にはすべてのチェックポイントが必要なので、近道は記録になりません。これはレースではなくタイムトライアルです。トレイルは誰にでも開かれており、係員はいません。';
+      '地図上のコースラインに沿って走り、すべてのチェックポイントを順番に通過してください。通過しないとタイムは記録されません。';
+
+  @override
+  String get parksNoticeParkHours => '閉園時間までにフィニッシュしてください。';
+
+  @override
+  String get parksNoticeOpenTrail =>
+      '一般に開放されたコースでのタイムトライアルで、レースではありません。係員はいません。';
 
   @override
   String get parksNotAffiliated =>
@@ -21236,11 +21243,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksElevationProfile => '高低図';
 
   @override
-  String get parksBoardEmptyTitle => 'まだタイムがありません。あなたが最初になれます。';
-
-  @override
-  String get parksBoardEmptyBody =>
-      'Threkirで記録しながらこのコースを走ってください。コース全体を走り、すべてのチェックポイントを通過すると、タイムが自動でここに表示されます。提出の手続きは必要ありません。';
+  String get parksBoardEmptyTitle =>
+      'まだタイムはありません。Threkirで走ると、ここにあなたのタイムが表示されます。';
 
   @override
   String get parksLegendTitle => '地図の凡例';
@@ -21292,6 +21296,44 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksLegendDirection => '走る方向';
+
+  @override
+  String parksBoxesApart(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '緑のボックスで記録を開始し、矢印に沿って周回コースを$n周走り、赤のボックスでフィニッシュします。',
+      one: '緑のボックスで記録を開始し、矢印に沿って赤のボックスまで走ります。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksBoxesShared(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '緑と赤のボックスで記録を開始し、矢印に沿って周回コースを$n周走り、同じボックスでフィニッシュします。',
+      one: '緑と赤のボックスで記録を開始し、矢印に沿って走って、同じボックスでフィニッシュします。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksEndsGetDirections => 'スタートへの行き方';
+
+  @override
+  String get parksEndsCoordinates => '座標';
+
+  @override
+  String get parksTurnAround => '折り返し';
+
+  @override
+  String get parksLegendTurnAround => 'ここで折り返し：必ず通過してください';
+
+  @override
+  String get parksBoxesOutAndBack =>
+      '緑と赤のボックスで記録を開始し、矢印に沿って「折り返し」の印まで走り、ボックスに戻ります。';
 
   @override
   String parksMapCourseLabel(int n) {
@@ -21933,6 +21975,32 @@ class AppLocalizationsJa extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at：フィニッシュ。';
   }
+
+  @override
+  String parkGuideLaps(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '周回コースを$total周します。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parkGuideRepeatLoop => '同じ周回コースをもう一度走ります。';
+
+  @override
+  String parkGuideLapHeader(int n) {
+    return '$n周目';
+  }
+
+  @override
+  String parkGuideKmHeader(String from, String to) {
+    return '$from〜$to';
+  }
+
+  @override
+  String get parkGuideShowAll => 'すべての手順を表示';
 
   @override
   String get parkCourseReportAction => 'このコースの問題を報告';

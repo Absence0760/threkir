@@ -12,6 +12,11 @@ final List<Map<String, dynamic>> _cases = ((jsonDecode(
         as Map<String, dynamic>)['cases'] as List)
     .cast<Map<String, dynamic>>();
 
+final List<Map<String, dynamic>> _views = ((jsonDecode(
+            File('../../fixtures/route_guide_cases.json').readAsStringSync())
+        as Map<String, dynamic>)['views'] as List)
+    .cast<Map<String, dynamic>>();
+
 final Map<String, dynamic> _arb =
     jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
         as Map<String, dynamic>;
@@ -41,6 +46,26 @@ void main() {
       expect(
         [for (final l in routeGuideLines(guide)) l.toJson()],
         c['lines'],
+      );
+    });
+  }
+
+  for (final v in _views) {
+    test('route guide view: ${v['name']}', () {
+      final guide = parseRouteGuide(v['guide'])!;
+      final view = routeGuideView(guide);
+      expect([for (final l in view.summary) l.toJson()], v['summary']);
+      expect(
+        [
+          for (final s in view.sections)
+            {
+              'lap': s.lap,
+              'from': s.from,
+              'to': s.to,
+              'lines': [for (final l in s.lines) l.toJson()],
+            }
+        ],
+        v['sections'],
       );
     });
   }

@@ -140,6 +140,145 @@ GatePoint _centre(Gate g) => GatePoint(g.lat, g.lng);
 GatePoint gateArrowTip(Gate gate) => offsetPoint(
     _centre(gate), gate.bearingDeg, math.max(20, gate.halfWidthM));
 
+/// How deep a drawn start or finish box is, from its line.
+const double kCourseGateBoxDepthM = 10;
+
+/// Start and finish lines whose centres sit this close, facing the same way
+/// or opposite ways, sit at one spot.
+const double kCourseGateSharedSpotM = 10;
+
+/// How far from parallel (or from opposed) two lines may face and still share
+/// a spot.
+const double kCourseGateSharedSpotDeg = 20;
+
+/// The point on the line at [f] of its half-width: -1 its left end, 0 the
+/// centre, 1 its right end.
+GatePoint gatePointAlong(Gate gate, double f) {
+  final b = _rad(gate.bearingDeg);
+  return fromPlane(_centre(gate), f * gate.halfWidthM * math.cos(b),
+      -f * gate.halfWidthM * math.sin(b));
+}
+
+/// Which side of its line a box sits: behind it (where a runner waits to
+/// start) or ahead (where one stops).
+enum GateBoxSide { behind, ahead }
+
+/// The box on one side of a line, [depthM] deep, from [from] to [to] along
+/// the line (as [gatePointAlong]). Corners: the line edge first, its left end
+/// then its right (left of travel), then the far right and far left corners.
+/// Leaving a `behind` box through its edge, or entering an `ahead` one, is
+/// crossing the line.
+List<GatePoint> gateBox(Gate gate, double depthM, GateBoxSide side,
+    {double from = -1, double to = 1}) {
+  final b = _rad(gate.bearingDeg);
+  final ax = gate.halfWidthM * math.cos(b);
+  final ay = -gate.halfWidthM * math.sin(b);
+  final d = side == GateBoxSide.ahead ? depthM : -depthM;
+  final c = _centre(gate);
+  GatePoint at(double f, double k) => fromPlane(
+      c, f * ax + k * math.sin(b), f * ay + k * math.cos(b));
+  return [at(from, 0), at(to, 0), at(to, d), at(from, d)];
+}
+
+/// Whether a start line and a finish line sit at one spot: an
+/// out-and-back's or a loop's.
+bool gatesShareSpot(Gate start, Gate finish) {
+  final p = planeXY(_centre(start), _centre(finish));
+  if (math.sqrt(p.x * p.x + p.y * p.y) > kCourseGateSharedSpotM) return false;
+  final d = bearingDelta(start.bearingDeg, finish.bearingDeg);
+  return d <= kCourseGateSharedSpotDeg || d >= 180 - kCourseGateSharedSpotDeg;
+}
+
+/// One line's box on a course map.
+class GateBoxPart {
+  const GateBoxPart({
+    required this.which,
+    required this.box,
+    required this.line,
+  });
+
+  final GateWhich which;
+
+  /// As [gateBox] gives it: behind the start line, ahead of the finish line.
+  final List<GatePoint> box;
+
+  /// The box's edge on the stored line: the stretch of the line it covers.
+  final (GatePoint, GatePoint) line;
+}
+
+/// How a course's start and finish boxes lie. Twin of web's `GateBoxLayout`:
+/// [apart], two boxes in two places; [adjacent], one spot with both lines
+/// facing the same way (a loop), the start box behind the line and the
+/// finish box ahead of it; [merged], one spot with the lines facing opposite
+/// ways (an out-and-back), where both boxes land behind the start line and
+/// are one box, split along it, each half drawn on its own stored line.
+enum GateBoxLayout { apart, adjacent, merged }
+
+/// Where a box's flag and name go: the middle of the box's far side, so at
+/// a close zoom it sits beside the box rather than over the line. One for a
+/// box the start and finish share ([which] null).
+class GateBoxMarker {
+  const GateBoxMarker({required this.which, required this.at});
+
+  /// The line the box belongs to, or null for a box both share.
+  final GateWhich? which;
+  final GatePoint at;
+}
+
+/// The start and finish boxes a course map draws (decisions § 2581).
+({GateBoxLayout layout, List<GateBoxPart> parts, List<GateBoxMarker> markers})
+    gateBoxParts(
+  Gate? start,
+  Gate? finish, {
+  double depthM = kCourseGateBoxDepthM,
+}) {
+  GateBoxPart part(GateWhich which, Gate gate, double from, double to) =>
+      GateBoxPart(
+        which: which,
+        box: gateBox(gate, depthM,
+            which == GateWhich.start ? GateBoxSide.behind : GateBoxSide.ahead,
+            from: from, to: to),
+        line: (gatePointAlong(gate, from), gatePointAlong(gate, to)),
+      );
+  GateBoxMarker marker(GateWhich? which, Gate gate, double away) =>
+      GateBoxMarker(which: which, at: offsetPoint(_centre(gate), away, depthM));
+  double back(Gate g) => g.bearingDeg + 180;
+
+  if (start != null && finish != null && gatesShareSpot(start, finish)) {
+    if (bearingDelta(start.bearingDeg, finish.bearingDeg) >
+        kCourseGateSharedSpotDeg) {
+      // Facing back, the finish's own left half is the start's right half.
+      return (
+        layout: GateBoxLayout.merged,
+        parts: [
+          part(GateWhich.start, start, -1, 0),
+          part(GateWhich.finish, finish, -1, 0),
+        ],
+        markers: [marker(null, start, back(start))],
+      );
+    }
+    return (
+      layout: GateBoxLayout.adjacent,
+      parts: [
+        part(GateWhich.start, start, -1, 1),
+        part(GateWhich.finish, finish, -1, 1),
+      ],
+      markers: [marker(null, start, back(start))],
+    );
+  }
+  return (
+    layout: GateBoxLayout.apart,
+    parts: [
+      if (start != null) part(GateWhich.start, start, -1, 1),
+      if (finish != null) part(GateWhich.finish, finish, -1, 1),
+    ],
+    markers: [
+      if (start != null) marker(GateWhich.start, start, back(start)),
+      if (finish != null) marker(GateWhich.finish, finish, finish.bearingDeg),
+    ],
+  );
+}
+
 class GateRouteRelation {
   const GateRouteRelation({
     required this.distanceM,

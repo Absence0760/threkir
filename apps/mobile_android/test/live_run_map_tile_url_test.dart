@@ -571,4 +571,111 @@ void main() {
       }
     });
   });
+
+  group('park course zones', () {
+    const lightGrounds = [
+      _lightBasemapSample,
+      Color(0xFFAAD3DF),
+      Color(0xFFDCDCDC),
+    ];
+    Color over(Color fg, double alpha, Color bg) => Color.fromARGB(
+          255,
+          // ignore: deprecated_member_use
+          (fg.red * alpha + bg.red * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.green * alpha + bg.green * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.blue * alpha + bg.blue * (1 - alpha)).round(),
+        );
+    // Machado, Oliveira & Fernandes (2009), severity 1.0, on linear RGB:
+    // what a deuteranope sees. Web's basemap_contrast.test.ts runs the same.
+    Color deuteranope(Color c) {
+      double lin(int v) {
+        final x = v / 255.0;
+        return x <= 0.04045
+            ? x / 12.92
+            : math.pow((x + 0.055) / 1.055, 2.4).toDouble();
+      }
+
+      int enc(double v) {
+        final x = v.clamp(0.0, 1.0);
+        final e = x <= 0.0031308
+            ? 12.92 * x
+            : 1.055 * math.pow(x, 1 / 2.4).toDouble() - 0.055;
+        return (e * 255).round();
+      }
+
+      // ignore: deprecated_member_use
+      final rgb = [lin(c.red), lin(c.green), lin(c.blue)];
+      const m = [
+        [0.367322, 0.860646, -0.227968],
+        [0.280085, 0.672501, 0.047413],
+        [-0.01182, 0.04294, 0.968881],
+      ];
+      final out = [
+        for (final row in m)
+          enc(row[0] * rgb[0] + row[1] * rgb[1] + row[2] * rgb[2]),
+      ];
+      return Color.fromARGB(255, out[0], out[1], out[2]);
+    }
+
+    test('each zone clears the floor on every ground of its basemap', () {
+      for (final zone in [mapStartZoneColour, mapFinishZoneColour]) {
+        expect(_contrast(zone(darkBasemap: true), _darkBasemapSample),
+            greaterThanOrEqualTo(_overlayFloor));
+        for (final g in lightGrounds) {
+          expect(_contrast(zone(darkBasemap: false), g),
+              greaterThanOrEqualTo(_overlayFloor));
+        }
+      }
+    });
+
+    test('start and finish differ by lightness, even to a deuteranope', () {
+      for (final dark in [true, false]) {
+        final s = mapStartZoneColour(darkBasemap: dark);
+        final f = mapFinishZoneColour(darkBasemap: dark);
+        expect(_contrast(s, f), greaterThanOrEqualTo(2));
+        expect(_contrast(deuteranope(s), deuteranope(f)),
+            greaterThanOrEqualTo(1.5));
+      }
+    });
+
+    test('a box name tag reads AA: its ink on its own box colour', () {
+      for (final dark in [true, false]) {
+        for (final fill in [
+          mapStartZoneColour(darkBasemap: dark),
+          mapFinishZoneColour(darkBasemap: dark),
+        ]) {
+          expect(_contrast(mapBoxInk(darkBasemap: dark), fill),
+              greaterThanOrEqualTo(4.5));
+        }
+      }
+    });
+
+    test('the finish zone reads apart from the coral track', () {
+      for (final dark in [true, false]) {
+        expect(
+            _contrast(mapFinishZoneColour(darkBasemap: dark),
+                mapTrackLine(darkBasemap: dark)),
+            greaterThanOrEqualTo(1.5));
+      }
+    });
+
+    test('the wash is decoration and the casing stands clear of it', () {
+      for (final (dark, ground) in [
+        (true, _darkBasemapSample),
+        for (final g in lightGrounds) (false, g),
+      ]) {
+        for (final zone in [
+          mapStartZoneColour(darkBasemap: dark),
+          mapFinishZoneColour(darkBasemap: dark),
+        ]) {
+          final wash = over(zone, mapZoneFillOpacity, ground);
+          expect(_contrast(wash, ground), lessThan(_overlayFloor));
+          expect(_contrast(mapOverlayOutline(darkBasemap: dark), wash),
+              greaterThanOrEqualTo(_overlayFloor));
+        }
+      }
+    });
+  });
 }

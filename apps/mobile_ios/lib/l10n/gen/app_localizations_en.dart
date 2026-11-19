@@ -22513,7 +22513,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.';
+      'Follow the course line on the map and pass every checkpoint in order, or your time won\'t count.';
+
+  @override
+  String get parksNoticeParkHours => 'Finish before the park closes.';
+
+  @override
+  String get parksNoticeOpenTrail =>
+      'A time trial on open trails, not a race. Nobody marshals it.';
 
   @override
   String get parksNotAffiliated =>
@@ -22578,11 +22585,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksElevationProfile => 'Elevation profile';
 
   @override
-  String get parksBoardEmptyTitle => 'No times yet. Yours could be the first.';
-
-  @override
-  String get parksBoardEmptyBody =>
-      'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.';
+  String get parksBoardEmptyTitle =>
+      'No times yet. Run it with Threkir and yours shows up here.';
 
   @override
   String get parksLegendTitle => 'Map key';
@@ -22636,6 +22640,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksLegendDirection => 'Direction to run';
+
+  @override
+  String parksBoxesApart(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Start recording in the green box. Follow the arrows round the loop $n times and finish in the red box.',
+      one:
+          'Start recording in the green box. Follow the arrows to the red box.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksBoxesShared(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Start recording in the green-and-red box. Follow the arrows round the loop $n times and finish back in it.',
+      one:
+          'Start recording in the green-and-red box. Follow the arrows and finish back in it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksEndsGetDirections => 'Get directions to the start';
+
+  @override
+  String get parksEndsCoordinates => 'Coordinates';
+
+  @override
+  String get parksTurnAround => 'Turn around';
+
+  @override
+  String get parksLegendTurnAround => 'Turn around here: your run must pass it';
+
+  @override
+  String get parksBoxesOutAndBack =>
+      'Start recording in the green-and-red box. Follow the arrows to the Turn around mark, then back to the box.';
 
   @override
   String parksMapCourseLabel(int n) {
@@ -23300,6 +23346,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: finish.';
   }
+
+  @override
+  String parkGuideLaps(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total laps of the loop.',
+      one: '$total lap of the loop.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parkGuideRepeatLoop => 'Repeat the loop.';
+
+  @override
+  String parkGuideLapHeader(int n) {
+    return 'Lap $n';
+  }
+
+  @override
+  String parkGuideKmHeader(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get parkGuideShowAll => 'Show all steps';
 
   @override
   String get parkCourseReportAction => 'Report a problem with this course';

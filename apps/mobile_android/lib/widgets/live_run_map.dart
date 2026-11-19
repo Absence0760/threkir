@@ -356,6 +356,29 @@ Color mapHoverLine({required bool darkBasemap}) =>
 Color mapPinnedLine({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
 
+/// A park course's start and finish zones: the band's edge, the timing line
+/// and its arrow, and the key swatch. Twin of web's `mapStartZoneColour` /
+/// `mapFinishZoneColour` (`basemap_contrast.ts`, decisions § 2581). Not the
+/// semantic success / danger caps: on a light basemap the danger red reads
+/// 1.00:1 against the coral track, and a deuteranope sees the two caps at
+/// 1.03:1. These split by lightness as well as hue, and each clears 3:1
+/// against every ground of its own basemap.
+Color mapStartZoneColour({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF86EFAC) : const Color(0xFF15803D);
+
+Color mapFinishZoneColour({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFEF4444) : const Color(0xFF701A1A);
+
+/// Ink on a start or finish box's name tag, which is filled with the box's
+/// colour. Twin of web's `mapBoxInk`: white on the deep light-basemap rungs,
+/// near-black on the bright dark-basemap ones, AA on both box colours.
+Color mapBoxInk({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF0F172A) : Colors.white;
+
+/// The zone band's fill opacity; the wash is decoration, the edge and the
+/// cased line carry the floor. Twin of web's `MAP_ZONE_FILL_OPACITY`.
+const double mapZoneFillOpacity = 0.3;
+
 /// The opacity the personal heatmap's cells and its track lines rest at.
 /// Each rung of [mapHeatRamp] and the [mapTrackLine] it crossfades into is
 /// held to 3:1 composited at this value. Twin of web's `MAP_HEAT_OPACITY`.

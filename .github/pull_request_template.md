@@ -2,6 +2,17 @@
 
 <!-- 1–3 sentences on what this PR does and why. -->
 
+## Issues
+
+<!-- `Fixes #N` when this PR finishes an issue; GitHub closes it on merge.
+     `Part of #N` when it does some of an issue's checklist, followed by the
+     exact checkbox lines it completes, one `- ` line each. While the PR is
+     open the issue-progress workflow labels the issue `in-flight` and links
+     the PR; when it merges, it ticks those boxes and removes the label.
+     Example:
+       Part of #1432
+       - Half, out and back from Four Mile Creek Trailhead -->
+
 ## Changes
 
 <!-- Bulleted list of the user-visible or developer-visible changes. -->

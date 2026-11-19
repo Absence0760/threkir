@@ -332,6 +332,14 @@
 		}
 	}
 
+	/** Dev only: sign in as a seed account through the normal email path. */
+	function devSignIn(account: { email: string; password: string }) {
+		isSignUp = false;
+		email = account.email;
+		password = account.password;
+		void handleEmailSubmit(new Event('submit'));
+	}
+
 	async function handleResendConfirmation() {
 		if (!resendFor) return;
 		error = '';
@@ -418,6 +426,15 @@
 				<div class="info">{info}</div>
 			{/if}
 		</div>
+
+		{#if import.meta.env.DEV && !isReset}
+			<!-- Dev only: one-click sign-in as a seed account. A build removes
+			     this branch and the dynamic import with it; the dev-only-code
+			     guard fails the build if the module ever reaches the client. -->
+			{#await import('#lib/components/auth/DevQuickLogin.svelte') then { default: DevQuickLogin }}
+				<DevQuickLogin onpick={devSignIn} disabled={loading} />
+			{/await}
+		{/if}
 
 		{#if !isReset}
 			<div class="login-buttons">

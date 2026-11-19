@@ -19,6 +19,15 @@ import { USER_A } from '../fixtures/users';
 test.describe('/login', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
+	// The e2e server is `vite dev` against the local stack, the one setting
+	// the dev-only quick sign-in shows in (lib/auth/dev_accounts.ts); a
+	// production build drops it, which check_web_dev_only_code.mjs asserts.
+	test('dev: one click signs in as the seed runner', async ({ page }) => {
+		await page.goto('/login');
+		await page.getByTestId('dev-quick-login-runner@test.com').click();
+		await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
+	});
+
 	test('rejects an unknown email/password combo and stays on /login', async ({
 		page
 	}) => {

@@ -16,6 +16,8 @@ scripts/parks/
   lib/third_party_marks.mjs      pure: refuses parkrun / parkwalk in any spec or manifest string
   sync.mjs                       the release sync's park stage (and its manual fallback)
   load.mjs                       fallback: one built park -> one SQL statement on stdout
+  local_load.mjs                 local stacks only: every park, staged too, for bin/seed-demo.sh
+  lib/catalogue_local.mjs        pure: that load's SQL (seed guard + local official club + the sync)
   publisher.json                 the official club the courses publish as (slug + id)
   catalogue/<region>/<park>/
     park.json                    the spec, written by hand

@@ -35262,7 +35262,7 @@ abstract class AppLocalizations {
   /// Park courses (#1313): web key parks.website.
   ///
   /// In en, this message translates to:
-  /// **'Park website'**
+  /// **'Website'**
   String get parksWebsite;
 
   /// Park courses (#1313): web key parks.noCourses.

@@ -21055,7 +21055,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksCourseNotFoundBody => 'このコースは掲載されていないか、掲載が終了しました。';
 
   @override
-  String get parksWebsite => '公園のウェブサイト';
+  String get parksWebsite => 'ウェブサイト';
 
   @override
   String get parksNoCourses => 'この公園にはまだコースがありません。';

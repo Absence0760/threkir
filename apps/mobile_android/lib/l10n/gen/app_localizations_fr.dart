@@ -22668,7 +22668,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce parcours n\'est pas, ou plus, répertorié.';
 
   @override
-  String get parksWebsite => 'Site du parc';
+  String get parksWebsite => 'Site web';
 
   @override
   String get parksNoCourses =>

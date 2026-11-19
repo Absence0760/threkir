@@ -28907,7 +28907,7 @@
   "@parksCourseNotFoundBody": {
     "description": "Park courses (#1313): web key parks.courseNotFoundBody."
   },
-  "parksWebsite": "Park website",
+  "parksWebsite": "Website",
   "@parksWebsite": {
     "description": "Park courses (#1313): web key parks.website."
   },

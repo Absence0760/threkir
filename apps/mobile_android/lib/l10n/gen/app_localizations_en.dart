@@ -22381,7 +22381,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This course isn\'t listed, or isn\'t listed any more.';
 
   @override
-  String get parksWebsite => 'Park website';
+  String get parksWebsite => 'Website';
 
   @override
   String get parksNoCourses => 'No courses listed in this park yet.';

@@ -22631,7 +22631,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Este percurso não está listado, ou já não está.';
 
   @override
-  String get parksWebsite => 'Site do parque';
+  String get parksWebsite => 'Site';
 
   @override
   String get parksNoCourses => 'Ainda não há percursos listados neste parque.';
@@ -46814,7 +46814,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Este percurso não está listado, ou não está mais.';
 
   @override
-  String get parksWebsite => 'Site do parque';
+  String get parksWebsite => 'Site';
 
   @override
   String get parksNoCourses => 'Ainda não há percursos listados neste parque.';

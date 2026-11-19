@@ -22606,7 +22606,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este recorrido no aparece, o ya no aparece, en la lista.';
 
   @override
-  String get parksWebsite => 'Sitio web del parque';
+  String get parksWebsite => 'Sitio web';
 
   @override
   String get parksNoCourses => 'Todavía no hay recorridos en este parque.';

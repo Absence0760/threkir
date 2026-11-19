@@ -22612,7 +22612,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Diese Strecke ist nicht (mehr) aufgeführt.';
 
   @override
-  String get parksWebsite => 'Website des Parks';
+  String get parksWebsite => 'Website';
 
   @override
   String get parksNoCourses =>

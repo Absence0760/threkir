@@ -48,6 +48,7 @@ Map<String, dynamic> _park() => {
       'id': 'p1',
       'slug': 'pocahontas',
       'name': 'Pocahontas State Park',
+      'kind': 'park',
       'agency': 'state',
       'region_code': 'US-VA',
       'country_code': 'US',

@@ -35295,6 +35295,12 @@ abstract class AppLocalizations {
   /// **'Park'**
   String get parksAgencyOther;
 
+  /// Park courses (#1431): a catalogue entry that is a long trail through several parks rather than a park, e.g. the Virginia Capital Trail. Shown in place of the agency label. Web key parks.kindTrail.
+  ///
+  /// In en, this message translates to:
+  /// **'Trail'**
+  String get parksKindTrail;
+
   /// Park courses (#1313): web key parks.shapeLoop.
   ///
   /// In en, this message translates to:

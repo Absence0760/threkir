@@ -2,6 +2,7 @@
   "park": {
     "slug": "deep-run",
     "name": "Deep Run Park",
+    "kind": "park",
     "agency": "county",
     "region_code": "US-VA",
     "country_code": "US",
@@ -39,6 +40,7 @@
       "slug": "deep-run-park-5k",
       "name": "Deep Run Park, 5 km",
       "race_distance": "5k",
+      "course_shape": "loop",
       "laps": 1,
       "surface": "road",
       "shared_use": "saturday_morning_group",

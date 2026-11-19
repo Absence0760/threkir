@@ -30,7 +30,7 @@ select plan(43);
 -- the run's first fix).
 create temp table pcb_payload (j jsonb not null);
 insert into pcb_payload (j) values ($payload${
-"park": {"slug":"pocahontas","name":"Pocahontas State Park","agency":"state","region_code":"US-VA","country_code":"US","timezone":"America/New_York","website_url":"https://www.dcr.virginia.gov/state-parks/pocahontas","nps_park_code":null},
+"park": {"slug":"pocahontas","name":"Pocahontas State Park","kind":"park","agency":"state","region_code":"US-VA","country_code":"US","timezone":"America/New_York","website_url":"https://www.dcr.virginia.gov/state-parks/pocahontas","nps_park_code":null},
 "region": "Pocahontas State Park, Virginia",
 "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
 "courses": [

@@ -64,6 +64,7 @@ Map<String, dynamic> _park(int i) => {
       'id': 'p$i',
       'slug': 'park-$i',
       'name': 'Park $i',
+      'kind': 'park',
       'agency': 'state',
       'region_code': 'US-VA',
       'country_code': 'US',

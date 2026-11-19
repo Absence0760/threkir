@@ -304,6 +304,7 @@ function mergeShortRuns(runs, cum) {
  *   lengthM: number,
  *   checkpointAtM: number[],
  *   laps?: { count: number, firstStartM: number, lapM: number } | null,
+ *   loop?: boolean,
  *   water?: Array<{ name?: string, ring: { lat: number, lon: number }[] }>,
  *   lang: string,
  *   gettingThere?: string | null,
@@ -313,7 +314,9 @@ function mergeShortRuns(runs, cum) {
  * published course starts (a race course's trimmed lead-in) and `lengthM` how
  * long the published course is. `laps.firstStartM` is where lap 1 starts on
  * the full path. Steps of laps 2..N repeat lap 1's, so only the lap marker
- * and the checkpoints are written for them.
+ * and the checkpoints are written for them. `loop` is false for a
+ * point-to-point or out-and-back course, which has no way round to name, so
+ * its guide carries no direction step.
  */
 
 /**
@@ -480,7 +483,7 @@ export function buildRouteGuide(input) {
 		...(firstRun?.name ? { name: firstRun.name } : { way: firstRun?.kind ?? 'path' }),
 	});
 	const ring = points.filter((_, i) => cum[i] >= offsetM && cum[i] <= offsetM + lengthM);
-	if (ring.length >= 3) {
+	if (input.loop !== false && ring.length >= 3) {
 		const rotation = rotationOf(ring);
 		const landmark = loopLandmark(ring, rotation, input.water ?? []);
 		steps.push({ kind: 'direction', at_m: 0, rotation, ...(landmark ?? {}) });

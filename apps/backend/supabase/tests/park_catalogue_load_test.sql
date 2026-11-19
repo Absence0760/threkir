@@ -38,7 +38,7 @@ set local "request.jwt.claims" = '{}';
 create temp table manifests (k text primary key, j jsonb not null);
 insert into manifests (k, j) values
 ('v1', $json${
-  "park": {"slug": "pcl-test-park", "name": "PCL Test Park", "agency": "state", "region_code": "US-VA",
+  "park": {"slug": "pcl-test-park", "name": "PCL Test Park", "kind": "park", "agency": "state", "region_code": "US-VA",
            "country_code": "US", "timezone": "America/New_York", "website_url": "https://example.org/pcl"},
   "region": "PCL Test Park, Virginia",
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",

@@ -3910,6 +3910,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          kind: string
           name: string
           nps_park_code: string | null
           region_code: string
@@ -3930,6 +3931,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          kind?: string
           name: string
           nps_park_code?: string | null
           region_code: string
@@ -3950,6 +3952,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          kind?: string
           name?: string
           nps_park_code?: string | null
           region_code?: string

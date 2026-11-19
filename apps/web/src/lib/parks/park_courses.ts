@@ -15,6 +15,10 @@ import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
 export type ParkAgency = (typeof PARK_AGENCIES)[number];
 
+/** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */
+export const PARK_KINDS = ['park', 'trail'] as const;
+export type ParkKind = (typeof PARK_KINDS)[number];
+
 export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'] as const;
 export type CourseShape = (typeof COURSE_SHAPES)[number];
 

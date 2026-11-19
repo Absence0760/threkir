@@ -6033,6 +6033,7 @@
   "parksAgencyState": "Parc d'État",
   "parksAgencyCounty": "Parc de comté",
   "parksAgencyOther": "Parc",
+  "parksKindTrail": "Sentier",
   "parksShapeLoop": "Boucle",
   "parksShapeOutAndBack": "Aller-retour",
   "parksShapePointToPoint": "Point à point",

@@ -94,12 +94,13 @@ test('a point-to-point course measures the race distance and finishes at the tra
 	);
 });
 
-test('an out-and-back course turns at half the distance, on its middle checkpoint', () => {
+test('an out-and-back course turns at half the distance, on its last checkpoint', () => {
 	const oab = build(spec())('manifest.json').race_courses[1];
 	assert.deepEqual([oab.course_shape, oab.distance_m, oab.turn_at_m], ['out_and_back', 5000, 2500]);
 	assert.deepEqual(oab.start_finish, { lat: 0, lng: 0 });
 	assert.equal(oab.checkpoints.length, 3);
-	assert.equal(oab.checkpoints[1].lng, 0.022483, 'the middle checkpoint sits on the turn, 2500 m out');
+	assert.equal(oab.checkpoints[2].lng, 0.022483, 'the last checkpoint sits on the turn, 2500 m out');
+	assert.ok(oab.checkpoints.every((/** @type {{ lng: number }} */ c) => c.lng <= 0.022483), 'all on the way out');
 });
 
 test('the built manifest loads with each shape and no laps', () => {
@@ -128,12 +129,12 @@ test('a course anchored at the trail end can finish short of it, and the guard s
 	assert.ok(Math.abs(p2p.finish.lng - (0.06 - 50 / 111194.93)) < 1e-6, 'finishes 50 m before the trail end');
 });
 
-test('the build refuses an out-and-back with an even checkpoint count', () => {
+test('an out-and-back puts its checkpoints on the way out, the last on the turn, so none overlap', () => {
 	const s = spec();
 	s.race_courses[1].checkpoint_count = 2;
-	assert.throws(() => build(s), /oab: an out-and-back needs an odd checkpoint_count/);
+	const oab = build(s)('manifest.json').race_courses[1];
+	assert.deepEqual(oab.checkpoints.map((/** @type {{ lng: number }} */ c) => c.lng), [0.011242, 0.022483]);
 });
-
 test('the build refuses a via_ends_at_trail_end course whose via stops short of the end', () => {
 	const s = spec();
 	s.race_courses[0].via = [1, 60];

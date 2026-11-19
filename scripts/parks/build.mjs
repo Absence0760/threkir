@@ -293,8 +293,10 @@ export function buildPark(dir) {
 /**
  * A point-to-point or out-and-back race course: exactly the race distance
  * along the trail the via nodes pin, with no laps. An out-and-back's
- * checkpoint count is odd, so the middle one sits on the turn and a runner
- * who turns early is never timed.
+ * checkpoints sit on the way out only, evenly spaced, the last exactly on the
+ * turn: the way back passes the same places, so a second set would sit on top
+ * of the first and add nothing, and the turn is what stops a runner who turns
+ * early from being timed.
  *
  * @param {any} spec
  * @param {any} snapshot
@@ -307,9 +309,6 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 	if (race.laps != null) throw new Error(`${race.slug}: a ${race.course_shape} course has no laps`);
 	if (!Number.isInteger(race.checkpoint_count) || race.checkpoint_count < 1) {
 		throw new Error(`${race.slug}: checkpoint_count must be a whole number of at least 1`);
-	}
-	if (race.course_shape === 'out_and_back' && race.checkpoint_count % 2 === 0) {
-		throw new Error(`${race.slug}: an out-and-back needs an odd checkpoint_count, so one sits on the turn`);
 	}
 	/** @type {ReturnType<typeof linearCourse>} */
 	let cut;
@@ -339,7 +338,10 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 	const lengthM = pathLengthM(raw);
 	if (Math.abs(lengthM - targetM) > 0.5) throw new Error(`${race.slug}: built ${lengthM.toFixed(1)} m, not ${targetM} m`);
 	const gainM = Math.round(elevationGainM(raw));
-	const checkpointAtM = checkpointPositionsOrThrow(race.slug, lengthM, race.checkpoint_count, undefined);
+	const checkpointAtM =
+		race.course_shape === 'out_and_back'
+			? Array.from({ length: race.checkpoint_count }, (_, i) => (lengthM / 2) * ((i + 1) / race.checkpoint_count))
+			: checkpointPositionsOrThrow(race.slug, lengthM, race.checkpoint_count, undefined);
 	const checkpoints = placeCheckpoints(raw, checkpointAtM);
 	const waypoints = simplify(raw, SIMPLIFY_EPSILON_M).map((p) => ({
 		lat: round6(p.lat),

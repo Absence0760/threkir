@@ -492,20 +492,6 @@
      37.426662
     ]
    }
-  },
-  {
-   "type": "Feature",
-   "properties": {
-    "kind": "checkpoint",
-    "order": 3
-   },
-   "geometry": {
-    "type": "Point",
-    "coordinates": [
-     -77.317102,
-     37.43108
-    ]
-   }
   }
  ]
 }

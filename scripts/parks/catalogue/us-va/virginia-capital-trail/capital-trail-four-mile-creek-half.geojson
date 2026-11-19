@@ -2190,48 +2190,6 @@
      37.383598
     ]
    }
-  },
-  {
-   "type": "Feature",
-   "properties": {
-    "kind": "checkpoint",
-    "order": 5
-   },
-   "geometry": {
-    "type": "Point",
-    "coordinates": [
-     -77.257388,
-     37.400028
-    ]
-   }
-  },
-  {
-   "type": "Feature",
-   "properties": {
-    "kind": "checkpoint",
-    "order": 6
-   },
-   "geometry": {
-    "type": "Point",
-    "coordinates": [
-     -77.283398,
-     37.409286
-    ]
-   }
-  },
-  {
-   "type": "Feature",
-   "properties": {
-    "kind": "checkpoint",
-    "order": 7
-   },
-   "geometry": {
-    "type": "Point",
-    "coordinates": [
-     -77.302949,
-     37.426308
-    ]
-   }
   }
  ]
 }

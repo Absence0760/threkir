@@ -1915,6 +1915,8 @@ Use the shared `smartBack` helper (`#lib/util/smart_back`): it registers an `aft
 
 Keep the `href` — it is the deep-link / hard-load fallback and the link's semantics. Pass a `match` predicate only when a page must keep its static parent for arrivals from unrelated surfaces; the default (no predicate) pops to any in-app referrer, which is what "back to where I came from" means. The helper is the single home for the `afterNavigate` + `history.back()` idiom that used to be copy-pasted into `runs/[id]`, `clubs/[slug]`, `routes/new`, etc.
 
+When the label should name where the reader came from rather than a fixed parent, use `referrerBack(fallback)` (`#lib/util/referrer_back.svelte.ts`) instead: it returns the `href` and a `place` whose label is `BACK_PLACE_KEY[place]` (Races & courses, All park courses, or Back), keeps the referrer's search (a shallow `?show=` included, from the departure the root layout records), saves the target in the history entry so a return from a child page or a reload keeps it, and falls back to `fallback` with no in-app history. A page that writes its own shallow state passes `state: page.state` so the saved target survives. The park page uses it (decisions § 2588); add a place to `back_target.ts` when a new referrer deserves its own name.
+
 ## Linking another user's row — never to an owner-scoped route
 
 Several read paths are deliberately scoped to the viewer: `fetchRunById` filters `.eq('user_id', userId)`, because it is the only read path that downloads the **unclipped** GPS track. A page whose only row source is such a fetch renders its "Run not found" empty state for anyone else's row — a real, public row presented as deleted. That is still the shape of every `/gym/[id]`-style owner surface.

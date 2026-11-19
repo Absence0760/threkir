@@ -246,6 +246,54 @@ export function gateBoxParts(
 	return { layout: 'apart', parts, markers };
 }
 
+/**
+ * The edges a course is timed by, read off the boxes gateBoxParts draws
+ * (decisions § 2583): leaving the start box forward is a forward crossing of
+ * `startExit`, with the box behind it; entering the finish box is a forward
+ * crossing of `finishEntry`, with the box `depthM` ahead of it. Apart, they are
+ * the start and finish lines themselves. At a shared spot, the exit is the
+ * box's far edge and the entry is its near edge on a loop, or its far edge
+ * facing back on an out-and-back, so the timed stretch is `depthM` shorter
+ * than line to line.
+ */
+export interface GateTimingEdges {
+	layout: GateBoxLayout;
+	startExit: Gate;
+	finishEntry: Gate;
+	depthM: number;
+}
+
+/** A line along a drawn box edge from corner `a` to corner `b`, facing `bearingDeg`. */
+function edgeGate(a: GatePoint, b: GatePoint, bearingDeg: number, halfWidthM: number): Gate {
+	const { x, y } = planeXY(a, b);
+	const mid = fromPlane(a, x / 2, y / 2);
+	return { lat: mid.lat, lng: mid.lng, bearingDeg: normalizeBearing(bearingDeg), halfWidthM };
+}
+
+/** The timing edges of a course with both lines (decisions § 2583). */
+export function gateTimingEdges(start: Gate, finish: Gate, depthM: number = COURSE_GATE_BOX_DEPTH_M): GateTimingEdges {
+	const { layout, parts } = gateBoxParts(start, finish, depthM);
+	if (layout === 'shared') {
+		const [nearL, nearR, farR, farL] = parts[0].box;
+		const sameWay = bearingDelta(start.bearingDeg, finish.bearingDeg) <= 90;
+		return {
+			layout,
+			startExit: edgeGate(farL, farR, start.bearingDeg, start.halfWidthM),
+			finishEntry: sameWay
+				? edgeGate(nearL, nearR, start.bearingDeg, start.halfWidthM)
+				: edgeGate(farR, farL, start.bearingDeg + 180, start.halfWidthM),
+			depthM,
+		};
+	}
+	const [s, f] = parts;
+	return {
+		layout,
+		startExit: edgeGate(s.box[0], s.box[1], start.bearingDeg, start.halfWidthM),
+		finishEntry: edgeGate(f.box[0], f.box[1], finish.bearingDeg, finish.halfWidthM),
+		depthM,
+	};
+}
+
 export interface GateRouteRelation {
 	/** Distance from the line's centre to the nearest point of the route. */
 	distanceM: number;

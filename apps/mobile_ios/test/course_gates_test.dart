@@ -26,6 +26,7 @@ const _sections = [
   'boxCorners',
   'sharedSpot',
   'boxParts',
+  'timingEdges',
 ];
 const _metaKeys = {
   'spec',
@@ -301,6 +302,27 @@ void main() {
         expect(got.markers[i].which?.name ?? 'both', marks[i]['which'],
             reason: '$note marker [$i] which');
         _nearPoint(got.markers[i].at, marks[i]['at'], '$note marker [$i]');
+      }
+    }
+  });
+
+  test('gateTimingEdges', () {
+    for (final c in _section('timingEdges')) {
+      final got = gateTimingEdges(_gate(c['start']), _gate(c['finish']),
+          depthM: _num(c['depthM']));
+      final note = '${c['note']}';
+      expect(got.layout.name, c['layout'], reason: '$note layout');
+      expect(got.depthM, _num(c['depthM']), reason: '$note depth');
+      for (final (key, edge) in [
+        ('startExit', got.startExit),
+        ('finishEntry', got.finishEntry),
+      ]) {
+        final want = c[key] as Map<String, dynamic>;
+        _nearPoint(GatePoint(edge.lat, edge.lng), want, '$note $key');
+        _nearBearing(
+            edge.bearingDeg, _num(want['bearingDeg']), '$note $key bearing');
+        expect(edge.halfWidthM, _num(want['halfWidthM']),
+            reason: '$note $key half-width');
       }
     }
   });

@@ -283,6 +283,75 @@ class GateBoxMarker {
   );
 }
 
+/// The edges a course is timed by, read off the boxes [gateBoxParts] draws
+/// (decisions § 2583): leaving the start box forward is a forward crossing of
+/// [startExit], with the box behind it; entering the finish box is a forward
+/// crossing of [finishEntry], with the box [depthM] ahead of it. Apart, they
+/// are the start and finish lines themselves. At a shared spot, the exit is
+/// the box's far edge and the entry is its near edge on a loop, or its far
+/// edge facing back on an out-and-back, so the timed stretch is [depthM]
+/// shorter than line to line. Twin of web's `GateTimingEdges`.
+class GateTimingEdges {
+  const GateTimingEdges({
+    required this.layout,
+    required this.startExit,
+    required this.finishEntry,
+    required this.depthM,
+  });
+
+  final GateBoxLayout layout;
+  final Gate startExit;
+  final Gate finishEntry;
+  final double depthM;
+}
+
+/// A line along a drawn box edge from corner [a] to corner [b], facing
+/// [bearingDeg].
+Gate _edgeGate(GatePoint a, GatePoint b, double bearingDeg, double halfWidthM) {
+  final p = planeXY(a, b);
+  final mid = fromPlane(a, p.x / 2, p.y / 2);
+  return Gate(
+    lat: mid.lat,
+    lng: mid.lng,
+    bearingDeg: normalizeBearing(bearingDeg),
+    halfWidthM: halfWidthM,
+  );
+}
+
+/// The timing edges of a course with both lines (decisions § 2583). Twin of
+/// web's `gateTimingEdges`.
+GateTimingEdges gateTimingEdges(
+  Gate start,
+  Gate finish, {
+  double depthM = kCourseGateBoxDepthM,
+}) {
+  final boxes = gateBoxParts(start, finish, depthM: depthM);
+  if (boxes.layout == GateBoxLayout.shared) {
+    final box = boxes.parts[0].box;
+    final nearL = box[0];
+    final nearR = box[1];
+    final farR = box[2];
+    final farL = box[3];
+    final sameWay = bearingDelta(start.bearingDeg, finish.bearingDeg) <= 90;
+    return GateTimingEdges(
+      layout: boxes.layout,
+      startExit: _edgeGate(farL, farR, start.bearingDeg, start.halfWidthM),
+      finishEntry: sameWay
+          ? _edgeGate(nearL, nearR, start.bearingDeg, start.halfWidthM)
+          : _edgeGate(farR, farL, start.bearingDeg + 180, start.halfWidthM),
+      depthM: depthM,
+    );
+  }
+  final s = boxes.parts[0].box;
+  final f = boxes.parts[1].box;
+  return GateTimingEdges(
+    layout: boxes.layout,
+    startExit: _edgeGate(s[0], s[1], start.bearingDeg, start.halfWidthM),
+    finishEntry: _edgeGate(f[0], f[1], finish.bearingDeg, finish.halfWidthM),
+    depthM: depthM,
+  );
+}
+
 class GateRouteRelation {
   const GateRouteRelation({
     required this.distanceM,

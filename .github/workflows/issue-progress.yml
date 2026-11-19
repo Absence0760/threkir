@@ -1,0 +1,53 @@
+name: issue-progress
+
+# Keeps the issues a pull request works on in step with it, from the PR body's
+# `## Issues` section (.github/pull_request_template.md). `Fixes #N` is left to
+# GitHub, which closes the issue on merge. For each `Part of #N`:
+#
+#   - opened / edited / reopened / ready: the issue gets the `in-flight` label
+#     and one comment linking the PR (updated in place, never repeated), so a
+#     session picking work skips it.
+#   - merged: the checkbox lines listed under `Part of #N` are ticked on the
+#     issue, the comment says which were ticked and which were not found, and
+#     the label comes off unless another open PR is still part of the issue.
+#   - closed unmerged: only the label comes off.
+#
+# Why `pull_request_target`: a PR with merge conflicts gets no `pull_request`
+# run at all (no merge ref; see pr-mergeable.yml), and an edit to the Issues
+# section must still be seen. The job checks out the BASE branch only
+# (`pull_request_target`'s default ref) and runs the base branch's script, so
+# no code from the PR runs. The PR body is untrusted text, read from the event
+# file by the script and parsed there, never interpolated into a shell.
+
+on:
+  # zizmor: ignore[dangerous-triggers] -- needed: a conflicting PR has no merge ref, so `pull_request` never runs; checks out the base branch only and runs no PR code; the PR body is parsed as data.
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review, closed]
+
+# Each job names its own scopes; the workflow grants none.
+permissions: {}
+
+concurrency:
+  group: issue-progress-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: sync issues
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+      - name: Label, tick and comment on the PR's Part of issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/issue_progress.mjs

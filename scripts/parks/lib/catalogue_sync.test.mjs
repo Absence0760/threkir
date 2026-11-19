@@ -106,11 +106,12 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 test('the committed stage loads Pocahontas\'s six courses as the committed club and holds Deep Run Park staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until /);
+	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(2 courses\): Held until /);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
 	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));
 	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-5k', 'staged')"));
+	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-10k', 'staged')"));
 	assert.ok(!stage.sql.includes('"slug":"rockwood"'), 'Rockwood Park never reaches the load');
 	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-5k', 'staged')"));
 	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-10k', 'staged')"));

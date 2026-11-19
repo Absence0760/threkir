@@ -124,3 +124,18 @@ export function courseDisplayName(name: string): string {
 	const shown = trimmed.replace(LAPS_SUFFIX, '').replace(DISTANCE_SUFFIX, '').trim();
 	return shown || trimmed;
 }
+
+/**
+ * Every course name in a park as its cards show them: `courseDisplayName`
+ * where that stays unique in the park, else only the laps dropped where that
+ * does, else the stored name. Two loops that differ only by distance keep
+ * it ("Swift Creek Loop, 5 km" beside "Swift Creek Loop, 10 km"), so no two
+ * cards read the same.
+ */
+export function courseDisplayNames(names: readonly string[]): string[] {
+	const unique = (shown: string[], i: number) => shown.filter((n) => n === shown[i]).length === 1;
+	const full = names.map((n) => n.trim());
+	const noLaps = full.map((n) => n.replace(LAPS_SUFFIX, '').trim() || n);
+	const bare = names.map(courseDisplayName);
+	return full.map((n, i) => (unique(bare, i) ? bare[i] : unique(noLaps, i) ? noLaps[i] : n));
+}

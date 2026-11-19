@@ -132,10 +132,14 @@ bool courseShapeShown(String? shape) =>
 /// The laps a chip names, or null when there is no chip (one lap or unknown).
 int? courseLapsChip(int? laps) => laps != null && laps > 1 ? laps : null;
 
-final RegExp _lapsSuffix =
-    RegExp(r'\s*\(\s*\d+\s+laps?\s*\)\s*$', caseSensitive: false);
-final RegExp _distanceSuffix =
-    RegExp(r'\s*,\s*\d+(?:[.,]\d+)?\s*(?:km|mi|k)\s*$', caseSensitive: false);
+final RegExp _lapsSuffix = RegExp(
+  r'\s*\(\s*\d+\s+laps?\s*\)\s*$',
+  caseSensitive: false,
+);
+final RegExp _distanceSuffix = RegExp(
+  r'\s*,\s*\d+(?:[.,]\d+)?\s*(?:km|mi|k)\s*$',
+  caseSensitive: false,
+);
 
 /// A course's name as a list card shows it, beside the distance and laps it
 /// already states: the stored name without a trailing "(2 laps)" or ", 10 km"
@@ -149,4 +153,30 @@ String courseDisplayName(String name) {
       .replaceFirst(_distanceSuffix, '')
       .trim();
   return shown.isEmpty ? trimmed : shown;
+}
+
+/// Every course name in a park as its cards show them: [courseDisplayName]
+/// where that stays unique in the park, else only the laps dropped where that
+/// does, else the stored name. Two loops that differ only by distance keep
+/// it ("Swift Creek Loop, 5 km" beside "Swift Creek Loop, 10 km"), so no two
+/// cards read the same.
+List<String> courseDisplayNames(List<String> names) {
+  bool unique(List<String> shown, int i) =>
+      shown.where((n) => n == shown[i]).length == 1;
+  final full = [for (final n in names) n.trim()];
+  final noLaps = [
+    for (final n in full)
+      n.replaceFirst(_lapsSuffix, '').trim().isEmpty
+          ? n
+          : n.replaceFirst(_lapsSuffix, '').trim(),
+  ];
+  final bare = [for (final n in names) courseDisplayName(n)];
+  return [
+    for (var i = 0; i < full.length; i++)
+      unique(bare, i)
+          ? bare[i]
+          : unique(noLaps, i)
+          ? noLaps[i]
+          : full[i],
+  ];
 }

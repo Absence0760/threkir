@@ -176,4 +176,35 @@ void main() {
     expect(courseDisplayName('Loop, 5 km, north side'),
         'Loop, 5 km, north side');
   });
+
+  test('courseDisplayNames: drops the repeat only where the name stays '
+      'unique in the park', () {
+    expect(
+      courseDisplayNames([
+        'Beaver Lake Trail',
+        'Swift Creek Loop, 5 km',
+        'Swift Creek Loop, 10 km (2 laps)',
+        'Swift Creek Forest Loop, half-marathon distance',
+        'Swift Creek Forest Loop, marathon distance (2 laps)',
+        'Swift Creek Forest Loop, 50 km (2 laps)',
+      ]),
+      [
+        'Beaver Lake Trail',
+        'Swift Creek Loop, 5 km',
+        'Swift Creek Loop, 10 km',
+        'Swift Creek Forest Loop, half-marathon distance',
+        'Swift Creek Forest Loop, marathon distance',
+        'Swift Creek Forest Loop',
+      ],
+    );
+  });
+
+  test('courseDisplayNames: keeps the stored name when even the laps tell '
+      'two apart', () {
+    expect(courseDisplayNames(['Lake, 5 km (1 lap)', 'Lake, 5 km (2 laps)']), [
+      'Lake, 5 km (1 lap)',
+      'Lake, 5 km (2 laps)',
+    ]);
+    expect(courseDisplayNames([]), <String>[]);
+  });
 }

@@ -471,6 +471,19 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   to a deuteranope, the finish reads apart from the coral track). Hue is
   never the only cue: the names, the flags, and the finish edge chequered
   where the start's is solid. A segment missing either line keeps the pins.
+- **Jump-to buttons under the map**: "Show on the map", then **Start** and
+  **Finish** (one **Start and finish** where the course draws one shared
+  box) and **Whole course**, each an icon and a word, the start and finish
+  icons on their boxes' colours. A start or finish button fits its box with
+  at least 120 m of ground across and never past zoom 18; Whole course fits
+  the line as the map does when it opens. A course without its stored lines
+  jumps to the line's ends. The choice of buttons and the bounds are
+  `courseJumps` in the `course_jump` pair (`fixtures/course_jump_cases.json`).
+  Web eases the camera (`RunMap.jumpTo`, which waits for the entrance fit
+  so it never undoes a jump) and shows the buttons once the map is loaded;
+  Android/iOS tween the camera under the map, which still does not pan or
+  pinch. Both jump instead under reduced motion. Buttons are at least
+  44 px (web) / 48 dp (mobile) tall.
 - **Start and finish points** (decisions § 2551, § 2582): a block on the
   course page (web `CourseEndsBlock`, at the top of the notices column;
   mobile `CourseEndsCard`, under the map). When the course has its boxes it

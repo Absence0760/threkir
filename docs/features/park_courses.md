@@ -459,11 +459,12 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   so the boxes are the most visible marks at the whole-course zoom; the tags replace the start and
   finish pins, and the key names the boxes ("Start", "Finish"). Where the
   lines share a spot (`gatesShareSpot`: centres within 10 m, facing within
-  20° of the same or opposite way) there is one "Start and finish" tag. On an
-  out-and-back both boxes land behind the start line, so they draw as one box
-  split along the line, green half and red half, with one "Start and finish"
-  key entry; on a loop the green box sits behind the line and the red one
-  ahead of it, edge to edge, and the key names both. The geometry is `gateBoxParts` in the `course_gates` pair; the
+  20° of the same or opposite way), a loop or an out-and-back, there is one
+  box: the start colour, centred on the start line (5 m behind it, 5 m
+  ahead), its line chequered like the finish edge, with one "Start and
+  finish" tag in the same colour and one "Start and finish" key entry. Never
+  a green half and a red half at one spot: a runner reads that as half start,
+  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair; the
   colours are `mapStartZoneColour` / `mapFinishZoneColour` (measured in
   `basemap_contrast.test.ts` and `live_run_map_tile_url_test.dart`: each
   clears 3:1 on every ground of its basemap, the pair keeps a lightness gap
@@ -475,8 +476,8 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   mobile `CourseEndsCard`, under the map). When the course has its boxes it
   leads with one sentence (`courseBoxInstruction`): "Start recording in the
   green box. Follow the arrows to the red box." (on a lapped course "…round
-  the loop 2 times and finish in the red box."); for one green-and-red box,
-  "…Follow the arrows and finish back in it." (with its laps when it has
+  the loop 2 times and finish in the red box."); for one shared box, "Start
+  recording in the start box. Follow the arrows and finish back in it." (with its laps when it has
   them), and with a turn-around "…Follow the arrows to the Turn around mark,
   then back to the box." It names the map's direction arrows, not a
   rotation, and a "mark", since nothing on the ground is signed or

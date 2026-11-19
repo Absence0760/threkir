@@ -4,7 +4,7 @@ description: Como um percurso permanente num parque cronometra a sua corrida, po
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-13
+updated: 2026-11-19
 cta:
   feature: parks
 ---
@@ -19,7 +19,7 @@ Por isso é um **contrarrelógio, não uma prova**. O trilho continua aberto a t
 
 Qualquer corrida com registo GPS pode contar, quer a tenha gravado com o Threkir, quer a tenha importado de outra aplicação. A corrida é comparada com a linha do percurso:
 
-- **Partida e chegada.** O cronómetro arranca onde a sua corrida cruza a partida do percurso e para onde cruza a chegada. Ir e voltar do ponto de partida não conta contra si.
+- **Partida e chegada.** O mapa do percurso mostra uma caixa de partida e uma caixa de chegada, ou uma só caixa quando o percurso começa e acaba no mesmo sítio. O cronómetro arranca quando sai da caixa de partida e para quando entra na caixa de chegada, por isso comece a gravar na caixa de partida. Se parar a um passo da caixa de chegada, ou perder o GPS durante um ou dois minutos mesmo antes dela, a corrida conta na mesma. Ir e voltar do ponto de partida não conta contra si.
 - **Pontos de controlo.** Muitos percursos têm pontos de controlo pelo caminho. A sua corrida tem de passar por todos, pela ordem, para obter um tempo.
 - **O percurso completo.** Uma corrida que cobre apenas parte do percurso, ou uma linha muito mais curta, não obtém tempo.
 

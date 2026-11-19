@@ -4,7 +4,7 @@ description: How a standing park course times your run, why checkpoints stop sho
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-13
+updated: 2026-11-19
 cta:
   feature: parks
 ---
@@ -19,7 +19,7 @@ That makes it a **time trial, not a race**. The trail stays open to everyone and
 
 Any run with a GPS track can count, whether you recorded it with Threkir or imported it from another app. The run is compared with the course line:
 
-- **Start and finish.** The clock starts where your run crosses the course start and stops where it crosses the finish. Running to the trailhead and back doesn't count against you.
+- **Start and finish.** The course map shows a start box and a finish box, or one box where the course starts and finishes at the same spot. The clock starts when you leave the start box and stops when you enter the finish box, so start recording in the start box. Stopping a step short of the finish box, or losing GPS for a minute or two just before it, still counts. Running to the trailhead and back doesn't count against you.
 - **Checkpoints.** Many courses have checkpoints along the way. Your run must pass every one of them, in order, to get a time.
 - **The whole course.** A run that covers only part of the course, or a much shorter line, gets no time.
 

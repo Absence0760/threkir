@@ -4,7 +4,7 @@ description: Wie eine feste Parkstrecke deinen Lauf misst, warum Kontrollpunkte 
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-13
+updated: 2026-11-19
 cta:
   feature: parks
 ---
@@ -19,7 +19,7 @@ Das macht sie zu einem **Zeitlauf, nicht zu einem Rennen**. Der Weg bleibt für 
 
 Jeder Lauf mit GPS-Track kann zählen, egal ob du ihn mit Threkir aufgezeichnet oder aus einer anderen App importiert hast. Der Lauf wird mit der Streckenlinie verglichen:
 
-- **Start und Ziel.** Die Uhr startet, wo dein Lauf den Start der Strecke kreuzt, und stoppt, wo er das Ziel kreuzt. Der Weg zum Ausgangspunkt und zurück zählt nicht gegen dich.
+- **Start und Ziel.** Die Streckenkarte zeigt eine Startbox und eine Zielbox, oder eine einzige Box, wo die Strecke an derselben Stelle beginnt und endet. Die Uhr startet, wenn du die Startbox verlässt, und stoppt, wenn du in die Zielbox kommst. Starte die Aufzeichnung also in der Startbox. Hältst du einen Schritt vor der Zielbox an oder verlierst du kurz davor für ein, zwei Minuten das GPS, zählt der Lauf trotzdem. Der Weg zum Ausgangspunkt und zurück zählt nicht gegen dich.
 - **Kontrollpunkte.** Viele Strecken haben Kontrollpunkte unterwegs. Dein Lauf muss jeden davon in der richtigen Reihenfolge passieren, um eine Zeit zu bekommen.
 - **Die ganze Strecke.** Ein Lauf, der nur einen Teil der Strecke abdeckt oder eine deutlich kürzere Linie nimmt, bekommt keine Zeit.
 

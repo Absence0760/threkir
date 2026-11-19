@@ -6,7 +6,7 @@
 # runners, 34 Virginia parks with ~170 park courses and their boards, 36 races,
 # 58 routes, six months of the seed runner's activities, a busy feed, clubs,
 # events, challenges, messages, a past training plan, gym, food and body
-# metrics. See decisions § 2521 for why this is not part of seed.sql.
+# metrics. Real catalogue courses already loaded get boards too. See decisions § 2521 for why this is not part of seed.sql.
 #
 # Usage:
 #   bin/seed-demo.sh                       # the default local stack (port 24322)

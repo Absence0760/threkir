@@ -63,6 +63,8 @@ supabase db reset
 ../../bin/seed-demo.sh            # from apps/backend; add --db-url <url> for a stack on other ports
 ```
 
+Real park courses (the ones `scripts/parks/` builds, such as the Capital Trail and Pocahontas) get boards too, but only those already in the database when the script runs: load them first, then run it. Running it again after loading more courses fills their boards and leaves the rest alone.
+
 It refuses any host other than `localhost`, `127.0.0.1` or `::1`, is safe to run twice (the second run adds nothing), and is dated relative to the day it runs; to move the dates forward, reset and run it again. Every demo runner signs in with `testtest` (for example `sam.patel@test.com`). Demo runs have no GPS track, and the park course lines are generated, not surveyed. Never use it for test fixtures: specs count against `seed.sql` alone ([decisions § 2521](../../docs/architecture/decisions.md)).
 
 ### Regenerate client row types

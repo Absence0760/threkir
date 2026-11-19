@@ -681,6 +681,76 @@ select p.segment_id, p.run_id, p.user_id,
  where p.rn = 1 or (p.rn = 2 and p.distance_m > 12000)
 on conflict (global_segment_id, run_id) do nothing;
 
+-- ───────────────────────── 7b. Boards on catalogue courses ─────────────────────────
+-- Real courses loaded from scripts/parks/ (the Capital Trail, Pocahontas, and
+-- the rest) start with empty boards on a local stack. Every catalogue course
+-- already in the database when this runs gets a crowd: each runner who could
+-- cover the distance runs it zero to three times, as its own public run, and a
+-- few of those runs are dated last year so the season and all-time boards
+-- differ. Load the catalogue first, then run this file; a course loaded later
+-- gets its board on the next run, and the courses already timed add nothing.
+
+create temp table demo_board_runners on commit drop as
+select v.id, v.k, v.pace_s_per_km, v.max_m
+  from (values
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890'::uuid, 'runner', 300, 50000),
+    ('b2c3d4e5-f6a7-8901-bcde-f23456789012'::uuid, 'alex',   280, 42200),
+    ('c3d4e5f6-a7b8-9012-cdef-345678901234'::uuid, 'morgan', 330, 21100)
+  ) v(id, k, pace_s_per_km, max_m)
+union all
+select u.id, u.k,
+       case u.style when 'marathon' then 285 when 'road' then 295 when 'trail' then 345
+                    when 'cyclist' then 335 when 'beginner' then 420 else 400 end,
+       case u.style when 'marathon' then 42200 when 'road' then 42200 when 'trail' then 50000
+                    when 'cyclist' then 21100 else 10000 end
+  from demo_users u
+ where u.style <> 'walker';
+
+create temp table demo_board_attempts on commit drop as
+select pg_temp.did('board-run:' || pc.id || ':' || r.k || ':' || a) as run_id,
+       r.id as user_id, gs.id as segment_id, gs.name, gs.distance_m as course_m,
+       coalesce(gs.elevation_m, 0) as vert,
+       pg_temp.rnd('board-when:' || pc.id || r.k || a) as w,
+       r.pace_s_per_km * power(gs.distance_m / 10000.0, 0.06)
+         * (0.94 + 0.12 * pg_temp.rnd('board-pace:' || pc.id || r.k || a)) as pace
+  from park_courses pc
+  join global_segments gs on gs.id = pc.global_segment_id
+  cross join demo_board_runners r
+  cross join generate_series(1, 3) a
+ where pc.park_id not in (select id from demo_parks)
+   and pc.park_id <> '5eed0000-0000-4000-8000-0000000000a1'
+   and gs.distance_m > 0
+   and gs.distance_m <= r.max_m
+   and a <= case
+     when pg_temp.rnd('board-n:' || pc.id || r.k) < 0.25 then 0
+     when pg_temp.rnd('board-n:' || pc.id || r.k) < 0.70 then 1
+     when gs.distance_m > 21100 then 1
+     when pg_temp.rnd('board-n:' || pc.id || r.k) < 0.90 then 2
+     else 3 end;
+
+alter table demo_board_attempts add column started_at timestamptz, add column time_s int;
+
+update demo_board_attempts b set
+  started_at = pg_temp.va(current_date - case when b.w < 0.15 then 380 + (b.w * 1000)::int
+                                              else 1 + (b.w * 170)::int end,
+                          interval '7 hours' + (b.w * 600)::int * interval '1 minute'),
+  time_s = round(b.course_m / 1000.0 * b.pace)::int;
+
+insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, activity_type,
+                  elevation_gain_m, fastest_5k_s, metadata)
+select b.run_id, b.user_id, b.started_at,
+       b.time_s + 120 + (b.w * 400)::int, round(b.course_m + 200 + b.w * 600),
+       'app', true, 'run', round(b.vert),
+       case when b.course_m >= 5000 then round(5 * b.pace * 0.97)::int end,
+       jsonb_build_object('title', b.name)
+  from demo_board_attempts b
+on conflict (id) do nothing;
+
+insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at, matched_by)
+select b.segment_id, b.run_id, b.user_id, b.time_s, b.started_at + interval '1 minute', 'gate'
+  from demo_board_attempts b
+on conflict (global_segment_id, run_id) do nothing;
+
 -- ───────────────────────── 8. Kudos, comments, reactions, reviews ─────────────────────────
 
 insert into run_kudos (user_id, run_id, given_at)

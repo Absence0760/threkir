@@ -7979,7 +7979,7 @@ export const messages = {
 	"parks.parkNotFoundBody": "Dieser Park ist nicht (mehr) aufgeführt.",
 	"parks.courseNotFoundTitle": "Strecke nicht gefunden",
 	"parks.courseNotFoundBody": "Diese Strecke ist nicht (mehr) aufgeführt.",
-	"parks.website": "Website des Parks",
+	"parks.website": "Website",
 	"parks.noCourses": "In diesem Park sind noch keine Strecken aufgeführt.",
 	"parks.agencyNps": "National Park Service",
 	"parks.agencyState": "State Park",

@@ -110,11 +110,12 @@ test.describe('park course pages', () => {
 		await page.goto(`/parks/us-va/${PARK_SLUG}`);
 		await expect(page.getByRole('heading', { level: 1, name: PARK_NAME })).toBeVisible({ timeout: 15_000 });
 
-		// "Park website" sits in its own item of the meta line, apart from the agency.
+		// "Website" sits in its own item of the meta line, apart from the agency;
+		// a trail is no park, so it never says "Park website".
 		const meta = page.getByTestId('park-meta');
 		await expect(meta.locator('li')).toHaveCount(3);
 		await expect(meta.locator('li').nth(1)).toHaveText('State park');
-		await expect(page.getByTestId('park-website')).toHaveAccessibleName('Park website');
+		await expect(page.getByTestId('park-website')).toHaveAccessibleName('Website');
 
 		const cards = page.getByTestId('park-course-card');
 		await expect(cards).toHaveCount(5);

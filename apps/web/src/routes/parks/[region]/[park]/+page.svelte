@@ -83,7 +83,10 @@
 	// Each card's name, without the distance and laps it states where the
 	// shorter name stays unique in the park.
 	const names = $derived.by(() => {
-		const shown = courseDisplayNames(sorted.map((c) => c.segment.name));
+		const shown = courseDisplayNames(
+			sorted.map((c) => c.segment.name),
+			park?.name ?? '',
+		);
 		return new Map(sorted.map((c, i) => [c.id, shown[i]]));
 	});
 	const hasLines = $derived(mapCourses.some((c) => c.points.length >= 2));
@@ -288,14 +291,18 @@
 		{#if courses.length === 0}
 			<EmptyState icon="route" title={m('parks.noCourses')} data-testid="park-no-courses" />
 		{:else}
+			<!-- The heading and the hint span both columns, so the first card and
+			     the map start on one line. -->
+			<div class="courses-head">
+				<SectionHeader title label={m('parks.coursesTitle')} id="park-courses-title">
+					{#snippet badge()}
+						<span class="count">{m('parks.courseCount', { n: courses.length })}</span>
+					{/snippet}
+				</SectionHeader>
+				<p class="list-note" id="park-preview-hint">{m('parks.previewHint')}</p>
+			</div>
 			<div class="park-layout" class:with-map={hasLines || selected} class:with-preview={selected}>
 				<section class="courses" aria-labelledby="park-courses-title">
-					<SectionHeader title label={m('parks.coursesTitle')} id="park-courses-title">
-						{#snippet badge()}
-							<span class="count">{m('parks.courseCount', { n: courses.length })}</span>
-						{/snippet}
-					</SectionHeader>
-					<p class="list-note" id="park-preview-hint">{m('parks.previewHint')}</p>
 					<ul class="course-list" data-testid="park-courses">
 						{#each sorted as course (course.id)}
 							{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
@@ -621,13 +628,30 @@
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 	}
+	/* Every card the height of the tallest, so the list reads as one grid:
+	   the name holds to two lines (the whole name stays in the button's
+	   accessible name), and the card's row fills it so Open sits centred. */
 	.course-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-auto-rows: 1fr;
 		gap: var(--space-sm);
+	}
+	.course-list > li {
+		min-width: 0;
+	}
+	.course-list :global(.course-card .lc-top) {
+		box-sizing: border-box;
+		height: 100%;
+	}
+	.course-list :global(.course-card .list-card-title) {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		overflow: hidden;
 	}
 	.list-note {
 		display: flex;

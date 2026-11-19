@@ -230,4 +230,19 @@ test.describe('park preview and back', () => {
 		await page.getByTestId('park-back').click();
 		await page.waitForURL('**/races?show=courses');
 	});
+
+	test('the first card and the map start on one line, and every card is one height', async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto(`${PARK_PATH}?course=10k`);
+		const cards = page.getByTestId('park-course-card');
+		await expect(cards).toHaveCount(2, { timeout: 15_000 });
+		const map = page.locator('.map-frame');
+		await expect(map).toBeVisible();
+		const first = await cards.first().boundingBox();
+		const frame = await map.boundingBox();
+		expect(Math.abs((first?.y ?? 0) - (frame?.y ?? 99))).toBeLessThanOrEqual(1);
+		const heights = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+		expect(new Set(heights).size).toBe(1);
+		await expect(page.getByTestId('park-website')).toHaveCount(0);
+	});
 });

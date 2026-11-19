@@ -1,9 +1,12 @@
 <script lang="ts">
 	// Every course line of one park on one map (issue #1352), with each
 	// distinct start area marked. Pointing at a course in the list beside it
-	// (`highlightId`) draws that line in the accent colour over the rest; a
-	// previewed course (`selectedId`) is drawn the same way, the others fade,
-	// the map frames it and its start and finish are pinned.
+	// (`highlightId`) or previewing one (`selectedId`) draws its line wider,
+	// in the pinned-line violet on a halo, over the others faded; a previewed
+	// course is also framed and its start and finish are pinned. Violet, not
+	// the accent amber: amber read 1.29:1 against the coral course line
+	// (1.15:1 dark) and looked like it, where violet over the faded lines reads
+	// 3.92:1 light and 3.63:1 dark (decisions § 2588).
 	//
 	// The camera frames the lines whenever the map's box changes size, until
 	// the reader moves the map themselves: a fit taken against a box that was
@@ -16,9 +19,10 @@
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
 	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv as mapStyleUrl } from '#lib/routes/map-style.svelte.ts';
 	import {
-		mapAccentColour,
 		mapFinishColour,
+		mapLabelHalo,
 		mapOverlayOutline,
+		mapPinnedLine,
 		mapStartColour,
 		mapTrackLine,
 	} from '#lib/routes/basemap_contrast.ts';
@@ -145,7 +149,7 @@
 				source: 'park-courses',
 				filter: ['==', ['get', 'id'], ''],
 				layout: { 'line-cap': 'round', 'line-join': 'round' },
-				paint: { 'line-color': mapOverlayOutline(darkBasemap), 'line-width': 9 },
+				paint: { 'line-color': mapLabelHalo(darkBasemap), 'line-width': 10 },
 			});
 			map.addLayer({
 				id: 'park-course-highlight',
@@ -153,7 +157,7 @@
 				source: 'park-courses',
 				filter: ['==', ['get', 'id'], ''],
 				layout: { 'line-cap': 'round', 'line-join': 'round' },
-				paint: { 'line-color': mapAccentColour(darkBasemap), 'line-width': 5.5 },
+				paint: { 'line-color': mapPinnedLine(darkBasemap), 'line-width': 6 },
 			});
 			map.addLayer({
 				id: 'park-course-starts',
@@ -270,7 +274,7 @@
 	.park-courses-map {
 		width: 100%;
 		height: 100%;
-		min-height: 14rem;
+		min-height: 10rem;
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}

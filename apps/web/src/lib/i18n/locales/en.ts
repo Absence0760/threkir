@@ -8008,7 +8008,7 @@ export const en = {
 	"parks.parkNotFoundBody": "This park isn't listed, or isn't listed any more.",
 	"parks.courseNotFoundTitle": "Course not found",
 	"parks.courseNotFoundBody": "This course isn't listed, or isn't listed any more.",
-	"parks.website": "Park website",
+	"parks.website": "Website",
 	"parks.noCourses": "No courses listed in this park yet.",
 	"parks.agencyNps": "National Park Service",
 	"parks.agencyState": "State park",

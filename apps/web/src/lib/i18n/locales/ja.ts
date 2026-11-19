@@ -7974,7 +7974,7 @@ export const messages = {
 	"parks.parkNotFoundBody": "この公園は掲載されていないか、掲載が終了しました。",
 	"parks.courseNotFoundTitle": "コースが見つかりません",
 	"parks.courseNotFoundBody": "このコースは掲載されていないか、掲載が終了しました。",
-	"parks.website": "公園のウェブサイト",
+	"parks.website": "ウェブサイト",
 	"parks.noCourses": "この公園にはまだコースがありません。",
 	"parks.agencyNps": "国立公園局",
 	"parks.agencyState": "州立公園",

@@ -59,7 +59,12 @@ test('park dirs are the region/park pairs holding a manifest, sorted', () => {
 test('the committed catalogue is found on disk', () => {
 	assert.deepEqual(
 		findParkDirs(CATALOGUE_ROOT).map((d) => path.relative(CATALOGUE_ROOT, d)),
-		[path.join('us-va', 'deep-run'), path.join('us-va', 'pocahontas'), path.join('us-va', 'virginia-capital-trail')],
+		[
+			path.join('us-va', 'deep-run'),
+			path.join('us-va', 'pocahontas'),
+			path.join('us-va', 'rockwood'),
+			path.join('us-va', 'virginia-capital-trail'),
+		],
 	);
 });
 
@@ -106,6 +111,9 @@ test('the committed stage loads Pocahontas\'s six courses as the committed club 
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
 	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));
 	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-5k', 'staged')"));
+	assert.ok(!stage.sql.includes('"slug":"rockwood"'), 'Rockwood Park never reaches the load');
+	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-5k', 'staged')"));
+	assert.ok(stage.sql.includes("('rockwood', 'rockwood-park-10k', 'staged')"));
 	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
 	assert.ok(!stage.sql.includes('442e4798'), 'no owner id is committed or emitted');
 	for (const slug of ['beaver-lake-trail', 'swift-creek-5k', 'swift-creek-10k', 'swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k']) {

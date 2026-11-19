@@ -41,6 +41,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
 | Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2551). See *The pages* | Shipped |
 | **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
+| **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -951,6 +952,16 @@ These gate going live, not the code:
       out or starts elsewhere, change the via lists, not the line. (c) Walk the
       route guide and set `ground_checked_at`. (d) No sentence naming the
       Saturday event until #1148 is answered.
+- [ ] **Rockwood Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,505 m loop (Blue, White, Red, Orange,
+      Yellow, Green and Purple trails) against the county trail map and a GPS
+      trace, checks the start line on the Blue Trail north of the
+      archery-range lot, walks the route guide and sets `ground_checked_at`,
+      and records the brand and data outcome on #1097. The county map dates
+      from 2017; its `trail_review` refuses the paths OSM has beside the
+      Orange Trail and the dashed connectors by Gregory's Pond. A
+      half-marathon was not built: on the map's trails the shortest 7 km lap
+      found repeats 22 % of itself, over the 15 % cap set on #1430.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

@@ -1,0 +1,576 @@
+{
+  "park": {
+    "slug": "rockwood",
+    "name": "Rockwood Park",
+    "kind": "park",
+    "agency": "county",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.chesterfield.gov/Facilities/Facility/Details/Rockwood-Park-70",
+    "osm_boundary": "way/315035710"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks this line against the county trail map and a GPS trace, and records the brand and data outcome on #1097 (decisions § 2460)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-19",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "rockwood-park-5k",
+      "name": "Rockwood Park, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4504.9,
+      "lead_in_m": 610.6,
+      "start_line_from_lead_in_start_m": 363.1,
+      "start_finish": {
+        "lat": 37.449753,
+        "lng": -77.578578
+      },
+      "surface": "mixed",
+      "geometry_source": "osm",
+      "source_ref": "way/287519753,way/317933558,way/317933559,way/317933561,way/317933562,way/317933563,way/317933564,way/317933565,way/970957724,way/1336065296,way/1336065297",
+      "source_checked_at": "2026-11-19",
+      "geojson": "rockwood-park-5k.geojson",
+      "elevation_m": 75,
+      "checkpoints": [
+        {
+          "lat": 37.453925,
+          "lng": -77.578941
+        },
+        {
+          "lat": 37.451116,
+          "lng": -77.581129
+        },
+        {
+          "lat": 37.453984,
+          "lng": -77.585332
+        },
+        {
+          "lat": 37.453714,
+          "lng": -77.582046
+        },
+        {
+          "lat": 37.452232,
+          "lng": -77.580566
+        },
+        {
+          "lat": 37.454383,
+          "lng": -77.577546
+        }
+      ],
+      "start_gate": {
+        "lat": 37.449753,
+        "lng": -77.578578,
+        "bearing_deg": 20.7,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 37.449753,
+        "lng": -77.578578,
+        "bearing_deg": 200.7,
+        "half_width_m": 15
+      },
+      "waypoint_count": 265,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the lot at the end of the park road by the archery range. The Blue Trail, which is paved, starts at the north edge of that lot; the start line is on it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Blue Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "White Trail",
+            "at_m": 383
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 714,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Red Trail",
+            "at_m": 723
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 945
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 945
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Trail",
+            "at_m": 1118
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 1118
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1317
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "White Trail",
+            "at_m": 1400
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 2107
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2107
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2143,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2574
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Yellow",
+            "at_m": 2678
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Trail",
+            "at_m": 2724
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 2724
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Green Trail",
+            "at_m": 2984
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2984
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 3148
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3571,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Purple Trail",
+            "at_m": 3585
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 3585
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Orange Trail",
+            "at_m": 3925
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3925
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Blue Trail",
+            "at_m": 4752
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 4752
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "rockwood-park-10k",
+      "name": "Rockwood Park, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4504.9,
+      "lead_in_m": 610.6,
+      "start_line_from_lead_in_start_m": 115.5,
+      "start_finish": {
+        "lat": 37.448045,
+        "lng": -77.579088
+      },
+      "surface": "mixed",
+      "geometry_source": "osm",
+      "source_ref": "way/287519753,way/317933558,way/317933559,way/317933561,way/317933562,way/317933563,way/317933564,way/317933565,way/970957724,way/1336065296,way/1336065297",
+      "source_checked_at": "2026-11-19",
+      "geojson": "rockwood-park-10k.geojson",
+      "elevation_m": 140,
+      "checkpoints": [
+        {
+          "lat": 37.453717,
+          "lng": -77.577041
+        },
+        {
+          "lat": 37.450728,
+          "lng": -77.579913
+        },
+        {
+          "lat": 37.453384,
+          "lng": -77.584992
+        },
+        {
+          "lat": 37.453857,
+          "lng": -77.581788
+        },
+        {
+          "lat": 37.452412,
+          "lng": -77.580407
+        },
+        {
+          "lat": 37.454171,
+          "lng": -77.576818
+        },
+        {
+          "lat": 37.453959,
+          "lng": -77.578043
+        },
+        {
+          "lat": 37.451214,
+          "lng": -77.580926
+        },
+        {
+          "lat": 37.454215,
+          "lng": -77.58542
+        },
+        {
+          "lat": 37.453899,
+          "lng": -77.58269
+        },
+        {
+          "lat": 37.453236,
+          "lng": -77.580165
+        },
+        {
+          "lat": 37.453309,
+          "lng": -77.576205
+        }
+      ],
+      "waypoint_count": 523,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the lot at the end of the park road by the archery range. The Blue Trail, which is paved, starts at the north edge of that lot; the start line is on it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Blue Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "White Trail",
+            "at_m": 631
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 769,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Red Trail",
+            "at_m": 970
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 1193
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1193
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Trail",
+            "at_m": 1366
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 1366
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1538,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1564
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "White Trail",
+            "at_m": 1647
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2308,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 2355
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2355
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2821
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Yellow",
+            "at_m": 2926
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Trail",
+            "at_m": 2971
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 2971
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3077,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Green Trail",
+            "at_m": 3232
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3232
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Orange Trail",
+            "at_m": 3395
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Purple Trail",
+            "at_m": 3833
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 3833
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3846,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Orange Trail",
+            "at_m": 4173
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4173
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4615,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Blue Trail",
+            "at_m": 5000
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5385,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6154,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6923,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7692,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8462,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9231,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Blue Trail",
+            "at_m": 9505
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

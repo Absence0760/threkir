@@ -154,7 +154,7 @@ export interface GateBoxFeatureProps {
 }
 
 /**
- * A course's start and finish boxes (decisions § 2581), from gateBoxParts:
+ * A course's start and finish boxes (decisions § 2582), from gateBoxParts:
  * each box as a Polygon and its edge on the stored line as a LineString.
  * The flags and names go on as DOM markers, so they keep their size at any
  * zoom (gateFlagSvg).

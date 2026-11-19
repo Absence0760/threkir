@@ -66,7 +66,7 @@ export interface SegmentGateColumns {
 
 /**
  * The lines a course page draws its start and finish boxes on (decisions
- * § 2581): the segment's stored lines, the ones the matcher times, read
+ * § 2582): the segment's stored lines, the ones the matcher times, read
  * through the race helper so a line means one thing everywhere. Null unless
  * both are whole: the page then shows its pins alone, as before.
  */
@@ -89,7 +89,7 @@ export function courseBoxGates(segment: SegmentGateColumns): { start: Gate; fini
 }
 
 /**
- * The one sentence a course page gives a runner (decisions § 2581): start
+ * The one sentence a course page gives a runner (decisions § 2582): start
  * recording in the green box and follow the arrows to the red one (round the
  * loop n times on a lapped course). Where both boxes land on one spot behind
  * the start line, an out-and-back, it is one green-and-red box, left and come
@@ -105,4 +105,17 @@ export function courseBoxInstruction(
 		return hasTurn ? { key: 'parks.boxesOutAndBack' } : { key: 'parks.boxesShared', params: { n } };
 	}
 	return { key: 'parks.boxesApart', params: { n } };
+}
+
+/** A lap longer than this many km (or miles) shows only every 5th badge at the whole-course zoom. */
+export const OVERVIEW_BADGE_FULL_UNITS = 10;
+
+/**
+ * Whether the km or mile badge [label] shows at a course map's whole-course
+ * zoom (decisions § 2582): every badge on a lap of up to
+ * OVERVIEW_BADGE_FULL_UNITS, otherwise every 5th, so they never crowd the
+ * line. The rest appear once the map is zoomed in.
+ */
+export function badgeAtOverview(label: number, lapUnits: number): boolean {
+	return lapUnits <= OVERVIEW_BADGE_FULL_UNITS || label % 5 === 0;
 }

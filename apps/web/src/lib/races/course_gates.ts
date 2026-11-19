@@ -204,7 +204,7 @@ export interface GateBoxMarker {
 	at: GatePoint;
 }
 
-/** The start and finish boxes a course map draws (decisions § 2581). */
+/** The start and finish boxes a course map draws (decisions § 2582). */
 export function gateBoxParts(
 	start: Gate | null,
 	finish: Gate | null,

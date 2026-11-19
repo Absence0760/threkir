@@ -2,7 +2,7 @@
 	// A park course's route guide (issue #1344): a short list a runner reads in
 	// seconds (the start, the laps, the turns where the trail changes, the
 	// finish), with every step folded away under it, grouped by lap or by
-	// stretch (routeGuideView, decisions § 2581), in the reader's language and
+	// stretch (routeGuideView, decisions § 2582), in the reader's language and
 	// unit, under a note saying whether a person has walked it at the park
 	// yet. Shared by the course page and its share page, so the indexable page
 	// reads the same guide the runner does.

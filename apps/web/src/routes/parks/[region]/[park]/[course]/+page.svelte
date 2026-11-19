@@ -30,6 +30,7 @@
 		courseOffersWayfinding,
 		parkCourseGpx,
 		parseBoardPeriod,
+		parkKindOf,
 		parseSharedUse,
 		regionCodeFromSlug,
 		regionName,
@@ -51,7 +52,13 @@
 	} from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
-	import { checkpointPinColour, courseBoxGates, courseBoxInstruction, finishesAtStart } from '#lib/parks/course_map.ts';
+	import {
+		badgeAtOverview,
+		checkpointPinColour,
+		courseBoxGates,
+		courseBoxInstruction,
+		finishesAtStart,
+	} from '#lib/parks/course_map.ts';
 	import { gateBoxParts } from '#lib/races/course_gates.ts';
 	import { PUBLIC_MAPTILER_KEY } from '$app/env/public';
 	import { basemapIsDarkFromEnv } from '#lib/routes/map-style.svelte.ts';
@@ -272,6 +279,10 @@
 		downloadFile(gpx, `${base || 'course'}.gpx`, 'application/gpx+xml');
 	}
 
+	// A stored `road` surface is a paved course: on a park or a shared-use
+	// trail it reads "Paved", never as a run on a road (decisions § 2582).
+	const courseSurfaceLabel = (surface: string) =>
+		surface === 'road' ? m('parks.surfacePaved') : routeSurfaceLabel(surface);
 	const shapeKey = $derived(courseShapeShown(course?.course_shape) ? labelKey(SHAPE_LABEL, course?.course_shape) : null);
 	const laps = $derived(courseLapsChip(course?.laps));
 	const routeGuide = $derived(parseRouteGuide(course?.route_guide));
@@ -292,6 +303,20 @@
 				lng: k.lng,
 			})),
 	);
+	// The whole-course view: the km / mile badges of one pass over the ground
+	// (one lap, or an out-and-back's way out), every 5th on a long one until
+	// zoomed in, and the checkpoint names only once zoomed in.
+	const courseOverview = $derived.by(() => {
+		if (!course) return null;
+		const passes =
+			course.course_shape === 'out_and_back' ? 2 : course.laps != null && course.laps > 1 ? course.laps : 1;
+		const passM = Number(course.segment.distance_m) / passes;
+		const passUnits = passM / (getUnit() === 'mi' ? 1609.344 : 1000);
+		return {
+			lapM: passes > 1 ? passM : null,
+			badgeAtOverview: (label: number) => badgeAtOverview(label, passUnits),
+		};
+	});
 	const turnaround = $derived(turn ? { lat: turn.lat, lng: turn.lng, label: m('parks.turnAround') } : null);
 	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
 		// The boxes replace the pins on the map, so the key names the boxes.
@@ -408,7 +433,7 @@
 				{#if mapTrack.length >= 2}
 					<section class="map-block" aria-label={m('parks.courseMapLabel')}>
 						<div class="map-wrap">
-							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} />
+							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} />
 						</div>
 						<ParkMapLegend items={legendItems} testid="park-course-legend" />
 						{#if credit}
@@ -654,7 +679,7 @@
 						{/if}
 						{#if course.segment.surface}
 							<div class="key-stat">
-								<span class="key-stat-value">{routeSurfaceLabel(course.segment.surface)}</span>
+								<span class="key-stat-value">{courseSurfaceLabel(course.segment.surface)}</span>
 								<span class="key-stat-label">{m('parks.statSurface')}</span>
 							</div>
 						{/if}
@@ -681,7 +706,16 @@
 				{#if canNavigate || canDownload}
 					<div class="course-actions">
 						{#if canNavigate}
-							<a class="btn btn-primary action" href="/routes/{course.route_id}" data-testid="park-course-navigate">
+							<!-- On the web it opens the route page (there is no run to
+							     guide here), so with the boxes' sentence above it the
+							     way to the start is the one filled action. -->
+							<a
+								class="btn action"
+								class:btn-primary={!boxInstruction}
+								class:btn-outline={!!boxInstruction}
+								href="/routes/{course.route_id}"
+								data-testid="park-course-navigate"
+							>
 								<span class="material-symbols" aria-hidden="true">directions_run</span>
 								{m('parks.navigate')}
 							</a>
@@ -690,8 +724,8 @@
 							<button
 								type="button"
 								class="btn action"
-								class:btn-primary={!canNavigate}
-								class:btn-outline={canNavigate}
+								class:btn-primary={!canNavigate && !boxInstruction}
+								class:btn-outline={canNavigate || !!boxInstruction}
 								onclick={downloadGpx}
 								data-testid="park-course-gpx"
 							>
@@ -706,6 +740,9 @@
 					<ParkCourseNotices
 						distanceM={Number(course.segment.distance_m)}
 						sharedUse={parseSharedUse(course.shared_use)}
+						surface={course.segment.surface}
+						parkKind={parkKindOf(park)}
+						guide={routeGuide}
 						testidPrefix="park-course"
 					/>
 					{#if credit && mapTrack.length < 2}

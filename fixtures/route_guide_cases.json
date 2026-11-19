@@ -1,5 +1,5 @@
 {
- "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting. 'views' are routeGuideView: the short 'summary' lines and the full 'sections' ({lap, from, to, lines}), neither listing checkpoints (decisions § 2581).",
+ "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting. 'views' are routeGuideView: the short 'summary' lines and the full 'sections' ({lap, from, to, lines}), neither listing checkpoints (decisions § 2582).",
  "cases": [
   {
    "name": "a full guide reads every kind of step in order",

@@ -28,6 +28,11 @@ describe('computeDistanceMarkers', () => {
 		assert.equal(fc.features[0].properties.rank, 3);
 	});
 
+	it('on a lapped course, stops at the end of the first lap', () => {
+		const fc = computeDistanceMarkers(straight(121, 100), 1000, null, null, 4500);
+		assert.deepEqual(fc.features.map((f) => f.properties.label), ['1', '2', '3', '4']);
+	});
+
 	it('steps in miles when given the mile length', () => {
 		const fc = computeDistanceMarkers(straight(51, 100), METRES_PER_MILE);
 		assert.deepEqual(fc.features.map((f) => f.properties.label), ['1', '2', '3']);

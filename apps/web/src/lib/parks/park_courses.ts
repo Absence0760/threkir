@@ -162,9 +162,46 @@ export function courseOffersWayfinding(status: string): boolean {
 /** Courses longer than this carry the long-course notice. */
 export const LONG_COURSE_THRESHOLD_M = 15000;
 
-/** Whether a course is long enough to show the long-course notice. */
+/** Whether a course is long enough for the long-course lines of its notices. */
 export function isLongCourse(distanceM: number): boolean {
 	return Number.isFinite(distanceM) && distanceM > LONG_COURSE_THRESHOLD_M;
+}
+
+/** A line of a course's Before you run notice beyond the safety line. */
+export type CourseNoticeKey = 'ford' | 'pavedTrail' | 'longTrail' | 'parkHours' | 'parkHoursLong';
+
+/** `parks.kind` as the notices read it: `trail` for a long linear trail, else a park. */
+export function parkKindOf(park: unknown): 'park' | 'trail' {
+	return park !== null && typeof park === 'object' && (park as { kind?: unknown }).kind === 'trail'
+		? 'trail'
+		: 'park';
+}
+
+/**
+ * The lines of a course's Before you run notice that its data supports
+ * (decisions § 2582), hazards first, never a fact the data does not hold:
+ * - `ford`: the route guide crosses a ford.
+ * - on a trail (`parks.kind = 'trail'`), `pavedTrail` when the surface is
+ *   paved (`road`, a shared-use path), else `longTrail` on a long course;
+ *   a trail has no closing time to name.
+ * - in a park, `parkHoursLong` on a long course, else `parkHours`.
+ */
+export function courseNotices(input: {
+	parkKind: 'park' | 'trail';
+	surface: string | null | undefined;
+	distanceM: number;
+	guide: RouteGuide | null;
+}): CourseNoticeKey[] {
+	const out: CourseNoticeKey[] = [];
+	if (input.guide?.steps.some((s) => s.kind === 'crossing' && s.crossing === 'ford')) out.push('ford');
+	const long = isLongCourse(input.distanceM);
+	if (input.parkKind === 'trail') {
+		if (input.surface === 'road') out.push('pavedTrail');
+		else if (long) out.push('longTrail');
+	} else {
+		out.push(long ? 'parkHoursLong' : 'parkHours');
+	}
+	return out;
 }
 
 /**
@@ -526,7 +563,7 @@ export interface CheckpointMark {
 }
 
 /**
- * What a course map marks for its checkpoints (decisions § 2581). On an
+ * What a course map marks for its checkpoints (decisions § 2582). On an
  * out-and-back the last checkpoint is the turn, marked as such. The rest are
  * numbered, and checkpoints so close that their markers would cover each
  * other at the whole-course zoom share one marker that carries every number:

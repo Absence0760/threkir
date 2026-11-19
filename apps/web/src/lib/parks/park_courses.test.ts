@@ -28,6 +28,8 @@ import {
 	stepBoardMonth,
 	SHARE_COURSE_YEAR_PLACE_MAX,
 	checkpointMarks,
+	courseNotices,
+	parkKindOf,
 } from './park_courses';
 
 test('parseCourseCheckpoints: reads an ordered list of points', () => {
@@ -467,4 +469,36 @@ test('checkpointMarks: a short course still merges within 25 m, and only within 
 test('checkpointMarks: no checkpoints, no marks; a loop has no turn', () => {
 	assert.deepEqual(checkpointMarks({ checkpoints: [], line: [cpAt(0), cpAt(100)], shape: 'out_and_back' }), []);
 	assert.ok(checkpointMarks({ checkpoints: [cpAt(50)], line: [cpAt(0), cpAt(100)], shape: 'loop' }).every((m) => m.kind === 'numbers'));
+});
+
+const fordGuide = parseRouteGuide({
+	version: 1,
+	lang: 'en',
+	steps: [
+		{ kind: 'start', at_m: 0, way: 'path' },
+		{ kind: 'crossing', at_m: 900, crossing: 'ford' },
+		{ kind: 'finish', at_m: 5000 },
+	],
+});
+
+test('courseNotices: a park names its closing time, earlier on a long course', () => {
+	assert.deepEqual(courseNotices({ parkKind: 'park', surface: 'trail', distanceM: 5000, guide: null }), ['parkHours']);
+	assert.deepEqual(courseNotices({ parkKind: 'park', surface: 'trail', distanceM: 20000, guide: null }), ['parkHoursLong']);
+});
+
+test('courseNotices: a paved trail is shared with cyclists; an unpaved one says so only when long; neither has hours', () => {
+	assert.deepEqual(courseNotices({ parkKind: 'trail', surface: 'road', distanceM: 50000, guide: null }), ['pavedTrail']);
+	assert.deepEqual(courseNotices({ parkKind: 'trail', surface: 'trail', distanceM: 20000, guide: null }), ['longTrail']);
+	assert.deepEqual(courseNotices({ parkKind: 'trail', surface: 'trail', distanceM: 5000, guide: null }), []);
+});
+
+test('courseNotices: a ford in the guide leads, and only a ford does', () => {
+	assert.deepEqual(courseNotices({ parkKind: 'park', surface: 'trail', distanceM: 5000, guide: fordGuide }), ['ford', 'parkHours']);
+});
+
+test('parkKindOf: only an explicit trail is a trail', () => {
+	assert.equal(parkKindOf({ kind: 'trail' }), 'trail');
+	assert.equal(parkKindOf({ kind: 'park' }), 'park');
+	assert.equal(parkKindOf({}), 'park');
+	assert.equal(parkKindOf(null), 'park');
 });

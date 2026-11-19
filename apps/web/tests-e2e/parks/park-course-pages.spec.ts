@@ -209,10 +209,12 @@ test.describe('park course pages', () => {
 		await expect(notices.getByTestId('park-course-times')).toBeVisible();
 		await expect(notices.getByTestId('park-course-not-affiliated')).toBeVisible();
 
-		// No route to navigate, so the GPX download is the one primary action.
+		// No route to navigate, so the way to the start is the one filled
+		// action and the GPX download an outline one.
 		await expect(page.getByTestId('park-course-navigate')).toHaveCount(0);
-		await expect(page.getByTestId('park-course-gpx')).toHaveClass(/btn-primary/);
-		await expect(page.locator('.course-actions .btn-primary')).toHaveCount(1);
+		await expect(page.getByTestId('park-course-gpx')).toHaveClass(/btn-outline/);
+		await expect(page.getByTestId('park-course-ends-get-directions')).toHaveClass(/btn-primary/);
+		await expect(page.locator('.course-layout .btn-primary')).toHaveCount(1);
 
 		// No times on any board: an invitation, and nothing to switch between.
 		await expect(page.getByTestId('park-board-invite').getByRole('heading')).toHaveText(

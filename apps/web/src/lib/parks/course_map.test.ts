@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { courseBoxGates, courseBoxInstruction, distinctStarts, finishesAtStart } from './course_map';
+import { badgeAtOverview, courseBoxGates, courseBoxInstruction, distinctStarts, finishesAtStart } from './course_map';
 
 const M_PER_DEG_LAT = 111_320;
 const north = (lat: number, m: number) => lat + m / M_PER_DEG_LAT;
@@ -61,4 +61,13 @@ test('courseBoxInstruction: lines apart, or a loop at one spot, are a green box 
 	const loop = courseBoxGates({ ...segment, end_gate_bearing_deg: 10 })!;
 	assert.deepEqual(courseBoxInstruction(loop, false, null), { key: 'parks.boxesApart', params: { n: 1 } });
 	assert.deepEqual(courseBoxInstruction(loop, false, 2), { key: 'parks.boxesApart', params: { n: 2 } });
+});
+
+test('badgeAtOverview: a short lap shows every badge, a long one every 5th', () => {
+	assert.deepEqual([1, 2, 3, 4, 5].map((k) => badgeAtOverview(k, 5)), [true, true, true, true, true]);
+	assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((k) => badgeAtOverview(k, 10)).every(Boolean), true);
+	assert.deepEqual(
+		[1, 4, 5, 6, 10, 15, 24, 25].map((k) => badgeAtOverview(k, 24.9)),
+		[false, false, true, false, true, true, false, true],
+	);
 });

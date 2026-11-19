@@ -19,7 +19,7 @@
 		/**
 		 * The course page's one sentence about its start and finish boxes. Set,
 		 * the block leads with it and a button to the start, and folds the
-		 * coordinates away under it (decisions § 2581).
+		 * coordinates away under it (decisions § 2582).
 		 */
 		instruction?: string | null;
 	} = $props();

@@ -83,7 +83,7 @@ export function mapFinishColour(darkBasemap: boolean): string {
 	return darkBasemap ? '#EF4444' : '#B91C1C';
 }
 
-/// A park course's start and finish BOXES (decisions § 2581): the box's
+/// A park course's start and finish BOXES (decisions § 2582): the box's
 /// fill and outline, its edge on the course line, its flag and the key swatch.
 /// Not the cap colours above, which fail two things a box owes. On the light
 /// basemap `#B91C1C` reads 1.00:1 against the coral track it sits on, and

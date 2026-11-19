@@ -144,7 +144,7 @@
 		snapToRoute?: boolean;
 		/// A course's stored start and finish lines, drawn as a green start box
 		/// and a red finish box, each with a flag and its name, in place of the
-		/// start and finish pins (`gateBoxParts`, decisions § 2581). Null = the
+		/// start and finish pins (`gateBoxParts`, decisions § 2582). Null = the
 		/// pins, as before.
 		gateBoxes?: {
 			start: Gate | null;
@@ -154,6 +154,12 @@
 		/// An out-and-back's turn: its last checkpoint, drawn as a named tag
 		/// with a U-turn instead of a numbered pin. Null = none.
 		turnaround?: { lat: number; lng: number; label: string } | null;
+		/// A park course's whole-course view (decisions § 2582): the km / mile
+		/// badges of one lap only (`lapM`, real metres), the ones
+		/// `badgeAtOverview` passes shown at the fitted zoom and the rest once
+		/// zoomed in, the checkpoint names only once zoomed in, and no badge
+		/// under a checkpoint dot. Null = every map's usual layers.
+		courseOverview?: { lapM: number | null; badgeAtOverview: (label: number) => boolean } | null;
 	}
 	let {
 		track = [],
@@ -177,6 +183,7 @@
 		snapToRoute = false,
 		gateBoxes = null,
 		turnaround = null,
+		courseOverview = null,
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
@@ -204,6 +211,10 @@
 
 	const DISTANCE_BADGE_ID = 'distance-marker-badge';
 	const DISTANCE_BADGE_RATIO = 2;
+	/// An empty image a course map's checkpoint dots hold their place with in
+	/// the collision pass, a little wider than the 16 px dot and its ring.
+	const MARKER_RESERVE_ID = 'route-marker-reserve';
+	const MARKER_RESERVE_PX = 24;
 
 	/// The km / mile badge as an image, so the badge and its number are one
 	/// symbol that collides as a unit: a filled circle of radius 11 with a
@@ -534,12 +545,10 @@
 			},
 		});
 
-		const distanceMarkers = computeDistanceMarkers(
-			coords,
-			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
-			totalDistanceM,
-			officialDistanceM,
-		);
+		const distanceMarkers = badgeData(coords, officialDistanceM);
+		// How far in the fitted whole-course view is: the badges and names a
+		// course map holds back appear one step past it.
+		const detailZoom = (bounds ? (map.cameraForBounds(bounds, { padding: 50 })?.zoom ?? 0) : 0) + 1;
 		const badge = distanceBadgeImage(mapLabelHalo(darkBasemap), mapTrackLine(darkBasemap));
 		if (distanceMarkers.features.length > 0 && badge) {
 			if (map.hasImage(DISTANCE_BADGE_ID)) map.updateImage(DISTANCE_BADGE_ID, badge);
@@ -553,23 +562,39 @@
 			// out-and-back). The sort key places every 10th, then every 5th
 			// first, so zooming out keeps 10, 20, 30 and zooming in brings the
 			// rest back.
+			const badgeLayout: maplibregl.SymbolLayerSpecification['layout'] = {
+				'icon-image': DISTANCE_BADGE_ID,
+				'icon-allow-overlap': false,
+				'text-field': ['get', 'label'],
+				'text-size': 11,
+				'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+				'text-allow-overlap': false,
+				'symbol-sort-key': ['get', 'rank'],
+			};
+			const overview: maplibregl.ExpressionSpecification = ['==', ['get', 'overview'], true];
 			map.addLayer({
 				id: 'distance-marker',
 				type: 'symbol',
 				source: 'distance-markers',
-				layout: {
-					'icon-image': DISTANCE_BADGE_ID,
-					'icon-allow-overlap': false,
-					'text-field': ['get', 'label'],
-					'text-size': 11,
-					'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-					'text-allow-overlap': false,
-					'symbol-sort-key': ['get', 'rank'],
-				},
+				...(courseOverview ? { filter: overview } : {}),
+				layout: badgeLayout,
 				paint: {
 					'text-color': mapLabelInk(darkBasemap),
 				},
 			});
+			if (courseOverview) {
+				map.addLayer({
+					id: 'distance-marker-detail',
+					type: 'symbol',
+					source: 'distance-markers',
+					minzoom: detailZoom,
+					filter: ['!', overview],
+					layout: badgeLayout,
+					paint: {
+						'text-color': mapLabelInk(darkBasemap),
+					},
+				});
+			}
 		}
 
 		if (gateBoxes) addCourseGateBoxLayers(map, 'course-gate-boxes', gateBoxes.start, gateBoxes.finish, darkBasemap);
@@ -592,10 +617,29 @@
 				'circle-stroke-width': 2,
 			},
 		});
+		if (courseOverview) {
+			// Each checkpoint dot holds its place in the symbol collision pass,
+			// so no km badge is drawn under one. The image is empty: the
+			// circle layer above draws the dot.
+			if (!map.hasImage(MARKER_RESERVE_ID)) {
+				map.addImage(MARKER_RESERVE_ID, {
+					width: MARKER_RESERVE_PX,
+					height: MARKER_RESERVE_PX,
+					data: new Uint8Array(MARKER_RESERVE_PX * MARKER_RESERVE_PX * 4),
+				});
+			}
+			map.addLayer({
+				id: 'route-marker-reserve',
+				type: 'symbol',
+				source: 'route-markers',
+				layout: { 'icon-image': MARKER_RESERVE_ID, 'icon-allow-overlap': true },
+			});
+		}
 		map.addLayer({
 			id: 'route-marker-label',
 			type: 'symbol',
 			source: 'route-markers',
+			...(courseOverview ? { minzoom: detailZoom } : {}),
 			layout: {
 				'text-field': ['get', 'label'],
 				'text-size': 11,
@@ -743,16 +787,29 @@
 		untrack(() => {
 			const src = map?.getSource('distance-markers') as maplibregl.GeoJSONSource | undefined;
 			if (!src || trackCoords.length < 2) return;
-			src.setData(
-				computeDistanceMarkers(
-					trackCoords,
-					getUnit() === 'mi' ? METRES_PER_MILE : 1000,
-					totalDistanceM,
-					official,
-				),
-			);
+			src.setData(badgeData(trackCoords, official));
 		});
 	});
+
+	/// The km / mile badges for [coords]: one lap's on a course map, each
+	/// marked whether it shows at the whole-course zoom.
+	function badgeData(coords: [number, number][], official: number | null) {
+		const fc = computeDistanceMarkers(
+			coords,
+			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+			totalDistanceM,
+			official,
+			courseOverview?.lapM ?? null,
+		);
+		if (!courseOverview) return fc;
+		return {
+			...fc,
+			features: fc.features.map((f) => ({
+				...f,
+				properties: { ...f.properties, overview: courseOverview.badgeAtOverview(Number(f.properties.label)) },
+			})),
+		};
+	}
 
 	let trackCoords: [number, number][] = [];
 	/// Pace colour stops for `track`, taken with the other snapshots.

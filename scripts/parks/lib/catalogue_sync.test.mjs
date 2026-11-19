@@ -98,11 +98,13 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the committed stage loads Pocahontas\'s six courses as the committed club and holds Deep Run Park and Malvern Hill staged', () => {
+test('the committed stage loads Pocahontas\'s six courses as the committed club and holds every other park staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until .*; malvern-hill \(2 courses\): Held until /);
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(2 courses\): Held until /);
+	assert.match(
+		stage.note,
+		/^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(2 courses\): Held until .*; james-river-park \(2 courses\): Held until .*; malvern-hill \(2 courses\): Held until .*; rockwood \(2 courses\): Held until .*; virginia-capital-trail \(8 courses\): /,
+	);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
 	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));

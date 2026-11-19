@@ -2,6 +2,7 @@
   "park": {
     "slug": "malvern-hill",
     "name": "Malvern Hill, Richmond National Battlefield Park",
+    "kind": "park",
     "agency": "nps",
     "nps_park_code": "rich",
     "region_code": "US-VA",
@@ -48,6 +49,7 @@
       "slug": "malvern-hill-5k",
       "name": "Malvern Hill, 5 km",
       "race_distance": "5k",
+      "course_shape": "loop",
       "laps": 1,
       "surface": "trail",
       "osm_ways": [
@@ -72,6 +74,7 @@
       "slug": "malvern-hill-10k",
       "name": "Malvern Hill, 10 km (2 laps)",
       "race_distance": "10k",
+      "course_shape": "loop",
       "laps": 2,
       "surface": "trail",
       "osm_ways": [

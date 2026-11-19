@@ -14,8 +14,8 @@ Builds things.
 <!-- Part of #999 is template guidance and never counts. -->
 Fixes #12
 Part of #34
-- [x] Half, point to point: Four Mile Creek to Herring Creek
-- Marathon,   out and back
+- [x] Export a run: CSV and GPX
+- Import   from a file
 Part of #56
 
 ## Changes
@@ -27,7 +27,7 @@ test('parseIssuesSection reads Fixes and Part of, with the items under each, and
 	assert.deepEqual(parseIssuesSection(BODY), {
 		fixes: [12],
 		parts: [
-			{ issue: 34, items: ['Half, point to point: Four Mile Creek to Herring Creek', 'Marathon, out and back'] },
+			{ issue: 34, items: ['Export a run: CSV and GPX', 'Import from a file'] },
 			{ issue: 56, items: [] },
 		],
 	});
@@ -39,15 +39,15 @@ test('parseIssuesSection finds nothing in a body without the section', () => {
 });
 
 test('tickItems ticks matching checkboxes, keeps ticked ones, and reports the missing', () => {
-	const issue = '- [ ] Half, point to point:  Four Mile Creek to Herring Creek\n  * [x] Marathon, out and back\n- [ ] 5K\n';
-	const r = tickItems(issue, ['Half, point to point: Four Mile Creek to Herring Creek', 'Marathon, out and back', '10K']);
-	assert.equal(r.body, '- [x] Half, point to point:  Four Mile Creek to Herring Creek\n  * [x] Marathon, out and back\n- [ ] 5K\n');
-	assert.deepEqual(r.ticked, ['Half, point to point: Four Mile Creek to Herring Creek', 'Marathon, out and back']);
+	const issue = '- [ ] Export a run:  CSV and GPX\n  * [x] Import from a file\n- [ ] 5K\n';
+	const r = tickItems(issue, ['Export a run: CSV and GPX', 'Import from a file', '10K']);
+	assert.equal(r.body, '- [x] Export a run:  CSV and GPX\n  * [x] Import from a file\n- [ ] 5K\n');
+	assert.deepEqual(r.ticked, ['Export a run: CSV and GPX', 'Import from a file']);
 	assert.deepEqual(r.missing, ['10K']);
 });
 
 test('tickItems matches whole checkbox text, not a prefix', () => {
-	assert.deepEqual(tickItems('- [ ] 5K out and back\n', ['5K']).missing, ['5K']);
+	assert.deepEqual(tickItems('- [ ] 5K plan export\n', ['5K']).missing, ['5K']);
 });
 
 test('commentBody carries the marker and says what happened', () => {

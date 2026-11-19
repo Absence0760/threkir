@@ -12,6 +12,10 @@ declare global {
 		interface PageData {
 			session?: import('@supabase/supabase-js').Session | null;
 		}
+		interface PageState {
+			/// The back target a page saved for this history entry (`referrer_back.svelte.ts`).
+			back?: { target: import('#lib/util/back_target.ts').BackTarget; pop: boolean };
+		}
 		// interface Platform {}
 	}
 }

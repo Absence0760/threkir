@@ -21,6 +21,7 @@
 		mapBoxInk,
 		mapStartZoneColour,
 		MAP_ARROW_INK,
+		MAP_CONTROL_INK,
 		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
@@ -382,6 +383,7 @@
 				icon.className = 'material-symbols';
 				icon.setAttribute('aria-hidden', 'true');
 				icon.textContent = 'zoom_out_map';
+				icon.style.color = MAP_CONTROL_INK;
 				button.appendChild(icon);
 				button.addEventListener('click', run);
 				group.appendChild(button);

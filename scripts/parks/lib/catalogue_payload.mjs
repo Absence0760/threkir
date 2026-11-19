@@ -242,7 +242,7 @@ function raceShape(entry) {
 	}
 	check(entry.laps == null, `${entry.slug}: a ${entry.course_shape} race course has no laps`);
 	if (entry.course_shape === 'out_and_back') {
-		return { laps: null, description: `Measures exactly ${words}: out along the trail to the halfway checkpoint and back to the start.` };
+		return { laps: null, description: `Measures exactly ${words}: out along the trail to the turnaround and back to the start.` };
 	}
 	check(entry.course_shape === 'point_to_point', `${entry.slug}: course_shape ${entry.course_shape} is not one of ${COURSE_SHAPES.join(', ')}`);
 	return { laps: null, description: `Measures exactly ${words}: one way along the trail, from the start line to a separate finish line.` };

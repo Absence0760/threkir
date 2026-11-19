@@ -375,7 +375,7 @@ test('a linear race course keeps its shape, carries no laps, and says how it run
 		files(oabLine),
 	).courses[1];
 	assert.deepEqual([oab.course_shape, oab.laps], ['out_and_back', null]);
-	assert.equal(oab.description, 'Measures exactly 5 km: out along the trail to the halfway checkpoint and back to the start.');
+	assert.equal(oab.description, 'Measures exactly 5 km: out along the trail to the turnaround and back to the start.');
 	assert.throws(
 		() => cataloguePayload(manifest({ race_courses: [race({ course_shape: 'point_to_point', laps: 2 })] }), files(p2pLine)),
 		/a point_to_point race course has no laps/,

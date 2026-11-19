@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import {
 	courseDistanceLabel,
 	courseDistanceParts,
+	courseDisplayName,
 	courseDistanceRange,
 	courseLapsChip,
 	courseShapeShown,
@@ -137,4 +138,20 @@ test('courseLapsChip: a chip only for two laps or more', () => {
 	assert.equal(courseLapsChip(2), 2);
 	assert.equal(courseLapsChip(4), 4);
 	assert.equal(courseLapsChip(2.5), null);
+});
+
+test('courseDisplayName: drops the distance and laps the chips already state', () => {
+	assert.equal(courseDisplayName('Swift Creek Loop, 10 km (2 laps)'), 'Swift Creek Loop');
+	assert.equal(courseDisplayName('Swift Creek Loop, 5 km'), 'Swift Creek Loop');
+	assert.equal(courseDisplayName('Deep Run Park, 3.1 mi'), 'Deep Run Park');
+	assert.equal(courseDisplayName('Lake loop, 5k'), 'Lake loop');
+	assert.equal(courseDisplayName('Swift Creek Forest Loop, marathon distance (2 laps)'), 'Swift Creek Forest Loop, marathon distance');
+	assert.equal(courseDisplayName(' Beaver Lake Trail '), 'Beaver Lake Trail');
+});
+
+test('courseDisplayName: keeps a name that is only a distance, and mid-name numbers', () => {
+	assert.equal(courseDisplayName('10 km'), '10 km');
+	assert.equal(courseDisplayName(', 5 km'), ', 5 km');
+	assert.equal(courseDisplayName('Route 66 Trail'), 'Route 66 Trail');
+	assert.equal(courseDisplayName('Loop, 5 km, north side'), 'Loop, 5 km, north side');
 });

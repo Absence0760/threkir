@@ -131,3 +131,22 @@ bool courseShapeShown(String? shape) =>
 
 /// The laps a chip names, or null when there is no chip (one lap or unknown).
 int? courseLapsChip(int? laps) => laps != null && laps > 1 ? laps : null;
+
+final RegExp _lapsSuffix =
+    RegExp(r'\s*\(\s*\d+\s+laps?\s*\)\s*$', caseSensitive: false);
+final RegExp _distanceSuffix =
+    RegExp(r'\s*,\s*\d+(?:[.,]\d+)?\s*(?:km|mi|k)\s*$', caseSensitive: false);
+
+/// A course's name as a list card shows it, beside the distance and laps it
+/// already states: the stored name without a trailing "(2 laps)" or ", 10 km"
+/// that would say them a second time. "Swift Creek Loop, 10 km (2 laps)"
+/// reads "Swift Creek Loop"; words that are the name ("half-marathon
+/// distance") stay. The stored name is untouched, and never comes back empty.
+String courseDisplayName(String name) {
+  final trimmed = name.trim();
+  final shown = trimmed
+      .replaceFirst(_lapsSuffix, '')
+      .replaceFirst(_distanceSuffix, '')
+      .trim();
+  return shown.isEmpty ? trimmed : shown;
+}

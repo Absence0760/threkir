@@ -108,3 +108,19 @@ export function courseShapeShown(shape: string | null | undefined): boolean {
 export function courseLapsChip(laps: number | null | undefined): number | null {
 	return typeof laps === 'number' && Number.isInteger(laps) && laps > 1 ? laps : null;
 }
+
+const LAPS_SUFFIX = /\s*\(\s*\d+\s+laps?\s*\)\s*$/i;
+const DISTANCE_SUFFIX = /\s*,\s*\d+(?:[.,]\d+)?\s*(?:km|mi|k)\s*$/i;
+
+/**
+ * A course's name as a list card shows it, beside the distance and laps it
+ * already states: the stored name without a trailing "(2 laps)" or ", 10 km"
+ * that would say them a second time. "Swift Creek Loop, 10 km (2 laps)"
+ * reads "Swift Creek Loop"; words that are the name ("half-marathon
+ * distance") stay. The stored name is untouched, and never comes back empty.
+ */
+export function courseDisplayName(name: string): string {
+	const trimmed = name.trim();
+	const shown = trimmed.replace(LAPS_SUFFIX, '').replace(DISTANCE_SUFFIX, '').trim();
+	return shown || trimmed;
+}

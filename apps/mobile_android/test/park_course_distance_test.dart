@@ -153,4 +153,27 @@ void main() {
     expect(courseLapsChip(2), 2);
     expect(courseLapsChip(4), 4);
   });
+
+  test('courseDisplayName: drops the distance and laps the chips already state',
+      () {
+    expect(courseDisplayName('Swift Creek Loop, 10 km (2 laps)'),
+        'Swift Creek Loop');
+    expect(courseDisplayName('Swift Creek Loop, 5 km'), 'Swift Creek Loop');
+    expect(courseDisplayName('Deep Run Park, 3.1 mi'), 'Deep Run Park');
+    expect(courseDisplayName('Lake loop, 5k'), 'Lake loop');
+    expect(
+        courseDisplayName('Swift Creek Forest Loop, marathon distance (2 laps)'),
+        'Swift Creek Forest Loop, marathon distance');
+    expect(courseDisplayName(' Beaver Lake Trail '), 'Beaver Lake Trail');
+  });
+
+  test(
+      'courseDisplayName: keeps a name that is only a distance, and mid-name numbers',
+      () {
+    expect(courseDisplayName('10 km'), '10 km');
+    expect(courseDisplayName(', 5 km'), ', 5 km');
+    expect(courseDisplayName('Route 66 Trail'), 'Route 66 Trail');
+    expect(courseDisplayName('Loop, 5 km, north side'),
+        'Loop, 5 km, north side');
+  });
 }

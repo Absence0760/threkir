@@ -11,7 +11,10 @@
 // the finish line (negative: short of it), at a steady pace with ±10 % per
 // fix, a fix every `everyS` seconds, and per-axis GPS error from a
 // first-order Gauss-Markov process (`noiseM` standard deviation, correlated
-// over 30 s, drawn from its stationary spread at the first fix).
+// over 30 s, drawn from its stationary spread at the first fix). Correlated on
+// purpose: independent noise on every fix zig-zags a 1 Hz track, inflates its
+// covered distance past the 25% length guard, and scores real runs as 0%.
+// Real GPS error drifts.
 
 import type { TrackPoint } from '../types';
 import type { GlobalSegmentGeometry } from '../segments/segments';

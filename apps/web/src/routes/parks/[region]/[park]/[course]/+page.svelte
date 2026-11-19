@@ -79,8 +79,13 @@
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
+	import { smartBack } from '#lib/util/smart_back.ts';
 
 	let { data } = $props();
+
+	// Back is always the course's park, showing this course; arriving from
+	// that park pops history so its list and preview come back as they were.
+	const back = smartBack((from) => from === `/parks/${data.region}/${data.park}`);
 
 	// The indexable home of a course is its share page, keyed by the same
 	// three slugs as this URL, so the canonical needs no data load.
@@ -376,17 +381,10 @@
 </svelte:head>
 
 <div class="page">
-	{#if park}
-		<a href="/parks/{data.region}/{park.slug}" class="back-link">
-			<span class="material-symbols" aria-hidden="true">arrow_back</span>
-			{park.name}
-		</a>
-	{:else}
-		<a href="/parks" class="back-link">
-			<span class="material-symbols" aria-hidden="true">arrow_back</span>
-			{m('parks.backToParks')}
-		</a>
-	{/if}
+	<a href="/parks/{data.region}/{data.park}?course={encodeURIComponent(data.course)}" class="back-link" onclick={back.handle} data-testid="park-course-back">
+		<span class="material-symbols" aria-hidden="true">arrow_back</span>
+		{park?.name ?? m('common.back')}
+	</a>
 
 	{#if loading}
 		<p class="loading">&nbsp;</p>

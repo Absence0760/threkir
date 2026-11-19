@@ -35262,7 +35262,7 @@ abstract class AppLocalizations {
   /// Park courses (#1313): web key parks.website.
   ///
   /// In en, this message translates to:
-  /// **'Park website'**
+  /// **'Website'**
   String get parksWebsite;
 
   /// Park courses (#1313): web key parks.noCourses.
@@ -35384,6 +35384,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shape'**
   String get parksStatShape;
+
+  /// Park courses (#1313): web key parks.statLaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Laps'**
+  String get parksStatLaps;
+
+  /// Park courses (#1313): web key parks.previewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a course to see where it goes and where to start.'**
+  String get parksPreviewHint;
+
+  /// Park courses (#1313): web key parks.openCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Open course'**
+  String get parksOpenCourse;
+
+  /// Park courses (#1313): web key parks.previewClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close preview'**
+  String get parksPreviewClose;
+
+  /// Park courses (#1313): web key parks.noTimesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No times here yet this season. Yours could be the first.'**
+  String get parksNoTimesYet;
 
   /// Park courses (#1313): web key parks.statSurface.
   ///

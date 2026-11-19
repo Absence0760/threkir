@@ -212,11 +212,12 @@ test.describe('races & courses', () => {
 		try {
 			planted = await plantCourse();
 			await page.goto(`/parks/us-ak/${planted.parkSlug}`);
-			const course = page.getByTestId('park-course-card').filter({ hasText: planted.courseName });
-			await expect(course.getByTestId('park-course-record')).toContainText(
-				'No time yet this season. Yours could be the first.',
+			await expect(page.getByTestId('park-no-times-yet')).toHaveText(
+				'No times here yet this season. Yours could be the first.',
 				{ timeout: 10_000 },
 			);
+			const course = page.getByTestId('park-course-card').filter({ hasText: planted.courseName });
+			await expect(course.getByTestId('park-course-record')).toHaveCount(0);
 		} finally {
 			await teardown(planted);
 		}

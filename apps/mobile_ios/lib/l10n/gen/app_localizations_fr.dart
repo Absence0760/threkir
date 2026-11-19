@@ -22668,7 +22668,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce parcours n\'est pas, ou plus, répertorié.';
 
   @override
-  String get parksWebsite => 'Site du parc';
+  String get parksWebsite => 'Site web';
 
   @override
   String get parksNoCourses =>
@@ -22733,6 +22733,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksStatShape => 'Forme';
+
+  @override
+  String get parksStatLaps => 'Tours';
+
+  @override
+  String get parksPreviewHint =>
+      'Choisissez un parcours pour voir son tracé et où il commence.';
+
+  @override
+  String get parksOpenCourse => 'Ouvrir le parcours';
+
+  @override
+  String get parksPreviewClose => 'Fermer l\'aperçu';
+
+  @override
+  String get parksNoTimesYet =>
+      'Aucun temps ici cette saison pour l\'instant. Le vôtre pourrait être le premier.';
 
   @override
   String get parksStatSurface => 'Revêtement';

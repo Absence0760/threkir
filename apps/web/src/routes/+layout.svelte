@@ -34,6 +34,10 @@
 	import { CONSENT_PATH, ONBOARDING_PATH, holdAppShell } from '#lib/core/post_auth_route.ts';
 	import { browserSessionStore, captureFirstTouch } from '#lib/core/signup_source.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+	import { trackDepartures } from '#lib/util/nav_departure.ts';
+
+	// Every in-app back link that names where the reader came from reads this.
+	trackDepartures();
 
 	// Warm the connection to the Supabase origin every page hits on
 	// mount (the auth-session check + all data fetches). A preconnect

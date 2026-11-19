@@ -22606,7 +22606,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este recorrido no aparece, o ya no aparece, en la lista.';
 
   @override
-  String get parksWebsite => 'Sitio web del parque';
+  String get parksWebsite => 'Sitio web';
 
   @override
   String get parksNoCourses => 'Todavía no hay recorridos en este parque.';
@@ -22670,6 +22670,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksStatShape => 'Forma';
+
+  @override
+  String get parksStatLaps => 'Vueltas';
+
+  @override
+  String get parksPreviewHint =>
+      'Elige un recorrido para ver por dónde va y dónde empieza.';
+
+  @override
+  String get parksOpenCourse => 'Abrir recorrido';
+
+  @override
+  String get parksPreviewClose => 'Cerrar vista previa';
+
+  @override
+  String get parksNoTimesYet =>
+      'Todavía no hay tiempos aquí esta temporada. El tuyo podría ser el primero.';
 
   @override
   String get parksStatSurface => 'Superficie';

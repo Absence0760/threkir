@@ -22612,7 +22612,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Diese Strecke ist nicht (mehr) aufgeführt.';
 
   @override
-  String get parksWebsite => 'Website des Parks';
+  String get parksWebsite => 'Website';
 
   @override
   String get parksNoCourses =>
@@ -22677,6 +22677,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksStatShape => 'Form';
+
+  @override
+  String get parksStatLaps => 'Runden';
+
+  @override
+  String get parksPreviewHint =>
+      'Wähle eine Strecke, um zu sehen, wo sie verläuft und wo sie beginnt.';
+
+  @override
+  String get parksOpenCourse => 'Strecke öffnen';
+
+  @override
+  String get parksPreviewClose => 'Vorschau schließen';
+
+  @override
+  String get parksNoTimesYet =>
+      'In dieser Saison hier noch keine Zeiten. Deine könnte die erste sein.';
 
   @override
   String get parksStatSurface => 'Untergrund';

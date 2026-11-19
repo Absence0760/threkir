@@ -22631,7 +22631,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Este percurso não está listado, ou já não está.';
 
   @override
-  String get parksWebsite => 'Site do parque';
+  String get parksWebsite => 'Site';
 
   @override
   String get parksNoCourses => 'Ainda não há percursos listados neste parque.';
@@ -22695,6 +22695,23 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksStatShape => 'Formato';
+
+  @override
+  String get parksStatLaps => 'Voltas';
+
+  @override
+  String get parksPreviewHint =>
+      'Escolha um percurso para ver por onde passa e onde começa.';
+
+  @override
+  String get parksOpenCourse => 'Abrir percurso';
+
+  @override
+  String get parksPreviewClose => 'Fechar pré-visualização';
+
+  @override
+  String get parksNoTimesYet =>
+      'Ainda não há tempos aqui nesta época. O seu pode ser o primeiro.';
 
   @override
   String get parksStatSurface => 'Piso';
@@ -46887,7 +46904,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Este percurso não está listado, ou não está mais.';
 
   @override
-  String get parksWebsite => 'Site do parque';
+  String get parksWebsite => 'Site';
 
   @override
   String get parksNoCourses => 'Ainda não há percursos listados neste parque.';
@@ -46951,6 +46968,23 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksStatShape => 'Formato';
+
+  @override
+  String get parksStatLaps => 'Voltas';
+
+  @override
+  String get parksPreviewHint =>
+      'Escolha um percurso para ver por onde ele passa e onde começa.';
+
+  @override
+  String get parksOpenCourse => 'Abrir percurso';
+
+  @override
+  String get parksPreviewClose => 'Fechar prévia';
+
+  @override
+  String get parksNoTimesYet =>
+      'Ainda não há tempos aqui nesta temporada. O seu pode ser o primeiro.';
 
   @override
   String get parksStatSurface => 'Piso';

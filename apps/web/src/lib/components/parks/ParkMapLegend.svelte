@@ -32,12 +32,12 @@
 		MAP_ARROW_INK,
 		MAP_ARROW_OUTLINE,
 		MAP_ZONE_FILL_OPACITY,
-		mapAccentColour,
 		mapFinishColour,
 		mapFinishZoneColour,
 		mapLabelHalo,
 		mapLabelInk,
 		mapOverlayOutline,
+		mapPinnedLine,
 		mapStartColour,
 		mapStartZoneColour,
 		mapTrackLine,
@@ -110,13 +110,16 @@
 				</svg>
 			{:else}
 				<svg viewBox="0 0 24 12" class="swatch wide" aria-hidden="true" focusable="false">
+					{#if item.kind === 'focusedLine'}
+						<line x1="2" y1="6" x2="22" y2="6" stroke={mapLabelHalo(dark)} stroke-width="8" stroke-linecap="round" />
+					{/if}
 					<line
 						x1="2"
 						y1="6"
 						x2="22"
 						y2="6"
-						stroke={item.kind === 'focusedLine' ? mapAccentColour(dark) : mapTrackLine(dark)}
-						stroke-width="4"
+						stroke={item.kind === 'focusedLine' ? mapPinnedLine(dark) : mapTrackLine(dark)}
+						stroke-width={item.kind === 'focusedLine' ? 5 : 3}
 						stroke-linecap="round"
 					/>
 				</svg>

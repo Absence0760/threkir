@@ -22381,7 +22381,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This course isn\'t listed, or isn\'t listed any more.';
 
   @override
-  String get parksWebsite => 'Park website';
+  String get parksWebsite => 'Website';
 
   @override
   String get parksNoCourses => 'No courses listed in this park yet.';
@@ -22445,6 +22445,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksStatShape => 'Shape';
+
+  @override
+  String get parksStatLaps => 'Laps';
+
+  @override
+  String get parksPreviewHint =>
+      'Pick a course to see where it goes and where to start.';
+
+  @override
+  String get parksOpenCourse => 'Open course';
+
+  @override
+  String get parksPreviewClose => 'Close preview';
+
+  @override
+  String get parksNoTimesYet =>
+      'No times here yet this season. Yours could be the first.';
 
   @override
   String get parksStatSurface => 'Surface';

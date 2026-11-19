@@ -108,3 +108,38 @@ export function courseShapeShown(shape: string | null | undefined): boolean {
 export function courseLapsChip(laps: number | null | undefined): number | null {
 	return typeof laps === 'number' && Number.isInteger(laps) && laps > 1 ? laps : null;
 }
+
+const LAPS_SUFFIX = /\s*\(\s*\d+\s+laps?\s*\)\s*$/i;
+const DISTANCE_SUFFIX =
+	/\s*,\s*(?:\d+(?:[.,]\d+)?\s*(?:km|mi|k)|(?:half-)?marathon distance)(?:\s+(?:out and back|point to point|loop))?\s*$/i;
+const SEPARATOR = /^[\s,:–—-]+/;
+
+/** `name` without a leading `parkName` ("Virginia Capital Trail, Four Mile Creek" reads "Four Mile Creek"). */
+function withoutPark(name: string, parkName: string): string {
+	const park = parkName.trim();
+	if (!park || name.length <= park.length || name.slice(0, park.length).toLowerCase() !== park.toLowerCase()) return name;
+	const rest = name.slice(park.length);
+	if (!SEPARATOR.test(rest)) return name;
+	return rest.replace(SEPARATOR, '').trim() || name;
+}
+
+const allUnique = (names: readonly string[]) => new Set(names).size === names.length;
+
+/**
+ * Every course name in a park as its cards show them, by one rule for the
+ * whole list. The park's own name is dropped from the front (the page title
+ * says it). Then, where the distance and laps the chips state can go from
+ * every name without two reading the same, they go from every name ("Swift
+ * Creek Loop, 10 km (2 laps)" reads "Swift Creek Loop"); else only the laps
+ * go, where that keeps them apart; else the names stay as stored. Never a
+ * mix, so a list never trims one card's ", 50 km" and keeps another's
+ * ", marathon distance". The stored names are untouched.
+ */
+export function courseDisplayNames(names: readonly string[], parkName = ''): string[] {
+	const base = names.map((n) => withoutPark(n.trim(), parkName));
+	const noLaps = base.map((n) => n.replace(LAPS_SUFFIX, '').trim() || n);
+	const bare = noLaps.map((n) => n.replace(DISTANCE_SUFFIX, '').trim() || n);
+	if (allUnique(bare)) return bare;
+	if (allUnique(noLaps)) return noLaps;
+	return base;
+}

@@ -177,7 +177,7 @@
   "race_courses": [
     {
       "slug": "capital-trail-four-mile-creek-5k",
-      "name": "Virginia Capital Trail, Four Mile Creek, 5 km out and back",
+      "name": "Four Mile Creek, 5 km",
       "race_distance": "5k",
       "course_shape": "out_and_back",
       "surface": "road",
@@ -205,7 +205,7 @@
     },
     {
       "slug": "capital-trail-four-mile-creek-10k",
-      "name": "Virginia Capital Trail, Four Mile Creek, 10 km out and back",
+      "name": "Four Mile Creek, 10 km",
       "race_distance": "10k",
       "course_shape": "out_and_back",
       "surface": "road",
@@ -237,7 +237,7 @@
     },
     {
       "slug": "capital-trail-four-mile-creek-half",
-      "name": "Virginia Capital Trail, Four Mile Creek, half-marathon distance out and back",
+      "name": "Four Mile Creek, half-marathon distance",
       "race_distance": "half",
       "course_shape": "out_and_back",
       "surface": "road",
@@ -279,7 +279,7 @@
     },
     {
       "slug": "capital-trail-four-mile-creek-marathon",
-      "name": "Virginia Capital Trail, Four Mile Creek, marathon distance out and back",
+      "name": "Four Mile Creek, marathon distance",
       "race_distance": "marathon",
       "course_shape": "out_and_back",
       "surface": "road",
@@ -330,7 +330,7 @@
     },
     {
       "slug": "capital-trail-four-mile-creek-to-herring-creek-half",
-      "name": "Virginia Capital Trail, Four Mile Creek to Herring Creek, half-marathon distance",
+      "name": "Four Mile Creek to Herring Creek, half-marathon distance",
       "race_distance": "half",
       "course_shape": "point_to_point",
       "surface": "road",
@@ -381,7 +381,7 @@
     },
     {
       "slug": "capital-trail-shiplock-marathon",
-      "name": "Virginia Capital Trail, Great Shiplock Park east, marathon distance",
+      "name": "Great Shiplock Park east, marathon distance",
       "race_distance": "marathon",
       "course_shape": "point_to_point",
       "surface": "road",
@@ -499,7 +499,7 @@
     },
     {
       "slug": "capital-trail-shiplock-50k",
-      "name": "Virginia Capital Trail, Great Shiplock Park east, 50 km",
+      "name": "Great Shiplock Park east, 50 km",
       "race_distance": "50k",
       "course_shape": "point_to_point",
       "surface": "road",
@@ -630,7 +630,7 @@
     },
     {
       "slug": "capital-trail-jamestown-marathon",
-      "name": "Virginia Capital Trail, marathon distance to Jamestown",
+      "name": "Herring Creek to Jamestown, marathon distance",
       "race_distance": "marathon",
       "course_shape": "point_to_point",
       "surface": "road",

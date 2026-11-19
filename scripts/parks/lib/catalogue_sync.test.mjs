@@ -59,7 +59,7 @@ test('park dirs are the region/park pairs holding a manifest, sorted', () => {
 test('the committed catalogue is found on disk', () => {
 	assert.deepEqual(
 		findParkDirs(CATALOGUE_ROOT).map((d) => path.relative(CATALOGUE_ROOT, d)),
-		[path.join('us-va', 'deep-run'), path.join('us-va', 'pocahontas'), path.join('us-va', 'virginia-capital-trail')],
+		[path.join('us-va', 'deep-run'), path.join('us-va', 'james-river-park'), path.join('us-va', 'malvern-hill'), path.join('us-va', 'pocahontas'), path.join('us-va', 'rockwood'), path.join('us-va', 'virginia-capital-trail')],
 	);
 });
 
@@ -98,14 +98,18 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the committed stage loads Pocahontas\'s six courses as the committed club and holds Deep Run Park staged', () => {
+test('the committed stage loads Pocahontas\'s six courses as the committed club and holds Deep Run Park and Malvern Hill staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until /);
+	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until .*; malvern-hill \(2 courses\): Held until /);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
 	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));
 	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-5k', 'staged')"));
+	assert.ok(!stage.sql.includes('"slug":"malvern-hill"'), 'Malvern Hill never reaches the load');
+	for (const slug of ['malvern-hill-5k', 'malvern-hill-10k']) {
+		assert.ok(stage.sql.includes(`('malvern-hill', '${slug}', 'staged')`), slug);
+	}
 	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
 	assert.ok(!stage.sql.includes('442e4798'), 'no owner id is committed or emitted');
 	for (const slug of ['beaver-lake-trail', 'swift-creek-5k', 'swift-creek-10k', 'swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k']) {

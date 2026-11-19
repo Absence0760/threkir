@@ -9,7 +9,9 @@ import test from 'node:test';
 
 import {
 	RACE_DISTANCES_M,
+	ROAD_CONNECTOR_MAX_M,
 	assertFootAccess,
+	assertRoadConnectors,
 	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
@@ -468,6 +470,32 @@ test('assertTrailReview returns the walked fords and refuses an unrecorded one',
 	assert.throws(() => assertTrailReview(square, ways, reviewed()), /way 11 is tagged ford=yes but trail_review does not list it/);
 	assert.deepEqual(assertTrailReview(square, ways, reviewed({ fords: [11] })), [11]);
 	assert.throws(() => assertTrailReview(square, ways, reviewed({ fords: [99] })), /ford\(s\) 99 that are not designated/);
+});
+
+test('assertTrailReview lets a course walk a road connector, and refuses one also designated', () => {
+	const review = reviewed({ designated: [10, 12], road_connectors: { 11: 'tour road between two trail pieces' } });
+	assert.deepEqual(assertTrailReview(square, loopWays, review), []);
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ road_connectors: { 11: 'tour road' } })),
+		/road_connectors lists way 11, which is also designated or refused/,
+	);
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ designated: [10, 12], road_connectors: { 11: ' ' } })),
+		/road_connectors way 11 needs a reason/,
+	);
+});
+
+test('assertRoadConnectors returns each road stretch and refuses one over the cap', () => {
+	const review = reviewed({ designated: [10, 12], road_connectors: { 11: 'tour road' } });
+	const runs = assertRoadConnectors(square, nodes, loopWays, review);
+	assert.equal(runs.length, 1);
+	const way11 = /** @type {any} */ (loopWays.find((w) => w.id === 11));
+	const expected = pathLengthM(toPoints(way11.nodes, nodes));
+	assert.ok(Math.abs(runs[0].lengthM - expected) < 1e-6);
+	assert.deepEqual(assertRoadConnectors(square, nodes, loopWays, reviewed()), []);
+	const far = Object.fromEntries(Object.entries(nodes).map(([id, n]) => [id, { ...n, lat: n.lat * 3, lon: n.lon * 3 }]));
+	assert.ok(expected * 3 > ROAD_CONNECTOR_MAX_M);
+	assert.throws(() => assertRoadConnectors(square, far, loopWays, review), /over the 250 m a connector may run/);
 });
 
 // A straight trail east along the equator, ~111.2 m a hop, split across two ways.

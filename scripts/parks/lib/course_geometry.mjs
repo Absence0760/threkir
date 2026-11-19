@@ -251,6 +251,7 @@ export function assertFootAccess(sequence, ways, footConfirmed = {}) {
  *   refused: Record<string, string>,
  *   fords?: number[],
  *   foot_confirmed?: Record<string, string>,
+ *   road_connectors?: Record<string, string>,
  * }} TrailReview
  */
 
@@ -281,6 +282,13 @@ export function assertTrailReview(sequence, ways, review) {
 		if (!designated.has(Number(id))) throw new Error(`trail_review foot_confirmed lists way ${id}, which is not designated`);
 		if (typeof reason !== 'string' || reason.trim() === '') throw new Error(`trail_review foot_confirmed way ${id} needs the land manager's word as its reason`);
 	}
+	const connectors = new Set(Object.keys(review.road_connectors ?? {}).map(Number));
+	for (const [id, reason] of Object.entries(review.road_connectors ?? {})) {
+		if (designated.has(Number(id)) || id in review.refused) {
+			throw new Error(`trail_review road_connectors lists way ${id}, which is also designated or refused`);
+		}
+		if (typeof reason !== 'string' || reason.trim() === '') throw new Error(`trail_review road_connectors way ${id} needs a reason`);
+	}
 
 	const walked = walkedWays(sequence, ways);
 	/** @type {string[]} */
@@ -288,13 +296,83 @@ export function assertTrailReview(sequence, ways, review) {
 	for (const way of walked) {
 		const reason = review.refused[String(way.id)];
 		if (reason !== undefined) problems.push(`way ${way.id} was refused on review (${reason})`);
-		else if (!designated.has(way.id)) problems.push(`way ${way.id} has not been checked against the land manager's trail map`);
+		else if (!designated.has(way.id) && !connectors.has(way.id)) problems.push(`way ${way.id} has not been checked against the land manager's trail map`);
 		else if (way.tags?.ford === 'yes' && !fords.has(way.id)) problems.push(`way ${way.id} is tagged ford=yes but trail_review does not list it as a ford`);
 	}
 	if (problems.length > 0) {
 		throw new Error(`${problems.join('; ')}; reroute it, or record the way in trail_review once it has been checked`);
 	}
 	return walked.filter((way) => fords.has(way.id)).map((way) => way.id);
+}
+
+/**
+ * The longest stretch of road a course may follow in one go. A road connector
+ * joins two pieces of trail that OSM (or the ground) leaves apart at a road,
+ * such as a battlefield's tour road between trail sections; a longer stretch
+ * is a road run, not a trail course.
+ */
+export const ROAD_CONNECTOR_MAX_M = 250;
+
+/**
+ * Each stretch of a traced sequence that runs along one of the park's
+ * `trail_review.road_connectors`, in course order: where it starts (metres
+ * along the sequence), how long it is, and the road's OSM name when it has
+ * one. Consecutive edges on connector ways are one stretch.
+ *
+ * @param {number[]} sequence
+ * @param {Record<string, SnapshotNode>} nodes
+ * @param {SnapshotWay[]} ways
+ * @param {Iterable<number>} connectorIds
+ * @returns {Array<{ fromM: number, lengthM: number, name: string | null }>}
+ */
+export function roadConnectorRuns(sequence, nodes, ways, connectorIds) {
+	const ids = new Set(connectorIds);
+	/** @type {Map<string, SnapshotWay>} */
+	const byEdge = new Map();
+	for (const way of ways) {
+		if (!ids.has(way.id)) continue;
+		for (let i = 1; i < way.nodes.length; i++) byEdge.set(edgeKey(way.nodes[i - 1], way.nodes[i]), way);
+	}
+	/** @type {Array<{ fromM: number, lengthM: number, name: string | null }>} */
+	const runs = [];
+	let walked = 0;
+	let open = false;
+	for (let i = 1; i < sequence.length; i++) {
+		const a = nodes[String(sequence[i - 1])];
+		const b = nodes[String(sequence[i])];
+		const step = haversineM({ lat: a.lat, lng: a.lon }, { lat: b.lat, lng: b.lon });
+		const road = byEdge.get(edgeKey(sequence[i - 1], sequence[i]));
+		if (road) {
+			const last = runs[runs.length - 1];
+			if (open && last) last.lengthM += step;
+			else runs.push({ fromM: walked, lengthM: step, name: road.tags?.name?.trim() || null });
+		}
+		open = road !== undefined;
+		walked += step;
+	}
+	return runs;
+}
+
+/**
+ * Refuse a course that follows a road connector for more than
+ * `ROAD_CONNECTOR_MAX_M` in one go. Returns the stretches, for the guide.
+ *
+ * @param {number[]} sequence
+ * @param {Record<string, SnapshotNode>} nodes
+ * @param {SnapshotWay[]} ways
+ * @param {TrailReview | undefined} review
+ */
+export function assertRoadConnectors(sequence, nodes, ways, review) {
+	const runs = roadConnectorRuns(sequence, nodes, ways, Object.keys(review?.road_connectors ?? {}).map(Number));
+	const long = runs.filter((r) => r.lengthM > ROAD_CONNECTOR_MAX_M);
+	if (long.length > 0) {
+		throw new Error(
+			`the course follows a road connector for ${long
+				.map((r) => `${Math.round(r.lengthM)} m at ${Math.round(r.fromM)} m`)
+				.join(', ')}, over the ${ROAD_CONNECTOR_MAX_M} m a connector may run; find a trail instead`,
+		);
+	}
+	return runs;
 }
 
 /**

@@ -33,6 +33,7 @@ import {
 	RACE_COURSE_SHAPES,
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertRoadConnectors,
 	assertTrailReview,
 	curatedGates,
 	distanceDeviation,
@@ -91,6 +92,7 @@ export function buildPark(dir) {
 		});
 		footAccessOrThrow(course.slug, sequence, ways, spec.trail_review);
 		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
+		roadConnectorsOrThrow(course.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -118,6 +120,7 @@ export function buildPark(dir) {
 			checkpointAtM,
 			laps: null,
 			water: snapshot.water,
+			roadConnectors: roadConnectorIds(spec.trail_review),
 		});
 
 		const geojson = {
@@ -193,6 +196,7 @@ export function buildPark(dir) {
 		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
 		footAccessOrThrow(race.slug, sequence, ways, spec.trail_review);
 		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
+		roadConnectorsOrThrow(race.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
@@ -216,6 +220,7 @@ export function buildPark(dir) {
 			checkpointAtM,
 			laps: { count: race.laps, firstStartM: leadInM, lapM },
 			water: snapshot.water,
+			roadConnectors: roadConnectorIds(spec.trail_review),
 		});
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
@@ -334,6 +339,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 	}
 	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
 	const fords = trailReviewOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
+	roadConnectorsOrThrow(race.slug, cut.sequence, cut.nodes, cut.ways, spec.trail_review);
 	const raw = toPoints(cut.sequence, cut.nodes);
 	const lengthM = pathLengthM(raw);
 	if (Math.abs(lengthM - targetM) > 0.5) throw new Error(`${race.slug}: built ${lengthM.toFixed(1)} m, not ${targetM} m`);
@@ -360,6 +366,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 		laps: null,
 		loop: false,
 		water: snapshot.water,
+		roadConnectors: roadConnectorIds(spec.trail_review),
 	});
 	const start = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 	const last = waypoints[waypoints.length - 1];
@@ -448,6 +455,26 @@ function trailReviewOrThrow(slug, sequence, ways, review) {
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {Record<string, import('./lib/course_geometry.mjs').SnapshotNode>} nodes
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
+ */
+function roadConnectorsOrThrow(slug, sequence, nodes, ways, review) {
+	try {
+		assertRoadConnectors(sequence, nodes, ways, review);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/** @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review */
+function roadConnectorIds(review) {
+	return Object.keys(review?.road_connectors ?? {}).map(Number);
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

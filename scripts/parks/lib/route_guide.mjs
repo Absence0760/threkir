@@ -1,7 +1,8 @@
 // The route guide of a park course (issue #1344, decisions § 2448): an ordered
 // list of structured steps a newcomer can follow, derived from what the
 // pipeline already holds — the OSM ways in course order and their names, the
-// junctions where the named trail changes, the bridges and fords, the surface,
+// junctions where the named trail changes, the bridges and fords, the
+// stretches of road that join two pieces of trail, the surface,
 // the climbs in the elevation profile, the checkpoints and the laps.
 //
 // Steps are data, not prose: every client renders them through its own i18n
@@ -13,7 +14,7 @@
 // Pure and deterministic, like the rest of `lib/`; `build.mjs` writes the
 // result into `manifest.json` and `--check` compares it.
 
-import { haversineM } from './course_geometry.mjs';
+import { haversineM, roadConnectorRuns } from './course_geometry.mjs';
 
 /** @typedef {import('./course_geometry.mjs').SnapshotNode} SnapshotNode */
 /** @typedef {import('./course_geometry.mjs').SnapshotWay} SnapshotWay */
@@ -25,6 +26,7 @@ export const STEP_KINDS = Object.freeze([
 	'direction',
 	'lap',
 	'junction',
+	'road',
 	'crossing',
 	'surface',
 	'climb',
@@ -306,6 +308,7 @@ function mergeShortRuns(runs, cum) {
  *   laps?: { count: number, firstStartM: number, lapM: number } | null,
  *   loop?: boolean,
  *   water?: Array<{ name?: string, ring: { lat: number, lon: number }[] }>,
+ *   roadConnectors?: number[],
  *   lang: string,
  *   gettingThere?: string | null,
  * }} GuideInput
@@ -316,7 +319,10 @@ function mergeShortRuns(runs, cum) {
  * the full path. Steps of laps 2..N repeat lap 1's, so only the lap marker
  * and the checkpoints are written for them. `loop` is false for a
  * point-to-point or out-and-back course, which has no way round to name, so
- * its guide carries no direction step.
+ * its guide carries no direction step. `roadConnectors` are the park's
+ * `trail_review.road_connectors` way ids: each stretch along one is a `road`
+ * step with its length, so the runner knows where they leave the trail and
+ * for how far.
  */
 
 /**
@@ -409,6 +415,15 @@ export function buildRouteGuide(input) {
 		crossings.push({ at: cum[i], crossing });
 	}
 	for (const c of crossings) raw.push({ kind: 'crossing', at: c.at, crossing: c.crossing });
+
+	for (const r of roadConnectorRuns(sequence, nodes, ways, input.roadConnectors ?? [])) {
+		raw.push({
+			kind: 'road',
+			at: r.fromM,
+			length_m: Math.max(1, Math.round(r.lengthM)),
+			...(r.name ? { name: r.name.slice(0, MAX_NAME_LENGTH) } : {}),
+		});
+	}
 
 	// An untagged way carries the surface before it (the first known one at
 	// the start); a stretch shorter than SURFACE_MIN_RUN_M joins the one before.
@@ -524,6 +539,7 @@ const STEP_FIELDS = Object.freeze({
 	direction: ['kind', 'at_m', 'rotation', 'keep_on', 'landmark'],
 	lap: ['kind', 'at_m', 'lap', 'of'],
 	junction: ['kind', 'at_m', 'turn', 'name', 'way'],
+	road: ['kind', 'at_m', 'length_m', 'name'],
 	crossing: ['kind', 'at_m', 'crossing'],
 	surface: ['kind', 'at_m', 'surface'],
 	climb: ['kind', 'at_m', 'gain_m', 'length_m'],
@@ -588,6 +604,9 @@ export function routeGuideRefusal(guide) {
 		if (s.kind === 'junction' && !TURNS.includes(s.turn)) return `${where} turn ${s.turn} is not one of ${TURNS.join(', ')}`;
 		if (s.kind === 'crossing' && !CROSSINGS.includes(s.crossing)) return `${where} crossing ${s.crossing} is not one of ${CROSSINGS.join(', ')}`;
 		if (s.kind === 'surface' && !SURFACES.includes(s.surface)) return `${where} surface ${s.surface} is not one of ${SURFACES.join(', ')}`;
+		if (s.kind === 'road' && !(isWhole(s.length_m) && s.length_m >= 1 && s.length_m <= 1_000_000)) {
+			return `${where} road needs a whole length_m`;
+		}
 		if (s.kind === 'climb' && !(isWhole(s.gain_m) && s.gain_m >= 1 && s.gain_m <= 10_000 && isWhole(s.length_m) && s.length_m >= 1 && s.length_m <= 1_000_000)) {
 			return `${where} climb needs whole gain_m and length_m`;
 		}

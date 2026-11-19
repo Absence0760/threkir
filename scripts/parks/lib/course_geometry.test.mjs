@@ -9,8 +9,10 @@ import test from 'node:test';
 
 import {
 	RACE_DISTANCES_M,
+	JOIN_MAX_M,
 	ROAD_CONNECTOR_MAX_M,
 	assertFootAccess,
+	joinWays,
 	assertRoadConnectors,
 	assertTrailReview,
 	distanceDeviation,
@@ -496,6 +498,33 @@ test('assertRoadConnectors returns each road stretch and refuses one over the ca
 	const far = Object.fromEntries(Object.entries(nodes).map(([id, n]) => [id, { ...n, lat: n.lat * 3, lon: n.lon * 3 }]));
 	assert.ok(expected * 3 > ROAD_CONNECTOR_MAX_M);
 	assert.throws(() => assertRoadConnectors(square, far, loopWays, review), /over the 250 m a connector may run/);
+});
+
+test('joinWays turns each trail_review join into a synthetic step and refuses a bad one', () => {
+	const near = { ...nodes, 7: { lat: 0, lon: 0.00002, ele: 10 } };
+	const [join] = joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'near-miss junction' }] }), near);
+	assert.equal(join.id, -1);
+	assert.equal(join.join, true);
+	assert.deepEqual(join.nodes, [1, 7]);
+	assert.ok(join.gapM > 2 && join.gapM < 3);
+	assert.deepEqual(joinWays(reviewed(), near), []);
+	const far = { ...nodes, 7: { lat: 0, lon: 0.0001, ele: 10 } };
+	assert.ok(haversineM({ lat: 0, lng: 0 }, { lat: 0, lng: 0.0001 }) > JOIN_MAX_M);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'x' }] }), far), /over the 10 m a join may close/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: ' ' }] }), near), /needs a reason/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 1], reason: 'x' }] }), near), /two different OSM node ids/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 99], reason: 'x' }] }), near), /node 99 is missing/);
+	assert.throws(
+		() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'x' }, { nodes: [7, 1], reason: 'y' }] }), near),
+		/joins 7-1 twice/,
+	);
+});
+
+test('assertTrailReview passes a join the line walks without listing it', () => {
+	const near = { ...nodes, 7: { lat: 0, lon: 0.00002, ele: 10 } };
+	const review = reviewed({ joins: [{ nodes: [1, 7], reason: 'near-miss junction' }] });
+	const ways = [...loopWays, ...joinWays(review, near)];
+	assert.deepEqual(assertTrailReview([7, 1, 2, 3, 4, 1, 7], ways, review), []);
 });
 
 // A straight trail east along the equator, ~111.2 m a hop, split across two ways.

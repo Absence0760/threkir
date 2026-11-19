@@ -2,7 +2,8 @@
 // list of structured steps a newcomer can follow, derived from what the
 // pipeline already holds — the OSM ways in course order and their names, the
 // junctions where the named trail changes, the bridges and fords, the
-// stretches of road that join two pieces of trail, the surface,
+// stretches of road that join two pieces of trail (a trail_review join across
+// a near-miss junction is no step: it is the same trail), the surface,
 // the climbs in the elevation profile, the checkpoints and the laps.
 //
 // Steps are data, not prose: every client renders them through its own i18n
@@ -369,6 +370,13 @@ export function buildRouteGuide(input) {
 		const named = candidates.filter((w) => w.tags?.name);
 		const pick = [...(named.length > 0 ? named : candidates)].sort((a, b) => a.id - b.id)[0] ?? null;
 		edgeWay.push(pick);
+	}
+	// A trail_review join closes a gap OSM leaves inside one trail, so it is
+	// read as the trail either side of it and never becomes a step of its own.
+	for (let i = 0; i < edgeWay.length; i++) {
+		if (!edgeWay[i]?.join) continue;
+		const before = i > 0 ? edgeWay[i - 1] : null;
+		edgeWay[i] = before ?? edgeWay.slice(i + 1).find((w) => !w?.join) ?? null;
 	}
 
 	/** @type {Run[]} */

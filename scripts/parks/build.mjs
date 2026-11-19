@@ -39,6 +39,7 @@ import {
 	distanceDeviation,
 	elevationGainM,
 	assertViaEndsAtTrailEnd,
+	joinWays,
 	lapCourse,
 	linearCourse,
 	pathLengthM,
@@ -50,6 +51,7 @@ import {
 	traceLoop,
 	traceVia,
 	trimToDistance,
+	walkedWays,
 } from './lib/course_geometry.mjs';
 import { SHARED_USES } from './lib/catalogue_payload.mjs';
 import { parseRelease } from './lib/catalogue_release.mjs';
@@ -74,6 +76,14 @@ export function buildPark(dir) {
 	/** @type {Map<string, string>} */
 	const outputs = new Map();
 	const courses = [];
+	/** @type {ReturnType<typeof joinWays>} */
+	let joins;
+	try {
+		joins = joinWays(spec.trail_review, snapshot.nodes);
+	} catch (err) {
+		throw new Error(`${spec.park?.slug}: ${/** @type {Error} */ (err).message}`);
+	}
+	const allWays = [...Object.values(snapshot.ways), ...joins];
 
 	for (const course of spec.courses) {
 		if (course.course_shape !== 'loop') {
@@ -83,7 +93,7 @@ export function buildPark(dir) {
 			const way = snapshot.ways[String(id)];
 			if (!way) throw new Error(`${course.slug}: way ${id} is not in the snapshot; re-run fetch_snapshot.mjs`);
 			return way;
-		});
+		}).concat(joins);
 		const sequence = traceLoop({
 			ways,
 			nodes: snapshot.nodes,
@@ -115,7 +125,7 @@ export function buildPark(dir) {
 			sequence,
 			nodes: snapshot.nodes,
 			ways,
-			allWays: Object.values(snapshot.ways),
+			allWays,
 			lengthM: distanceM,
 			checkpointAtM,
 			laps: null,
@@ -157,6 +167,7 @@ export function buildPark(dir) {
 			difficulty: course.difficulty,
 			...sharedUseOrThrow(course),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(sequence, ways),
 			geometry_source: 'osm',
 			source_ref: course.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -181,7 +192,7 @@ export function buildPark(dir) {
 			const way = snapshot.ways[String(id)];
 			if (!way) throw new Error(`${race.slug}: way ${id} is not in the snapshot; re-run fetch_snapshot.mjs`);
 			return way;
-		});
+		}).concat(joins);
 		if (!RACE_COURSE_SHAPES.includes(race.course_shape)) {
 			throw new Error(`${race.slug}: course_shape ${race.course_shape} is not one of ${RACE_COURSE_SHAPES.join(', ')}`);
 		}
@@ -214,7 +225,7 @@ export function buildPark(dir) {
 			sequence,
 			nodes: snapshot.nodes,
 			ways,
-			allWays: Object.values(snapshot.ways),
+			allWays,
 			offsetM: trimEachEndM,
 			lengthM: pathLengthM(raw),
 			checkpointAtM,
@@ -270,6 +281,7 @@ export function buildPark(dir) {
 			surface: race.surface,
 			...sharedUseOrThrow(race),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(sequence, ways),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -416,6 +428,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 			surface: race.surface,
 			...sharedUseOrThrow(race),
 			...(fords.length > 0 ? { fords } : {}),
+			...walkedJoins(cut.sequence, cut.ways),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -455,6 +468,24 @@ function trailReviewOrThrow(slug, sequence, ways, review) {
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}
+}
+
+/**
+ * The trail_review joins a course walks, each with its measured gap, for its
+ * manifest entry, so a reviewer sees every place the line crosses a gap OSM
+ * leaves.
+ *
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ */
+function walkedJoins(sequence, ways) {
+	const walked = walkedWays(sequence, ways).filter((w) => w.join);
+	if (walked.length === 0) return {};
+	return {
+		joins: walked
+			.map((w) => ({ nodes: w.nodes.filter((n) => n > 0), gap_m: Math.round(/** @type {any} */ (w).gapM * 10) / 10 }))
+			.sort((a, b) => a.nodes[0] - b.nodes[0]),
+	};
 }
 
 /**

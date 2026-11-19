@@ -46,6 +46,15 @@ test('tickItems ticks matching checkboxes, keeps ticked ones, and reports the mi
 	assert.deepEqual(r.missing, ['10K']);
 });
 
+test('tickItems ticks nothing for a line the checklist holds twice, and says so', () => {
+	const issue = '### Park A\n- [ ] 10K: 2 laps\n### Park B\n- [ ] 10K: 2 laps\n- [ ] Park B 5K\n';
+	const r = tickItems(issue, ['10K: 2 laps', 'Park B 5K']);
+	assert.equal(r.body, '### Park A\n- [ ] 10K: 2 laps\n### Park B\n- [ ] 10K: 2 laps\n- [x] Park B 5K\n');
+	assert.deepEqual(r.ambiguous, ['10K: 2 laps']);
+	assert.deepEqual(r.missing, []);
+	assert.match(commentBody({ pr: 7, state: 'merged', items: ['10K: 2 laps'], ...r }), /More than one checklist line/);
+});
+
 test('tickItems matches whole checkbox text, not a prefix', () => {
 	assert.deepEqual(tickItems('- [ ] 5K plan export\n', ['5K']).missing, ['5K']);
 });

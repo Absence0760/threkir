@@ -130,6 +130,9 @@ LatLng _gp(GatePoint p) => LatLng(p.lat, p.lng);
 /// start-coloured box a start and finish at one spot share), and a flag with
 /// the box's name at a fixed size, so the boxes read first at the
 /// whole-course zoom. Twin of web's `addCourseGateBoxLayers` and its markers.
+/// With [onTap] each name tag is a button, named by [tapLabel], that the map
+/// passes its box to ([GateWhich] null for the one box a start and finish
+/// share).
 List<Widget> courseGateBoxLayers({
   required Gate start,
   required Gate finish,
@@ -138,6 +141,8 @@ List<Widget> courseGateBoxLayers({
   required String finishLabel,
   required String bothLabel,
   required double centreLng,
+  void Function(GateWhich? which)? onTap,
+  String Function(GateWhich? which)? tapLabel,
 }) {
   final boxes = gateBoxParts(start, finish);
 
@@ -183,7 +188,8 @@ List<Widget> courseGateBoxLayers({
           Marker(
             point: _gp(mk.at),
             width: 190,
-            height: 34,
+            // A tag that is a button gets a 48 dp tall hit area around it.
+            height: onTap == null ? 34 : 48,
             alignment: mk.at.lng <= centreLng
                 ? Alignment.centerRight
                 : Alignment.centerLeft,
@@ -200,6 +206,8 @@ List<Widget> courseGateBoxLayers({
                   null => bothLabel,
                 },
                 darkBasemap: darkBasemap,
+                onTap: onTap == null ? null : () => onTap(mk.which),
+                tapLabel: tapLabel?.call(mk.which),
               ),
             ),
           ),
@@ -211,66 +219,92 @@ List<Widget> courseGateBoxLayers({
 /// A box's name tag, filled with the box's colour so it is the green or red
 /// box at the whole-course zoom: a flag for the start, a chequered flag for
 /// the finish, both flags (in the start colour, like the box) for a box they
-/// share. The map's key
-/// and the page's sentence name the boxes for a screen reader, so the tag is
-/// excluded. Twin of web's box tags in `RunMap`.
+/// share. Without [onTap] the map's key and the page's sentence name the
+/// boxes for a screen reader, so the tag is excluded; with it the tag is a
+/// button named [tapLabel] that takes the map to its box. Twin of web's box
+/// tags in `RunMap`.
 class _BoxMarker extends StatelessWidget {
   final GateWhich? which;
   final String label;
   final bool darkBasemap;
+  final VoidCallback? onTap;
+  final String? tapLabel;
   const _BoxMarker({
     super.key,
     required this.which,
     required this.label,
     required this.darkBasemap,
+    this.onTap,
+    this.tapLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final ink = mapBoxInk(darkBasemap: darkBasemap);
-    // The tag has a fixed box on the map, so its text scales only so far.
-    return MediaQuery.withClampedTextScaling(
-      maxScaleFactor: 1.3,
-      child: ExcludeSemantics(
-        child: DecoratedBox(
-          // A pill on the map, not a card: a stadium shape.
-          decoration: ShapeDecoration(
-            color: which == GateWhich.finish
-                ? mapFinishZoneColour(darkBasemap: darkBasemap)
-                : mapStartZoneColour(darkBasemap: darkBasemap),
-            shape: StadiumBorder(
-              side: BorderSide(
-                width: 2,
-                color: mapOverlayOutline(darkBasemap: darkBasemap),
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 2, 10, 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (which != GateWhich.finish)
-                  Icon(Icons.flag_outlined, size: 18, color: ink),
-                if (which != GateWhich.start)
-                  Icon(Icons.sports_score, size: 18, color: ink),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(color: ink, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
+    final tag = ExcludeSemantics(
+      child: DecoratedBox(
+        // A pill on the map, not a card: a stadium shape.
+        decoration: ShapeDecoration(
+          color: which == GateWhich.finish
+              ? mapFinishZoneColour(darkBasemap: darkBasemap)
+              : mapStartZoneColour(darkBasemap: darkBasemap),
+          shape: StadiumBorder(
+            side: BorderSide(
+              width: 2,
+              color: mapOverlayOutline(darkBasemap: darkBasemap),
             ),
           ),
         ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 2, 10, 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (which != GateWhich.finish)
+                Icon(Icons.flag_outlined, size: 18, color: ink),
+              if (which != GateWhich.start)
+                Icon(Icons.sports_score, size: 18, color: ink),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(color: ink, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+    final tap = onTap;
+    // The tag has a fixed box on the map, so its text scales only so far.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: tap == null
+          ? tag
+          : Semantics(
+              button: true,
+              label: tapLabel,
+              // The tap is on the excluded InkWell, so the node carries it.
+              onTap: tap,
+              excludeSemantics: true,
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  onTap: tap,
+                  customBorder: const StadiumBorder(),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Align(widthFactor: 1, child: tag),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -405,8 +439,9 @@ class _Chevron extends StatelessWidget {
 /// start and finish (one marker when they share a place) and its numbered
 /// checkpoints. Pair it with [ParkCourseMapLegend], which names each mark.
 /// It does not pan or pinch, because it sits inside the course page's scroll
-/// view; the buttons under it take it to the start, the finish (one button
-/// where they share a box) and back to the whole course ([courseJumps]).
+/// view; instead the start and finish tags (one where they share a box) take
+/// it to their box, and an icon button in its corner back to the whole course
+/// ([courseJumps]). The key's entries jump through [ParkCourseMapState.jumpTo].
 class ParkCourseMap extends StatefulWidget {
   final List<Waypoint> line;
   final List<CourseCheckpoint> checkpoints;
@@ -456,6 +491,20 @@ class ParkCourseMapState extends State<ParkCourseMap>
     _move.dispose();
     _map.dispose();
     super.dispose();
+  }
+
+  List<CourseJump> _jumps() => courseJumps(
+        gates: widget.zones,
+        line: [for (final w in widget.line) GatePoint(w.lat, w.lng)],
+        endsShared: courseEndsShared(widget.line),
+      );
+
+  /// Move the map to [target], as its tags and controls do: what the map's
+  /// key calls when one of its start or finish entries is tapped.
+  void jumpTo(CourseJumpTarget target) {
+    for (final j in _jumps()) {
+      if (j.target == target) return _jumpTo(j);
+    }
   }
 
   /// Fit the camera to [jump]'s bounds, never closer than [kCourseJumpMaxZoom]
@@ -515,13 +564,9 @@ class ParkCourseMapState extends State<ParkCourseMap>
       line: [for (final w in line) (lat: w.lat, lng: w.lng)],
       shape: widget.shape,
     );
-    final jumps = courseJumps(
-      gates: zones,
-      line: [for (final w in line) GatePoint(w.lat, w.lng)],
-      endsShared: shared,
-    );
+    final jumps = _jumps();
     // semantics-children: the map's credit line keeps its own node
-    final map = Semantics(
+    return Semantics(
       container: true,
       label: l10n.parksMapCourseLabel(checkpoints.length),
       child: ClipRRect(
@@ -600,6 +645,16 @@ class ParkCourseMapState extends State<ParkCourseMap>
                     startLabel: l10n.parksLegendStart,
                     finishLabel: l10n.parksLegendFinish,
                     bothLabel: l10n.parksLegendStartFinish,
+                    onTap: (which) => jumpTo(switch (which) {
+                      GateWhich.start => CourseJumpTarget.start,
+                      GateWhich.finish => CourseJumpTarget.finish,
+                      null => CourseJumpTarget.startFinish,
+                    }),
+                    tapLabel: (which) => switch (which) {
+                      GateWhich.start => l10n.parksMapJumpStart,
+                      GateWhich.finish => l10n.parksMapJumpFinish,
+                      null => l10n.parksMapJumpStartFinish,
+                    },
                     centreLng: (pts.map((p) => p.longitude).reduce(math.min) +
                             pts.map((p) => p.longitude).reduce(math.max)) /
                         2,
@@ -633,117 +688,32 @@ class ParkCourseMapState extends State<ParkCourseMap>
                       ),
                     ],
                   ),
+                if (jumps.isNotEmpty)
+                  Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: IconButton.filledTonal(
+                        key: const ValueKey('park-course-jump-course'),
+                        tooltip: l10n.parksMapJumpWholeCourse,
+                        onPressed: () => jumpTo(CourseJumpTarget.course),
+                        icon: const Icon(Icons.zoom_out_map),
+                      ),
+                    ),
+                  ),
                 MapAttribution(darkBasemap: darkBasemap),
               ],
             ),
           ),
       ),
     );
-    if (jumps.isEmpty) return map;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        map,
-        const SizedBox(height: 8),
-        _CourseJumpButtons(
-          jumps: jumps,
-          darkBasemap: darkBasemap,
-          onJump: _jumpTo,
-        ),
-      ],
-    );
-  }
-}
-
-/// The row of buttons under a [ParkCourseMap]: a caption, then Start and
-/// Finish (or one Start and finish) and Whole course, each an icon and a
-/// word. The start and finish icons sit on their boxes' colours, as the boxes
-/// on the map do; the word carries the meaning.
-class _CourseJumpButtons extends StatelessWidget {
-  const _CourseJumpButtons({
-    required this.jumps,
-    required this.darkBasemap,
-    required this.onJump,
-  });
-
-  final List<CourseJump> jumps;
-  final bool darkBasemap;
-  final void Function(CourseJump) onJump;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    String label(CourseJumpTarget t) => switch (t) {
-          CourseJumpTarget.start => l10n.parksLegendStart,
-          CourseJumpTarget.finish => l10n.parksLegendFinish,
-          CourseJumpTarget.startFinish => l10n.parksLegendStartFinish,
-          CourseJumpTarget.course => l10n.parksMapJumpCourse,
-        };
-    Widget icon(CourseJumpTarget t) {
-      final glyph = switch (t) {
-        CourseJumpTarget.start => Icons.play_arrow,
-        CourseJumpTarget.finish ||
-        CourseJumpTarget.startFinish =>
-          Icons.flag_outlined,
-        CourseJumpTarget.course => Icons.route,
-      };
-      final fill = switch (t) {
-        CourseJumpTarget.start ||
-        CourseJumpTarget.startFinish =>
-          mapStartZoneColour(darkBasemap: darkBasemap),
-        CourseJumpTarget.finish =>
-          mapFinishZoneColour(darkBasemap: darkBasemap),
-        CourseJumpTarget.course => null,
-      };
-      if (fill == null) return const Icon(Icons.route, size: 20);
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: fill,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: Icon(glyph,
-              size: 18, color: mapBoxInk(darkBasemap: darkBasemap)),
-        ),
-      );
-    }
-
-    return Semantics(
-      container: true,
-      label: l10n.parksMapJumpLabel,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          ExcludeSemantics(
-            child: Text(
-              l10n.parksMapJumpLabel,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ),
-          for (final j in jumps)
-            OutlinedButton.icon(
-              key: ValueKey('park-course-jump-${j.target.name}'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(48, 48),
-              ),
-              onPressed: () => onJump(j),
-              icon: icon(j.target),
-              label: Text(label(j.target)),
-            ),
-        ],
-      ),
-    );
   }
 }
 
 /// The key under a [ParkCourseMap]: one row per kind of mark the map draws,
-/// each read by a screen reader as its own item.
+/// each read by a screen reader as its own item. With [onJump] the start and
+/// finish rows are buttons that take the map there, each padded to a 48 dp
+/// hit area without a bigger look.
 class ParkCourseMapLegend extends StatelessWidget {
   final List<Waypoint> line;
 
@@ -757,12 +727,16 @@ class ParkCourseMapLegend extends StatelessWidget {
   /// of the pins; null for none.
   final ({Gate start, Gate finish})? zones;
 
+  /// Moves the map to a start or finish; null leaves the key as labels only.
+  final void Function(CourseJumpTarget target)? onJump;
+
   const ParkCourseMapLegend({
     super.key,
     required this.line,
     required this.checkpointCount,
     this.hasTurn = false,
     this.zones,
+    this.onJump,
   });
 
   @override
@@ -772,21 +746,46 @@ class ParkCourseMapLegend extends StatelessWidget {
     final ends = _endPalette(darkBasemap);
     final ring = mapOverlayOutline(darkBasemap: darkBasemap);
     final shared = courseEndsShared(line);
-    Widget item(Key key, Widget mark, String label) => MergeSemantics(
-          key: key,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ExcludeSemantics(
-                child: SizedBox.square(dimension: 22, child: mark),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-              ),
-            ],
-          ),
+    Widget row(Widget mark, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ExcludeSemantics(
+              child: SizedBox.square(dimension: 22, child: mark),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
         );
+    Widget item(Key key, Widget mark, String label, [CourseJumpTarget? jump]) {
+      final onJump = this.onJump;
+      if (jump == null || onJump == null) {
+        return MergeSemantics(key: key, child: row(mark, label));
+      }
+      return Semantics(
+        key: key,
+        button: true,
+        label: switch (jump) {
+          CourseJumpTarget.start => l10n.parksMapJumpStart,
+          CourseJumpTarget.finish => l10n.parksMapJumpFinish,
+          CourseJumpTarget.startFinish ||
+          CourseJumpTarget.course =>
+            l10n.parksMapJumpStartFinish,
+        },
+        onTap: () => onJump(jump),
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: () => onJump(jump),
+          borderRadius: BorderRadius.circular(4),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Align(widthFactor: 1, child: row(mark, label)),
+          ),
+        ),
+      );
+    }
+
     // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
@@ -803,17 +802,20 @@ class ParkCourseMapLegend extends StatelessWidget {
                 const Key('park-course-legend-start-finish-box'),
                 _BoxSwatch(darkBasemap: darkBasemap, which: null),
                 l10n.parksLegendStartFinish,
+                CourseJumpTarget.startFinish,
               )
             else ...[
               item(
                 const Key('park-course-legend-start-box'),
                 _BoxSwatch(darkBasemap: darkBasemap, which: GateWhich.start),
                 l10n.parksLegendStart,
+                CourseJumpTarget.start,
               ),
               item(
                 const Key('park-course-legend-finish-box'),
                 _BoxSwatch(darkBasemap: darkBasemap, which: GateWhich.finish),
                 l10n.parksLegendFinish,
+                CourseJumpTarget.finish,
               ),
             ]
           else if (shared)
@@ -826,6 +828,7 @@ class ParkCourseMapLegend extends StatelessWidget {
                 ring: ring,
               ),
               l10n.parksLegendStartFinish,
+              CourseJumpTarget.startFinish,
             )
           else ...[
             item(
@@ -837,6 +840,7 @@ class ParkCourseMapLegend extends StatelessWidget {
                 ring: ring,
               ),
               l10n.parksLegendStart,
+              CourseJumpTarget.start,
             ),
             item(
               const Key('park-course-legend-finish'),
@@ -847,6 +851,7 @@ class ParkCourseMapLegend extends StatelessWidget {
                 ring: ring,
               ),
               l10n.parksLegendFinish,
+              CourseJumpTarget.finish,
             ),
           ],
           if (checkpointCount > 0)

@@ -22909,10 +22909,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksLegendStartFinish => 'Départ et arrivée';
 
   @override
-  String get parksMapJumpLabel => 'Voir sur la carte';
+  String get parksMapJumpStart => 'Afficher le départ sur la carte';
 
   @override
-  String get parksMapJumpCourse => 'Parcours entier';
+  String get parksMapJumpFinish => 'Afficher l\'arrivée sur la carte';
+
+  @override
+  String get parksMapJumpStartFinish =>
+      'Afficher le départ et l\'arrivée sur la carte';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Afficher le parcours entier';
 
   @override
   String get parksEndsTitle => 'Points de départ et d\'arrivée';

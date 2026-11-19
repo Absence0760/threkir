@@ -21275,10 +21275,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksLegendStartFinish => 'スタート・フィニッシュ';
 
   @override
-  String get parksMapJumpLabel => '地図で表示';
+  String get parksMapJumpStart => 'スタートを地図で表示';
 
   @override
-  String get parksMapJumpCourse => 'コース全体';
+  String get parksMapJumpFinish => 'フィニッシュを地図で表示';
+
+  @override
+  String get parksMapJumpStartFinish => 'スタート兼フィニッシュを地図で表示';
+
+  @override
+  String get parksMapJumpWholeCourse => 'コース全体を表示';
 
   @override
   String get parksEndsTitle => 'スタート・フィニッシュ地点';

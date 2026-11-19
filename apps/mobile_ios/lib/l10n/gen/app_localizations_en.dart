@@ -22618,10 +22618,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksLegendStartFinish => 'Start and finish';
 
   @override
-  String get parksMapJumpLabel => 'Show on the map';
+  String get parksMapJumpStart => 'Show the start on the map';
 
   @override
-  String get parksMapJumpCourse => 'Whole course';
+  String get parksMapJumpFinish => 'Show the finish on the map';
+
+  @override
+  String get parksMapJumpStartFinish => 'Show the start and finish on the map';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Show the whole course';
 
   @override
   String get parksEndsTitle => 'Start and finish points';

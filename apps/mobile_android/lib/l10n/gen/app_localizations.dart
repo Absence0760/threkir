@@ -35643,17 +35643,29 @@ abstract class AppLocalizations {
   /// **'Start and finish'**
   String get parksLegendStartFinish;
 
-  /// Caption over the buttons under a park course map that move the map to the start, the finish or the whole course.
+  /// Accessible name of the Start tag on a park course map and of the Start entry in its key: tapping either moves the map to the start box.
   ///
   /// In en, this message translates to:
-  /// **'Show on the map'**
-  String get parksMapJumpLabel;
+  /// **'Show the start on the map'**
+  String get parksMapJumpStart;
 
-  /// Button under a park course map: zoom the map back out to show the whole course.
+  /// Accessible name of the Finish tag on a park course map and of the Finish entry in its key: tapping either moves the map to the finish box.
   ///
   /// In en, this message translates to:
-  /// **'Whole course'**
-  String get parksMapJumpCourse;
+  /// **'Show the finish on the map'**
+  String get parksMapJumpFinish;
+
+  /// Accessible name of the one Start and finish tag on a park course map (and its key entry) where the start and finish share a box: tapping it moves the map there.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the start and finish on the map'**
+  String get parksMapJumpStartFinish;
+
+  /// Name and tooltip of the icon button in a park course map's controls that zooms the map back out to the whole course.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the whole course'**
+  String get parksMapJumpWholeCourse;
 
   /// Heading of the block on a course page that gives the start and finish as coordinates to copy or open in a maps app.
   ///

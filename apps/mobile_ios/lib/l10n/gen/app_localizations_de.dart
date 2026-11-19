@@ -22854,10 +22854,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksLegendStartFinish => 'Start und Ziel';
 
   @override
-  String get parksMapJumpLabel => 'Auf der Karte zeigen';
+  String get parksMapJumpStart => 'Start auf der Karte zeigen';
 
   @override
-  String get parksMapJumpCourse => 'Ganze Strecke';
+  String get parksMapJumpFinish => 'Ziel auf der Karte zeigen';
+
+  @override
+  String get parksMapJumpStartFinish => 'Start und Ziel auf der Karte zeigen';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Ganze Strecke zeigen';
 
   @override
   String get parksEndsTitle => 'Start- und Zielpunkt';

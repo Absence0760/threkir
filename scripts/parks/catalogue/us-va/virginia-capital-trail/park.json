@@ -2,6 +2,7 @@
   "park": {
     "slug": "virginia-capital-trail",
     "name": "Virginia Capital Trail",
+    "kind": "trail",
     "agency": "other",
     "region_code": "US-VA",
     "country_code": "US",

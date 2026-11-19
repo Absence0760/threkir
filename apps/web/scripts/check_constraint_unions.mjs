@@ -828,6 +828,21 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'parks.kind',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_KINDS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kParkKinds', shape: 'strings' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'PARK_KINDS', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
+				decl: 'parkTypeLabel',
+				shape: 'switch',
+				// A park reads as its agency, which the `_` branch hands to agencyLabel.
+				allowMissing: ['park'],
+			},
+		],
+	},
+	{
 		tableColumn: 'payment_refunds.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'PaymentRefundStatus', shape: 'union' },

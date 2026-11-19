@@ -2,6 +2,7 @@
   "park": {
     "slug": "deep-run",
     "name": "Deep Run Park",
+    "kind": "park",
     "agency": "county",
     "region_code": "US-VA",
     "country_code": "US",

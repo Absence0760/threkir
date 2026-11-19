@@ -16,6 +16,8 @@ import { assertNoThirdPartyMarks } from './third_party_marks.mjs';
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'];
+/** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */
+export const PARK_KINDS = ['park', 'trail'];
 export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'];
 export const GEOMETRY_SOURCES = ['osm', 'nps', 'agency', 'traced'];
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'];
@@ -270,6 +272,7 @@ export function cataloguePayload(manifest, readGeojson) {
 	assertNoThirdPartyMarks(manifest, `${park.slug} manifest.json`);
 	check(typeof park.slug === 'string' && SLUG.test(park.slug) && park.slug.length <= 80, `park slug ${park.slug} is not a lower-case hyphenated slug`);
 	check(typeof park.name === 'string' && park.name.length >= 1 && park.name.length <= 120, 'park name must be 1-120 characters');
+	check(PARK_KINDS.includes(park.kind), `park kind ${park.kind} is not one of ${PARK_KINDS.join(', ')}`);
 	check(PARK_AGENCIES.includes(park.agency), `park agency ${park.agency} is not one of ${PARK_AGENCIES.join(', ')}`);
 	check(typeof park.region_code === 'string' && /^[A-Z]{2}-[A-Z0-9]{1,3}$/.test(park.region_code), `park region_code ${park.region_code} is not ISO 3166-2`);
 	check(typeof park.country_code === 'string' && /^[A-Z]{2}$/.test(park.country_code), `park country_code ${park.country_code} is not ISO 3166-1 alpha-2`);
@@ -329,6 +332,7 @@ export function cataloguePayload(manifest, readGeojson) {
 		park: {
 			slug: park.slug,
 			name: park.name,
+			kind: park.kind,
 			agency: park.agency,
 			region_code: park.region_code,
 			country_code: park.country_code,

@@ -40,6 +40,7 @@ function manifest(over = {}) {
 		park: {
 			slug: 'test-park',
 			name: 'Test Park',
+			kind: 'park',
 			agency: 'state',
 			region_code: 'US-VA',
 			country_code: 'US',
@@ -337,6 +338,15 @@ test('a race course must measure exactly its race distance', () => {
 		() => cataloguePayload(manifest({ race_courses: [{ ...race, race_distance: '3k' }] }), files),
 		/unknown race distance 3k/,
 	);
+});
+
+test('a park is a park or a trail, and the payload carries which', () => {
+	assert.equal(cataloguePayload(manifest(), squareOnly).park.kind, 'park');
+	const trail = manifest();
+	trail.park.kind = 'trail';
+	assert.equal(cataloguePayload(trail, squareOnly).park.kind, 'trail');
+	assert.throws(refused((m) => (m.park.kind = 'forest')), /park kind forest is not one of park, trail/);
+	assert.throws(refused((m) => delete m.park.kind), /park kind undefined/);
 });
 
 test('a linear race course keeps its shape, carries no laps, and says how it runs', () => {

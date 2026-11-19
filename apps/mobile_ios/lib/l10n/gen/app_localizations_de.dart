@@ -22749,15 +22749,37 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      'Bleib auf dem markierten Weg. Die Zeitmessung braucht jeden Kontrollpunkt, eine Abkürzung zählt also nie. Das ist ein Zeitfahren, kein Rennen: Der Weg bleibt für alle offen und wird nicht betreut.';
+      'Folge der Streckenlinie auf der Karte und lauf der Reihe nach an jedem Kontrollpunkt vorbei, sonst zählt deine Zeit nicht.';
+
+  @override
+  String get parksNoticeParkHours => 'Sei vor Parkschluss im Ziel.';
+
+  @override
+  String get parksNoticeFord =>
+      'Die Strecke quert einen Bach ohne Brücke. Nach Regen kann er zu tief zum Durchqueren sein.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Mit Radfahrenden geteilt. Halte dich rechts und nimm Wasser mit: Es gibt vielleicht nur wenige Trinkbrunnen.';
+
+  @override
+  String get parksNoticeLongTrail =>
+      'Lange Strecke: Nimm Wasser und Essen mit.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Lange Strecke: Starte früh genug, um vor Parkschluss im Ziel zu sein.';
+
+  @override
+  String get parksSurfacePaved => 'Asphaltiert';
+
+  @override
+  String get parksNoticeOpenTrail =>
+      'Ein Zeitlauf auf offenen Wegen, kein Rennen. Niemand sichert die Strecke ab.';
 
   @override
   String get parksNotAffiliated =>
       'Threkir veröffentlicht diese Strecken. Sie werden nicht vom Park oder seiner Verwaltungsbehörde organisiert, gesponsert oder empfohlen. Es gelten die Regeln, Öffnungszeiten, Gebühren und Sperrungen des Parks.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.';
 
   @override
   String get parksTimesNotEventResults =>
@@ -22817,11 +22839,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksBoardEmptyTitle =>
-      'Noch keine Zeiten. Deine könnte die erste sein.';
-
-  @override
-  String get parksBoardEmptyBody =>
-      'Lauf diese Strecke, während Threkir aufzeichnet. Wenn dein Lauf die ganze Strecke abdeckt und jeden Kontrollpunkt passiert, erscheint deine Zeit hier von selbst. Du musst nichts einreichen.';
+      'Noch keine Zeiten. Lauf die Strecke mit Threkir, dann erscheint deine hier.';
 
   @override
   String get parksLegendTitle => 'Kartenlegende';
@@ -22875,6 +22893,48 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksLegendDirection => 'Laufrichtung';
+
+  @override
+  String parksBoxesApart(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Starte die Aufzeichnung in der grünen Box. Folge den Pfeilen $n-mal um die Schleife und komm in der roten Box ins Ziel.',
+      one:
+          'Starte die Aufzeichnung in der grünen Box. Folge den Pfeilen bis zur roten Box.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksBoxesShared(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen $n-mal um die Schleife und komm in derselben Box ins Ziel.',
+      one:
+          'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen und komm in derselben Box ins Ziel.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksEndsGetDirections => 'Weg zum Start';
+
+  @override
+  String get parksEndsCoordinates => 'Koordinaten';
+
+  @override
+  String get parksTurnAround => 'Wenden';
+
+  @override
+  String get parksLegendTurnAround => 'Hier wenden: dein Lauf muss hier vorbei';
+
+  @override
+  String get parksBoxesOutAndBack =>
+      'Starte die Aufzeichnung in der Startbox. Folge den Pfeilen bis zur Wenden-Markierung und zurück zur Box.';
 
   @override
   String parksMapCourseLabel(int n) {
@@ -23549,6 +23609,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: Ziel.';
   }
+
+  @override
+  String parkGuideLaps(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total Runden der Schleife.',
+      one: '$total Runde der Schleife.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parkGuideRepeatLoop => 'Lauf die Schleife noch einmal.';
+
+  @override
+  String parkGuideLapHeader(int n) {
+    return 'Runde $n';
+  }
+
+  @override
+  String parkGuideKmHeader(String from, String to) {
+    return '$from bis $to';
+  }
+
+  @override
+  String get parkGuideShowAll => 'Alle Schritte zeigen';
 
   @override
   String get parkCourseReportAction => 'Ein Problem mit dieser Strecke melden';

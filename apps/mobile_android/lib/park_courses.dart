@@ -7,6 +7,8 @@
 /// `apps/web/scripts/check_constraint_unions.mjs`.
 library;
 
+import 'dart:math' as math;
+
 import 'route_gpx.dart';
 import 'route_guide.dart';
 import 'run_stats.dart' show haversineMetres;
@@ -154,9 +156,45 @@ bool courseOffersWayfinding(String status) => status != 'closed';
 /// Courses longer than this carry the long-course notice.
 const double kLongCourseThresholdM = 15000;
 
-/// Whether a course is long enough to show the long-course notice.
+/// Whether a course is long enough for the long-course lines of its notices.
 bool isLongCourse(double distanceM) =>
     distanceM.isFinite && distanceM > kLongCourseThresholdM;
+
+/// A line of a course's Before you run notice beyond the safety line. Twin of
+/// web's `CourseNoticeKey`.
+enum CourseNotice { ford, pavedTrail, longTrail, parkHours, parkHoursLong }
+
+/// The lines of a course's Before you run notice that its data supports
+/// (decisions § 2582), hazards first, never a fact the data does not hold:
+/// [CourseNotice.ford] when the route guide crosses a ford; on a trail
+/// ([parkKind] `trail`), [CourseNotice.pavedTrail] when the surface is paved
+/// (`road`, a shared-use path), else [CourseNotice.longTrail] on a long
+/// course, since a trail has no closing time to name; in a park,
+/// [CourseNotice.parkHoursLong] on a long course, else
+/// [CourseNotice.parkHours]. Twin of web's `courseNotices`.
+List<CourseNotice> courseNotices({
+  required String? parkKind,
+  required String? surface,
+  required double distanceM,
+  required RouteGuide? guide,
+}) {
+  final out = <CourseNotice>[];
+  if (guide != null &&
+      guide.steps.any((s) => s.kind == 'crossing' && s.crossing == 'ford')) {
+    out.add(CourseNotice.ford);
+  }
+  final long = isLongCourse(distanceM);
+  if (parkKind == 'trail') {
+    if (surface == 'road') {
+      out.add(CourseNotice.pavedTrail);
+    } else if (long) {
+      out.add(CourseNotice.longTrail);
+    }
+  } else {
+    out.add(long ? CourseNotice.parkHoursLong : CourseNotice.parkHours);
+  }
+  return out;
+}
 
 class ParkRegionGroup<T> {
   final String regionCode;
@@ -572,3 +610,85 @@ String _fixed5(double v) {
 /// and Apple Maps both read when it is pasted into their search.
 String formatLatLng(({double lat, double lng}) p) =>
     '${_fixed5(p.lat)}, ${_fixed5(p.lng)}';
+
+/// Checkpoints closer than this share of the course's extent share one
+/// marker.
+const double kCheckpointMergeFraction = 0.05;
+
+/// ...and never closer than this, whatever the course's size.
+const double kCheckpointMergeMinM = 25;
+
+/// A checkpoint marker on a course map: one or more numbers, or an
+/// out-and-back's turn ([isTurn]).
+class CheckpointMark {
+  CheckpointMark({
+    required this.isTurn,
+    required this.numbers,
+    required this.lat,
+    required this.lng,
+  });
+
+  final bool isTurn;
+
+  /// The 1-based checkpoint numbers it stands for, in course order.
+  final List<int> numbers;
+  final double lat;
+  final double lng;
+}
+
+/// What a course map marks for its checkpoints (decisions § 2582). On an
+/// out-and-back the last checkpoint is the turn, marked as such. The rest
+/// are numbered, and checkpoints so close that their markers would cover
+/// each other at the whole-course zoom share one marker that carries every
+/// number: closer than [kCheckpointMergeFraction] of the line's
+/// bounding-box diagonal, at least [kCheckpointMergeMinM], to the first
+/// checkpoint of a marker. Twin of web's `checkpointMarks`.
+List<CheckpointMark> checkpointMarks({
+  required List<({double lat, double lng})> checkpoints,
+  required List<({double lat, double lng})> line,
+  required String? shape,
+}) {
+  var s = double.infinity;
+  var w = double.infinity;
+  var n = double.negativeInfinity;
+  var e = double.negativeInfinity;
+  for (final p in line) {
+    s = math.min(s, p.lat);
+    n = math.max(n, p.lat);
+    w = math.min(w, p.lng);
+    e = math.max(e, p.lng);
+  }
+  final extent = s.isFinite ? haversineMetres(s, w, n, e) : 0.0;
+  final mergeM =
+      math.max(kCheckpointMergeMinM, kCheckpointMergeFraction * extent);
+  final turn = shape == 'out_and_back' && checkpoints.isNotEmpty
+      ? checkpoints.length - 1
+      : -1;
+  final marks = <CheckpointMark>[];
+  for (var i = 0; i < checkpoints.length; i++) {
+    if (i == turn) continue;
+    final c = checkpoints[i];
+    CheckpointMark? near;
+    for (final m in marks) {
+      if (haversineMetres(m.lat, m.lng, c.lat, c.lng) < mergeM) {
+        near = m;
+        break;
+      }
+    }
+    if (near != null) {
+      near.numbers.add(i + 1);
+    } else {
+      marks.add(CheckpointMark(
+          isTurn: false, numbers: [i + 1], lat: c.lat, lng: c.lng));
+    }
+  }
+  if (turn >= 0) {
+    marks.add(CheckpointMark(
+      isTurn: true,
+      numbers: [turn + 1],
+      lat: checkpoints[turn].lat,
+      lng: checkpoints[turn].lng,
+    ));
+  }
+  return marks;
+}

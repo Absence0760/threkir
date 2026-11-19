@@ -134,8 +134,10 @@ test.describe('park course SEO', () => {
 				planted = await plantCourse(36.5, -77.6, 21_100);
 				await page.goto(`/share/course/us-va/${planted.parkSlug}/lake-loop`);
 				await expect(page.getByRole('heading', { level: 1, name: planted.courseName })).toBeVisible();
-				await expect(page.getByTestId('share-course-long')).toContainText(
-					'water crossings that can be impassable after rain',
+				// A park's long course names its closing time, and nothing about
+				// water crossings its data does not hold (decisions § 2582).
+				await expect(page.getByTestId('share-course-long')).toHaveText(
+					'Long course: start early enough to finish before the park closes.',
 				);
 				await expect(page.getByTestId('share-course-not-affiliated')).toBeVisible();
 			} finally {

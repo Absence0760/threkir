@@ -11,6 +11,7 @@ import {
 	routeGuideEnglish,
 	routeGuideLines,
 	routeGuideText,
+	routeGuideView,
 	type GuideFormat,
 } from './route_guide';
 import { en } from '../i18n/locales/en';
@@ -18,7 +19,8 @@ import { en } from '../i18n/locales/en';
 // The TS reader of fixtures/route_guide_cases.json, the case table the Dart
 // twin (apps/mobile_android/test/route_guide_test.dart) reads too.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
-const { cases } = JSON.parse(readFileSync(join(REPO, 'fixtures', 'route_guide_cases.json'), 'utf-8')) as {
+const { cases, views } = JSON.parse(readFileSync(join(REPO, 'fixtures', 'route_guide_cases.json'), 'utf-8')) as {
+	views: { name: string; guide: unknown; summary: Record<string, unknown>[]; sections: Record<string, unknown>[] }[];
 	cases: {
 		name: string;
 		guide: unknown;
@@ -38,6 +40,16 @@ for (const c of cases) {
 		assert.equal(guide.lang, c.parsed.lang);
 		assert.equal(guide.gettingThere, c.parsed.getting_there);
 		assert.deepEqual(routeGuideLines(guide), c.lines);
+	});
+}
+
+for (const v of views) {
+	test(`route guide view: ${v.name}`, () => {
+		const guide = parseRouteGuide(v.guide);
+		assert.ok(guide);
+		const view = routeGuideView(guide);
+		assert.deepEqual(view.summary, v.summary);
+		assert.deepEqual(view.sections, v.sections);
 	});
 }
 

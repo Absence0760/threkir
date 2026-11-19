@@ -8,7 +8,11 @@
 		| 'direction'
 		| 'line'
 		| 'focusedLine'
-		| 'trailhead';
+		| 'trailhead'
+		| 'startBox'
+		| 'finishBox'
+		| 'startFinishBox'
+		| 'turnaround';
 
 	export interface ParkMapLegendItem {
 		kind: ParkMapLegendKind;
@@ -27,15 +31,19 @@
 	import {
 		MAP_ARROW_INK,
 		MAP_ARROW_OUTLINE,
+		MAP_ZONE_FILL_OPACITY,
 		mapAccentColour,
 		mapFinishColour,
+		mapFinishZoneColour,
 		mapLabelHalo,
 		mapLabelInk,
 		mapOverlayOutline,
 		mapStartColour,
+		mapStartZoneColour,
 		mapTrackLine,
 	} from '#lib/routes/basemap_contrast.ts';
 	import { checkpointPinColour } from '#lib/parks/course_map.ts';
+	import { turnaroundSvg } from '#lib/races/course_gate_layers.ts';
 
 	let { items, testid }: { items: ParkMapLegendItem[]; testid?: string } = $props();
 
@@ -50,9 +58,24 @@
 	</svg>
 {/snippet}
 
+<!-- A start or finish box as the map draws it: the fill, its outline, and its
+     timing line, solid for the start and chequered for the finish. The box a
+     start and finish share is the start colour with a chequered line across
+     its middle. -->
+{#snippet boxPart(which: 'start' | 'finish' | 'both')}
+	{@const colour = which === 'finish' ? mapFinishZoneColour(dark) : mapStartZoneColour(dark)}
+	{@const y = which === 'both' ? 8.5 : 3}
+	<rect x="1" y="3" width="22" height="11" fill={colour} fill-opacity={MAP_ZONE_FILL_OPACITY} stroke={colour} stroke-width="1" />
+	<line x1="1" y1={y} x2="23" y2={y} stroke={mapOverlayOutline(dark)} stroke-width="4" />
+	<line x1="1" y1={y} x2="23" y2={y} stroke={colour} stroke-width="2.5" />
+	{#if which !== 'start'}
+		<line x1="1" y1={y} x2="23" y2={y} stroke={MAP_ARROW_OUTLINE} stroke-width="2.5" stroke-dasharray="2.5 2.5" />
+	{/if}
+{/snippet}
+
 <ul class="legend" aria-label={m('parks.mapKey')} data-testid={testid}>
 	{#each items as item (item.kind)}
-		<li>
+		<li data-kind={item.kind}>
 			{#if item.kind === 'start' || item.kind === 'trailhead'}
 				{#if item.kind === 'start'}
 					{@render pin(mapStartColour(dark))}
@@ -63,6 +86,15 @@
 				{/if}
 			{:else if item.kind === 'finish' || item.kind === 'startFinish'}
 				{@render pin(mapFinishColour(dark))}
+			{:else if item.kind === 'startBox' || item.kind === 'finishBox' || item.kind === 'startFinishBox'}
+				<svg viewBox="0 0 24 16" class="swatch wide" aria-hidden="true" focusable="false">
+					{@render boxPart(item.kind === 'startBox' ? 'start' : item.kind === 'finishBox' ? 'finish' : 'both')}
+				</svg>
+			{:else if item.kind === 'turnaround'}
+				<span class="swatch tag" style:border-color={mapOverlayOutline(dark)} style:background={mapLabelHalo(dark)}>
+					<!-- Static markup from the palette only. -->
+					{@html turnaroundSvg(mapLabelInk(dark))}
+				</span>
 			{:else if item.kind === 'checkpoint'}
 				<svg viewBox="0 0 16 16" class="swatch" aria-hidden="true" focusable="false">
 					<circle cx="8" cy="8" r="6" fill={checkpointPinColour(dark)} stroke={mapOverlayOutline(dark)} stroke-width="2" />
@@ -117,5 +149,18 @@
 	}
 	.swatch.wide {
 		width: 1.5rem;
+	}
+	.swatch.tag {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 2px solid;
+		border-radius: 999px;
+	}
+	.swatch.tag :global(svg) {
+		width: 0.85rem;
+		height: 0.85rem;
 	}
 </style>

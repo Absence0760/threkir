@@ -174,6 +174,8 @@ export const GUIDE_LINE_KEYS = [
 	'checkpoint',
 	'lap',
 	'finish',
+	'laps',
+	'repeatLoop',
 ] as const;
 export type GuideLineKey = (typeof GUIDE_LINE_KEYS)[number];
 
@@ -254,6 +256,108 @@ export function routeGuideLines(guide: RouteGuide): GuideLine[] {
 	return [...lines, ...rest];
 }
 
+/** One group of the full guide: a lap, or a stretch of a course without laps. */
+export interface GuideSection {
+	/** The lap it covers, or null for a stretch of a course without laps. */
+	lap: number | null;
+	/** Where the stretch starts and ends, in metres along the course. */
+	from: number;
+	to: number;
+	lines: GuideLine[];
+}
+
+/** How long a stretch of a course without laps is, in the full guide. */
+export const GUIDE_SECTION_M = 5000;
+
+/**
+ * How a course page shows its guide (decisions § 2582): a short view a
+ * runner reads in seconds, and the rest folded away.
+ *
+ * - `summary`: the start, the direction, how many laps, the turns where the
+ *   trail changes (a left or right onto a different trail or kind of way) on
+ *   the first lap, where each later lap starts (so nobody stops at the box
+ *   after the first), and the finish.
+ * - `sections`: every step but the start and direction, grouped by lap (the
+ *   laps after the first read "Repeat the loop" rather than the same steps
+ *   again) or, with no laps, by GUIDE_SECTION_M; the finish ends the last.
+ *
+ * Neither lists checkpoints: the map marks them.
+ */
+export function routeGuideView(guide: RouteGuide): { summary: GuideLine[]; sections: GuideSection[] } {
+	const intro: GuideLine[] = [];
+	const lapSteps = guide.steps.filter((s) => s.kind === 'lap');
+	const laps = lapSteps.length > 0 ? lapSteps[0].of : 1;
+	const lapAt = lapSteps.length > 0 ? lapSteps[0].at_m : Infinity;
+	const finish = guide.steps[guide.steps.length - 1];
+	const finishLine: GuideLine = { key: 'finish', at: finish.at_m };
+	const turns: GuideLine[] = [];
+	const lapLines: GuideLine[] = [];
+	const body: { at: number; line: GuideLine }[] = [];
+	let trail = '';
+	const targetKey = (t: GuideTarget) => ('name' in t ? `name:${t.name.toLowerCase()}` : `way:${t.way}`);
+	for (const s of guide.steps) {
+		switch (s.kind) {
+			case 'start':
+				intro.push('name' in s ? { key: 'startNamed', name: s.name } : { key: `start${WAY_SUFFIX[s.way]}` });
+				trail = targetKey(s);
+				break;
+			case 'direction':
+				intro.push({ key: s.rotation });
+				if (s.keep_on && s.landmark) {
+					intro.push({ key: s.keep_on === 'left' ? 'keepLeft' : 'keepRight', landmark: s.landmark });
+				}
+				break;
+			case 'junction': {
+				const line: GuideLine =
+					'name' in s
+						? { key: `${s.turn}Named`, at: s.at_m, name: s.name }
+						: { key: `${s.turn}${WAY_SUFFIX[s.way]}`, at: s.at_m };
+				const key = targetKey(s);
+				if (s.at_m < lapAt && s.turn !== 'straight' && key !== trail) turns.push(line);
+				trail = key;
+				body.push({ at: s.at_m, line });
+				break;
+			}
+			case 'crossing':
+				body.push({ at: s.at_m, line: { key: s.crossing, at: s.at_m } });
+				break;
+			case 'surface':
+				body.push({ at: s.at_m, line: { key: SURFACE_KEY[s.surface], at: s.at_m } });
+				break;
+			case 'climb':
+				body.push({ at: s.at_m, line: { key: 'climb', at: s.at_m, gain: s.gain_m, length: s.length_m } });
+				break;
+			case 'lap':
+				lapLines.push({ key: 'lap', at: s.at_m, n: s.lap, total: s.of });
+				break;
+			default:
+				break;
+		}
+	}
+	if (laps > 1) intro.push({ key: 'laps', total: laps });
+	const sections: GuideSection[] = [];
+	if (laps > 1) {
+		sections.push({ lap: 1, from: 0, to: lapAt, lines: body.filter((b) => b.at < lapAt).map((b) => b.line) });
+		for (const l of lapSteps) {
+			const next = lapSteps.find((x) => x.lap === l.lap + 1);
+			sections.push({ lap: l.lap, from: l.at_m, to: next ? next.at_m : finish.at_m, lines: [{ key: 'repeatLoop' }] });
+		}
+	} else {
+		for (let from = 0; from < Math.max(finish.at_m, 1); from += GUIDE_SECTION_M) {
+			const to = Math.min(from + GUIDE_SECTION_M, finish.at_m);
+			const lines = body.filter((b) => b.at >= from && b.at < to).map((b) => b.line);
+			if (lines.length > 0) sections.push({ lap: null, from, to, lines });
+		}
+		const last = sections[sections.length - 1];
+		if (!last || last.to < finish.at_m) {
+			const from = Math.floor(Math.max(finish.at_m - 1, 0) / GUIDE_SECTION_M) * GUIDE_SECTION_M;
+			sections.push({ lap: null, from, to: finish.at_m, lines: [] });
+		}
+	}
+	sections[sections.length - 1].lines.push(finishLine);
+	return { summary: [...intro, ...turns, ...lapLines, finishLine], sections };
+}
+
 export interface GuideFormat {
 	/** The template for a key, with `{at}`, `{name}`, `{landmark}`, `{gain}`, `{length}`, `{n}`, `{total}` filled. */
 	message: (key: GuideLineKey, params: Record<string, string | number>) => string;
@@ -323,6 +427,8 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	checkpoint: "{at}: checkpoint {n} of {total}.",
 	lap: "{at}: start lap {n} of {total} and repeat the loop.",
 	finish: "{at}: finish.",
+	laps: "{total, plural, one {# lap of the loop.} other {# laps of the loop.}}",
+	repeatLoop: "Repeat the loop.",
 };
 
 const fill = (template: string, params: Record<string, string | number>) =>

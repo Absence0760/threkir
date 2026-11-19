@@ -12,6 +12,8 @@
 /// generator `scripts/parks/lib/route_guide.mjs`.
 library;
 
+import 'dart:math' as math;
+
 import 'l10n/gen/app_localizations.dart';
 
 const List<String> kGuideTurns = ['left', 'right', 'straight'];
@@ -251,6 +253,8 @@ const List<String> kGuideLineKeys = [
   'checkpoint',
   'lap',
   'finish',
+  'laps',
+  'repeatLoop',
 ];
 
 /// One line before formatting: its template and raw values. Distances are
@@ -345,6 +349,138 @@ List<GuideLine> routeGuideLines(RouteGuide guide) {
   return [...lines, ...rest];
 }
 
+/// One group of the full guide: a lap, or a stretch of a course without
+/// laps.
+class GuideSection {
+  /// The lap it covers, or null for a stretch of a course without laps.
+  final int? lap;
+
+  /// Where the stretch starts and ends, in metres along the course.
+  final int from;
+  final int to;
+  final List<GuideLine> lines;
+  const GuideSection({
+    required this.lap,
+    required this.from,
+    required this.to,
+    required this.lines,
+  });
+}
+
+/// How long a stretch of a course without laps is, in the full guide.
+const int kGuideSectionM = 5000;
+
+/// How a course page shows its guide (decisions § 2582): a short view a
+/// runner reads in seconds, and the rest folded away. Twin of web's
+/// `routeGuideView`.
+///
+/// - `summary`: the start, the direction, how many laps, the turns where the
+///   trail changes (a left or right onto a different trail or kind of way)
+///   on the first lap, where each later lap starts (so nobody stops at the
+///   box after the first), and the finish.
+/// - `sections`: every step but the start and direction, grouped by lap (the
+///   laps after the first read "Repeat the loop" rather than the same steps
+///   again) or, with no laps, by [kGuideSectionM]; the finish ends the last.
+///
+/// Neither lists checkpoints: the map marks them.
+({List<GuideLine> summary, List<GuideSection> sections}) routeGuideView(
+    RouteGuide guide) {
+  final intro = <GuideLine>[];
+  final lapSteps = [for (final s in guide.steps) if (s.kind == 'lap') s];
+  final laps = lapSteps.isNotEmpty ? lapSteps.first.of! : 1;
+  final lapAt = lapSteps.isNotEmpty ? lapSteps.first.atM : null;
+  final finish = guide.steps.last;
+  final finishLine = GuideLine('finish', at: finish.atM);
+  final turns = <GuideLine>[];
+  final lapLines = <GuideLine>[];
+  final body = <({int at, GuideLine line})>[];
+  var trail = '';
+  String targetKey(RouteGuideStep t) =>
+      t.name != null ? 'name:${t.name!.toLowerCase()}' : 'way:${t.way}';
+  for (final s in guide.steps) {
+    switch (s.kind) {
+      case 'start':
+        intro.add(s.name != null
+            ? GuideLine('startNamed', name: s.name)
+            : GuideLine('start${_waySuffix[s.way]}'));
+        trail = targetKey(s);
+      case 'direction':
+        intro.add(GuideLine(s.rotation!));
+        if (s.keepOn != null && s.landmark != null) {
+          intro.add(GuideLine(s.keepOn == 'left' ? 'keepLeft' : 'keepRight',
+              landmark: s.landmark));
+        }
+      case 'junction':
+        final line = s.name != null
+            ? GuideLine('${s.turn}Named', at: s.atM, name: s.name)
+            : GuideLine('${s.turn}${_waySuffix[s.way]}', at: s.atM);
+        final key = targetKey(s);
+        if ((lapAt == null || s.atM < lapAt) &&
+            s.turn != 'straight' &&
+            key != trail) {
+          turns.add(line);
+        }
+        trail = key;
+        body.add((at: s.atM, line: line));
+      case 'crossing':
+        body.add((at: s.atM, line: GuideLine(s.crossing!, at: s.atM)));
+      case 'surface':
+        body.add(
+            (at: s.atM, line: GuideLine(_surfaceKey[s.surface]!, at: s.atM)));
+      case 'climb':
+        body.add((
+          at: s.atM,
+          line: GuideLine('climb', at: s.atM, gain: s.gainM, length: s.lengthM)
+        ));
+      case 'lap':
+        lapLines.add(GuideLine('lap', at: s.atM, n: s.lap, total: s.of));
+    }
+  }
+  if (laps > 1) intro.add(GuideLine('laps', total: laps));
+  final sections = <GuideSection>[];
+  if (lapAt != null && laps > 1) {
+    sections.add(GuideSection(
+      lap: 1,
+      from: 0,
+      to: lapAt,
+      lines: [for (final b in body) if (b.at < lapAt) b.line],
+    ));
+    for (final l in lapSteps) {
+      final next = lapSteps.where((x) => x.lap == l.lap! + 1).firstOrNull;
+      sections.add(GuideSection(
+        lap: l.lap,
+        from: l.atM,
+        to: next?.atM ?? finish.atM,
+        lines: [const GuideLine('repeatLoop')],
+      ));
+    }
+  } else {
+    for (var from = 0;
+        from < math.max(finish.atM, 1);
+        from += kGuideSectionM) {
+      final to = math.min(from + kGuideSectionM, finish.atM);
+      final lines = [
+        for (final b in body)
+          if (b.at >= from && b.at < to) b.line
+      ];
+      if (lines.isNotEmpty) {
+        sections.add(GuideSection(lap: null, from: from, to: to, lines: lines));
+      }
+    }
+    if (sections.isEmpty || sections.last.to < finish.atM) {
+      final from =
+          (math.max(finish.atM - 1, 0) ~/ kGuideSectionM) * kGuideSectionM;
+      sections.add(
+          GuideSection(lap: null, from: from, to: finish.atM, lines: []));
+    }
+  }
+  sections.last.lines.add(finishLine);
+  return (
+    summary: [...intro, ...turns, ...lapLines, finishLine],
+    sections: sections,
+  );
+}
+
 class GuideFormat {
   /// The template for a key, with `{at}`, `{name}`, `{landmark}`, `{gain}`,
   /// `{length}`, `{n}`, `{total}` filled.
@@ -420,6 +556,8 @@ const Map<String, String> guideEn = {
   'checkpoint': '{at}: checkpoint {n} of {total}.',
   'lap': '{at}: start lap {n} of {total} and repeat the loop.',
   'finish': '{at}: finish.',
+  'laps': '{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}',
+  'repeatLoop': 'Repeat the loop.',
 };
 
 final RegExp _placeholder = RegExp(r'\{(\w+)\}');
@@ -493,6 +631,8 @@ String guideLineMessage(
     'checkpoint' => l10n.parkGuideCheckpoint(s('at'), i('n'), i('total')),
     'lap' => l10n.parkGuideLap(s('at'), i('n'), i('total')),
     'finish' => l10n.parkGuideFinish(s('at')),
+    'laps' => l10n.parkGuideLaps(i('total')),
+    'repeatLoop' => l10n.parkGuideRepeatLoop,
     _ => '',
   };
 }

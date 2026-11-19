@@ -11,7 +11,7 @@
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
 	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
-	import { courseOffersWayfinding, regionName } from '#lib/parks/park_courses.ts';
+	import { courseOffersWayfinding, parkKindOf, regionName } from '#lib/parks/park_courses.ts';
 	import { DIFFICULTY_LABEL, SHAPE_LABEL, courseCredit, labelKey } from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
@@ -140,7 +140,7 @@
 				{#if course.segment.surface}
 					<div>
 						<dt>{m('parks.statSurface')}</dt>
-						<dd>{routeSurfaceLabel(course.segment.surface)}</dd>
+						<dd>{course.segment.surface === 'road' ? m('parks.surfacePaved') : routeSurfaceLabel(course.segment.surface)}</dd>
 					</div>
 				{/if}
 				{#if difficultyKey}
@@ -192,7 +192,14 @@
 				</div>
 			{/if}
 			<div class="notices-slot">
-				<ParkCourseNotices distanceM={course.segment.distance_m} sharedUse={course.shared_use} testidPrefix="share-course" />
+				<ParkCourseNotices
+					distanceM={course.segment.distance_m}
+					sharedUse={course.shared_use}
+					surface={course.segment.surface}
+					parkKind={parkKindOf(course.park)}
+					guide={course.route_guide}
+					testidPrefix="share-course"
+				/>
 			</div>
 		</section>
 	{:else}

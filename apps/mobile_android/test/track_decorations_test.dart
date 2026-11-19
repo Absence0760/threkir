@@ -35,6 +35,15 @@ void main() {
       expect(markers[3].label, 4);
     });
 
+    test('on a lapped course, stops at the end of the first lap', () {
+      final markers = computeDistanceMarkers(
+        _straight(n: 121, stepM: 100),
+        useMiles: false,
+        lapM: 4500,
+      );
+      expect([for (final m in markers) m.label], [1, 2, 3, 4]);
+    });
+
     test('returns empty for tracks under 2 points', () {
       expect(computeDistanceMarkers(const [], useMiles: false), isEmpty);
       expect(

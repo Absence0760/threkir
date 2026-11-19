@@ -22,6 +22,10 @@ const _sections = [
   'routeRelation',
   'warnings',
   'preflight',
+  'pointAlong',
+  'boxCorners',
+  'sharedSpot',
+  'boxParts',
 ];
 const _metaKeys = {
   'spec',
@@ -74,6 +78,14 @@ void _nearPoint(GatePoint actual, Object? expected, String what) {
       reason: '$what lng');
 }
 
+void _nearPoints(List<GatePoint> actual, Object? expected, String what) {
+  final e = expected as List;
+  expect(actual.length, e.length, reason: '$what: point count');
+  for (var i = 0; i < actual.length; i++) {
+    _nearPoint(actual[i], e[i], '$what [$i]');
+  }
+}
+
 void _nearBearing(double actual, double expected, String what) {
   final d = (actual - expected).abs();
   expect(d < 360 - d ? d : 360 - d, lessThanOrEqualTo(_bearingTol),
@@ -118,6 +130,9 @@ void main() {
     expect(kCourseGateDefaultHalfWidthM, _num(c['defaultHalfWidthM']));
     expect(kCourseGateRouteWarnM, _num(c['routeWarnM']));
     expect(kCourseGateAgainstRouteDeg, _num(c['againstRouteDeg']));
+    expect(kCourseGateBoxDepthM, _num(c['boxDepthM']));
+    expect(kCourseGateSharedSpotM, _num(c['sharedSpotM']));
+    expect(kCourseGateSharedSpotDeg, _num(c['sharedSpotDeg']));
   });
 
   test('normalizeBearing', () {
@@ -230,6 +245,63 @@ void main() {
           .toList();
       expect(got, c['expected'], reason: '${c['note']}');
       expect(preflightBlocks(issues), c['blocks'], reason: '${c['note']}');
+    }
+  });
+
+  test('gatePointAlong', () {
+    for (final c in _section('pointAlong')) {
+      _nearPoint(gatePointAlong(_gate(c['gate']), _num(c['f'])), c['point'],
+          '${c['note']}');
+    }
+  });
+
+  test('gateBox', () {
+    for (final c in _section('boxCorners')) {
+      final got = gateBox(
+        _gate(c['gate']),
+        _num(c['depthM']),
+        GateBoxSide.values.byName(c['side'] as String),
+        from: _num(c['from']),
+        to: _num(c['to']),
+      );
+      _nearPoints(got, c['corners'], '${c['note']}');
+    }
+  });
+
+  test('gatesShareSpot', () {
+    for (final c in _section('sharedSpot')) {
+      expect(gatesShareSpot(_gate(c['start']), _gate(c['finish'])),
+          c['shared'],
+          reason: '${c['note']}');
+    }
+  });
+
+  test('gateBoxParts', () {
+    for (final c in _section('boxParts')) {
+      final got = gateBoxParts(
+        c['start'] == null ? null : _gate(c['start']),
+        c['finish'] == null ? null : _gate(c['finish']),
+        depthM: _num(c['depthM']),
+      );
+      final note = '${c['note']}';
+      expect(got.layout.name, c['layout'], reason: '$note layout');
+      final want = (c['parts'] as List).cast<Map<String, dynamic>>();
+      expect(got.parts.length, want.length, reason: '$note part count');
+      for (var i = 0; i < want.length; i++) {
+        final p = got.parts[i];
+        final w = want[i];
+        expect(p.which?.name ?? 'both', w['which'],
+            reason: '$note [$i] which');
+        _nearPoints(p.box, w['box'], '$note [$i] box');
+        _nearPoints([p.line.$1, p.line.$2], w['line'], '$note [$i] line');
+      }
+      final marks = (c['markers'] as List).cast<Map<String, dynamic>>();
+      expect(got.markers.length, marks.length, reason: '$note marker count');
+      for (var i = 0; i < marks.length; i++) {
+        expect(got.markers[i].which?.name ?? 'both', marks[i]['which'],
+            reason: '$note marker [$i] which');
+        _nearPoint(got.markers[i].at, marks[i]['at'], '$note marker [$i]');
+      }
     }
   });
 }

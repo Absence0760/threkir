@@ -366,7 +366,13 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2710;
+// Raised to 2717 for the park course start and finish boxes (PR #1441),
+// measured in CI at 2711 KB on the merge with origin/main (locally 2708 KB
+// with the CI build's placeholder env). Route-level code only, with no new
+// dependency: the course map's box, tag, turnaround and key layers, the short
+// route-guide selector and the course-notice picker, on the park course page
+// and its share page. Same 6 KB of cover (decisions § 2470).
+export const MAX_CODE_KB = 2717;
 export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

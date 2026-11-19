@@ -36,7 +36,7 @@ const _englishByDesign = <String, (int, String)>{
     "place names and the trail data's licence and attribution, quoted as licensed"
   ),
   'lib/route_guide.dart': (
-    11,
+    12,
     "the route guide's canonical English, shared with web's JSON-LD (decisions § 2448)"
   ),
   'lib/import_failures.dart': (

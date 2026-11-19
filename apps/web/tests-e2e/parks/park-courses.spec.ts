@@ -280,7 +280,7 @@ test.describe('park courses', () => {
 				await page.goto(`/parks/us-va/${long.parkSlug}/lake-loop`);
 				await expect(page.getByRole('heading', { level: 1, name: long.courseName })).toBeVisible();
 				await expect(page.getByTestId('park-course-long')).toContainText(
-					'Start early enough to finish before the park closes.',
+					'Long course: start early enough to finish before the park closes.',
 				);
 				await expect(page.getByTestId('park-course-not-affiliated')).toBeVisible();
 

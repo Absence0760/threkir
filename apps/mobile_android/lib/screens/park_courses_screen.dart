@@ -1183,6 +1183,18 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
       endGate: (lat: segment.endGateLat, lng: segment.endGateLng),
       shape: course.courseShape,
     );
+    // The stored start and finish lines, drawn as a green start box and a red
+    // finish box with one plain sentence; null when the segment lacks either,
+    // and the map shows its pins as before.
+    final zones = courseBoxGates(segment);
+    // An out-and-back's last checkpoint is its turn, and checkpoints close
+    // enough to hide each other share a marker.
+    final marks = checkpointMarks(
+      checkpoints: [for (final c in checkpoints) (lat: c.lat, lng: c.lng)],
+      line: [for (final w in geometry) (lat: w.lat, lng: w.lng)],
+      shape: course.courseShape,
+    );
+    final hasTurn = marks.any((k) => k.isTurn);
     return DetailPage(
       title: segment.name,
       actions: [
@@ -1242,7 +1254,11 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                       ),
                     StatTile.medium(
                       label: l10n.parksStatSurface,
-                      value: routeSurfaceLabel(l10n, segment.surface),
+                      // A stored `road` surface is a paved course: it reads
+                      // "Paved", never as a run on a road (decisions § 2582).
+                      value: segment.surface == 'road'
+                          ? l10n.parksSurfacePaved
+                          : routeSurfaceLabel(l10n, segment.surface),
                     ),
                     if (difficulty != null)
                       StatTile.medium(
@@ -1261,17 +1277,70 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                   const SizedBox(height: 12),
                   Text(description, key: const Key('park-course-description')),
                 ],
+                if (ends != null) ...[
+                  const SizedBox(height: 16),
+                  CourseEndsCard(
+                    ends: ends,
+                    launch: widget.launch,
+                    // One filled action: Navigate this course when there is
+                    // one, the way to the start otherwise.
+                    primary: !canNavigate,
+                    instruction:
+                        zones == null
+                            ? null
+                            : courseBoxInstruction(l10n, zones,
+                                hasTurn: hasTurn, laps: course.laps),
+                  ),
+                ],
+                // Right under the way to the start, so the one filled
+                // action is in reach without scrolling past the page.
+                if (canNavigate || canShare) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (canNavigate)
+                        FilledButton.icon(
+                          key: const Key('park-course-navigate'),
+                          onPressed: () => _navigate(api, routeId),
+                          icon: const Icon(Icons.navigation_outlined),
+                          label: Text(l10n.parksNavigate),
+                        ),
+                      if (canShare)
+                        Builder(
+                          builder: (anchor) => canNavigate || zones != null
+                              ? OutlinedButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                )
+                              : FilledButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                ),
+                        ),
+                    ],
+                  ),
+                ],
                 if (geometry.length >= 2) ...[
                   const SizedBox(height: 16),
                   ParkCourseMap(
                     key: const Key('park-course-map'),
                     line: geometry,
                     checkpoints: checkpoints,
+                    shape: course.courseShape,
+                    zones: zones,
                   ),
                   const SizedBox(height: 8),
                   ParkCourseMapLegend(
                     line: geometry,
-                    checkpointCount: checkpoints.length,
+                    checkpointCount: marks.where((k) => !k.isTurn).length,
+                    hasTurn: hasTurn,
+                    zones: zones,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1281,10 +1350,6 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-                if (ends != null) ...[
-                  const SizedBox(height: 16),
-                  CourseEndsCard(ends: ends, launch: widget.launch),
                 ],
                 if (elevationSeries(geometry) != null) ...[
                   const SizedBox(height: 20),
@@ -1306,41 +1371,14 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ],
                 const SizedBox(height: 20),
                 _CourseNotices(
-                  long: isLongCourse(segment.distanceM),
+                  notices: courseNotices(
+                    parkKind: widget.listing.kind,
+                    surface: segment.surface,
+                    distanceM: segment.distanceM,
+                    guide: guide,
+                  ),
                   sharedUse: parseSharedUse(course.sharedUse),
                 ),
-                if (canNavigate || canShare) ...[
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      if (canNavigate)
-                        FilledButton.icon(
-                          key: const Key('park-course-navigate'),
-                          onPressed: () => _navigate(api, routeId),
-                          icon: const Icon(Icons.navigation_outlined),
-                          label: Text(l10n.parksNavigate),
-                        ),
-                      if (canShare)
-                        Builder(
-                          builder: (anchor) => canNavigate
-                              ? OutlinedButton.icon(
-                                  key: const Key('park-course-share-gpx'),
-                                  onPressed: () => _shareGpx(anchor),
-                                  icon: const Icon(Icons.ios_share),
-                                  label: Text(l10n.parksShareGpx),
-                                )
-                              : FilledButton.icon(
-                                  key: const Key('park-course-share-gpx'),
-                                  onPressed: () => _shareGpx(anchor),
-                                  icon: const Icon(Icons.ios_share),
-                                  label: Text(l10n.parksShareGpx),
-                                ),
-                        ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 24),
                 _buildBoards(context, l10n),
                 if (api != null) ...[
@@ -1388,7 +1426,6 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
         key: const Key('park-board-invitation'),
         icon: Icons.emoji_events_outlined,
         title: l10n.parksBoardEmptyTitle,
-        body: l10n.parksBoardEmptyBody,
       );
     }
     final settledEmptyDefault = _defaultSelection &&
@@ -1610,9 +1647,12 @@ String? _isoDay(DateTime? d) => d == null
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
 
-/// A course's route guide (#1344): its steps as a numbered list in the
-/// reader's language and unit, under a note saying whether a person has
-/// walked it at the park yet. Mirrors web's `ParkCourseRouteGuide`.
+/// A course's route guide (#1344): a short numbered list a runner reads in
+/// seconds (the start, the laps, the turns where the trail changes, the
+/// finish), with every step folded away under it, grouped by lap or by
+/// stretch ([routeGuideView], decisions § 2582), in the reader's language and
+/// unit, under a note saying whether a person has walked it at the park yet.
+/// Mirrors web's `ParkCourseRouteGuide`.
 class _CourseRouteGuide extends StatelessWidget {
   final RouteGuide guide;
   final DateTime? checkedAt;
@@ -1629,9 +1669,8 @@ class _CourseRouteGuide extends StatelessWidget {
       distance: formatDistanceForPref,
       short: formatElevationForPref,
     );
-    final lines = [
-      for (final l in routeGuideLines(guide)) formatGuideLine(l, fmt),
-    ];
+    final view = routeGuideView(guide);
+    final lines = [for (final l in view.summary) formatGuideLine(l, fmt)];
     final checked = checkedAt;
     final gettingThere = guide.gettingThere;
     return Column(
@@ -1697,6 +1736,35 @@ class _CourseRouteGuide extends StatelessWidget {
               ),
           ],
         ),
+        ExpansionTile(
+          key: const Key('park-course-guide-all'),
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          title: Text(l10n.parkGuideShowAll),
+          children: [
+            for (final section in view.sections) ...[
+              const SizedBox(height: 8),
+              Semantics(
+                header: true,
+                child: Text(
+                  section.lap != null
+                      ? l10n.parkGuideLapHeader(section.lap!)
+                      : l10n.parkGuideKmHeader(
+                          formatDistanceForPref(section.from.toDouble()),
+                          formatDistanceForPref(section.to.toDouble())),
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final l in section.lines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(formatGuideLine(l, fmt)),
+                ),
+            ],
+          ],
+        ),
       ],
     );
   }
@@ -1706,9 +1774,10 @@ class _CourseRouteGuide extends StatelessWidget {
 /// give-way note when an organised group shares the paths, the long-course
 /// warning when it applies, then the times and not-affiliated notes.
 class _CourseNotices extends StatelessWidget {
-  final bool long;
+  /// The lines the course's data supports ([courseNotices]).
+  final List<CourseNotice> notices;
   final String? sharedUse;
-  const _CourseNotices({required this.long, required this.sharedUse});
+  const _CourseNotices({required this.notices, required this.sharedUse});
 
   @override
   Widget build(BuildContext context) {
@@ -1747,30 +1816,42 @@ class _CourseNotices extends StatelessWidget {
                 theme.textTheme.bodyMedium,
               ),
             ],
-            if (long) ...[
+            for (final n in notices) ...[
               const SizedBox(height: 10),
-              row(
-                const Key('park-course-long'),
-                Icons.schedule,
-                l10n.parksLongCourseNotice,
-                theme.textTheme.bodyMedium,
-              ),
+              switch (n) {
+                CourseNotice.ford => row(const Key('park-course-ford'),
+                    Icons.water, l10n.parksNoticeFord, theme.textTheme.bodyMedium),
+                CourseNotice.pavedTrail => row(
+                    const Key('park-course-paved-trail'),
+                    Icons.directions_bike,
+                    l10n.parksNoticePavedTrail,
+                    theme.textTheme.bodyMedium),
+                CourseNotice.longTrail => row(const Key('park-course-long'),
+                    Icons.schedule, l10n.parksNoticeLongTrail, theme.textTheme.bodyMedium),
+                CourseNotice.parkHours => row(const Key('park-course-hours'),
+                    Icons.schedule, l10n.parksNoticeParkHours, theme.textTheme.bodyMedium),
+                CourseNotice.parkHoursLong => row(
+                    const Key('park-course-long'),
+                    Icons.schedule,
+                    l10n.parksNoticeParkHoursLong,
+                    theme.textTheme.bodyMedium),
+              },
             ],
-            const SizedBox(height: 10),
-            row(
-              const Key('park-course-times'),
-              Icons.timer,
-              l10n.parksTimesNotEventResults,
-              theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
+            const SizedBox(height: 12),
+            // The required notices, as one smaller line under the two that
+            // matter to a runner (decisions § 2582).
+            Text.rich(
+              key: const Key('park-course-fine-print'),
+              TextSpan(
+                children: [
+                  TextSpan(text: l10n.parksNoticeOpenTrail),
+                  const TextSpan(text: ' '),
+                  TextSpan(text: l10n.parksTimesNotEventResults),
+                  const TextSpan(text: ' '),
+                  TextSpan(text: l10n.parksNotAffiliated),
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-            row(
-              const Key('park-course-not-affiliated'),
-              Icons.info_outline,
-              l10n.parksNotAffiliated,
-              theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
             ),

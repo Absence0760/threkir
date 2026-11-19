@@ -6009,6 +6009,7 @@ class ApiClient {
           park: ParkRow.fromJson(r),
           season: (r['park_season'] as num).toInt(),
           month: (r['park_month'] as num).toInt(),
+          kind: r['kind'] as String?,
         ),
     ];
   }
@@ -6039,6 +6040,7 @@ class ApiClient {
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
         month: (park['park_month'] as num).toInt(),
+        kind: park['kind'] as String?,
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6074,6 +6076,7 @@ class ApiClient {
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
         month: (park['park_month'] as num).toInt(),
+        kind: park['kind'] as String?,
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6222,6 +6225,7 @@ class ApiClient {
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
         month: (park['park_month'] as num).toInt(),
+        kind: park['kind'] as String?,
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),

@@ -83,6 +83,40 @@ export function mapFinishColour(darkBasemap: boolean): string {
 	return darkBasemap ? '#EF4444' : '#B91C1C';
 }
 
+/// A park course's start and finish BOXES (decisions § 2582): the box's
+/// fill and outline, its edge on the course line, its flag and the key swatch.
+/// Not the cap colours above, which fail two things a box owes. On the light
+/// basemap `#B91C1C` reads 1.00:1 against the coral track it sits on, and
+/// under a deuteranopia simulation the light caps read 1.03:1 against each
+/// other, so a red-green colour-blind runner sees two of the same mark.
+///
+/// So the boxes split by LIGHTNESS as well as hue: on light ground a deep
+/// maroon finish under a mid green start, on dark ground a pale green start
+/// over a mid red finish. Each clears 3:1 against every ground of its own
+/// basemap, and the pair keeps a lightness gap under deuteranopia; both are
+/// measured in `basemap_contrast.test.ts`. Hue is still not the only cue: each
+/// box carries a flag and its name, and the finish flag and edge are chequered.
+export function mapStartZoneColour(darkBasemap: boolean): string {
+	return darkBasemap ? '#86EFAC' : '#15803D';
+}
+
+export function mapFinishZoneColour(darkBasemap: boolean): string {
+	return darkBasemap ? '#EF4444' : '#701A1A';
+}
+
+/// Ink on a start or finish box's name tag, which is filled with the box's
+/// colour: white on the deep light-basemap rungs, near-black on the bright
+/// dark-basemap ones. The label halo's two values, held here to AA against
+/// both box colours of their basemap by `basemap_contrast.test.ts`.
+export function mapBoxInk(darkBasemap: boolean): string {
+	return mapLabelHalo(darkBasemap);
+}
+
+/// The boxes' fill opacity. The wash is decoration, as the privacy zone's is:
+/// the full-strength outline and edge carry the floor, and at this opacity the
+/// cased edge still stands clear of the fill beside it.
+export const MAP_ZONE_FILL_OPACITY = 0.3;
+
 /// The privacy-zone circle in the zone picker: its 2 px boundary, the marker
 /// at its centre, and the 0.18 wash inside it.
 ///

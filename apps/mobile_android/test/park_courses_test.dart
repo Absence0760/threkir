@@ -457,4 +457,137 @@ void main() {
       expect(formatLatLng((lat: -0.000001, lng: 0)), '0.00000, 0.00000');
     });
   });
+
+  group('checkpointMarks', () {
+    const m = 1 / 111195;
+    ({double lat, double lng}) at(double metres) =>
+        (lat: 37 + metres * m, lng: -77.0);
+    List<List<int>> numbers(List<CheckpointMark> marks) =>
+        [for (final k in marks) k.numbers];
+
+    test('a pair 38 m apart on a 2 km course share one marker', () {
+      final marks = checkpointMarks(
+        checkpoints: [at(500), at(538), at(1000)],
+        line: [at(0), at(2000)],
+        shape: 'loop',
+      );
+      expect(numbers(marks), [
+        [1, 2],
+        [3],
+      ]);
+      expect([for (final k in marks) k.isTurn], [false, false]);
+      expect((marks.first.lat, marks.first.lng), (at(500).lat, -77.0));
+    });
+
+    test('an out-and-back marks its last checkpoint as the turn, never merged',
+        () {
+      final marks = checkpointMarks(
+        checkpoints: [at(980), at(1000)],
+        line: [at(0), at(1000), at(0)],
+        shape: 'out_and_back',
+      );
+      expect(numbers(marks), [
+        [1],
+        [2],
+      ]);
+      expect([for (final k in marks) k.isTurn], [false, true]);
+    });
+
+    test('a short course still merges within 25 m, and only within it', () {
+      final line = [at(0), at(200)];
+      expect(
+        numbers(checkpointMarks(
+            checkpoints: [at(50), at(70)], line: line, shape: 'loop')),
+        [
+          [1, 2],
+        ],
+      );
+      expect(
+        numbers(checkpointMarks(
+            checkpoints: [at(50), at(80)], line: line, shape: 'loop')),
+        [
+          [1],
+          [2],
+        ],
+      );
+    });
+
+    test('no checkpoints, no marks; a loop has no turn', () {
+      expect(
+          checkpointMarks(
+              checkpoints: const [],
+              line: [at(0), at(100)],
+              shape: 'out_and_back'),
+          isEmpty);
+      expect(
+        checkpointMarks(
+                checkpoints: [at(50)], line: [at(0), at(100)], shape: 'loop')
+            .every((k) => !k.isTurn),
+        isTrue,
+      );
+    });
+  });
+
+  group('courseNotices', () {
+    final fordGuide = parseRouteGuide({
+      'version': 1,
+      'lang': 'en',
+      'steps': [
+        {'kind': 'start', 'at_m': 0, 'way': 'path'},
+        {'kind': 'crossing', 'at_m': 900, 'crossing': 'ford'},
+        {'kind': 'finish', 'at_m': 5000},
+      ],
+    });
+
+    test('a park names its closing time, earlier on a long course', () {
+      expect(
+          courseNotices(
+              parkKind: 'park', surface: 'trail', distanceM: 5000, guide: null),
+          [CourseNotice.parkHours]);
+      expect(
+          courseNotices(
+              parkKind: null, surface: 'trail', distanceM: 20000, guide: null),
+          [CourseNotice.parkHoursLong]);
+    });
+
+    test(
+        'a paved trail is shared with cyclists; an unpaved one says so only '
+        'when long; neither has hours', () {
+      expect(
+          courseNotices(
+              parkKind: 'trail', surface: 'road', distanceM: 50000, guide: null),
+          [CourseNotice.pavedTrail]);
+      expect(
+          courseNotices(
+              parkKind: 'trail',
+              surface: 'trail',
+              distanceM: 20000,
+              guide: null),
+          [CourseNotice.longTrail]);
+      expect(
+          courseNotices(
+              parkKind: 'trail', surface: 'trail', distanceM: 5000, guide: null),
+          isEmpty);
+    });
+
+    test('only an explicit trail is a trail', () {
+      for (final kind in [null, 'park', 'other']) {
+        expect(
+            courseNotices(
+                parkKind: kind, surface: 'road', distanceM: 5000, guide: null),
+            [CourseNotice.parkHours],
+            reason: '$kind');
+      }
+    });
+
+    test('a ford in the guide leads, and only a ford does', () {
+      expect(
+          courseNotices(
+              parkKind: 'park',
+              surface: 'trail',
+              distanceM: 5000,
+              guide: fordGuide),
+          [CourseNotice.ford, CourseNotice.parkHours]);
+    });
+  });
 }

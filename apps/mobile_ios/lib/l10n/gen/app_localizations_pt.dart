@@ -22872,6 +22872,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksLegendStartFinish => 'Partida e meta';
 
   @override
+  String get parksMapJumpLabel => 'Ver no mapa';
+
+  @override
+  String get parksMapJumpCourse => 'Percurso completo';
+
+  @override
   String get parksEndsTitle => 'Pontos de partida e chegada';
 
   @override
@@ -47126,6 +47132,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksLegendStartFinish => 'Largada e chegada';
+
+  @override
+  String get parksMapJumpLabel => 'Ver no mapa';
+
+  @override
+  String get parksMapJumpCourse => 'Percurso inteiro';
 
   @override
   String get parksEndsTitle => 'Pontos de largada e chegada';

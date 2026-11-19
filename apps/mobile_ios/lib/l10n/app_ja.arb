@@ -6091,6 +6091,8 @@
   "parksLegendStart": "スタート",
   "parksLegendFinish": "フィニッシュ",
   "parksLegendStartFinish": "スタート・フィニッシュ",
+  "parksMapJumpLabel": "地図で表示",
+  "parksMapJumpCourse": "コース全体",
   "parksEndsTitle": "スタート・フィニッシュ地点",
   "parksEndsCopy": "コピー",
   "parksEndsCopyStart": "スタートの座標をコピー",

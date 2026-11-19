@@ -6091,6 +6091,8 @@
   "parksLegendStart": "Start",
   "parksLegendFinish": "Ziel",
   "parksLegendStartFinish": "Start und Ziel",
+  "parksMapJumpLabel": "Auf der Karte zeigen",
+  "parksMapJumpCourse": "Ganze Strecke",
   "parksEndsTitle": "Start- und Zielpunkt",
   "parksEndsCopy": "Kopieren",
   "parksEndsCopyStart": "Startkoordinaten kopieren",

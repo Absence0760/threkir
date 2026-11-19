@@ -6091,6 +6091,8 @@
   "parksLegendStart": "Largada",
   "parksLegendFinish": "Chegada",
   "parksLegendStartFinish": "Largada e chegada",
+  "parksMapJumpLabel": "Ver no mapa",
+  "parksMapJumpCourse": "Percurso inteiro",
   "parksEndsTitle": "Pontos de largada e chegada",
   "parksEndsCopy": "Copiar",
   "parksEndsCopyStart": "Copiar as coordenadas da largada",

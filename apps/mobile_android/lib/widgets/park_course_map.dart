@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChartPalette;
 
 import '../course_gates.dart';
+import '../course_jump.dart';
 import '../gate_crossing.dart' show Gate;
 import '../l10n/gen/app_localizations.dart';
 import '../park_courses.dart' show CourseCheckpoint, checkpointMarks;
@@ -403,8 +404,10 @@ class _Chevron extends StatelessWidget {
 /// One park course on a basemap: its line, the direction it is run in, the
 /// start and finish (one marker when they share a place) and its numbered
 /// checkpoints. Pair it with [ParkCourseMapLegend], which names each mark.
-/// Static, because it sits inside the course page's scroll view.
-class ParkCourseMap extends StatelessWidget {
+/// It does not pan or pinch, because it sits inside the course page's scroll
+/// view; the buttons under it take it to the start, the finish (one button
+/// where they share a box) and back to the whole course ([courseJumps]).
+class ParkCourseMap extends StatefulWidget {
   final List<Waypoint> line;
   final List<CourseCheckpoint> checkpoints;
   final double aspectRatio;
@@ -427,7 +430,77 @@ class ParkCourseMap extends StatelessWidget {
   });
 
   @override
+  State<ParkCourseMap> createState() => ParkCourseMapState();
+}
+
+class ParkCourseMapState extends State<ParkCourseMap>
+    with SingleTickerProviderStateMixin {
+  final MapController _map = MapController();
+  late final AnimationController _move;
+
+  /// Where the camera is: what a widget test reads after a jump.
+  @visibleForTesting
+  MapCamera get camera => _map.camera;
+
+  @override
+  void initState() {
+    super.initState();
+    _move = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+  }
+
+  @override
+  void dispose() {
+    _move.dispose();
+    _map.dispose();
+    super.dispose();
+  }
+
+  /// Fit the camera to [jump]'s bounds, never closer than [kCourseJumpMaxZoom]
+  /// on a start or finish, and as the map opens on the whole course. Eased,
+  /// or a jump when the reader has asked for less motion.
+  void _jumpTo(CourseJump jump) {
+    final b = jump.bounds;
+    final fit = CameraFit.bounds(
+      bounds: LatLngBounds(LatLng(b.south, b.west), LatLng(b.north, b.east)),
+      padding: const EdgeInsets.all(28),
+      maxZoom:
+          jump.target == CourseJumpTarget.course ? 17 : kCourseJumpMaxZoom,
+    );
+    _move.stop();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _map.fitCamera(fit);
+      return;
+    }
+    final from = _map.camera;
+    final to = fit.fit(from);
+    final curve = CurvedAnimation(parent: _move, curve: Curves.easeInOut);
+    void step() {
+      final t = curve.value;
+      _map.move(
+        LatLng(
+          from.center.latitude + (to.center.latitude - from.center.latitude) * t,
+          from.center.longitude +
+              (to.center.longitude - from.center.longitude) * t,
+        ),
+        from.zoom + (to.zoom - from.zoom) * t,
+      );
+    }
+
+    _move.addListener(step);
+    _move.forward(from: 0).whenCompleteOrCancel(() {
+      _move.removeListener(step);
+      curve.dispose();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final line = widget.line;
+    final checkpoints = widget.checkpoints;
+    final zones = widget.zones;
     if (line.length < 2) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
     final darkBasemap = currentBasemapIsDark(context);
@@ -440,17 +513,23 @@ class ParkCourseMap extends StatelessWidget {
     final marks = checkpointMarks(
       checkpoints: [for (final c in checkpoints) (lat: c.lat, lng: c.lng)],
       line: [for (final w in line) (lat: w.lat, lng: w.lng)],
-      shape: shape,
+      shape: widget.shape,
+    );
+    final jumps = courseJumps(
+      gates: zones,
+      line: [for (final w in line) GatePoint(w.lat, w.lng)],
+      endsShared: shared,
     );
     // semantics-children: the map's credit line keeps its own node
-    return Semantics(
+    final map = Semantics(
       container: true,
       label: l10n.parksMapCourseLabel(checkpoints.length),
       child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: AspectRatio(
-            aspectRatio: aspectRatio,
+            aspectRatio: widget.aspectRatio,
             child: FlutterMap(
+              mapController: _map,
               options: MapOptions(
                 backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
                 initialCameraFit: CameraFit.coordinates(
@@ -558,6 +637,106 @@ class ParkCourseMap extends StatelessWidget {
               ],
             ),
           ),
+      ),
+    );
+    if (jumps.isEmpty) return map;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        map,
+        const SizedBox(height: 8),
+        _CourseJumpButtons(
+          jumps: jumps,
+          darkBasemap: darkBasemap,
+          onJump: _jumpTo,
+        ),
+      ],
+    );
+  }
+}
+
+/// The row of buttons under a [ParkCourseMap]: a caption, then Start and
+/// Finish (or one Start and finish) and Whole course, each an icon and a
+/// word. The start and finish icons sit on their boxes' colours, as the boxes
+/// on the map do; the word carries the meaning.
+class _CourseJumpButtons extends StatelessWidget {
+  const _CourseJumpButtons({
+    required this.jumps,
+    required this.darkBasemap,
+    required this.onJump,
+  });
+
+  final List<CourseJump> jumps;
+  final bool darkBasemap;
+  final void Function(CourseJump) onJump;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    String label(CourseJumpTarget t) => switch (t) {
+          CourseJumpTarget.start => l10n.parksLegendStart,
+          CourseJumpTarget.finish => l10n.parksLegendFinish,
+          CourseJumpTarget.startFinish => l10n.parksLegendStartFinish,
+          CourseJumpTarget.course => l10n.parksMapJumpCourse,
+        };
+    Widget icon(CourseJumpTarget t) {
+      final glyph = switch (t) {
+        CourseJumpTarget.start => Icons.play_arrow,
+        CourseJumpTarget.finish ||
+        CourseJumpTarget.startFinish =>
+          Icons.flag_outlined,
+        CourseJumpTarget.course => Icons.route,
+      };
+      final fill = switch (t) {
+        CourseJumpTarget.start ||
+        CourseJumpTarget.startFinish =>
+          mapStartZoneColour(darkBasemap: darkBasemap),
+        CourseJumpTarget.finish =>
+          mapFinishZoneColour(darkBasemap: darkBasemap),
+        CourseJumpTarget.course => null,
+      };
+      if (fill == null) return const Icon(Icons.route, size: 20);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(glyph,
+              size: 18, color: mapBoxInk(darkBasemap: darkBasemap)),
+        ),
+      );
+    }
+
+    return Semantics(
+      container: true,
+      label: l10n.parksMapJumpLabel,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ExcludeSemantics(
+            child: Text(
+              l10n.parksMapJumpLabel,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+          for (final j in jumps)
+            OutlinedButton.icon(
+              key: ValueKey('park-course-jump-${j.target.name}'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(48, 48),
+              ),
+              onPressed: () => onJump(j),
+              icon: icon(j.target),
+              label: Text(label(j.target)),
+            ),
+        ],
       ),
     );
   }

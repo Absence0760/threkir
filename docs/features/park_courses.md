@@ -414,13 +414,26 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   bounding-box diagonal, at least 25 m (`checkpointMarks` in the
   `park_courses` pair). On an out-and-back the last checkpoint is the turn
   and is drawn as a "Turn around" tag with a U-turn instead of a number,
-  named in the key as a point the run must pass (decisions § 2581). The key
-  lists the start and finish (below), the
+  named in the key as a point the run must pass (decisions § 2582). At the
+  fitted whole-course zoom the map stays quiet: the km or mile badges are one
+  pass over the ground only (one lap of a lapped course, the way out of an
+  out-and-back; `computeDistanceMarkers`' `lapM` in the `distance_markers`
+  pair), every badge on a pass of up to 10 units and every 5th on a longer
+  one (`badgeAtOverview`), the checkpoints are dots without their "CP n"
+  names, and each dot holds its place in the symbol collision pass so no
+  badge is drawn under one. One zoom step in, every badge and every name
+  appears. The phone's course map draws no badges and numbers its dots. The
+  key lists the start and finish (below), the
   checkpoints, the turn-around, the kilometre or mile badges and the ▶
   direction arrows. An elevation profile, linked to the map, shows when every
   point has a height. The credit is one line (below). "Navigate this course"
   is the filled primary action, "Download GPX" the outline one (primary when
-  there is no route). The facts box (distance, gain, shape, surface,
+  there is no route). There is one filled action: Navigate this course when
+  the course has a route, with "Get directions to the start" as an outline
+  button above it; with no route, "Get directions to the start" is the filled
+  one and the GPX an outline (decisions § 2582). A stored `road` surface
+  reads "Paved" in the facts, never "Road" (`parks.surfacePaved`; the stored
+  vocabulary is unchanged). The facts box (distance, gain, shape, surface,
   difficulty) wraps with its last row stretched and each cell drawing its own
   dividers, so no count of facts leaves an empty filled slot. From 72rem the
   page is two independent columns, so neither one's length opens a gap in the
@@ -428,7 +441,7 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   facts, the start and finish block, the actions, the notices and the route
   guide on the right. On a phone, one column: facts, start and finish,
   actions, map, notices, profile, guide, board.
-- **Start and finish boxes** (decisions § 2581): when the segment has both
+- **Start and finish boxes** (decisions § 2582): when the segment has both
   stored lines (`start_gate_*`, `end_gate_*`, the lines the matcher times),
   the map draws a green start box behind the start line and a red finish box
   past the finish line, each 10 m deep and the line's full width, so leaving
@@ -451,7 +464,7 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   to a deuteranope, the finish reads apart from the coral track). Hue is
   never the only cue: the names, the flags, and the finish edge chequered
   where the start's is solid. A segment missing either line keeps the pins.
-- **Start and finish points** (decisions § 2551, § 2581): a block on the
+- **Start and finish points** (decisions § 2551, § 2582): a block on the
   course page (web `CourseEndsBlock`, at the top of the notices column;
   mobile `CourseEndsCard`, under the map). When the course has its boxes it
   leads with one sentence (`courseBoxInstruction`): "Start recording in the
@@ -482,13 +495,22 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   the map does not show. The mobile race page draws no course line, so it
   has no block; its Drive this course screen remains the way to the start.
 - **Before you run** (`ParkCourseNotices` / `_CourseNotices`, decisions
-  § 2581): at most two plain lines, safety first: "Follow the course line on
-  the map and pass every checkpoint in order, or your time won't count.", the give-way note
-  when an organised group shares the paths, then "Finish before the park
-  closes." (or, on a long course, the long-course notice, which says so with
-  more). The required notices follow as one smaller line: a time trial on
-  open trails, not a race, and nobody marshals it; the times are not event
-  results; not affiliated with the park.
+  § 2582): a few plain lines, safety first: "Follow the course line on the
+  map and pass every checkpoint in order, or your time won't count.", the
+  give-way note when an organised group shares the paths, then only the
+  lines the course's data supports (`courseNotices` in the `park_courses`
+  pair): a ford in its route guide ("The course crosses a stream with no
+  bridge…"); on a trail (`parks.kind = 'trail'`, from #1435) a paved surface
+  gets "Shared with cyclists. Keep right and carry water: there may be few
+  fountains." and a long unpaved one "Long course: carry water and food.",
+  and a trail names no closing time; in a park, "Finish before the park
+  closes.", or on a course over 15 km "Long course: start early enough to
+  finish before the park closes." Nothing about bikes, horses or water
+  crossings is said unless the data holds it. Until `parks.kind` exists the
+  clients read every catalogue entry as a park (web `parkKindOf`, mobile
+  `ParkListing.kind`). The required notices follow as one smaller line: a
+  time trial on open trails, not a race, and nobody marshals it; the times
+  are not event results; not affiliated with the park.
 - **Empty board:** the page asks the all-time completions board for one row
   first (it throws on a failed read, so a failure is not read as empty).
   With no time at all, the board kinds, seasons, Compare and the filters are
@@ -546,7 +568,7 @@ climbs on the way, the checkpoints and the laps.
   page's meta description says so, and the GPX `<desc>` opens with it. Once
   set, they say "Checked on the ground on <date>." How to check one is in
   [scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides).
-- **Short first** (decisions § 2581). The course page and the share page
+- **Short first** (decisions § 2582). The course page and the share page
   show the short view from `routeGuideView` (the `route_guide` pair, case
   table `views`): the start, the direction, how many laps ("2 laps of the
   loop."), the first lap's turns where the trail changes (a left or right

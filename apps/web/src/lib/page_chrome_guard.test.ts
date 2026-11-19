@@ -379,9 +379,10 @@ test('every ALLOW entry still needs its exemption', () => {
 // view names the file that renders the header.
 const ROOT_HEADER_FILE: Record<string, string> = {
 	'/dashboard': 'routes/dashboard/DashboardView.svelte',
-	'/runs': 'lib/components/RunSurfaceTabs.svelte',
 };
 const ROOT_EXEMPT: Record<string, string> = {
+	'/runs':
+		"the run-surface strip opens the page and its highlighted tab names the surface; a visible title above a tab of the same name said it twice and pushed the controls down (decisions § 2584)",
 	'/messages':
 		'a two-pane inbox: the conversation list heads itself with a visible h2 and the open thread names the other person, so a page-wide title would sit over both panes',
 };

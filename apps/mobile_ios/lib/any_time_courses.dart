@@ -240,10 +240,25 @@ List<String> parkSearchTerms(String query) => [
         if (t.isNotEmpty) t,
     ];
 
-/// Whether every one of [terms] is in the course's name, its park's name or
-/// the park's place (the region's name or code), so "pocahontas 5k" and
-/// "virginia beaver" both find a course. With no [courseName] it asks about
-/// the park alone.
+final _wordChar = RegExp(r'[\p{L}\p{N}]', unicode: true);
+
+/// Whether [term] starts a word somewhere in [text]: at its start, or after a
+/// character that is neither a letter nor a digit. "belle" starts a word of
+/// "belle isle state park" and "va" one of "us-va"; "ark" starts none, so it
+/// does not find every park.
+bool _startsAWord(String text, String term) {
+  for (var i = text.indexOf(term); i != -1; i = text.indexOf(term, i + 1)) {
+    if (i == 0 || !_wordChar.hasMatch(text[i - 1])) return true;
+  }
+  return false;
+}
+
+/// Whether every one of [terms] starts a word of the course's name, its
+/// park's name or the park's place (the region's name or code), so
+/// "pocahontas 5k", "virginia beaver" and "swift cr" all find a course while
+/// "ark" does not find every park. With no [courseName] it asks about the
+/// park alone. The cases are `fixtures/park_search_cases.json`, read on both
+/// sides.
 bool parkSearchMatches(
   List<String> terms, {
   String courseName = '',
@@ -253,5 +268,5 @@ bool parkSearchMatches(
   if (terms.isEmpty) return true;
   final text = fold(
       [courseName, parkName, regionName(regionCode), regionCode].join(' '));
-  return terms.every(text.contains);
+  return terms.every((t) => _startsAWord(text, t));
 }

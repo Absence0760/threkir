@@ -1,4 +1,7 @@
 // ignore_for_file: avoid_relative_lib_imports
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/any_time_courses.dart';
@@ -27,6 +30,13 @@ List<String> slugs(List<OrderedCourse<AnyTimeCourseKey>> rows) =>
     [for (final r in rows) r.course.slug];
 
 AnyTimeCourseKey id(AnyTimeCourseKey c) => c;
+
+/// The Dart reader of `fixtures/park_search_cases.json`, the case table this
+/// pair shares with web's `any_time_courses.test.ts`.
+final List<Map<String, dynamic>> _parkSearchCases = ((jsonDecode(
+            File('../../fixtures/park_search_cases.json').readAsStringSync())
+        as Map<String, dynamic>)['cases'] as List)
+    .cast<Map<String, dynamic>>();
 
 void main() {
   test('without an origin, region then park then distance then name', () {
@@ -114,6 +124,25 @@ void main() {
     expect(matches('us-va'), isTrue);
     expect(matches('beaver swift'), isFalse);
     expect(matches('maryland'), isFalse);
+  });
+
+  test(
+      'parkSearchMatches: each word starts a word of the name or place '
+      '(shared fixture)', () {
+    expect(_parkSearchCases, isNotEmpty);
+    for (final c in _parkSearchCases) {
+      final t = c['target'] as Map<String, dynamic>;
+      expect(
+        parkSearchMatches(
+          parkSearchTerms(c['query'] as String),
+          courseName: t['courseName'] as String? ?? '',
+          parkName: t['parkName'] as String,
+          regionCode: t['regionCode'] as String,
+        ),
+        c['expected'] as bool,
+        reason: jsonEncode(c),
+      );
+    }
   });
 
   test(

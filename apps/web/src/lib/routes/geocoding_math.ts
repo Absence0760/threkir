@@ -19,6 +19,49 @@ export interface GeocodedPlace {
 	placeType: string | null;
 }
 
+/// Where a caller wants places looked for. Every field is optional and an
+/// empty bias asks the provider exactly what it was asked before, so the
+/// callers that pass none keep their behaviour.
+///
+/// `countries` is a hard filter on both providers (MapTiler `country`,
+/// Nominatim `countrycodes`): a short word typed into a search whose results
+/// only matter in a few countries must not resolve to a namesake on another
+/// continent. `proximity` ranks nearer places first; only MapTiler takes it.
+export interface PlaceBias {
+	/** ISO 3166-1 alpha-2 codes, any case. Anything else is ignored. */
+	countries?: readonly string[];
+	proximity?: { lat: number; lng: number };
+}
+
+/// The bias's country codes, lowercased, deduplicated, malformed ones dropped.
+export function biasCountries(bias?: PlaceBias): string[] {
+	const out: string[] = [];
+	for (const raw of bias?.countries ?? []) {
+		const c = raw.trim().toLowerCase();
+		if (/^[a-z]{2}$/.test(c) && !out.includes(c)) out.push(c);
+	}
+	return out;
+}
+
+/// The query-string tail a bias adds to a MapTiler geocoding URL ('' for none).
+export function mapTilerBiasQuery(bias?: PlaceBias): string {
+	let q = '';
+	const countries = biasCountries(bias);
+	if (countries.length > 0) q += `&country=${countries.join(',')}`;
+	const p = bias?.proximity;
+	if (p && isUsableLongitude(p.lng) && isUsableLatitude(p.lat)) {
+		q += `&proximity=${p.lng},${p.lat}`;
+	}
+	return q;
+}
+
+/// Adds a bias to Nominatim search parameters. Nominatim has no proximity
+/// ranking, so only the countries carry over.
+function addNominatimBias(params: URLSearchParams, bias?: PlaceBias): void {
+	const countries = biasCountries(bias);
+	if (countries.length > 0) params.set('countrycodes', countries.join(','));
+}
+
 /// Whether a provider's answer is a latitude at all.
 ///
 /// The same contract `RouteParser._isUsableLat` applies to a coordinate out of
@@ -103,15 +146,16 @@ export async function searchPlacesWithKey(
 	query: string,
 	limit = 5,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<PlaceSearchOutcome> {
 	const trimmed = query.trim();
 	// Too short to search is not a failure — it is an empty result the
 	// caller renders as nothing at all.
 	if (trimmed.length < 2) return { status: 'ok', results: [] };
 	if (maptilerKey.length > 0) {
-		return searchViaMapTiler(maptilerKey, trimmed, limit, signal);
+		return searchViaMapTiler(maptilerKey, trimmed, limit, signal, bias);
 	}
-	return searchViaNominatim(trimmed, limit, signal);
+	return searchViaNominatim(trimmed, limit, signal, bias);
 }
 
 async function searchViaMapTiler(
@@ -119,8 +163,9 @@ async function searchViaMapTiler(
 	query: string,
 	limit: number,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<PlaceSearchOutcome> {
-	const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${key}&limit=${limit}`;
+	const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${key}&limit=${limit}${mapTilerBiasQuery(bias)}`;
 	let res: Response;
 	try {
 		res = await fetch(url, { signal });
@@ -166,21 +211,23 @@ export async function geocodePlaceWithKey(
 	maptilerKey: string,
 	query: string,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<GeocodedPlace | null> {
 	const trimmed = query.trim();
 	if (trimmed.length < 2) return null;
 	if (maptilerKey.length > 0) {
-		return geocodeViaMapTiler(maptilerKey, trimmed, signal);
+		return geocodeViaMapTiler(maptilerKey, trimmed, signal, bias);
 	}
-	return geocodeViaNominatim(trimmed, signal);
+	return geocodeViaNominatim(trimmed, signal, bias);
 }
 
 async function geocodeViaMapTiler(
 	key: string,
 	trimmed: string,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<GeocodedPlace | null> {
-	const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(trimmed)}.json?key=${key}&limit=1`;
+	const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(trimmed)}.json?key=${key}&limit=1${mapTilerBiasQuery(bias)}`;
 	let res: Response;
 	try {
 		res = await fetch(url, { signal });
@@ -236,6 +283,7 @@ async function geocodeViaMapTiler(
 async function geocodeViaNominatim(
 	trimmed: string,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<GeocodedPlace | null> {
 	const params = new URLSearchParams({
 		q: trimmed,
@@ -244,6 +292,7 @@ async function geocodeViaNominatim(
 		addressdetails: '0',
 		email: 'privacy@threkir.com',
 	});
+	addNominatimBias(params, bias);
 	const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
 	let res: Response;
 	try {
@@ -333,6 +382,7 @@ async function searchViaNominatim(
 	query: string,
 	limit: number,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ): Promise<PlaceSearchOutcome> {
 	const params = new URLSearchParams({
 		q: query,
@@ -342,6 +392,7 @@ async function searchViaNominatim(
 		// Tells Nominatim "I read the policy" — see comment above.
 		email: 'privacy@threkir.com',
 	});
+	addNominatimBias(params, bias);
 	const url = `${NOMINATIM_BASE}?${params.toString()}`;
 	let res: Response;
 	try {

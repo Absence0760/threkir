@@ -527,4 +527,67 @@ void main() {
       );
     });
   });
+
+  group('courseNotices', () {
+    final fordGuide = parseRouteGuide({
+      'version': 1,
+      'lang': 'en',
+      'steps': [
+        {'kind': 'start', 'at_m': 0, 'way': 'path'},
+        {'kind': 'crossing', 'at_m': 900, 'crossing': 'ford'},
+        {'kind': 'finish', 'at_m': 5000},
+      ],
+    });
+
+    test('a park names its closing time, earlier on a long course', () {
+      expect(
+          courseNotices(
+              parkKind: 'park', surface: 'trail', distanceM: 5000, guide: null),
+          [CourseNotice.parkHours]);
+      expect(
+          courseNotices(
+              parkKind: null, surface: 'trail', distanceM: 20000, guide: null),
+          [CourseNotice.parkHoursLong]);
+    });
+
+    test(
+        'a paved trail is shared with cyclists; an unpaved one says so only '
+        'when long; neither has hours', () {
+      expect(
+          courseNotices(
+              parkKind: 'trail', surface: 'road', distanceM: 50000, guide: null),
+          [CourseNotice.pavedTrail]);
+      expect(
+          courseNotices(
+              parkKind: 'trail',
+              surface: 'trail',
+              distanceM: 20000,
+              guide: null),
+          [CourseNotice.longTrail]);
+      expect(
+          courseNotices(
+              parkKind: 'trail', surface: 'trail', distanceM: 5000, guide: null),
+          isEmpty);
+    });
+
+    test('only an explicit trail is a trail', () {
+      for (final kind in [null, 'park', 'other']) {
+        expect(
+            courseNotices(
+                parkKind: kind, surface: 'road', distanceM: 5000, guide: null),
+            [CourseNotice.parkHours],
+            reason: '$kind');
+      }
+    });
+
+    test('a ford in the guide leads, and only a ford does', () {
+      expect(
+          courseNotices(
+              parkKind: 'park',
+              surface: 'trail',
+              distanceM: 5000,
+              guide: fordGuide),
+          [CourseNotice.ford, CourseNotice.parkHours]);
+    });
+  });
 }

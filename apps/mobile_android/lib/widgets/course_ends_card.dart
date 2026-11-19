@@ -21,14 +21,19 @@ class CourseEndsCard extends StatelessWidget {
 
   /// The course page's one sentence about its start and finish boxes. Set,
   /// the card leads with it and a button to the start, and folds the
-  /// coordinates away under it (decisions § 2581).
+  /// coordinates away under it (decisions § 2582).
   final String? instruction;
+
+  /// Whether "Get directions to the start" is the screen's one filled action:
+  /// not when the screen has Navigate this course.
+  final bool primary;
 
   const CourseEndsCard({
     super.key,
     required this.ends,
     this.launch,
     this.instruction,
+    this.primary = true,
   });
 
   @override
@@ -51,12 +56,20 @@ class CourseEndsCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          FilledButton.icon(
-            key: const Key('course-ends-get-directions'),
-            onPressed: () => _openDirections(context, ends.start, launch),
-            icon: const Icon(Icons.directions),
-            label: Text(l10n.parksEndsGetDirections),
-          ),
+          if (primary)
+            FilledButton.icon(
+              key: const Key('course-ends-get-directions'),
+              onPressed: () => _openDirections(context, ends.start, launch),
+              icon: const Icon(Icons.directions),
+              label: Text(l10n.parksEndsGetDirections),
+            )
+          else
+            OutlinedButton.icon(
+              key: const Key('course-ends-get-directions'),
+              onPressed: () => _openDirections(context, ends.start, launch),
+              icon: const Icon(Icons.directions),
+              label: Text(l10n.parksEndsGetDirections),
+            ),
           ExpansionTile(
             key: const Key('course-ends-coordinates'),
             tilePadding: EdgeInsets.zero,

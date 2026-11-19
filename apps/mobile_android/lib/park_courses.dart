@@ -152,9 +152,45 @@ bool courseOffersWayfinding(String status) => status != 'closed';
 /// Courses longer than this carry the long-course notice.
 const double kLongCourseThresholdM = 15000;
 
-/// Whether a course is long enough to show the long-course notice.
+/// Whether a course is long enough for the long-course lines of its notices.
 bool isLongCourse(double distanceM) =>
     distanceM.isFinite && distanceM > kLongCourseThresholdM;
+
+/// A line of a course's Before you run notice beyond the safety line. Twin of
+/// web's `CourseNoticeKey`.
+enum CourseNotice { ford, pavedTrail, longTrail, parkHours, parkHoursLong }
+
+/// The lines of a course's Before you run notice that its data supports
+/// (decisions § 2582), hazards first, never a fact the data does not hold:
+/// [CourseNotice.ford] when the route guide crosses a ford; on a trail
+/// ([parkKind] `trail`), [CourseNotice.pavedTrail] when the surface is paved
+/// (`road`, a shared-use path), else [CourseNotice.longTrail] on a long
+/// course, since a trail has no closing time to name; in a park,
+/// [CourseNotice.parkHoursLong] on a long course, else
+/// [CourseNotice.parkHours]. Twin of web's `courseNotices`.
+List<CourseNotice> courseNotices({
+  required String? parkKind,
+  required String? surface,
+  required double distanceM,
+  required RouteGuide? guide,
+}) {
+  final out = <CourseNotice>[];
+  if (guide != null &&
+      guide.steps.any((s) => s.kind == 'crossing' && s.crossing == 'ford')) {
+    out.add(CourseNotice.ford);
+  }
+  final long = isLongCourse(distanceM);
+  if (parkKind == 'trail') {
+    if (surface == 'road') {
+      out.add(CourseNotice.pavedTrail);
+    } else if (long) {
+      out.add(CourseNotice.longTrail);
+    }
+  } else {
+    out.add(long ? CourseNotice.parkHoursLong : CourseNotice.parkHours);
+  }
+  return out;
+}
 
 class ParkRegionGroup<T> {
   final String regionCode;
@@ -596,7 +632,7 @@ class CheckpointMark {
   final double lng;
 }
 
-/// What a course map marks for its checkpoints (decisions § 2581). On an
+/// What a course map marks for its checkpoints (decisions § 2582). On an
 /// out-and-back the last checkpoint is the turn, marked as such. The rest
 /// are numbered, and checkpoints so close that their markers would cover
 /// each other at the whole-course zoom share one marker that carries every

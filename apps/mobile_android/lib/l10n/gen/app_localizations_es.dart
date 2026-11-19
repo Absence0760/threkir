@@ -22745,16 +22745,30 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksNoticeParkHours => 'Termina antes de que cierre el parque.';
 
   @override
+  String get parksNoticeFord =>
+      'El recorrido cruza un arroyo sin puente. Después de la lluvia puede ser demasiado hondo para cruzarlo.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Compartido con ciclistas. Mantente a la derecha y lleva agua: puede haber pocas fuentes.';
+
+  @override
+  String get parksNoticeLongTrail => 'Recorrido largo: lleva agua y comida.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Recorrido largo: sal con tiempo para terminar antes de que cierre el parque.';
+
+  @override
+  String get parksSurfacePaved => 'Pavimentado';
+
+  @override
   String get parksNoticeOpenTrail =>
       'Una contrarreloj en senderos abiertos, no una carrera. Nadie la supervisa.';
 
   @override
   String get parksNotAffiliated =>
       'Threkir publica estos recorridos. No los organiza, patrocina ni respalda el parque ni el organismo que lo gestiona. Se aplican las normas, horarios, tarifas y cierres del parque.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Recorrido largo. Sal con tiempo suficiente para terminar antes de que cierre el parque. Cuenta con senderos compartidos con bicicletas y caballos, y con vadeos que pueden quedar intransitables después de la lluvia.';
 
   @override
   String get parksTimesNotEventResults =>

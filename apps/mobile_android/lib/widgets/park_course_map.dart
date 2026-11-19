@@ -78,7 +78,7 @@ double _lineMetres(List<LatLng> pts) {
 
 /// A course's start and finish lines as a page draws them: the segment's
 /// stored lines, the ones the matcher times, or null unless both are whole
-/// (decisions § 2581). Twin of web's `courseBoxGates` (`course_map.ts`).
+/// (decisions § 2582). Twin of web's `courseBoxGates` (`course_map.ts`).
 ({Gate start, Gate finish})? courseBoxGates(GlobalSegmentRow segment) {
   Gate? gate(double? lat, double? lng, double? bearing, double? halfWidth) {
     if (lat == null ||
@@ -102,7 +102,7 @@ double _lineMetres(List<LatLng> pts) {
   return (start: start, finish: finish);
 }
 
-/// The one sentence a course page gives a runner (decisions § 2581): start
+/// The one sentence a course page gives a runner (decisions § 2582): start
 /// recording in the green box and follow the arrows to the red one (round the
 /// loop [laps] times on a lapped course). Where both boxes land on one spot
 /// behind the start line, an out-and-back, it is one green-and-red box, left
@@ -123,7 +123,7 @@ String courseBoxInstruction(
 
 LatLng _gp(GatePoint p) => LatLng(p.lat, p.lng);
 
-/// The start and finish boxes over a course map (decisions § 2581), from
+/// The start and finish boxes over a course map (decisions § 2582), from
 /// [gateBoxParts]: a translucent fill with a full-strength outline, the edge
 /// on the course line (solid for the start, chequered for the finish), and a
 /// flag with the box's name at a fixed size, so the boxes read first at the

@@ -39,12 +39,15 @@ double _haversineMetres(LatLng a, LatLng b) =>
 /// geometry is a coarse approximation. A route's [officialDistanceM] wins
 /// over both, short or long, so km 42 of a traced marathon sits where the
 /// race's sign does (`courseDistanceScale`). Markers at index 0 (covered by
-/// the green start cap) are skipped.
+/// the green start cap) are skipped. With [lapM], a lapped course's one lap
+/// in real metres, only the first lap's badges are emitted: every later lap
+/// runs the same ground (decisions § 2582).
 List<DistanceMarker> computeDistanceMarkers(
   List<LatLng> coords, {
   required bool useMiles,
   double? totalDistanceM,
   double? officialDistanceM,
+  double? lapM,
 }) {
   final out = <DistanceMarker>[];
   if (coords.length < 2) return out;
@@ -82,6 +85,7 @@ List<DistanceMarker> computeDistanceMarkers(
           (coords[i].longitude - coords[i - 1].longitude) * t;
       final realPos = nextMarker / scale;
       final label = (realPos / stepM).round();
+      if (lapM != null && lapM > 0 && label * stepM > lapM + 0.5) break;
       out.add(DistanceMarker(LatLng(lat, lng), label));
       nextMarker += stepM * scale;
     }

@@ -225,7 +225,7 @@ class GateBoxMarker {
   final GatePoint at;
 }
 
-/// The start and finish boxes a course map draws (decisions § 2581).
+/// The start and finish boxes a course map draws (decisions § 2582).
 ({GateBoxLayout layout, List<GateBoxPart> parts, List<GateBoxMarker> markers})
     gateBoxParts(
   Gate? start,

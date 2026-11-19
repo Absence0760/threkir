@@ -21185,16 +21185,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksNoticeParkHours => '閉園時間までにフィニッシュしてください。';
 
   @override
+  String get parksNoticeFord => 'コースには橋のない川の渡渉があります。雨の後は深くて渡れないことがあります。';
+
+  @override
+  String get parksNoticePavedTrail =>
+      '自転車と共用の道です。右側を走り、水を持って行きましょう。給水所が少ないかもしれません。';
+
+  @override
+  String get parksNoticeLongTrail => '長いコースです。水と食べ物を持って行きましょう。';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      '長いコースです。閉園時間までにフィニッシュできるよう、早めにスタートしてください。';
+
+  @override
+  String get parksSurfacePaved => '舗装路';
+
+  @override
   String get parksNoticeOpenTrail =>
       '一般に開放されたコースでのタイムトライアルで、レースではありません。係員はいません。';
 
   @override
   String get parksNotAffiliated =>
       'これらのコースはThrekirが公開しています。公園やその管理機関が主催・後援・推奨するものではありません。公園の規則、開園時間、料金、閉鎖情報に従ってください。';
-
-  @override
-  String get parksLongCourseNotice =>
-      '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
   String get parksTimesNotEventResults =>

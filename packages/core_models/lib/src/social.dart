@@ -407,10 +407,16 @@ class ParkListing {
   /// read beside [season] so the two agree at midnight on 1 January.
   final int month;
 
+  /// `parks.kind`: `trail` for a long linear trail that belongs to no park,
+  /// else `park`. Read from the row beside [park] (decisions § 2582); null
+  /// where the column is not there yet, which reads as a park.
+  final String? kind;
+
   const ParkListing({
     required this.park,
     required this.season,
     required this.month,
+    this.kind,
   });
 }
 

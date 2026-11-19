@@ -1246,7 +1246,11 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                       ),
                     StatTile.medium(
                       label: l10n.parksStatSurface,
-                      value: routeSurfaceLabel(l10n, segment.surface),
+                      // A stored `road` surface is a paved course: it reads
+                      // "Paved", never as a run on a road (decisions § 2582).
+                      value: segment.surface == 'road'
+                          ? l10n.parksSurfacePaved
+                          : routeSurfaceLabel(l10n, segment.surface),
                     ),
                     if (difficulty != null)
                       StatTile.medium(
@@ -1270,11 +1274,48 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                   CourseEndsCard(
                     ends: ends,
                     launch: widget.launch,
+                    // One filled action: Navigate this course when there is
+                    // one, the way to the start otherwise.
+                    primary: !canNavigate,
                     instruction:
                         zones == null
                             ? null
                             : courseBoxInstruction(l10n, zones,
                                 hasTurn: hasTurn, laps: course.laps),
+                  ),
+                ],
+                // Right under the way to the start, so the one filled
+                // action is in reach without scrolling past the page.
+                if (canNavigate || canShare) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (canNavigate)
+                        FilledButton.icon(
+                          key: const Key('park-course-navigate'),
+                          onPressed: () => _navigate(api, routeId),
+                          icon: const Icon(Icons.navigation_outlined),
+                          label: Text(l10n.parksNavigate),
+                        ),
+                      if (canShare)
+                        Builder(
+                          builder: (anchor) => canNavigate || zones != null
+                              ? OutlinedButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                )
+                              : FilledButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                ),
+                        ),
+                    ],
                   ),
                 ],
                 if (geometry.length >= 2) ...[
@@ -1322,41 +1363,14 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ],
                 const SizedBox(height: 20),
                 _CourseNotices(
-                  long: isLongCourse(segment.distanceM),
+                  notices: courseNotices(
+                    parkKind: widget.listing.kind,
+                    surface: segment.surface,
+                    distanceM: segment.distanceM,
+                    guide: guide,
+                  ),
                   sharedUse: parseSharedUse(course.sharedUse),
                 ),
-                if (canNavigate || canShare) ...[
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      if (canNavigate)
-                        FilledButton.icon(
-                          key: const Key('park-course-navigate'),
-                          onPressed: () => _navigate(api, routeId),
-                          icon: const Icon(Icons.navigation_outlined),
-                          label: Text(l10n.parksNavigate),
-                        ),
-                      if (canShare)
-                        Builder(
-                          builder: (anchor) => canNavigate
-                              ? OutlinedButton.icon(
-                                  key: const Key('park-course-share-gpx'),
-                                  onPressed: () => _shareGpx(anchor),
-                                  icon: const Icon(Icons.ios_share),
-                                  label: Text(l10n.parksShareGpx),
-                                )
-                              : FilledButton.icon(
-                                  key: const Key('park-course-share-gpx'),
-                                  onPressed: () => _shareGpx(anchor),
-                                  icon: const Icon(Icons.ios_share),
-                                  label: Text(l10n.parksShareGpx),
-                                ),
-                        ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 24),
                 _buildBoards(context, l10n),
                 if (api != null) ...[
@@ -1628,7 +1642,7 @@ String? _isoDay(DateTime? d) => d == null
 /// A course's route guide (#1344): a short numbered list a runner reads in
 /// seconds (the start, the laps, the turns where the trail changes, the
 /// finish), with every step folded away under it, grouped by lap or by
-/// stretch ([routeGuideView], decisions § 2581), in the reader's language and
+/// stretch ([routeGuideView], decisions § 2582), in the reader's language and
 /// unit, under a note saying whether a person has walked it at the park yet.
 /// Mirrors web's `ParkCourseRouteGuide`.
 class _CourseRouteGuide extends StatelessWidget {
@@ -1752,9 +1766,10 @@ class _CourseRouteGuide extends StatelessWidget {
 /// give-way note when an organised group shares the paths, the long-course
 /// warning when it applies, then the times and not-affiliated notes.
 class _CourseNotices extends StatelessWidget {
-  final bool long;
+  /// The lines the course's data supports ([courseNotices]).
+  final List<CourseNotice> notices;
   final String? sharedUse;
-  const _CourseNotices({required this.long, required this.sharedUse});
+  const _CourseNotices({required this.notices, required this.sharedUse});
 
   @override
   Widget build(BuildContext context) {
@@ -1793,24 +1808,30 @@ class _CourseNotices extends StatelessWidget {
                 theme.textTheme.bodyMedium,
               ),
             ],
-            const SizedBox(height: 10),
-            if (long)
-              row(
-                const Key('park-course-long'),
-                Icons.schedule,
-                l10n.parksLongCourseNotice,
-                theme.textTheme.bodyMedium,
-              )
-            else
-              row(
-                const Key('park-course-hours'),
-                Icons.schedule,
-                l10n.parksNoticeParkHours,
-                theme.textTheme.bodyMedium,
-              ),
+            for (final n in notices) ...[
+              const SizedBox(height: 10),
+              switch (n) {
+                CourseNotice.ford => row(const Key('park-course-ford'),
+                    Icons.water, l10n.parksNoticeFord, theme.textTheme.bodyMedium),
+                CourseNotice.pavedTrail => row(
+                    const Key('park-course-paved-trail'),
+                    Icons.directions_bike,
+                    l10n.parksNoticePavedTrail,
+                    theme.textTheme.bodyMedium),
+                CourseNotice.longTrail => row(const Key('park-course-long'),
+                    Icons.schedule, l10n.parksNoticeLongTrail, theme.textTheme.bodyMedium),
+                CourseNotice.parkHours => row(const Key('park-course-hours'),
+                    Icons.schedule, l10n.parksNoticeParkHours, theme.textTheme.bodyMedium),
+                CourseNotice.parkHoursLong => row(
+                    const Key('park-course-long'),
+                    Icons.schedule,
+                    l10n.parksNoticeParkHoursLong,
+                    theme.textTheme.bodyMedium),
+              },
+            ],
             const SizedBox(height: 12),
             // The required notices, as one smaller line under the two that
-            // matter to a runner (decisions § 2581).
+            // matter to a runner (decisions § 2582).
             Text.rich(
               key: const Key('park-course-fine-print'),
               TextSpan(

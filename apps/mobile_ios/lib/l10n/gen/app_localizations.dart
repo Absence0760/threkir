@@ -35487,6 +35487,36 @@ abstract class AppLocalizations {
   /// **'Finish before the park closes.'**
   String get parksNoticeParkHours;
 
+  /// Before-you-run line on a park course whose route guide crosses a ford (decisions § 2582).
+  ///
+  /// In en, this message translates to:
+  /// **'The course crosses a stream with no bridge. After rain it can be too deep to cross.'**
+  String get parksNoticeFord;
+
+  /// Before-you-run line on a paved trail (parks.kind trail, surface road): a shared-use path with cyclists, keep right, carry water.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with cyclists. Keep right and carry water: there may be few fountains.'**
+  String get parksNoticePavedTrail;
+
+  /// Before-you-run line on a long unpaved trail (parks.kind trail), which has no closing time to name.
+  ///
+  /// In en, this message translates to:
+  /// **'Long course: carry water and food.'**
+  String get parksNoticeLongTrail;
+
+  /// Before-you-run line on a long course in a park: start early enough to finish before closing.
+  ///
+  /// In en, this message translates to:
+  /// **'Long course: start early enough to finish before the park closes.'**
+  String get parksNoticeParkHoursLong;
+
+  /// The surface fact on a park course page for a paved course (stored surface road), so a paved trail does not read as running on a road.
+  ///
+  /// In en, this message translates to:
+  /// **'Paved'**
+  String get parksSurfacePaved;
+
   /// Before-you-run callout, the small secondary line: a time trial on open trails, not a marshalled race (web parks.noticeOpenTrail).
   ///
   /// In en, this message translates to:
@@ -35498,12 +35528,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.'**
   String get parksNotAffiliated;
-
-  /// Park courses: shown on a course over 15 km (isLongCourse); web key parks.longCourseNotice. Names no park hours on purpose.
-  ///
-  /// In en, this message translates to:
-  /// **'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.'**
-  String get parksLongCourseNotice;
 
   /// Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event.
   ///
@@ -35691,7 +35715,7 @@ abstract class AppLocalizations {
   /// **'Direction to run'**
   String get parksLegendDirection;
 
-  /// The one instruction on a park course page (decisions § 2581): start recording inside the green box on the map, follow the map's direction arrows to the red box; with n over 1, round the loop n times first. n is the course's laps (1 for one). Plain words a first-timer or a child follows; never 'gate', 'line' or 'timing'.
+  /// The one instruction on a park course page (decisions § 2582): start recording inside the green box on the map, follow the map's direction arrows to the red box; with n over 1, round the loop n times first. n is the course's laps (1 for one). Plain words a first-timer or a child follows; never 'gate', 'line' or 'timing'.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, =1 {Start recording in the green box. Follow the arrows to the red box.} other {Start recording in the green box. Follow the arrows round the loop {n} times and finish in the red box.}}'**
@@ -36711,7 +36735,7 @@ abstract class AppLocalizations {
   /// **'{at}: finish.'**
   String parkGuideFinish(String at);
 
-  /// Park course route guide, short view (decisions § 2581, web parks.guide.laps): how many laps of the loop the course is.
+  /// Park course route guide, short view (decisions § 2582, web parks.guide.laps): how many laps of the loop the course is.
   ///
   /// In en, this message translates to:
   /// **'{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}'**

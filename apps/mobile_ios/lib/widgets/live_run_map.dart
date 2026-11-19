@@ -358,7 +358,7 @@ Color mapPinnedLine({required bool darkBasemap}) =>
 
 /// A park course's start and finish zones: the band's edge, the timing line
 /// and its arrow, and the key swatch. Twin of web's `mapStartZoneColour` /
-/// `mapFinishZoneColour` (`basemap_contrast.ts`, decisions § 2581). Not the
+/// `mapFinishZoneColour` (`basemap_contrast.ts`, decisions § 2582). Not the
 /// semantic success / danger caps: on a light basemap the danger red reads
 /// 1.00:1 against the coral track, and a deuteranope sees the two caps at
 /// 1.03:1. These split by lightness as well as hue, and each clears 3:1

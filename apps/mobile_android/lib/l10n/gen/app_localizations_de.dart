@@ -22752,16 +22752,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksNoticeParkHours => 'Sei vor Parkschluss im Ziel.';
 
   @override
+  String get parksNoticeFord =>
+      'Die Strecke quert einen Bach ohne Brücke. Nach Regen kann er zu tief zum Durchqueren sein.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Mit Radfahrenden geteilt. Halte dich rechts und nimm Wasser mit: Es gibt vielleicht nur wenige Trinkbrunnen.';
+
+  @override
+  String get parksNoticeLongTrail =>
+      'Lange Strecke: Nimm Wasser und Essen mit.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Lange Strecke: Starte früh genug, um vor Parkschluss im Ziel zu sein.';
+
+  @override
+  String get parksSurfacePaved => 'Asphaltiert';
+
+  @override
   String get parksNoticeOpenTrail =>
       'Ein Zeitlauf auf offenen Wegen, kein Rennen. Niemand sichert die Strecke ab.';
 
   @override
   String get parksNotAffiliated =>
       'Threkir veröffentlicht diese Strecken. Sie werden nicht vom Park oder seiner Verwaltungsbehörde organisiert, gesponsert oder empfohlen. Es gelten die Regeln, Öffnungszeiten, Gebühren und Sperrungen des Parks.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.';
 
   @override
   String get parksTimesNotEventResults =>

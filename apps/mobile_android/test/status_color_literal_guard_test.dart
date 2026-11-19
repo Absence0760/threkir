@@ -92,7 +92,7 @@ const _dataPalettes = <String, Map<String, int>>{
   // Plus the personal heatmap's dark-basemap density ramp (`mapHeatRamp`),
   // graded composited at `mapHeatOpacity` in live_run_map_tile_url_test.dart.
   // Plus the park course finish zone's dark-basemap rung
-  // (`mapFinishZoneColour`, decisions § 2581), graded on its ground and
+  // (`mapFinishZoneColour`, decisions § 2582), graded on its ground and
   // against the start zone under a deuteranopia simulation there too.
   'lib/widgets/live_run_map.dart': {
     'F59E0B': 1,

@@ -370,7 +370,7 @@ class GuideSection {
 /// How long a stretch of a course without laps is, in the full guide.
 const int kGuideSectionM = 5000;
 
-/// How a course page shows its guide (decisions § 2581): a short view a
+/// How a course page shows its guide (decisions § 2582): a short view a
 /// runner reads in seconds, and the rest folded away. Twin of web's
 /// `routeGuideView`.
 ///

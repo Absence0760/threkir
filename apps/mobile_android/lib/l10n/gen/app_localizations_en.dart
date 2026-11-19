@@ -22519,16 +22519,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksNoticeParkHours => 'Finish before the park closes.';
 
   @override
+  String get parksNoticeFord =>
+      'The course crosses a stream with no bridge. After rain it can be too deep to cross.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Shared with cyclists. Keep right and carry water: there may be few fountains.';
+
+  @override
+  String get parksNoticeLongTrail => 'Long course: carry water and food.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Long course: start early enough to finish before the park closes.';
+
+  @override
+  String get parksSurfacePaved => 'Paved';
+
+  @override
   String get parksNoticeOpenTrail =>
       'A time trial on open trails, not a race. Nobody marshals it.';
 
   @override
   String get parksNotAffiliated =>
       'Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
 
   @override
   String get parksTimesNotEventResults =>

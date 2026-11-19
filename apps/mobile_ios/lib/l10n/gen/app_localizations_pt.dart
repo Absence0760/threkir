@@ -22771,16 +22771,30 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksNoticeParkHours => 'Termine antes de o parque fechar.';
 
   @override
+  String get parksNoticeFord =>
+      'O percurso atravessa um ribeiro sem ponte. Depois de chover pode ficar fundo demais para atravessar.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Partilhado com ciclistas. Mantenha-se à direita e leve água: pode haver poucos bebedouros.';
+
+  @override
+  String get parksNoticeLongTrail => 'Percurso longo: leve água e comida.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Percurso longo: parta cedo o suficiente para terminar antes de o parque fechar.';
+
+  @override
+  String get parksSurfacePaved => 'Pavimentado';
+
+  @override
   String get parksNoticeOpenTrail =>
       'Um contrarrelógio em trilhos abertos, não uma corrida. Ninguém o supervisiona.';
 
   @override
   String get parksNotAffiliated =>
       'A Threkir publica estes percursos. Não são organizados, patrocinados nem apoiados pelo parque ou pela entidade que o gere. Aplicam-se as regras, os horários, as taxas e os encerramentos do parque.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Percurso longo. Comece cedo o suficiente para terminar antes de o parque fechar. Conte com trilhos partilhados com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
 
   @override
   String get parksTimesNotEventResults =>
@@ -47010,16 +47024,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parksNoticeParkHours => 'Termine antes de o parque fechar.';
 
   @override
+  String get parksNoticeFord =>
+      'O percurso atravessa um riacho sem ponte. Depois da chuva ele pode ficar fundo demais para atravessar.';
+
+  @override
+  String get parksNoticePavedTrail =>
+      'Compartilhado com ciclistas. Mantenha-se à direita e leve água: pode haver poucos bebedouros.';
+
+  @override
+  String get parksNoticeLongTrail => 'Percurso longo: leve água e comida.';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      'Percurso longo: saia cedo o bastante para terminar antes de o parque fechar.';
+
+  @override
+  String get parksSurfacePaved => 'Pavimentado';
+
+  @override
   String get parksNoticeOpenTrail =>
       'Um contrarrelógio em trilhas abertas, não uma corrida. Ninguém faz o controle do percurso.';
 
   @override
   String get parksNotAffiliated =>
       'A Threkir publica estes percursos. Eles não são organizados, patrocinados nem endossados pelo parque ou pelo órgão que o administra. Valem as regras, os horários, as taxas e os fechamentos do parque.';
-
-  @override
-  String get parksLongCourseNotice =>
-      'Percurso longo. Comece cedo o bastante para terminar antes de o parque fechar. Espere trilhas compartilhadas com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
 
   @override
   String get parksTimesNotEventResults =>

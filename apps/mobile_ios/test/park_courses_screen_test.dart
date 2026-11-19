@@ -26,6 +26,7 @@ ParkListing _park({
   String region = 'US-VA',
   String agency = 'state',
   String? websiteUrl,
+  String? kind,
 }) => ParkListing(
   park: ParkRow(
     id: id,
@@ -41,6 +42,7 @@ ParkListing _park({
   ),
   season: 2026,
   month: 11,
+  kind: kind,
 );
 
 /// A loop north out of the park and back to where it began, with an
@@ -70,6 +72,7 @@ ParkCourseListing _course({
   Object? routeGuide,
   DateTime? routeGuideCheckedAt,
   String? sharedUse,
+  String surface = 'trail',
   ({double lat, double lng, double bearing, double halfWidth})? startGate,
   ({double lat, double lng, double bearing, double halfWidth})? endGate,
 }) => ParkCourseListing(
@@ -97,7 +100,7 @@ ParkCourseListing _course({
     waypoints: waypoints ?? _loop(),
     distanceM: distanceM,
     elevationM: 45,
-    surface: 'trail',
+    surface: surface,
     isActive: true,
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
     startGateLat: startGate?.lat,
@@ -1113,7 +1116,7 @@ void main() {
       expect(find.byKey(const Key('park-course-shared-use')), findsNothing);
       expect(
         find.textContaining(
-          'Start early enough to finish before the park closes.',
+          'Long course: start early enough to finish before the park closes.',
         ),
         findsOneWidget,
       );
@@ -1500,6 +1503,50 @@ void main() {
             .data,
         'Start recording in the green-and-red box. Follow the arrows to the '
         'Turn around mark, then back to the box.',
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'a paved trail: Paved under surface, the shared-path notice and no '
+        'closing time, and Navigate the one filled action', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing:
+                _park(id: 'p1', name: 'Capital Trail', kind: 'trail'),
+            course: _course(
+              shape: 'out_and_back',
+              distanceM: 50000,
+              routeId: 'r1',
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+              endGate: (lat: 37.0, lng: -77.0, bearing: 180, halfWidth: 15),
+              surface: 'road',
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.text('Paved'), findsOneWidget);
+      expect(find.text('Road'), findsNothing);
+      expect(find.byKey(const Key('park-course-paved-trail')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-hours')), findsNothing);
+      expect(find.byKey(const Key('park-course-long')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('course-ends')),
+          matching: find.byType(OutlinedButton),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('Get directions to the start'),
+          matching: find.byType(FilledButton),
+        ),
+        findsNothing,
       );
       await _unmount(tester);
     });

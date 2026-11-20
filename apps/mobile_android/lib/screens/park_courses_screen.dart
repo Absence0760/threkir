@@ -44,6 +44,7 @@ import '../preferences.dart';
 import '../route_guide.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
+import '../watch_park_courses.dart' show WatchParkCourses;
 import '../widgets/course_ends_card.dart';
 import '../widgets/elevation_chart.dart';
 import '../widgets/error_state.dart';
@@ -1165,11 +1166,16 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
-  void _navigate(ApiClient api, String routeId) => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => PublicRouteScreen(api: api, routeId: routeId),
-        ),
-      );
+  void _navigate(ApiClient api, String routeId) {
+    // The course goes to the wrist as the runner heads out to run it, so a
+    // watch-recorded run is timed live there too. Fire-and-forget.
+    unawaited(WatchParkCourses().courseNavigated(widget.course));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicRouteScreen(api: api, routeId: routeId),
+      ),
+    );
+  }
 
   void _openPark() {
     if (widget.fromPark) {

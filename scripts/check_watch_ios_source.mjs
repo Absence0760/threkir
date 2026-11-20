@@ -88,6 +88,17 @@
 //       list from agrees. A key renamed here is a picker that renders its
 //       empty state with a phone that reports every push as sent.
 //
+//  (7c) The park course the wrist times live (#1446), on the same envelope
+//       under its own `park_course` key. Three hand-written key lists again:
+//       `encodeParkCourseForWatch` in `apple_watch_route_bridge.dart` builds
+//       the dictionary, `WatchIngestBridge.parkCourseUserInfo` checks and
+//       repacks it, and `ParkCourse.decode` reads it on the watch, its two
+//       lines through `gate(dict, "<prefix>")`, whose suffixes are expanded
+//       here. A refused course CLEARS the one the wrist holds, so a key
+//       renamed on one rail is a course the runner navigates on the phone
+//       that is silently never timed on the wrist. The envelope key itself is
+//       held across the Dart call, the phone repack and `ParkCourse.payloadKey`.
+//
 //   (8) No destructive control in `ContentView.swift` destroys a run on one
 //       tap. Both "Discard" buttons end a run that exists nowhere else — the
 //       crash-recovery checkpoint, and a finished run WCSession has not been
@@ -514,6 +525,40 @@ export const ROUTE_BRIDGE = join(
 	'lib',
 	'apple_watch_route_bridge.dart',
 );
+
+/// The watch end of the park course push, claim (7c).
+export const PARK_COURSE = join('WatchApp', 'ParkCourse.swift');
+
+/** Claim (7c)'s reading sites. */
+export const PARK_COURSE_DART_METHOD = 'push_park_course';
+export const PARK_COURSE_DART_ENCODER = 'encodeParkCourseForWatch';
+export const PARK_COURSE_PHONE_FN = 'parkCourseUserInfo';
+export const PARK_COURSE_ENVELOPE_KEY = 'park_course';
+
+/**
+ * The keys `ParkCourse.decode` reads: its literal `dict["…"]` subscripts,
+ * plus, for each `gate(dict, "<prefix>")` call, the `"\(prefix)_<suffix>"`
+ * subscripts of the `gate` helper with the prefix filled in. Null when either
+ * body cannot be found or yields nothing, which is a shape change.
+ * @param {string} src comment-stripped Swift
+ * @returns {Set<string> | null}
+ */
+export function parkCourseWatchKeys(src) {
+	const decode = methodBody(src, 'decode');
+	const gate = methodBody(src, 'gate');
+	if (decode === null || gate === null) return null;
+	const keys = swiftPayloadKeys(decode, 'dict');
+	if (keys === null) return null;
+	const suffixes = [...gate.matchAll(/\bdict\s*\[\s*"\\\(prefix\)(_[^"\\\n]+)"\s*\]/g)].map(
+		(m) => m[1],
+	);
+	const prefixes = [...decode.matchAll(/\bgate\s*\(\s*dict\s*,\s*"([^"\\\n]+)"\s*\)/g)].map(
+		(m) => m[1],
+	);
+	if (suffixes.length === 0 || prefixes.length === 0) return null;
+	for (const p of prefixes) for (const x of suffixes) keys.add(p + x);
+	return keys;
+}
 
 /**
  * Claim (7b)'s four reading sites: the Dart method that ships the list, the
@@ -2092,6 +2137,104 @@ export function check(
 			} else {
 				ok.push(`the Dart list element is the same ${element.size} keys as the armed push`);
 			}
+		}
+	}
+
+	// (7c) The park course push, read from all three of its ends.
+	if (ingestPath !== null && routeBridgePath !== null) {
+		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
+		const courseSrc = stripSwiftComments(read(PARK_COURSE));
+		const dartSrc = readFileSync(routeBridgePath, 'utf8');
+		const phoneBody = methodBody(ingestSrc, PARK_COURSE_PHONE_FN);
+		const phoneAll = phoneBody === null ? null : swiftPayloadKeys(phoneBody, 'course');
+		// The repack's return literal carries the envelope key beside the
+		// element keys; it is held separately below.
+		const phone =
+			phoneAll === null
+				? null
+				: new Set([...phoneAll].filter((k) => k !== PARK_COURSE_ENVELOPE_KEY));
+		/** @type {{ label: string, keys: Set<string> | null }[]} */
+		const rails = [
+			{
+				label: `${ROUTE_BRIDGE} (${PARK_COURSE_DART_ENCODER})`,
+				keys: dartFunctionMapKeys(dartSrc, PARK_COURSE_DART_ENCODER),
+			},
+			{ label: `${INGEST} (${PARK_COURSE_PHONE_FN})`, keys: phone },
+			{ label: `${PARK_COURSE} (ParkCourse.decode)`, keys: parkCourseWatchKeys(courseSrc) },
+		];
+		const unread = rails.filter((r) => r.keys === null || r.keys.size === 0);
+		if (unread.length > 0) {
+			errors.push(
+				`Parsed no park course keys out of ${unread.map((r) => r.label).join(' and ')} — ` +
+					'claim (7c) would pass vacuously, or report that the other rails agree on keys ' +
+					'nobody sends. One of the three sites changed shape.',
+			);
+		} else {
+			/** @type {string[]} */
+			const mismatches = [];
+			for (const rail of rails) {
+				for (const other of rails) {
+					if (rail === other) continue;
+					for (const key of /** @type {Set<string>} */ (rail.keys)) {
+						if (!(/** @type {Set<string>} */ (other.keys)).has(key)) {
+							mismatches.push(
+								`\`${key}\` is on ${rail.label} and not on ${other.label}. A refused ` +
+									'course clears the one the wrist holds, so this is a course the runner ' +
+									'navigates on the phone that is never timed on the wrist.',
+							);
+						}
+					}
+				}
+			}
+			for (const m of [...new Set(mismatches)].sort()) errors.push(m);
+			if (mismatches.length === 0) {
+				ok.push(
+					`all ${(/** @type {Set<string>} */ (rails[0].keys)).size} park course keys agree ` +
+						'across the Dart encoder, the phone repack and the watch decode',
+				);
+			}
+		}
+
+		const envelope = [
+			{
+				label: `${ROUTE_BRIDGE} (invokeMethod '${PARK_COURSE_DART_METHOD}')`,
+				keys: dartInvokeKeys(dartSrc, PARK_COURSE_DART_METHOD),
+			},
+			{
+				label: `${INGEST} (${PARK_COURSE_PHONE_FN})`,
+				// Its `args["…"]` subscripts alone: the body's dictionary literals
+				// are the element keys, which the rails above hold.
+				keys:
+					phoneBody === null
+						? null
+						: new Set([...phoneBody.matchAll(/\bargs\s*\[\s*"([^"\\\n]+)"\s*\]/g)].map((m) => m[1])),
+			},
+			{
+				label: `${PARK_COURSE} (ParkCourse.payloadKey)`,
+				keys: (() => {
+					const m = courseSrc.match(/static\s+let\s+payloadKey\s*=\s*"([^"\\\n]+)"/);
+					return m ? new Set([m[1]]) : null;
+				})(),
+			},
+		];
+		const badEnvelope = envelope.filter(
+			(r) => r.keys === null || r.keys.size !== 1 || !r.keys.has(PARK_COURSE_ENVELOPE_KEY),
+		);
+		// …and the key the repack hands `transferUserInfo`, its return literal.
+		if (phoneAll !== null && !phoneAll.has(PARK_COURSE_ENVELOPE_KEY)) {
+			badEnvelope.push({ label: `${INGEST} (${PARK_COURSE_PHONE_FN} return)`, keys: null });
+		}
+		if (badEnvelope.length > 0) {
+			errors.push(
+				`The park course envelope key is not \`${PARK_COURSE_ENVELOPE_KEY}\` on ` +
+					`${badEnvelope.map((r) => r.label).join(' and ')}. The watch reads only that key, ` +
+					'so a course sent under any other is never applied and the phone reports it sent.',
+			);
+		} else {
+			ok.push(
+				`the \`${PARK_COURSE_ENVELOPE_KEY}\` envelope key agrees across the Dart channel, ` +
+					'the phone repack and the watch decode',
+			);
 		}
 	}
 

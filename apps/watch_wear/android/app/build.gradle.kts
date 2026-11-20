@@ -260,6 +260,7 @@ tasks.withType<Test>().configureEach {
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearAuthBridge.kt"),
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt"),
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearWorkoutBridge.kt"),
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearParkCoursesBridge.kt"),
             // WorkoutPushFixtureTest + WorkoutRunnerTest: the payload and the
             // step-runner vectors the phone and watchOS are held to, and the
             // phone writer's payload version.

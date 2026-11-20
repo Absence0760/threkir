@@ -515,12 +515,15 @@ class SupabaseClient(
     /// `{lat, lng, ...}` — we extract lat/lng only.
     suspend fun fetchRoutes(): List<SavedRoute> {
         val token = accessToken ?: return emptyList()
+        // No user id, no owner filter: fail closed rather than let RLS
+        // hand back another member's club routes.
+        val uid = userId ?: return emptyList()
         // Query-string predicates + the starred-vs-fallback decision
         // are in `SupabaseUrlBuilders.kt` so the URL build can be
         // unit-tested (see `SupabaseUrlBuildersTest`).
-        val starred = fetchRoutesQuery(token, chooseFirstRoutesQuery())
+        val starred = fetchRoutesQuery(token, chooseFirstRoutesQuery(uid))
         if (starred.isNotEmpty()) return starred
-        return fetchRoutesQuery(token, chooseFallbackRoutesQuery())
+        return fetchRoutesQuery(token, chooseFallbackRoutesQuery(uid))
     }
 
     private suspend fun fetchRoutesQuery(token: String, query: String): List<SavedRoute> {

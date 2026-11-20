@@ -189,6 +189,68 @@ final class WatchIngestBridgeTests: XCTestCase {
         XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"plan_workout_id":"x"}"#]))
     }
 
+    // MARK: - Park course push
+
+    private var parkCourse: [String: Any] {
+        [
+            "course_id": "course-1",
+            "course_name": "Beaver Lake Trail",
+            "course_distance_m": 3595.0,
+            "start_gate_lat": 37.386024,
+            "start_gate_lng": -77.584133,
+            "start_gate_bearing_deg": 153.1484956563911,
+            "start_gate_half_width_m": 15.0,
+            "end_gate_lat": 37.386024,
+            "end_gate_lng": -77.584133,
+            "end_gate_bearing_deg": 191.48459767326835,
+            "end_gate_half_width_m": 15.0,
+            "checkpoint_lat": [37.384171, 37.382147],
+            "checkpoint_lng": [-77.585807, -77.590548],
+        ]
+    }
+
+    func testParkCoursePushRepacksTheThirteenKeysUnderItsOwnKey() {
+        let payload = WatchIngestBridge.parkCourseUserInfo(from: ["park_course": parkCourse])
+        XCTAssertEqual(payload?.keys.sorted(), ["park_course"])
+        let course = payload?["park_course"] as? [String: Any]
+        XCTAssertEqual(course?.keys.sorted(), parkCourse.keys.sorted())
+        XCTAssertEqual(course?["course_id"] as? String, "course-1")
+        XCTAssertEqual(course?["end_gate_bearing_deg"] as? Double, 191.48459767326835)
+        XCTAssertEqual(course?["checkpoint_lng"] as? [Double], [-77.585807, -77.590548])
+    }
+
+    func testParkCoursePushForwardsTheEmptyClear() {
+        // Arming a plain route and signing out both clear the wrist's course
+        // with an empty dictionary, so it must reach the queue.
+        let payload = WatchIngestBridge.parkCourseUserInfo(from: ["park_course": [String: Any]()])
+        XCTAssertEqual((payload?["park_course"] as? [String: Any])?.isEmpty, true)
+    }
+
+    func testParkCoursePushRefusesWhatTheWatchWouldRefuse() {
+        XCTAssertNil(WatchIngestBridge.parkCourseUserInfo(from: [:]))
+        XCTAssertNil(WatchIngestBridge.parkCourseUserInfo(from: ["park_course": "nope"]))
+        func refused(_ change: (inout [String: Any]) -> Void) -> Bool {
+            var course = parkCourse
+            change(&course)
+            return WatchIngestBridge.parkCourseUserInfo(from: ["park_course": course]) == nil
+        }
+        XCTAssertTrue(refused { $0["course_id"] = "" })
+        XCTAssertTrue(refused { $0.removeValue(forKey: "end_gate_bearing_deg") })
+        XCTAssertTrue(refused { $0["course_distance_m"] = 0.0 })
+        XCTAssertTrue(refused { $0["course_distance_m"] = Double.nan })
+        XCTAssertTrue(refused { $0["start_gate_half_width_m"] = 0.0 })
+        XCTAssertTrue(refused { $0["start_gate_lat"] = 90.0 })
+        XCTAssertTrue(refused { $0["checkpoint_lat"] = [37.0] })
+        XCTAssertTrue(refused {
+            $0["checkpoint_lat"] = Array(repeating: 37.0, count: 51)
+            $0["checkpoint_lng"] = Array(repeating: -77.0, count: 51)
+        })
+        XCTAssertFalse(refused {
+            $0["checkpoint_lat"] = Array(repeating: 37.0, count: 50)
+            $0["checkpoint_lng"] = Array(repeating: -77.0, count: 50)
+        })
+    }
+
     // MARK: - Ingest payload
 
     private var fullMetadata: [String: Any] {

@@ -905,6 +905,54 @@ test('dartInvokeKeys spans the nested collection literals in the map it reads', 
 	assert.equal(dartInvokeKeys(src, 'nope'), null);
 });
 
+// --- claim 7c: the park course on the same envelope --------------------------
+
+const PARK = join('WatchApp', 'ParkCourse.swift');
+
+test('the shipped park course rails agree on every key and the envelope', () => {
+	const { errors, ok } = runMutated(() => {});
+	assert.deepEqual(errors, []);
+	assert.ok(ok.some((o) => /^all 13 park course keys agree/.test(o)), ok.join('\n'));
+	assert.ok(ok.some((o) => /^the `park_course` envelope key agrees/.test(o)), ok.join('\n'));
+});
+
+test('a park course key renamed in the Dart encoder is refused on both other rails', () => {
+	const { errors } = runMutated((dir) =>
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("'course_distance_m':", "'distance_m':")),
+	);
+	assert.ok(matched(errors, /`distance_m` is on .*encodeParkCourseForWatch/).length >= 1, errors.join('\n'));
+	assert.ok(matched(errors, /`course_distance_m` is on .*ParkCourse\.decode/).length >= 1, errors.join('\n'));
+});
+
+test('a park course key renamed in the phone repack is refused', () => {
+	const { errors } = runMutated((dir) =>
+		edit(dir, STAGED_INGEST, (s) => s.replaceAll('"checkpoint_lng"', '"checkpoint_lon"')),
+	);
+	assert.ok(matched(errors, /`checkpoint_lon` is on .*parkCourseUserInfo/).length >= 1, errors.join('\n'));
+});
+
+test('a gate suffix renamed in the watch helper is read through the prefix and refused', () => {
+	const { errors } = runMutated((dir) =>
+		edit(dir, PARK, (s) => s.replace('"\\(prefix)_half_width_m"', '"\\(prefix)_width_m"')),
+	);
+	assert.ok(matched(errors, /`start_gate_width_m` is on .*ParkCourse\.decode/).length >= 1, errors.join('\n'));
+	assert.ok(matched(errors, /`end_gate_half_width_m` is on .*encodeParkCourseForWatch/).length >= 1, errors.join('\n'));
+});
+
+test('a park course sent under another envelope key is refused', () => {
+	const { errors } = runMutated((dir) =>
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replaceAll("'park_course':", "'course':")),
+	);
+	assert.equal(matched(errors, /envelope key is not `park_course` on .*push_park_course/).length, 1, errors.join('\n'));
+});
+
+test('a watch decode that cannot be read fails loudly rather than agreeing', () => {
+	const { errors } = runMutated((dir) =>
+		edit(dir, PARK, (s) => s.replace('private static func gate(', 'private static func line(')),
+	);
+	assert.equal(matched(errors, /Parsed no park course keys out of .*ParkCourse\.decode/).length, 1, errors.join('\n'));
+});
+
 // --- claim 7b: the saved-routes list on the same envelope -------------------
 
 test('the saved-routes rails agree on the shipped tree', () => {

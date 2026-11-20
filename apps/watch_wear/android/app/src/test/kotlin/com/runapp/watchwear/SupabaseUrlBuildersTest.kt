@@ -18,22 +18,46 @@ class SupabaseUrlBuildersTest {
 
     // ───────────── fetchRoutes URL strings ─────────────
 
+    private val uid = "8d3b2a10-0000-4000-8000-000000000001"
+    private val starred = fetchRoutesStarredQuery(uid)
+    private val fallback = fetchRoutesFallbackQuery(uid)
+
     @Test fun `starred query selects the right columns and filters`() {
         // The watch picker needs id (for the deep-link), name (for
         // the chip label), waypoints (rendered as the polyline +
         // off-route math), and distance_m (the chip's secondary
         // label). Any other column would just bloat the wire.
-        assertTrue(FETCH_ROUTES_STARRED_QUERY.contains("select=id,name,waypoints,distance_m"))
+        assertTrue(starred.contains("select=id,name,waypoints,distance_m"))
         // Starred-only filter — without `is_starred=eq.true` we'd
         // be back at the old behaviour of pulling 30 most-recent
         // routes, defeating the curation feature.
-        assertTrue(FETCH_ROUTES_STARRED_QUERY.contains("is_starred=eq.true"))
+        assertTrue(starred.contains("is_starred=eq.true"))
         // Most-recent first so the runner's latest curation lands
         // at the top of the picker.
-        assertTrue(FETCH_ROUTES_STARRED_QUERY.contains("order=updated_at.desc"))
+        assertTrue(starred.contains("order=updated_at.desc"))
         // Cap at 30 — pinned so a future "let's show 100" change
         // requires a test edit + thinks about the 1.4-inch UX.
-        assertTrue(FETCH_ROUTES_STARRED_QUERY.contains("limit=30"))
+        assertTrue(starred.contains("limit=30"))
+    }
+
+    @Test fun `both queries read only the signed-in runner's own routes`() {
+        // RLS returns a club route to every member, and `is_starred` is
+        // the owner's curation: without the owner filter a route a club
+        // admin starred reaches a member's wrist with its raw waypoints,
+        // past the privacy-zone clipping (decisions § 33). The phone's
+        // `routesVisibleToWatch` holds the same rule.
+        for (q in listOf(starred, fallback)) {
+            val params = q.split("&")
+            assertTrue(q, params.contains("user_id=eq.$uid"))
+        }
+    }
+
+    @Test fun `the owner filter cannot be widened by the id it is given`() {
+        // A user id is a UUID from GoTrue, but the builder still encodes
+        // it, so a value carrying `&` or `,` could never add a predicate.
+        val q = fetchRoutesStarredQuery("a&is_starred=eq.false,b")
+        assertEquals(1, q.split("&").count { it.startsWith("is_starred=") })
+        assertTrue(q.contains("user_id=eq.a%26is_starred%3Deq.false%2Cb&"))
     }
 
     @Test fun `fallback query omits the starred filter, caps tighter`() {
@@ -41,30 +65,30 @@ class SupabaseUrlBuildersTest {
         // to "all owned routes". Capped tighter (10) than the
         // starred path because this is undirected — better to show
         // too few than stale GPX imports.
-        assertEquals(false, FETCH_ROUTES_FALLBACK_QUERY.contains("is_starred"))
-        assertTrue(FETCH_ROUTES_FALLBACK_QUERY.contains("order=updated_at.desc"))
-        assertTrue(FETCH_ROUTES_FALLBACK_QUERY.contains("limit=10"))
-        assertTrue(FETCH_ROUTES_FALLBACK_QUERY.contains("select=id,name,waypoints,distance_m"))
+        assertEquals(false, fallback.contains("is_starred"))
+        assertTrue(fallback.contains("order=updated_at.desc"))
+        assertTrue(fallback.contains("limit=10"))
+        assertTrue(fallback.contains("select=id,name,waypoints,distance_m"))
     }
 
     @Test fun `chooseFirstRoutesQuery returns the starred predicate`() {
         // Pin the decision: the FIRST attempt is always starred-only.
-        assertEquals(FETCH_ROUTES_STARRED_QUERY, chooseFirstRoutesQuery())
+        assertEquals(starred, chooseFirstRoutesQuery(uid))
     }
 
     @Test fun `chooseFallbackRoutesQuery returns the recent-routes predicate`() {
         // Pin the decision: the SECOND attempt (when starred is
         // empty) is recent-routes.
-        assertEquals(FETCH_ROUTES_FALLBACK_QUERY, chooseFallbackRoutesQuery())
+        assertEquals(fallback, chooseFallbackRoutesQuery(uid))
     }
 
     @Test fun `buildFetchRoutesUrl composes base + query string`() {
         val out = buildFetchRoutesUrl(
             baseUrl = "https://x.supabase.co",
-            query = FETCH_ROUTES_STARRED_QUERY,
+            query = starred,
         )
         assertEquals(
-            "https://x.supabase.co/rest/v1/routes?$FETCH_ROUTES_STARRED_QUERY",
+            "https://x.supabase.co/rest/v1/routes?$starred",
             out,
         )
     }

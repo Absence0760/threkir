@@ -577,9 +577,12 @@ each buzzes (the workout's step and completion buzzes) and speaks through
 recording that ends in the finish box (or 5 m short) finishes there. The rule
 is the server matcher's (`LiveCourseTimerTest` replays
 `fixtures/park_course_runs.json` and must match its efforts to the
-millisecond); the board's time is still the server's. Nothing reaches a runner
-until the phone writes `/park_courses` (contract
-`fixtures/wear_park_courses_payload.json`). Wiring pinned by
+millisecond); the board's time is still the server's. The phone writes
+`/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
+`WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
+path and keys held by `DataLayerContractTest`): the courses the runner opened
+Navigate this course on, newest first, up to 8 and under ~90 KB, restated at
+phone startup and emptied on sign-out. Wiring pinned by
 `ParkCourseWiringTest`.
 
 **Post-run Discard is a two-press confirm, like the recovery prompt's.**
@@ -741,8 +744,12 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
 - **Route overlay (no map).** Pre-run Route chip → `Stage.RoutePicker`
   (backed by `LocalRouteStore` + `SupabaseClient.fetchRoutes`).
   The fetch is filtered server-side to **starred routes only**
-  (`is_starred=eq.true&order=updated_at.desc&limit=30`) so a runner
-  with 200 saved routes doesn't have to scroll a 1.4-inch screen.
+  (`user_id=eq.<uid>&is_starred=eq.true&order=updated_at.desc&limit=30`)
+  so a runner with 200 saved routes doesn't have to scroll a 1.4-inch
+  screen. Both queries carry the owner filter: RLS returns a club route
+  to every member and `is_starred` is the owner's curation, so without
+  it a route a club admin starred reached a member's wrist unclipped
+  (decisions § 33; the phone's `watch_route_visibility.dart` rule).
   When the starred query returns empty (first-launch / un-curated
   user) `fetchRoutes` falls back to the 10 most-recently-updated
   owned routes so the picker isn't empty before the runner has

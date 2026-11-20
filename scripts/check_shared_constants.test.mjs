@@ -320,12 +320,15 @@ test('an Apple Watch cap raised on the phone alone is caught in the real entry s
 	const sources = {
 		'apps/watch_ios/WatchApp/ArmedRoute.swift':
 			'    static let maxPoints = 512\n    static let maxRoutes = 12\n    static let maxPointsPerRoute = 128\n',
+		'apps/watch_ios/WatchApp/ParkCourse.swift': '    static let maxCheckpoints = 50\n',
 		'apps/mobile_ios/ios/Runner/WatchIngestBridge.swift':
-			'    static let maxRoutePoints = 512\n    static let maxSavedRoutes = 30\n    static let maxSavedRoutePoints = 128\n',
+			'    static let maxRoutePoints = 512\n    static let maxSavedRoutes = 30\n    static let maxSavedRoutePoints = 128\n' +
+			'    static let maxParkCourseCheckpoints = 50\n',
 		'apps/mobile_android/lib/apple_watch_route_bridge.dart':
 			'const int kMaxAppleWatchRoutePoints = 512;\n' +
 			'const int kMaxAppleWatchSavedRoutes = 30;\n' +
-			'const int kMaxAppleWatchSavedRoutePoints = 128;\n',
+			'const int kMaxAppleWatchSavedRoutePoints = 128;\n' +
+			'const int kMaxAppleWatchParkCourseCheckpoints = 50;\n',
 	};
 	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'Apple Watch route-push budgets'));
 	const { errors } = checkEntry(entry, {

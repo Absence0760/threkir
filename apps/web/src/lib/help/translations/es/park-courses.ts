@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"Es una contrarreloj, no una prueba organizada. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
 						"Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
-						"Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado.",
+						"En el teléfono, selecciona **Correr este recorrido** para abrir el grabador con el recorrido cargado y pulsa Iniciar cuando estés en la línea de salida. En la web, **Ver la ruta** abre el recorrido como una ruta. Ninguno de los dos se ofrece mientras el recorrido está cerrado.",
 						"La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, carreteras que cruzar, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido.",
 					],
 				},
@@ -92,7 +92,7 @@ export const translation: GuideTranslation = {
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
-		"s0.b1.i2": "d69fbf280d3b46a0",
+		"s0.b1.i2": "cdd14254d41b3936",
 		"s0.b1.i3": "e61c22c65996f061",
 		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",

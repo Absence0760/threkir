@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"Es ist ein Zeitlauf, kein Rennen. Der Weg bleibt für alle offen und niemand sichert ihn ab, also halte dich an die Regeln des Parks und lass anderen auf dem Weg den Vortritt.",
 						"Jede Streckenseite zeigt Distanz, Anstieg, Form, Untergrund und Schwierigkeit, woher die Streckenlinie stammt und ob die Strecke geöffnet ist.",
-						"Wähle **Diese Strecke navigieren**, um der Strecke als Route zu folgen. Solange die Strecke gesperrt ist, wird das nicht angeboten.",
+						"Wähle in der App **Diese Strecke laufen**, um den Rekorder mit geladener Strecke zu öffnen, und drücke Start, wenn du an der Startlinie stehst. Im Web öffnet **Route ansehen** die Strecke als Route. Solange die Strecke gesperrt ist, wird beides nicht angeboten.",
 						"Die **Streckenbeschreibung** auf der Streckenseite nennt, wo du parkst, und jede Abzweigung der Reihe nach mit Wegnamen, dazu Brücken, Furten, Straßen, die du überquerst, Wechsel des Untergrunds und Anstiege. Sie ist aus Kartendaten erstellt; solange niemand sie im Park abgelaufen ist, steht das über der Liste. Dieselbe Beschreibung steht in der GPX-Datei der Strecke.",
 					],
 				},
@@ -92,7 +92,7 @@ export const translation: GuideTranslation = {
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
-		"s0.b1.i2": "d69fbf280d3b46a0",
+		"s0.b1.i2": "cdd14254d41b3936",
 		"s0.b1.i3": "e61c22c65996f061",
 		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",

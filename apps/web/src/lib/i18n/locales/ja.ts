@@ -8042,7 +8042,7 @@ export const messages = {
 	"parks.attributionNps": "コースラインは国立公園局のトレイルデータに基づきます",
 	"parks.attributionAgency": "コースラインは公園のトレイルデータに基づきます",
 	"parks.attributionTraced": "コースラインは公園の公開地図をもとに作成しました",
-	"parks.navigate": "このコースをナビ",
+	"parks.seeRoute": "ルートを見る",
 	"parks.downloadGpx": "GPXをダウンロード",
 	"parks.browseLink": "公園コース",
 	"parks.coursesTitle": "コース",

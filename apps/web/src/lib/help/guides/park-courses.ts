@@ -22,7 +22,7 @@ export const guide: Guide = {
 					items: [
 						'It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park\'s rules and give way to other people on the trail.',
 						'Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.',
-						'Select **Navigate this course** to follow the course as a route. It isn\'t offered while the course is closed.',
+						'On the phone, select **Run this course** to open the recorder with the course loaded, then press Start when you\'re at the start line. On the web, **See the route** opens the course as a route. Neither is offered while the course is closed.',
 						'The course page\'s **Route guide** lists where to park and every turn in order, by trail name, with the bridges, fords, road crossings, surface changes and climbs on the way. It is drafted from map data; until someone has walked it at the park, it says so above the list. The same guide is in the course\'s GPX file.',
 					],
 				},

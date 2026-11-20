@@ -589,8 +589,8 @@ is the server matcher's (`LiveCourseTimerTest` replays
 `fixtures/segments_gate_cases.json`, both to the matcher's millisecond); the board's time is still the server's. The phone writes
 `/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
 `WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
-path and keys held by `DataLayerContractTest`): the courses the runner opened
-Navigate this course on, newest first, up to 8 and under ~90 KB, restated at
+path and keys held by `DataLayerContractTest`): the courses the runner pressed
+Run this course on, newest first, up to 8 and under ~90 KB, restated at
 phone startup and emptied on sign-out. Wiring pinned by
 `ParkCourseWiringTest`.
 

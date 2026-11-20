@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"C'est un contre-la-montre, pas une compétition. Le sentier reste ouvert à tous et personne ne l'encadre : respectez le règlement du parc et cédez le passage aux autres usagers du sentier.",
 						"Chaque page de parcours indique la distance, le dénivelé positif, la forme, le revêtement et la difficulté, l'origine du tracé et si le parcours est ouvert.",
-						"Sélectionnez **Suivre ce parcours** pour suivre le parcours comme un itinéraire. Cette option n'est pas proposée tant que le parcours est fermé.",
+						"Sur le téléphone, sélectionnez **Courir ce parcours** pour ouvrir l'enregistreur avec le parcours chargé, puis appuyez sur Démarrer une fois sur la ligne de départ. Sur le web, **Voir l'itinéraire** ouvre le parcours comme un itinéraire. Aucun des deux n'est proposé tant que le parcours est fermé.",
 						"La rubrique **Description du parcours** de la page du parcours indique où se garer et chaque changement de direction dans l'ordre, par nom de sentier, avec les ponts, les gués, les routes à traverser, les changements de revêtement et les montées. Elle est rédigée à partir des données cartographiques ; tant que personne ne l'a vérifiée sur place, c'est indiqué au-dessus de la liste. La même description figure dans le fichier GPX du parcours.",
 					],
 				},
@@ -92,7 +92,7 @@ export const translation: GuideTranslation = {
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
-		"s0.b1.i2": "d69fbf280d3b46a0",
+		"s0.b1.i2": "cdd14254d41b3936",
 		"s0.b1.i3": "e61c22c65996f061",
 		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",

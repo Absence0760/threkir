@@ -22845,7 +22845,15 @@ class AppLocalizationsPt extends AppLocalizations {
       'Traçado do percurso desenhado sobre o mapa publicado do parque';
 
   @override
-  String get parksNavigate => 'Navegar neste percurso';
+  String get parksRunThisCourse => 'Correr este percurso';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'Não foi possível carregar este percurso. Verifique a sua ligação e tente novamente.';
+
+  @override
+  String get parksRunThisCourseRecording =>
+      'Termine primeiro a corrida que está a gravar e depois carregue este percurso.';
 
   @override
   String get parksShareGpx => 'Partilhar GPX';
@@ -47255,7 +47263,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Traçado do percurso desenhado sobre o mapa publicado do parque';
 
   @override
-  String get parksNavigate => 'Navegar neste percurso';
+  String get parksRunThisCourse => 'Correr este percurso';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'Não foi possível carregar este percurso. Verifique sua conexão e tente novamente.';
+
+  @override
+  String get parksRunThisCourseRecording =>
+      'Termine primeiro a corrida que você está gravando e depois carregue este percurso.';
 
   @override
   String get parksShareGpx => 'Compartilhar GPX';

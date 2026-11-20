@@ -22819,7 +22819,15 @@ class AppLocalizationsEs extends AppLocalizations {
       'Trazado del recorrido dibujado sobre el mapa publicado del parque';
 
   @override
-  String get parksNavigate => 'Navegar este recorrido';
+  String get parksRunThisCourse => 'Correr este recorrido';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'No se pudo cargar este recorrido. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get parksRunThisCourseRecording =>
+      'Termina primero la carrera que estás grabando y luego carga este recorrido.';
 
   @override
   String get parksShareGpx => 'Compartir GPX';

@@ -29,6 +29,7 @@ import '../main.dart'
         pendingArmGuidedRun,
         pendingStartWorkout,
         pendingStartRunWithRoute,
+        pendingArmRunWithRoute,
         pendingPushTarget;
 import '../preferences.dart';
 import '../push_target.dart';
@@ -311,6 +312,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.addListener(_onPendingStartRunWithRoute);
+    pendingArmRunWithRoute.addListener(_onPendingArmRunWithRoute);
     widget.training.addListener(_onTrainingChange);
     incomingRouteImport.addListener(_onIncomingRouteImport);
     pendingPushTarget.addListener(_onPendingPushTarget);
@@ -534,6 +536,17 @@ class _HomeScreenState extends State<HomeScreen>
     if (await _startRunWithRoute(route) && !runRecordingActive.value) {
       runStartRequests.request(RunStartRequest.start);
     }
+  }
+
+  /// [_onPendingStartRunWithRoute] without the start request. The course page
+  /// refuses mid-run, since the recorder takes a new route only while idle.
+  Future<void> _onPendingArmRunWithRoute() async {
+    final route = pendingArmRunWithRoute.value;
+    if (route == null || !mounted) return;
+    pendingArmRunWithRoute.value = null;
+    if (runRecordingActive.value) return;
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    await _startRunWithRoute(route);
   }
 
   /// A push notification was tapped. Drain the parked target and open the
@@ -1091,6 +1104,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.removeListener(_onPendingStartRunWithRoute);
+    pendingArmRunWithRoute.removeListener(_onPendingArmRunWithRoute);
     widget.training.removeListener(_onTrainingChange);
     _trainingDebounce?.cancel();
     incomingRouteImport.removeListener(_onIncomingRouteImport);

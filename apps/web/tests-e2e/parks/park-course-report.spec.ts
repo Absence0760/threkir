@@ -307,7 +307,7 @@ test.describe.serial('report a problem with a park course', () => {
 			await page.goto(`/parks/us-va/${PARK_SLUG}/${COURSES[0].slug}`);
 			await expect(page.getByTestId('park-course-closed')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByText(CLOSE_NOTE)).toBeVisible();
-			await expect(page.getByTestId('park-course-navigate')).toHaveCount(0);
+			await expect(page.getByTestId('park-course-route')).toHaveCount(0);
 		} finally {
 			await ctx.close();
 		}

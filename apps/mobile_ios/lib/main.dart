@@ -839,6 +839,13 @@ final ValueNotifier<String?> pendingArmGuidedRun = ValueNotifier<String?>(null);
 final ValueNotifier<cm.Route?> pendingStartRunWithRoute =
     ValueNotifier<cm.Route?>(null);
 
+/// Cross-screen handoff for "load this route into the recorder" without
+/// starting it, for a park course's Run this course: that is pressed while
+/// browsing, often nowhere near the start line. Sibling of
+/// [pendingStartRunWithRoute].
+final ValueNotifier<cm.Route?> pendingArmRunWithRoute =
+    ValueNotifier<cm.Route?>(null);
+
 /// Cross-screen handoff for "a push notification was tapped, open its
 /// target". Set by [PushMessagingBridge]'s open callback; HomeScreen listens
 /// and navigates. A notifier rather than a direct navigation because the tap

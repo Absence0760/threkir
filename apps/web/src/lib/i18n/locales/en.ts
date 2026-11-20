@@ -8076,7 +8076,7 @@ export const en = {
 	"parks.attributionNps": "Course line from National Park Service trail data",
 	"parks.attributionAgency": "Course line from the park's own trail data",
 	"parks.attributionTraced": "Course line traced against the park's published map",
-	"parks.navigate": "Navigate this course",
+	"parks.seeRoute": "See the route",
 	"parks.downloadGpx": "Download GPX",
 	"parks.browseLink": "Park courses",
 	"parks.coursesTitle": "Courses",

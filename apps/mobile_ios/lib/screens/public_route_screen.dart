@@ -23,9 +23,8 @@ import '../widgets/loading_skeletons.dart';
 /// Build the route a public / shared route starts a run against — carrying
 /// the CLIPPED display waypoints the viewer is allowed to see, never the
 /// source route's full trace (which may run through the owner's privacy
-/// zones). Pulled out so the privacy-relevant "start uses the clipped line"
-/// contract is unit-testable without the map-bearing screen.
-@visibleForTesting
+/// zones). Shared with a park course's Run this course, and unit-testable
+/// without the map-bearing screen.
 cm.Route publicRouteStartTarget(cm.Route source, List<cm.Waypoint> clipped) {
   return cm.Route(
     id: source.id,
@@ -38,6 +37,39 @@ cm.Route publicRouteStartTarget(cm.Route source, List<cm.Waypoint> clipped) {
     isPublic: source.isPublic,
     surface: source.surface,
   );
+}
+
+/// A route as [viewer] may see it: the row, and the waypoints to draw and to
+/// run against. The owner gets the full line; anyone else gets it through
+/// `clipRouteForViewer`, which checks visibility server-side and cuts out the
+/// owner's privacy zones (decisions §33). Shared by this screen and a park
+/// course's Run this course, so both start a run on the same line.
+Future<({cm.Route? route, List<cm.Waypoint> waypoints, bool isOwner})>
+    loadViewableRoute(ApiClient api, String routeId) async {
+  final fetched = await api.fetchRouteById(routeId);
+  final route = fetched.route;
+  if (route == null) {
+    return (route: null, waypoints: const <cm.Waypoint>[], isOwner: false);
+  }
+  // Anon (`api.userId == null`) is a non-owner, so a signed-out viewer also
+  // gets the clipped line. Three explicit branches, not an
+  // `(isOwner || waypoints.isEmpty)` short-circuit: a later change that fills
+  // `route.waypoints` for non-owners on the empty branch must not bypass
+  // `clipRouteForViewer` (audit:privacy-zones 2026-05-25). It fails closed,
+  // returning [] on an outage, so a blip draws an empty line rather than the
+  // owner's start or finish.
+  final viewerId = api.userId;
+  final ownerId = fetched.ownerId;
+  final isOwner = viewerId != null && ownerId != null && viewerId == ownerId;
+  final List<cm.Waypoint> waypoints;
+  if (isOwner) {
+    waypoints = route.waypoints;
+  } else if (route.waypoints.isEmpty) {
+    waypoints = const [];
+  } else {
+    waypoints = await api.clipRouteForViewer(routeId);
+  }
+  return (route: route, waypoints: waypoints, isOwner: isOwner);
 }
 
 /// Read-only non-owner view of a single route. Mirrors the web
@@ -87,8 +119,10 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
       _loadError = null;
     });
     try {
-      final fetched = await widget.api.fetchRouteById(widget.routeId);
-      final route = fetched.route;
+      final viewable = await loadViewableRoute(widget.api, widget.routeId);
+      final route = viewable.route;
+      final waypoints = viewable.waypoints;
+      final isOwner = viewable.isOwner;
       if (route == null) {
         if (!mounted) return;
         setState(() {
@@ -97,38 +131,6 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
           _loading = false;
         });
         return;
-      }
-      // Privacy-zone clipping for non-owner viewers (decisions §33).
-      // Owners see the full route — anon (`api.userId == null`) is
-      // treated as non-owner so unauthenticated `/share/route/[id]`
-      // hits also honour zones. `clipRouteForViewer` is the route-
-      // specific RPC: it visibility-gates server-side (owner / public /
-      // club member) and applies the owner's privacy zones in one
-      // SECURITY DEFINER call. Fails closed (returns []) on outage so
-      // a transient blip renders an empty map for non-owners instead
-      // of leaking the start / end home location. Run-bound
-      // `fetchClippedTrackForRun` would be wrong here — it doesn't do
-      // route visibility.
-      final viewerId = widget.api.userId;
-      final ownerId = fetched.ownerId;
-      final isOwner =
-          viewerId != null && ownerId != null && viewerId == ownerId;
-      // Three explicit branches, NOT a `(isOwner || waypoints.isEmpty)`
-      // short-circuit. The original combined form was correct today
-      // (empty waypoints leak zero bytes by construction) but a future
-      // change that populates `route.waypoints` for non-owners on the
-      // empty-branch would silently bypass clipRouteForViewer. The
-      // split documents each branch's intent. See audit:privacy-zones
-      // 2026-05-25.
-      final List<cm.Waypoint> waypoints;
-      if (isOwner) {
-        waypoints = route.waypoints;
-      } else if (route.waypoints.isEmpty) {
-        // Non-owner viewer + empty waypoints — nothing to render and
-        // nothing to clip. Avoids a wasted clipRouteForViewer call.
-        waypoints = const [];
-      } else {
-        waypoints = await widget.api.clipRouteForViewer(widget.routeId);
       }
       if (!mounted) return;
       setState(() {

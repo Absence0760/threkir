@@ -27,6 +27,7 @@ import '../lib/main.dart'
         pendingArmGuidedRun,
         pendingPushTarget,
         pendingStartRunWithRoute,
+        pendingArmRunWithRoute,
         pendingStartWorkout;
 import '../lib/push_target.dart';
 import '../lib/preferences.dart';
@@ -1472,6 +1473,58 @@ void main() {
       expect(pendingStartRunWithRoute.value, isNull);
       expect(starts, [RunStartRequest.start]);
       expect(shellPage(tester), 2);
+    });
+
+    testWidgets("a park course's Run this course loads the route without "
+        'starting', (tester) async {
+      final starts = _captureStartRequests();
+      addTearDown(() => pendingArmRunWithRoute.value = null);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      pendingArmRunWithRoute.value = const cm.Route(
+        id: 'r1',
+        userId: 'official',
+        name: 'Pocahontas 5K',
+        waypoints: [
+          cm.Waypoint(lat: 47.37, lng: 8.54),
+          cm.Waypoint(lat: 47.371, lng: 8.541),
+        ],
+        distanceMetres: 5000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(pendingArmRunWithRoute.value, isNull);
+      expect(starts, isEmpty);
+      expect(shellPage(tester), 2);
+    });
+
+    testWidgets('Run this course leaves a live recording alone', (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final before = shellPage(tester);
+      runRecordingActive.value = true;
+      addTearDown(() {
+        runRecordingActive.value = false;
+        pendingArmRunWithRoute.value = null;
+      });
+      pendingArmRunWithRoute.value = const cm.Route(
+        id: 'r1',
+        userId: 'official',
+        name: 'Pocahontas 5K',
+        waypoints: [
+          cm.Waypoint(lat: 47.37, lng: 8.54),
+          cm.Waypoint(lat: 47.371, lng: 8.541),
+        ],
+        distanceMetres: 5000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(pendingArmRunWithRoute.value, isNull);
+      expect(starts, isEmpty);
+      expect(shellPage(tester), before);
     });
 
     testWidgets("Home's Start asks for the start and lands on the Run page",

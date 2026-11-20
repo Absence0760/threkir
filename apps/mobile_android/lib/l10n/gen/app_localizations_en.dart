@@ -22592,7 +22592,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Course line traced against the park\'s published map';
 
   @override
-  String get parksNavigate => 'Navigate this course';
+  String get parksRunThisCourse => 'Run this course';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'Couldn\'t load this course. Check your connection and try again.';
+
+  @override
+  String get parksRunThisCourseRecording =>
+      'Finish the run you\'re recording first, then load this course.';
 
   @override
   String get parksShareGpx => 'Share GPX';

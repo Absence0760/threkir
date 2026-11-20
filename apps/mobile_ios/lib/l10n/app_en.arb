@@ -29159,9 +29159,17 @@
   "@parksAttributionTraced": {
     "description": "Park courses (#1313): web key parks.attributionTraced."
   },
-  "parksNavigate": "Navigate this course",
-  "@parksNavigate": {
-    "description": "Park courses (#1313): web key parks.navigate."
+  "parksRunThisCourse": "Run this course",
+  "@parksRunThisCourse": {
+    "description": "Park course page: loads the course into the recorder, ready to start at the start line (does not start the run)."
+  },
+  "parksRunThisCourseFailed": "Couldn't load this course. Check your connection and try again.",
+  "@parksRunThisCourseFailed": {
+    "description": "Banner when Run this course could not load the course line."
+  },
+  "parksRunThisCourseRecording": "Finish the run you're recording first, then load this course.",
+  "@parksRunThisCourseRecording": {
+    "description": "Banner when Run this course is pressed while a run is already recording."
   },
   "parksShareGpx": "Share GPX",
   "@parksShareGpx": {

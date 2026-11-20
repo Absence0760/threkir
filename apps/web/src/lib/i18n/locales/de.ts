@@ -8047,7 +8047,7 @@ export const messages = {
 	"parks.attributionNps": "Streckenverlauf aus Wegdaten des National Park Service",
 	"parks.attributionAgency": "Streckenverlauf aus den Wegdaten des Parks",
 	"parks.attributionTraced": "Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet",
-	"parks.navigate": "Diese Strecke navigieren",
+	"parks.seeRoute": "Route ansehen",
 	"parks.downloadGpx": "GPX herunterladen",
 	"parks.browseLink": "Parkstrecken",
 	"parks.coursesTitle": "Strecken",

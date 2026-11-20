@@ -158,7 +158,7 @@ List<Map<String, Object?>> pickWearParkCourses(
 /// Keeps both watches holding the park courses the runner is about to run
 /// (#1446, decisions § 2595), so the wrist can time them live.
 ///
-/// **Which courses.** The ones the runner opened "Navigate this course" on,
+/// **Which courses.** The ones the runner pressed "Run this course" on,
 /// newest first, up to [kMaxWearParkCourses], kept on the phone across
 /// launches. That is the one signal on the phone that a runner means to run a
 /// course (park courses cannot be starred: their routes belong to the
@@ -167,7 +167,7 @@ List<Map<String, Object?>> pickWearParkCourses(
 /// to the Wear OS picker as rows; the Apple Watch holds one armed course, so
 /// it gets the one being navigated, with its line as the armed route.
 ///
-/// **When.** On every Navigate, on startup (so a watch paired since, or a
+/// **When.** On every Run this course, on startup (so a watch paired since, or a
 /// list a failed push left behind, catches up), and on sign-out, which
 /// empties the list on both wrists: which parks someone runs is theirs.
 ///
@@ -201,7 +201,7 @@ class WatchParkCourses {
     await _publishWear(await _load());
   }
 
-  /// The runner opened "Navigate this course" on [listing].
+  /// The runner pressed "Run this course" on [listing].
   Future<void> courseNavigated(ParkCourseListing listing) async {
     try {
       switch (defaultTargetPlatform) {

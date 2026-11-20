@@ -21252,7 +21252,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksAttributionTraced => 'コースラインは公園の公開地図をもとに作成しました';
 
   @override
-  String get parksNavigate => 'このコースをナビ';
+  String get parksRunThisCourse => 'このコースを走る';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'このコースを読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
+  String get parksRunThisCourseRecording => '記録中のランを終了してから、このコースを読み込んでください。';
 
   @override
   String get parksShareGpx => 'GPXを共有';

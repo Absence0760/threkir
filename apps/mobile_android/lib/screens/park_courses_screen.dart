@@ -38,6 +38,7 @@ import '../elevation_profile.dart' show elevationSeries;
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../main.dart' show pendingArmRunWithRoute;
 import '../park_course_distance.dart';
 import '../park_courses.dart';
 import '../preferences.dart';
@@ -50,6 +51,7 @@ import '../widgets/elevation_chart.dart';
 import '../widgets/error_state.dart';
 import 'help_screen.dart' show openGuide;
 import 'public_route_screen.dart';
+import 'run_screen.dart' show runRecordingActive;
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/park_course_map.dart';
 import '../widgets/park_course_preview_sheet.dart';
@@ -1173,15 +1175,45 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
-  void _navigate(ApiClient api, String routeId) {
-    // The course goes to the wrist as the runner heads out to run it, so a
-    // watch-recorded run is timed live there too. Fire-and-forget.
-    unawaited(WatchParkCourses().courseNavigated(widget.course));
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PublicRouteScreen(api: api, routeId: routeId),
-      ),
-    );
+  bool _loadingRun = false;
+
+  /// Load the course into the recorder, ready for the runner to press Start
+  /// at the start line. It doesn't start the run: this is pressed while
+  /// browsing, often from home.
+  Future<void> _runThisCourse(ApiClient api, String routeId) async {
+    if (_loadingRun) return;
+    final l10n = AppLocalizations.of(context);
+    // The recorder takes a new route only while idle, so mid-run this would
+    // land on the live recorder with the old one and look like it worked.
+    if (runRecordingActive.value) {
+      showTopBanner(context, l10n.parksRunThisCourseRecording);
+      return;
+    }
+    setState(() => _loadingRun = true);
+    try {
+      final viewable = await loadViewableRoute(api, routeId);
+      final route = viewable.route;
+      if (route == null || viewable.waypoints.length < 2) {
+        throw StateError('course route $routeId has no line to follow');
+      }
+      if (!mounted) return;
+      // The course goes to the wrist too, so a watch-recorded run is timed
+      // live there. Fire-and-forget, and only once the phone has it as well.
+      unawaited(WatchParkCourses().courseNavigated(widget.course));
+      pendingArmRunWithRoute.value =
+          publicRouteStartTarget(route, viewable.waypoints);
+    } catch (e) {
+      debugPrint('park course run load failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        l10n.parksRunThisCourseFailed,
+        actionLabel: l10n.errorStateRetry,
+        onAction: () => _runThisCourse(api, routeId),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingRun = false);
+    }
   }
 
   void _openPark() {
@@ -1323,7 +1355,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                   CourseEndsCard(
                     ends: ends,
                     launch: widget.launch,
-                    // One filled action: Navigate this course when there is
+                    // One filled action: Run this course when there is
                     // one, the way to the start otherwise.
                     primary: !canNavigate,
                     instruction:
@@ -1343,10 +1375,18 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                     children: [
                       if (canNavigate)
                         FilledButton.icon(
-                          key: const Key('park-course-navigate'),
-                          onPressed: () => _navigate(api, routeId),
-                          icon: const Icon(Icons.navigation_outlined),
-                          label: Text(l10n.parksNavigate),
+                          key: const Key('park-course-run'),
+                          onPressed: _loadingRun
+                              ? null
+                              : () => _runThisCourse(api, routeId),
+                          icon: _loadingRun
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.directions_run),
+                          label: Text(l10n.parksRunThisCourse),
                         ),
                       if (canShare)
                         Builder(

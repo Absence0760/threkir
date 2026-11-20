@@ -282,9 +282,9 @@ test.describe('park course pages', () => {
 		await expect(notices.getByTestId('park-course-not-affiliated')).toBeVisible();
 		await expect(notices.getByTestId('park-course-group-permit')).toBeVisible();
 
-		// No route to navigate, so the way to the start is the one filled
+		// No route to open, so the way to the start is the one filled
 		// action and the GPX download an outline one.
-		await expect(page.getByTestId('park-course-navigate')).toHaveCount(0);
+		await expect(page.getByTestId('park-course-route')).toHaveCount(0);
 		await expect(page.getByTestId('park-course-gpx')).toHaveClass(/btn-outline/);
 		await expect(page.getByTestId('park-course-ends-get-directions')).toHaveClass(/btn-primary/);
 		await expect(page.locator('.course-layout .btn-primary')).toHaveCount(1);

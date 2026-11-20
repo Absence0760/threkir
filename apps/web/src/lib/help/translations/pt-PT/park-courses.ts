@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"É um contrarrelógio, não uma prova. O trilho continua aberto a todos e ninguém o controla, por isso cumpra as regras do parque e dê passagem às outras pessoas no trilho.",
 						"Cada página de percurso mostra a distância, o desnível positivo, o formato, o piso e a dificuldade, de onde vem a linha do percurso e se está aberto.",
-						"Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado.",
+						"No telemóvel, selecione **Correr este percurso** para abrir o gravador com o percurso carregado e prima Iniciar quando estiver na linha de partida. Na web, **Ver a rota** abre o percurso como uma rota. Nenhuma das opções aparece enquanto o percurso estiver fechado.",
 						"O **Guia do percurso** na página do percurso indica onde estacionar e cada mudança de direção pela ordem, com o nome do trilho, além das pontes, vaus, estradas a atravessar, mudanças de piso e subidas. É elaborado a partir de dados do mapa; enquanto ninguém o tiver verificado no parque, isso aparece acima da lista. O mesmo guia vem no ficheiro GPX do percurso.",
 					],
 				},
@@ -92,7 +92,7 @@ export const translation: GuideTranslation = {
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
-		"s0.b1.i2": "d69fbf280d3b46a0",
+		"s0.b1.i2": "cdd14254d41b3936",
 		"s0.b1.i3": "e61c22c65996f061",
 		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",

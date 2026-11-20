@@ -155,7 +155,7 @@ test.describe('park course route guide (web)', () => {
 		await expect(page.getByTestId('park-course-guide-pending')).toHaveCount(0);
 	});
 
-	test('a closed course shows no guide, like its Navigate and GPX', async ({ page }) => {
+	test('a closed course shows no guide, like its route link and GPX', async ({ page }) => {
 		const admin = getAdminClient();
 		const closed = await admin
 			.from('park_courses')

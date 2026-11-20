@@ -22827,7 +22827,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet';
 
   @override
-  String get parksNavigate => 'Diese Strecke navigieren';
+  String get parksRunThisCourse => 'Diese Strecke laufen';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'Die Strecke konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get parksRunThisCourseRecording =>
+      'Beende zuerst die laufende Aufzeichnung und lade dann diese Strecke.';
 
   @override
   String get parksShareGpx => 'GPX teilen';

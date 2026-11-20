@@ -22573,6 +22573,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.';
 
   @override
+  String get parksGroupPermitNotice =>
+      'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.';
+
+  @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
 
   @override

@@ -10,10 +10,6 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/high-bridge-trail",
     "osm_boundary": "relation/20029796"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs and lots, the Farmville closure from Main Street to Osborne Road (the half, the marathon, the 50 mile and the 100K run through it), daily parking fees, and a Special Use Permit for group events."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

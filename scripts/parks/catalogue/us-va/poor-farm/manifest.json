@@ -11,8 +11,23 @@
     "osm_boundary": "way/481330911"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks every course, including one 6.9 km lap of the half, against the trail signs (Hanover County publishes no trail map, so the line is OSM's), including the two places the line crosses the park road where OSM leaves the trail a few metres apart, and decides whether bike traffic on this mountain-bike singletrack suits a timed run. Foot access is not confirmed in writing: runners check the park rules themselves (owner decision on #1430)."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -214,7 +229,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "poor-farm-10k",
@@ -448,7 +464,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "poor-farm-half",
@@ -892,7 +909,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

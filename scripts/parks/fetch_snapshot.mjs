@@ -22,6 +22,13 @@
 // snapshot and leaves its ways, nodes and elevations exactly as they are, so a
 // park's course geometry does not move with whatever OSM holds today:
 //   node scripts/parks/fetch_snapshot.mjs --road-crossings-only scripts/parks/catalogue/us-va/pocahontas
+//
+// `--course-ends-only` fetches `course_ends` (`lib/course_ends.mjs`) alone: the
+// car parks and motor roads around every start and finish of the BUILT
+// manifest, which the go-live gate reads. Build the park first, then run it,
+// then build again; a course end that moves more than a few metres needs a
+// fresh fetch, or the gate stages the park:
+//   node scripts/parks/fetch_snapshot.mjs --course-ends-only scripts/parks/catalogue/us-va/pocahontas
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,6 +36,8 @@ import path from 'node:path';
 import { parseWayFull } from './lib/osm_response.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
 import { ROAD_HIGHWAY_PATTERN, parseRoadCrossings } from './lib/road_crossings.mjs';
+import { courseEndsQuery, parseCourseEnds } from './lib/course_ends.mjs';
+import { courseEndPoints } from './lib/golive_gate.mjs';
 
 const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/jaredhoward-dev/threkir)';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6';
@@ -117,22 +126,59 @@ async function roadCrossingsOnly(snapshotPath) {
 	console.log(`${snapshotPath}: ${Object.keys(snapshot.road_crossings.nodes).length} course nodes on a motor road`);
 }
 
+/**
+ * The snapshot's `course_ends`, for every start and finish the built
+ * manifest's course lines have, from one Overpass query.
+ *
+ * @param {string} dir
+ */
+async function courseEndsOnly(dir) {
+	const snapshotPath = path.join(dir, 'snapshot.json');
+	const text = readIfExists(snapshotPath);
+	if (text === null) throw new Error(`${snapshotPath} does not exist; run without --course-ends-only first`);
+	const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+	const lines = [...(manifest.courses ?? []), ...(manifest.race_courses ?? [])].map((entry) => {
+		const gj = JSON.parse(fs.readFileSync(path.join(dir, entry.geojson), 'utf8'));
+		const line = gj.features.find((/** @type {any} */ f) => f.geometry.type === 'LineString').geometry.coordinates;
+		return line.map((/** @type {number[]} */ c) => ({ lat: c[1], lng: c[0] }));
+	});
+	const ends = courseEndPoints(lines);
+	const body = await getJson(OVERPASS, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: new URLSearchParams({ data: courseEndsQuery(ends, ROAD_HIGHWAY_PATTERN) }).toString(),
+	});
+	const snapshot = JSON.parse(text);
+	snapshot.course_ends = {
+		fetched_at: new Date().toISOString().slice(0, 10),
+		source: 'OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0',
+		ends: parseCourseEnds(body, ends),
+	};
+	fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 1)}\n`);
+	console.log(`${snapshotPath}: ${ends.length} course ends`);
+}
+
 async function main() {
 	const args = process.argv.slice(2);
-	const only = args.includes('--road-crossings-only');
-	const dir = args.find((a) => a !== '--road-crossings-only');
+	const flags = ['--road-crossings-only', '--course-ends-only'];
+	const dir = args.find((a) => !flags.includes(a));
 	if (!dir) {
-		console.error('usage: node scripts/parks/fetch_snapshot.mjs [--road-crossings-only] <catalogue/park dir>');
+		console.error('usage: node scripts/parks/fetch_snapshot.mjs [--road-crossings-only | --course-ends-only] <catalogue/park dir>');
 		process.exit(2);
 	}
-	if (only) {
+	if (args.includes('--road-crossings-only')) {
 		await roadCrossingsOnly(path.join(dir, 'snapshot.json'));
+		return;
+	}
+	if (args.includes('--course-ends-only')) {
+		await courseEndsOnly(dir);
 		return;
 	}
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
 	const snapshotPath = path.join(dir, 'snapshot.json');
+	const previousSnapshot = JSON.parse(readIfExists(snapshotPath) ?? '{"nodes":{}}');
 	/** @type {Record<string, { lat: number, lon: number, ele?: number }>} */
-	const previous = JSON.parse(readIfExists(snapshotPath) ?? '{"nodes":{}}').nodes;
+	const previous = previousSnapshot.nodes;
 
 	/** @type {Set<number>} */
 	const wayIds = new Set();
@@ -185,6 +231,9 @@ async function main() {
 		ways,
 		nodes: sortedNodes,
 		road_crossings: await fetchRoadCrossings(Object.keys(sortedNodes).map(Number)),
+		// Kept, not re-fetched: the ends come from the built manifest, and the
+		// gate stages any end that no longer sits where they were fetched.
+		...(previousSnapshot.course_ends ? { course_ends: previousSnapshot.course_ends } : {}),
 	};
 	fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 1)}\n`);
 	console.log(

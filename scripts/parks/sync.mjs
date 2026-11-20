@@ -41,8 +41,10 @@ export function findParkDirs(root) {
 }
 
 /**
- * The stage the production sync runs. Every park is validated; a staged one
- * (decisions § 2460) is reported `staged` and never loaded.
+ * The stage the production sync runs. Every park is validated; a staged park
+ * (decisions § 2460) is never loaded, and a held course of a live park
+ * (§ 2602) is never created or closed: each is reported `staged`, or
+ * `held_live` when it is already loaded.
  *
  * @param {{ root?: string, publisherFile?: string }} [opts]
  */
@@ -53,13 +55,13 @@ export function parkCatalogueStage({ root = CATALOGUE_ROOT, publisherFile = PUBL
 	);
 	/** @param {number} n */
 	const courses = (n) => `${n} course${n === 1 ? '' : 's'}`;
-	const loaded = `${live.length} park(s): ${live.map((p) => `${p.park.slug} (${courses(p.courses.length)})`).join(', ') || 'none'}`;
-	const held = staged.map((s) => `${s.park} (${courses(s.courses.length)}): ${s.reason}`);
+	const loaded = `${live.length} park(s): ${live.map((p) => `${p.park.slug} (${courses(p.courses.length)}${p.held ? `, ${p.held.length} held` : ''})`).join(', ') || 'none'}`;
+	const held = staged.map((s) => `${s.park} (${s.courses.length === 1 ? s.courses[0] : courses(s.courses.length)}): ${s.reason}`);
 	return {
 		id: 'park-catalogue',
 		title: 'Park catalogue',
 		sql: catalogueSyncSql(live, publisher, staged),
-		note: held.length > 0 ? `${loaded}. Staged, not loaded: ${held.join('; ')}` : loaded,
+		note: held.length > 0 ? `${loaded}. Held out of the load: ${held.join('; ')}` : loaded,
 	};
 }
 

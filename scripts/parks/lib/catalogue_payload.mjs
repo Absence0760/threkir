@@ -80,6 +80,7 @@ export const RACE_DISTANCE_WORDS = Object.freeze({
  * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} PayloadGate
  * @typedef {{
  *   park: Record<string, string | null>, region: string, attribution: string, courses: PayloadCourse[],
+ *   held?: string[],
  * }} CataloguePayload
  */
 

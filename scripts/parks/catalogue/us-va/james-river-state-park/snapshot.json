@@ -10311,5 +10311,75 @@
     ]
    }
   }
+ },
+ "course_ends": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "ends": [
+   {
+    "lat": 37.620571,
+    "lng": -78.811809,
+    "parking": [
+     {
+      "id": "way/272514966",
+      "lat": 37.621999,
+      "lng": -78.8055218,
+      "m": 576,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.621795,
+    "lng": -78.810435,
+    "parking": [
+     {
+      "id": "way/272514966",
+      "lat": 37.621999,
+      "lng": -78.8055218,
+      "m": 433,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.62113,
+    "lng": -78.811188,
+    "parking": [
+     {
+      "id": "way/272514966",
+      "lat": 37.621999,
+      "lng": -78.8055218,
+      "m": 508,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.620387,
+    "lng": -78.812049,
+    "parking": [
+     {
+      "id": "way/272514966",
+      "lat": 37.621999,
+      "lng": -78.8055218,
+      "m": 602,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   }
+  ]
  }
 }

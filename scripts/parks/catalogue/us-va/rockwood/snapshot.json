@@ -2880,5 +2880,97 @@
     ]
    }
   }
+ },
+ "course_ends": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "ends": [
+   {
+    "lat": 37.449753,
+    "lng": -77.578578,
+    "parking": [
+     {
+      "id": "way/970957723",
+      "lat": 37.4499275,
+      "lng": -77.5797055,
+      "m": 101,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     },
+     {
+      "id": "way/970957741",
+      "lat": 37.4488617,
+      "lng": -77.5797079,
+      "m": 141,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     },
+     {
+      "id": "way/970957720",
+      "lat": 37.4509412,
+      "lng": -77.580635,
+      "m": 225,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.448045,
+    "lng": -77.579088,
+    "parking": [
+     {
+      "id": "way/970957741",
+      "lat": 37.4488617,
+      "lng": -77.5797079,
+      "m": 106,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     },
+     {
+      "id": "way/82212119",
+      "lat": 37.4488732,
+      "lng": -77.5812115,
+      "m": 209,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     },
+     {
+      "id": "way/970957723",
+      "lat": 37.4499275,
+      "lng": -77.5797055,
+      "m": 216,
+      "tags": {
+       "access": "yes",
+       "amenity": "parking",
+       "fee": "no",
+       "parking": "surface"
+      }
+     }
+    ],
+    "roads": []
+   }
+  ]
  }
 }

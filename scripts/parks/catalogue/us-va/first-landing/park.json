@@ -10,10 +10,6 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/first-landing",
     "osm_boundary": "relation/392207"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks all four courses at First Landing against the DCR trail guide and the trail signs (the line is OSM's; DCR data is reference only until DCR confirms its terms in writing), checks the starts by the Trail Center against the lot and the park road, and confirms with DCR whether an organised run needs a special use permit."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

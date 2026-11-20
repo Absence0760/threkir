@@ -13,6 +13,22 @@
   "release": {
     "status": "live"
   },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
+  },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-09",
   "courses": [
@@ -118,7 +134,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ],
   "race_courses": [
@@ -263,7 +280,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "swift-creek-10k",
@@ -465,7 +483,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "swift-creek-half",
@@ -799,7 +818,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "swift-creek-marathon",
@@ -1210,7 +1230,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "swift-creek-50k",
@@ -1700,7 +1721,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

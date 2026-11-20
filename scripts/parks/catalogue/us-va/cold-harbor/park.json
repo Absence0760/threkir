@@ -11,10 +11,6 @@
     "website_url": "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
     "osm_boundary": "relation/9991347"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses at Cold Harbor against the NPS trail map, including the four stretches on the tour road (Anderson Wright Drive) that join the trail pieces, and confirms with the park whether an organised run needs a special use permit."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

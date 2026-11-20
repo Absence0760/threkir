@@ -22825,6 +22825,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Há grupos organizados que usam estes trilhos aos sábados de manhã. Dê-lhes passagem e evite fazer uma tentativa cronometrada no meio deles.';
 
   @override
+  String get parksGroupPermitNotice =>
+      'Aplicam-se as regras do parque. Correr em grupo ou fazer um evento aqui pode exigir uma autorização do parque, por isso informe-se junto do parque antes de ir.';
+
+  @override
   String get parksAttributionOsm =>
       'Traçado do percurso © colaboradores do OpenStreetMap';
 
@@ -47229,6 +47233,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get parksSharedUseSaturdayMorningGroup =>
       'Grupos organizados usam estas trilhas aos sábados de manhã. Dê passagem e evite cronometrar uma tentativa no meio deles.';
+
+  @override
+  String get parksGroupPermitNotice =>
+      'Valem as regras do parque. Correr em grupo ou fazer um evento aqui pode exigir uma autorização do parque, então consulte o parque antes de ir.';
 
   @override
   String get parksAttributionOsm =>

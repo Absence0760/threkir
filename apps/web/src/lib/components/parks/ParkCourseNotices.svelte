@@ -2,9 +2,10 @@
 	// What a runner must know before setting off on a park course, in one
 	// callout (issue #1352): a few plain lines, safety first (follow the
 	// course line and pass every checkpoint), the give-way note when an
-	// organised group shares the paths (decisions § 2460), then only the lines
-	// the course's data supports: a ford, a paved shared trail, a park's
-	// closing time (courseNotices).
+	// organised group shares the paths (decisions § 2460), the park-permit line
+	// every course carries (a group or an event may need the park's permit),
+	// then only the lines the course's data supports: a ford, a paved shared
+	// trail, a park's closing time (courseNotices).
 	// The required notices (a time trial, not a race; times are not event
 	// results; not affiliated with the park) follow as one smaller line.
 	// Each keeps the test id it had when they were separate pieces of fine
@@ -57,6 +58,7 @@
 		{#if sharedUse}
 			<li data-testid="{testidPrefix}-shared-use">{m(SHARED_USE_NOTE[sharedUse])}</li>
 		{/if}
+		<li data-testid="{testidPrefix}-group-permit">{m('parks.groupPermitNotice')}</li>
 		{#each lines as line (line)}
 			<li data-testid="{testidPrefix}-{NOTICE[line].id}">{m(NOTICE[line].key)}</li>
 		{/each}

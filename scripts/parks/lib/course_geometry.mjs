@@ -369,11 +369,16 @@ export const JOIN_MAX_M = 10;
  * pass them, and the route guide reads them as part of the trail either side.
  * Returns each join's measured gap too, for the build to report.
  *
+ * `maxGapM` defaults to `JOIN_MAX_M`; the build passes Infinity and leaves
+ * the cap to the go-live gate, which stages a park with a wider join rather
+ * than refusing to build it.
+ *
  * @param {TrailReview | undefined} review
  * @param {Record<string, SnapshotNode>} nodes
+ * @param {{ maxGapM?: number }} [options]
  * @returns {Array<SnapshotWay & { gapM: number }>}
  */
-export function joinWays(review, nodes) {
+export function joinWays(review, nodes, { maxGapM = JOIN_MAX_M } = {}) {
 	const joins = review?.joins ?? [];
 	if (!Array.isArray(joins)) throw new Error('trail_review joins must be a list');
 	/** @type {Set<string>} */
@@ -393,7 +398,7 @@ export function joinWays(review, nodes) {
 			return { lat: n.lat, lng: n.lon };
 		});
 		const gapM = haversineM(a, b);
-		if (gapM > JOIN_MAX_M) {
+		if (gapM > maxGapM) {
 			throw new Error(`trail_review join ${pair.join('-')} spans ${gapM.toFixed(1)} m, over the ${JOIN_MAX_M} m a join may close; map the path instead`);
 		}
 		return { id: -(i + 1), nodes: [pair[0], pair[1]], tags: {}, join: /** @type {true} */ (true), gapM };

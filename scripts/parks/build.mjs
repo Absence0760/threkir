@@ -6,14 +6,19 @@
 // Offline and deterministic: the same spec and snapshot always produce the
 // same bytes, which `--check` verifies.
 //
-// A course is refused (non-zero exit, nothing written) when its traced
-// distance is more than 5 % off the park's published figure: either the spec
-// names the wrong ways or the published figure means a different route, and
-// both need a person to look before anything is loaded. A course whose line
-// uses a way not open to people on foot (a social trail, a bike-only trail,
-// `access=no` without a foot override) is refused the same way, and so is one
-// whose line uses a way the park's `trail_review` has not marked designated
-// after checking it against the land manager's own trail map.
+// A course is refused (non-zero exit, nothing written) when its spec cannot be
+// built as written: its traced distance is more than 5 % off the park's
+// published figure (the spec names the wrong ways, or the figure means a
+// different route), or its line uses a way the park's `trail_review` has not
+// marked designated after checking it against the land manager's own trail map.
+//
+// Whether a built park may load is the go-live gate's call, not a person's
+// (`lib/golive_gate.mjs`, decisions § 2600): every course is held to the
+// gate's machine checks (foot access, at-grade major road crossings, road
+// connectors, join gaps, backtrack, laps, parking, the runout at each end),
+// and the build writes the park's `release` into its manifest from the
+// result: `live` when every course passes, else `staged` with the failing
+// checks as its reason. `park.json` carries no release of its own.
 //
 // Where the start or end line the database's gate trigger will derive from the
 // built points faces more than 10 degrees off the course at that end, the
@@ -32,9 +37,7 @@ import {
 	PUBLISHED_DISTANCE_TOLERANCE,
 	RACE_COURSE_SHAPES,
 	RACE_DISTANCES_M,
-	assertFootAccess,
 	footAccessWarnings,
-	assertRoadConnectors,
 	assertTrailReview,
 	curatedGates,
 	distanceDeviation,
@@ -55,7 +58,7 @@ import {
 	walkedWays,
 } from './lib/course_geometry.mjs';
 import { SHARED_USES } from './lib/catalogue_payload.mjs';
-import { parseRelease } from './lib/catalogue_release.mjs';
+import { GATE_CHECKS, GATE_VERSION, gateCourse, gateParkJoins, releaseFromGate } from './lib/golive_gate.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
 import { buildRouteGuide } from './lib/route_guide.mjs';
 import { assertNoThirdPartyMarks } from './lib/third_party_marks.mjs';
@@ -74,15 +77,21 @@ const SIMPLIFY_EPSILON_M = 1;
 export function buildPark(dir, { warn = (message) => console.warn(`WARN ${message}`) } = {}) {
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
 	assertNoThirdPartyMarks(spec, path.join(dir, 'park.json'));
-	const release = parseRelease(spec.release, path.join(dir, 'park.json'));
+	if (spec.release !== undefined) {
+		throw new Error(
+			`${path.join(dir, 'park.json')} declares a release, but the go-live gate derives it (decisions § 2600); remove it`,
+		);
+	}
 	const snapshot = JSON.parse(fs.readFileSync(path.join(dir, 'snapshot.json'), 'utf8'));
 	/** @type {Map<string, string>} */
 	const outputs = new Map();
 	const courses = [];
+	/** @type {Array<{ slug: string, failures: import('./lib/golive_gate.mjs').GateFailure[] }>} */
+	const gated = [];
 	/** @type {ReturnType<typeof joinWays>} */
 	let joins;
 	try {
-		joins = joinWays(spec.trail_review, snapshot.nodes);
+		joins = joinWays(spec.trail_review, snapshot.nodes, { maxGapM: Infinity });
 	} catch (err) {
 		throw new Error(`${spec.park?.slug}: ${/** @type {Error} */ (err).message}`);
 	}
@@ -103,9 +112,8 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			start: course.start_node,
 			direction: course.direction,
 		});
-		footAccessOrThrow(course.slug, sequence, ways, spec.trail_review, warn);
+		footAccessWarn(course.slug, sequence, ways, spec.trail_review, warn);
 		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
-		roadConnectorsOrThrow(course.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -124,6 +132,20 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			ele: p.ele ?? null,
 		}));
 		const gates = curatedGatesOrThrow(course.slug, waypoints);
+		const gate = gateCourse({
+			shape: 'loop',
+			raceDistance: null,
+			laps: null,
+			lapM: null,
+			sequence,
+			lapSequence: null,
+			nodes: snapshot.nodes,
+			ways,
+			line: waypoints,
+			review: spec.trail_review,
+			snapshot,
+		});
+		gated.push({ slug: course.slug, failures: gate });
 		const guide = routeGuideOrThrow(course.slug, course.route_guide, {
 			sequence,
 			nodes: snapshot.nodes,
@@ -185,6 +207,7 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			...gates,
 			waypoint_count: waypoints.length,
 			...guide,
+			gate_failures: gate,
 		});
 	}
 
@@ -204,14 +227,14 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			const built = buildLinearRace(spec, snapshot, race, ways, targetM, warn);
 			outputs.set(path.join(dir, `${race.slug}.geojson`), built.geojson);
 			raceCourses.push(built.entry);
+			gated.push({ slug: race.slug, failures: built.entry.gate_failures });
 			continue;
 		}
 		const leadIn = traceVia({ ways, nodes: snapshot.nodes, via: race.lead_in_via });
 		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
 		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
-		footAccessOrThrow(race.slug, sequence, ways, spec.trail_review, warn);
+		footAccessWarn(race.slug, sequence, ways, spec.trail_review, warn);
 		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
-		roadConnectorsOrThrow(race.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
@@ -225,6 +248,20 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
 		}));
 		const gates = curatedGatesOrThrow(race.slug, waypoints);
+		const gate = gateCourse({
+			shape: 'loop',
+			raceDistance: race.race_distance,
+			laps: race.laps,
+			lapM,
+			sequence,
+			lapSequence: loop,
+			nodes: snapshot.nodes,
+			ways,
+			line: waypoints,
+			review: spec.trail_review,
+			snapshot,
+		});
+		gated.push({ slug: race.slug, failures: gate });
 		const guide = routeGuideOrThrow(race.slug, race.route_guide, {
 			sequence,
 			nodes: snapshot.nodes,
@@ -296,12 +333,15 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			...gates,
 			waypoint_count: waypoints.length,
 			...guide,
+			gate_failures: gate,
 		});
 	}
 
+	const parkFailures = gateParkJoins(joins);
 	const manifest = {
 		park: spec.park,
-		release,
+		release: releaseFromGate(parkFailures, gated),
+		gate: { version: GATE_VERSION, checks: GATE_CHECKS, park_failures: parkFailures },
 		attribution: '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
 		snapshot_fetched_at: snapshot.fetched_at,
 		courses,
@@ -355,9 +395,8 @@ function buildLinearRace(spec, snapshot, race, ways, targetM, warn) {
 			throw fail(err);
 		}
 	}
-	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review, warn);
+	footAccessWarn(race.slug, cut.sequence, cut.ways, spec.trail_review, warn);
 	const fords = trailReviewOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
-	roadConnectorsOrThrow(race.slug, cut.sequence, cut.nodes, cut.ways, spec.trail_review);
 	const raw = toPoints(cut.sequence, cut.nodes);
 	const lengthM = pathLengthM(raw);
 	if (Math.abs(lengthM - targetM) > 0.5) throw new Error(`${race.slug}: built ${lengthM.toFixed(1)} m, not ${targetM} m`);
@@ -373,6 +412,19 @@ function buildLinearRace(spec, snapshot, race, ways, targetM, warn) {
 		ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
 	}));
 	const gates = curatedGatesOrThrow(race.slug, waypoints);
+	const gate = gateCourse({
+		shape: race.course_shape,
+		raceDistance: race.race_distance,
+		laps: null,
+		lapM: null,
+		sequence: cut.sequence,
+		lapSequence: null,
+		nodes: cut.nodes,
+		ways: cut.ways,
+		line: waypoints,
+		review: spec.trail_review,
+		snapshot,
+	});
 	const cutIds = new Set(cut.ways.map((w) => w.id));
 	const guide = routeGuideOrThrow(race.slug, race.route_guide, {
 		sequence: cut.sequence,
@@ -445,23 +497,22 @@ function buildLinearRace(spec, snapshot, race, ways, targetM, warn) {
 			...gates,
 			waypoint_count: waypoints.length,
 			...guide,
+			gate_failures: gate,
 		},
 	};
 }
 
 /**
+ * A way that may be bike-only is a warning, never a refusal (decisions
+ * § 2593); a way closed to people on foot is the gate's `foot_access` check.
+ *
  * @param {string} slug
  * @param {number[]} sequence
  * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
  * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
  * @param {(message: string) => void} warn
  */
-function footAccessOrThrow(slug, sequence, ways, review, warn) {
-	try {
-		assertFootAccess(sequence, ways, review?.foot_confirmed);
-	} catch (err) {
-		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
-	}
+function footAccessWarn(slug, sequence, ways, review, warn) {
 	for (const message of footAccessWarnings(sequence, ways, review?.foot_confirmed)) warn(`${slug}: ${message}`);
 }
 
@@ -495,21 +546,6 @@ function walkedJoins(sequence, ways) {
 			.map((w) => ({ nodes: w.nodes.filter((n) => n > 0), gap_m: Math.round(/** @type {any} */ (w).gapM * 10) / 10 }))
 			.sort((a, b) => a.nodes[0] - b.nodes[0]),
 	};
-}
-
-/**
- * @param {string} slug
- * @param {number[]} sequence
- * @param {Record<string, import('./lib/course_geometry.mjs').SnapshotNode>} nodes
- * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
- * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
- */
-function roadConnectorsOrThrow(slug, sequence, nodes, ways, review) {
-	try {
-		assertRoadConnectors(sequence, nodes, ways, review);
-	} catch (err) {
-		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
-	}
 }
 
 /** @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review */

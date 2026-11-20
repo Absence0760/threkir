@@ -11,8 +11,23 @@
     "osm_boundary": "relation/9294688"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses against the trail signs (the city publishes no trail map; the line is OSM's) and decides whether bike traffic on these shared mountain-bike trails suits a timed run. Foot access is not confirmed in writing: runners check the park rules themselves (owner decision on #1430)."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-19",
@@ -252,7 +267,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "powhite-park-10k",
@@ -518,7 +534,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

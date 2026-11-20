@@ -10,10 +10,6 @@
     "website_url": "https://henrico.gov/rec/places/deep-run/",
     "osm_boundary": "relation/11623997"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner records the brand and data outcome on #1097 and checks this line against a GPS trace of the paths (decisions § 2460)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

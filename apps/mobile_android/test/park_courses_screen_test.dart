@@ -580,6 +580,13 @@ void main() {
       expect(find.byKey(const Key('park-website')), findsOneWidget);
       expect(find.text('Virginia · State park'), findsOneWidget);
       expect(find.byKey(const Key('park-not-affiliated')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('park-group-permit')),
+          matching: find.textContaining('may need a permit from the park'),
+        ),
+        findsOneWidget,
+      );
       await _unmount(tester);
     });
 
@@ -984,7 +991,11 @@ void main() {
         );
         final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
         expect(y('park-course-safety'), lessThan(y('park-course-shared-use')));
-        expect(y('park-course-shared-use'), lessThan(y('park-course-hours')));
+        expect(
+          y('park-course-shared-use'),
+          lessThan(y('park-course-group-permit')),
+        );
+        expect(y('park-course-group-permit'), lessThan(y('park-course-hours')));
         expect(y('park-course-hours'), lessThan(y('park-course-fine-print')));
         await _unmount(tester);
       },
@@ -1156,6 +1167,7 @@ void main() {
       final notices = find.byKey(const Key('park-course-notices'));
       for (final k in [
         'park-course-safety',
+        'park-course-group-permit',
         'park-course-long',
         'park-course-fine-print',
       ]) {
@@ -1166,8 +1178,18 @@ void main() {
         );
       }
       final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
-      expect(y('park-course-safety'), lessThan(y('park-course-long')));
+      expect(y('park-course-safety'), lessThan(y('park-course-group-permit')));
+      expect(y('park-course-group-permit'), lessThan(y('park-course-long')));
       expect(y('park-course-long'), lessThan(y('park-course-fine-print')));
+      expect(
+        tester
+            .widget<Text>(find.descendant(
+                of: find.byKey(const Key('park-course-group-permit')),
+                matching: find.byType(Text)))
+            .data,
+        'Park rules apply. A group run or an event here may need a permit '
+        'from the park, so check with the park first.',
+      );
       expect(find.byKey(const Key('park-course-hours')), findsNothing,
           reason: 'the long-course notice already says it');
       expect(

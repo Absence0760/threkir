@@ -12,7 +12,7 @@
   },
   "release": {
     "status": "staged",
-    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs and lots, the Farmville closure from Main Street to Osborne Road (the half and the marathon run through it), daily parking fees, and a Special Use Permit for group events."
+    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs and lots, the Farmville closure from Main Street to Osborne Road (the half, the marathon, the 50 mile and the 100K run through it), daily parking fees, and a Special Use Permit for group events."
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -779,6 +779,924 @@
           {
             "kind": "finish",
             "at_m": 50000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pamplin-50mi",
+      "name": "Pamplin, 50 miles",
+      "race_distance": "50mi",
+      "course_shape": "out_and_back",
+      "distance_m": 80467.2,
+      "start_finish": {
+        "lat": 37.261407,
+        "lng": -78.679415
+      },
+      "turn_at_m": 40233.6,
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20413889,way/164024869,way/164073280,way/164076332,way/164076340,way/164078570,way/164078573,way/164078574,way/164078575,way/164078578,way/168547797,way/169790104,way/970538169,way/970538170,way/1221364554,way/1223501046,way/1223501047,way/1223501048,way/1223501049,way/1223501050,way/1223501054,way/1223501055,way/1223501056,way/1223501057,way/1315439286,way/1315439287,way/1315444722,way/1315444723,way/1315444729,way/1315444730,way/1315447974,way/1315447975,way/1315447976,way/1315447977,way/1315450299,way/1315450300,way/1315450301,way/1315450304,way/1315450305",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pamplin-50mi.geojson",
+      "elevation_m": 168,
+      "checkpoints": [
+        {
+          "lat": 37.264564,
+          "lng": -78.653192
+        },
+        {
+          "lat": 37.277122,
+          "lng": -78.629565
+        },
+        {
+          "lat": 37.290044,
+          "lng": -78.60624
+        },
+        {
+          "lat": 37.296705,
+          "lng": -78.579568
+        },
+        {
+          "lat": 37.300872,
+          "lng": -78.553823
+        },
+        {
+          "lat": 37.302937,
+          "lng": -78.525597
+        },
+        {
+          "lat": 37.305608,
+          "lng": -78.497853
+        },
+        {
+          "lat": 37.302336,
+          "lng": -78.471021
+        },
+        {
+          "lat": 37.306875,
+          "lng": -78.443395
+        },
+        {
+          "lat": 37.310835,
+          "lng": -78.416635
+        },
+        {
+          "lat": 37.304674,
+          "lng": -78.390472
+        },
+        {
+          "lat": 37.315707,
+          "lng": -78.366929
+        },
+        {
+          "lat": 37.325478,
+          "lng": -78.343029
+        },
+        {
+          "lat": 37.312439,
+          "lng": -78.320212
+        },
+        {
+          "lat": 37.292552,
+          "lng": -78.310274
+        },
+        {
+          "lat": 37.274554,
+          "lng": -78.295037
+        }
+      ],
+      "waypoint_count": 585,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Pamplin lot on Pamplin Road. Walk about 60 m east along the trail to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 1479
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2515,
+            "order": 1,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 3090
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 3708
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5029,
+            "order": 2,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 6366
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7544,
+            "order": 3,
+            "of": 16
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10058,
+            "order": 4,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 10186
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 12061
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12573,
+            "order": 5,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 14634
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15088,
+            "order": 6,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 15395
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17602,
+            "order": 7,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 18436
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20117,
+            "order": 8,
+            "of": 16
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22631,
+            "order": 9,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24687
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25146,
+            "order": 10,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 26242
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 27138
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27493
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 27622
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 27661,
+            "order": 11,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27990
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30175,
+            "order": 12,
+            "of": 16
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32690,
+            "order": 13,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 33250
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 34854
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35204,
+            "order": 14,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Paradise Road",
+            "at_m": 36673
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 37719,
+            "order": 15,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Aspen Hill Road",
+            "at_m": 38693
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40234,
+            "order": 16,
+            "of": 16
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Aspen Hill Road",
+            "at_m": 41774
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Paradise Road",
+            "at_m": 43794
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 44871
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 47217
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 52368
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 52845
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 52958
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 53330
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 54154
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 55752
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 62031
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 65072
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 65834
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 68406
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 70281
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 74101
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 76760
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 77377
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 78989
+          },
+          {
+            "kind": "finish",
+            "at_m": 80467
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pamplin-100k",
+      "name": "Pamplin, 100 km",
+      "race_distance": "100k",
+      "course_shape": "out_and_back",
+      "distance_m": 100000,
+      "start_finish": {
+        "lat": 37.261407,
+        "lng": -78.679415
+      },
+      "turn_at_m": 50000,
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20413889,way/164024869,way/164073280,way/164076332,way/164076340,way/164078570,way/164078573,way/164078574,way/164078575,way/164078578,way/168547797,way/168927569,way/168927570,way/169790104,way/970538169,way/970538170,way/1221364554,way/1223501030,way/1223501031,way/1223501035,way/1223501036,way/1223501042,way/1223501043,way/1223501046,way/1223501047,way/1223501048,way/1223501049,way/1223501050,way/1223501054,way/1223501055,way/1223501056,way/1223501057,way/1315439286,way/1315439287,way/1315444722,way/1315444723,way/1315444729,way/1315444730,way/1315447974,way/1315447975,way/1315447976,way/1315447977,way/1315450299,way/1315450300,way/1315450301,way/1315450304,way/1315450305",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pamplin-100k.geojson",
+      "elevation_m": 198,
+      "checkpoints": [
+        {
+          "lat": 37.264494,
+          "lng": -78.653331
+        },
+        {
+          "lat": 37.276973,
+          "lng": -78.629837
+        },
+        {
+          "lat": 37.28982,
+          "lng": -78.606647
+        },
+        {
+          "lat": 37.296548,
+          "lng": -78.580199
+        },
+        {
+          "lat": 37.301078,
+          "lng": -78.554607
+        },
+        {
+          "lat": 37.302846,
+          "lng": -78.526581
+        },
+        {
+          "lat": 37.305682,
+          "lng": -78.499004
+        },
+        {
+          "lat": 37.302372,
+          "lng": -78.472338
+        },
+        {
+          "lat": 37.306429,
+          "lng": -78.444771
+        },
+        {
+          "lat": 37.311444,
+          "lng": -78.418097
+        },
+        {
+          "lat": 37.304225,
+          "lng": -78.392132
+        },
+        {
+          "lat": 37.315129,
+          "lng": -78.36877
+        },
+        {
+          "lat": 37.325541,
+          "lng": -78.345171
+        },
+        {
+          "lat": 37.313626,
+          "lng": -78.321977
+        },
+        {
+          "lat": 37.294507,
+          "lng": -78.310122
+        },
+        {
+          "lat": 37.276482,
+          "lng": -78.296083
+        },
+        {
+          "lat": 37.257896,
+          "lng": -78.28193
+        },
+        {
+          "lat": 37.238163,
+          "lng": -78.270292
+        },
+        {
+          "lat": 37.228211,
+          "lng": -78.254054
+        },
+        {
+          "lat": 37.214363,
+          "lng": -78.235644
+        }
+      ],
+      "waypoint_count": 729,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Pamplin lot on Pamplin Road. Walk about 60 m east along the trail to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 1479
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 1,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 3090
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 3708
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5000,
+            "order": 2,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 6366
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7500,
+            "order": 3,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10000,
+            "order": 4,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 10186
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 12061
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12500,
+            "order": 5,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 14634
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15000,
+            "order": 6,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 15395
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17500,
+            "order": 7,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 18436
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20000,
+            "order": 8,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22500,
+            "order": 9,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24687
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25000,
+            "order": 10,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 26242
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 27138
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27493
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 27500,
+            "order": 11,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 27622
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 27990
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30000,
+            "order": 12,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32500,
+            "order": 13,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 33250
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 34854
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35000,
+            "order": 14,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Paradise Road",
+            "at_m": 36673
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 37500,
+            "order": 15,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Aspen Hill Road",
+            "at_m": 38693
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40000,
+            "order": 16,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 40252
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rice's Depot Road",
+            "at_m": 40741
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 42500,
+            "order": 17,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 45000,
+            "order": 18,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Moran Road",
+            "at_m": 47028
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 47500,
+            "order": 19,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Orchard Road",
+            "at_m": 48842
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 50000,
+            "order": 20,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Orchard Road",
+            "at_m": 51158
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Moran Road",
+            "at_m": 52972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rice's Depot Road",
+            "at_m": 59259
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 59702
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Aspen Hill Road",
+            "at_m": 61307
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Paradise Road",
+            "at_m": 63327
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 64404
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 66750
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 71900
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 72378
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 72491
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 72862
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 73687
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 75285
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 81564
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 84605
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 85366
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 87939
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 89814
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 93634
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 96292
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 96910
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 98521
+          },
+          {
+            "kind": "finish",
+            "at_m": 100000
           }
         ]
       },

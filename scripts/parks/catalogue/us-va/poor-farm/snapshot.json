@@ -4730,5 +4730,113 @@
     ]
    }
   }
+ },
+ "course_ends": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "ends": [
+   {
+    "lat": 37.776778,
+    "lng": -77.539575,
+    "parking": [
+     {
+      "id": "way/264554025",
+      "lat": 37.778615,
+      "lng": -77.5370469,
+      "m": 302,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554720",
+      "lat": 37.7805176,
+      "lng": -77.5388185,
+      "m": 421,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554712",
+      "lat": 37.7800967,
+      "lng": -77.5364844,
+      "m": 458,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.776766,
+    "lng": -77.539008,
+    "parking": [
+     {
+      "id": "way/264554025",
+      "lat": 37.778615,
+      "lng": -77.5370469,
+      "m": 268,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554720",
+      "lat": 37.7805176,
+      "lng": -77.5388185,
+      "m": 417,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554712",
+      "lat": 37.7800967,
+      "lng": -77.5364844,
+      "m": 432,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   },
+   {
+    "lat": 37.776776,
+    "lng": -77.538721,
+    "parking": [
+     {
+      "id": "way/264554025",
+      "lat": 37.778615,
+      "lng": -77.5370469,
+      "m": 252,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554720",
+      "lat": 37.7805176,
+      "lng": -77.5388185,
+      "m": 416,
+      "tags": {
+       "amenity": "parking"
+      }
+     },
+     {
+      "id": "way/264554712",
+      "lat": 37.7800967,
+      "lng": -77.5364844,
+      "m": 418,
+      "tags": {
+       "amenity": "parking"
+      }
+     }
+    ],
+    "roads": []
+   }
+  ]
  }
 }

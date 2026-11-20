@@ -8,7 +8,12 @@ import { loadCallSql } from './catalogue_payload.mjs';
 
 /** @typedef {import('./catalogue_payload.mjs').CataloguePayload} CataloguePayload */
 /** @typedef {{ clubSlug: string, clubId: string }} Publisher */
-/** @typedef {{ park: string, courses: string[], reason: string }} StagedPark */
+/**
+ * A park or the courses of one held out of the load: every course of a staged
+ * park, or the held courses of a live one (decisions § 2602).
+ *
+ * @typedef {{ park: string, courses: string[], reason: string }} StagedPark
+ */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -56,9 +61,32 @@ export function parkDirsFromManifests(manifestPaths) {
 }
 
 /**
- * Splits validated parks into the ones the sync loads and the staged ones it
- * only reports (decisions § 2460). A staged park's payload goes no further
- * than this: the stage SQL carries its slugs, never its geometry.
+ * The payload the load takes for a live park: its courses minus the held
+ * ones, with the held slugs listed in `held` so the load never closes one
+ * that is already loaded (decisions § 2602). A held course's geometry goes no
+ * further than this.
+ *
+ * @param {CataloguePayload} payload
+ * @param {import('./catalogue_release.mjs').Release} release
+ * @returns {CataloguePayload}
+ */
+export function loadablePayload(payload, release) {
+	if (release.status !== 'live') throw new Error(`${payload.park.slug} is staged and does not load`);
+	if (!release.held) return payload;
+	const held = release.held.map((h) => h.course);
+	const named = new Set(payload.courses.map((c) => c.slug));
+	const unknown = held.filter((slug) => !named.has(slug));
+	if (unknown.length > 0) throw new Error(`${payload.park.slug} holds course(s) its manifest does not name: ${unknown.join(', ')}`);
+	const courses = payload.courses.filter((c) => !held.includes(c.slug));
+	if (courses.length === 0) throw new Error(`${payload.park.slug} holds every course; its release must be staged`);
+	return { ...payload, courses, held };
+}
+
+/**
+ * Splits validated parks into the payloads the sync loads and the parks and
+ * courses it only reports (decisions § 2460, § 2602). A staged park's or a
+ * held course's geometry goes no further than this: the stage SQL carries its
+ * slugs only.
  *
  * @param {{ payload: CataloguePayload, release: import('./catalogue_release.mjs').Release }[]} parks
  * @returns {{ live: CataloguePayload[], staged: StagedPark[] }}
@@ -69,8 +97,13 @@ export function splitByRelease(parks) {
 	/** @type {StagedPark[]} */
 	const staged = [];
 	for (const { payload, release } of parks) {
-		if (release.status === 'live') live.push(payload);
-		else staged.push({ park: String(payload.park.slug), courses: payload.courses.map((c) => c.slug), reason: release.reason });
+		const park = String(payload.park.slug);
+		if (release.status === 'staged') {
+			staged.push({ park, courses: payload.courses.map((c) => c.slug), reason: release.reason });
+			continue;
+		}
+		live.push(loadablePayload(payload, release));
+		for (const h of release.held ?? []) staged.push({ park, courses: [h.course], reason: h.reason });
 	}
 	return { live, staged };
 }
@@ -96,8 +129,17 @@ export function catalogueSyncSql(payloads, publisher, staged = []) {
 			throw new Error(`staged park ${s.park} is not a park slug with course slugs`);
 		}
 	}
-	const parks = [...payloads.map((p) => p.park.slug), ...staged.map((s) => s.park)];
-	if (new Set(parks).size !== parks.length) throw new Error(`park slugs repeat: ${parks.join(', ')}`);
+	const loadedParks = payloads.map((p) => p.park.slug);
+	if (new Set(loadedParks).size !== loadedParks.length) throw new Error(`park slugs repeat: ${loadedParks.join(', ')}`);
+	const courseKeys = staged.flatMap((s) => s.courses.map((c) => `${s.park}/${c}`));
+	if (new Set(courseKeys).size !== courseKeys.length) throw new Error(`staged courses repeat: ${courseKeys.join(', ')}`);
+	for (const p of payloads) {
+		const held = new Set(p.held ?? []);
+		const fromStaged = new Set(staged.filter((s) => s.park === p.park.slug).flatMap((s) => s.courses));
+		if (held.size !== fromStaged.size || [...held].some((c) => !fromStaged.has(c))) {
+			throw new Error(`${p.park.slug}: its held courses and its staged rows disagree`);
+		}
+	}
 	const club = `'${publisher.clubId}'::uuid`;
 	const opts = {
 		clubSql: club,
@@ -110,9 +152,18 @@ export function catalogueSyncSql(payloads, publisher, staged = []) {
 			`select '${payload.park.slug}', l.course_slug, l.action, l.backfill_job_id, l.park_course_id\n` +
 			`  from ${loadCallSql(payload, opts)} l;\n`,
 	);
-	const stagedRows = staged.flatMap((s) => s.courses.map((c) => `('${s.park}', '${c}', 'staged')`));
+	// A course held out is `held_live` when it is already loaded and open (the
+	// load leaves it exactly as it is), and `staged` when it is not.
+	const stagedRows = staged.flatMap((s) => s.courses.map((c) => `('${s.park}', '${c}')`));
 	if (stagedRows.length > 0) {
-		loads.push(`insert into pg_temp.park_catalogue_sync (park, course_slug, action) values\n  ${stagedRows.join(',\n  ')};\n`);
+		loads.push(
+			'insert into pg_temp.park_catalogue_sync (park, course_slug, action)\n' +
+				'select v.park, v.course_slug,\n' +
+				'       case when exists (select 1 from public.park_courses pc join public.parks p on p.id = pc.park_id\n' +
+				"                          where p.slug = v.park and pc.slug = v.course_slug and pc.status <> 'closed')\n" +
+				"            then 'held_live' else 'staged' end\n" +
+				`  from (values\n  ${stagedRows.join(',\n  ')}\n) v(park, course_slug);\n`,
+		);
 	}
 	return (
 		// Both functions are granted to service_role only (decisions § 2425, § 2429).

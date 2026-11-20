@@ -11,10 +11,6 @@
     "website_url": "https://www.nps.gov/rich/planyourvisit/outdooractivities.htm",
     "osm_boundary": "way/792352918"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses at Malvern Hill against the NPS trail brochure (the Carter's Farm trail's OSM line sits up to 40 m off the NPS line for about 300 m, and each lap crosses Willis Church Road twice) and confirms with the park whether an organised run needs a special use permit."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

@@ -22807,6 +22807,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Organisierte Gruppen nutzen diese Wege samstagmorgens. Lass ihnen den Vortritt und vermeide es, mitten durch sie hindurch auf Zeit zu laufen.';
 
   @override
+  String get parksGroupPermitNotice =>
+      'Es gelten die Regeln des Parks. Für einen Gruppenlauf oder ein Event hier brauchst du vielleicht eine Genehmigung des Parks, also frag vorher beim Park nach.';
+
+  @override
   String get parksAttributionOsm =>
       'Streckenverlauf © OpenStreetMap-Mitwirkende';
 

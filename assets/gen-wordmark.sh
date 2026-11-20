@@ -4,7 +4,7 @@
 # apps/web/src/lib/assets/brand/wordmark-light.svg, white text) with the name
 # OUTLINED as a path. The light one is the one the app renders, so it is
 # Vite-imported and named by its hash; the dark one is not rendered by the app
-# and keeps its public path (decisions § 2600).
+# and keeps its public path (decisions § 2603).
 #
 # They used to draw "Threkir" as live <text> in font-family system-ui, so the
 # name rendered in whatever font the viewing device had: this workstation's

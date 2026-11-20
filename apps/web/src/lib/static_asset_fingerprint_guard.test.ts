@@ -1,5 +1,5 @@
 // Every image the web app renders reaches the browser under a URL that changes
-// with its content (decisions § 2600).
+// with its content (decisions § 2603).
 //
 // Until mid-October 2026 the deploy sent every file under static/ with a
 // year-long immutable header, and static/ files keep their names, so the logo

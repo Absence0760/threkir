@@ -206,13 +206,15 @@ const classRank = (highway) => MOTOR_ROADS.indexOf(highway.replace(/_link$/, '')
  * The road the course crosses at a node, entering from `prev` and leaving to
  * `next`, or null when it crosses none there. `name` is the road's OSM name,
  * or null for an unnamed road; `signal` is whether OSM puts a traffic signal
- * on the crossing (on the node, or within `ROAD_SIGNAL_NEAR_M` along the road).
+ * on the crossing (on the node, or within `ROAD_SIGNAL_NEAR_M` along the road);
+ * `highway` is the most major `MOTOR_ROADS` class among the roads crossed
+ * there, which the go-live gate reads (`golive_gate.mjs`).
  *
  * @param {CrossingNode | undefined} entry the snapshot's `road_crossings.nodes[id]`
  * @param {{ lat: number, lon: number }} here
  * @param {{ id: number, lat: number, lon: number }} prev
  * @param {{ id: number, lat: number, lon: number }} next
- * @returns {{ name: string | null, signal: boolean } | null}
+ * @returns {{ name: string | null, signal: boolean, highway: string } | null}
  */
 export function roadCrossingAt(entry, here, prev, next) {
 	if (!entry) return null;
@@ -244,6 +246,7 @@ export function roadCrossingAt(entry, here, prev, next) {
 	const pick = [...(spanning.length > 0 ? spanning : all)].sort(
 		(a, b) => Number(b.name !== null) - Number(a.name !== null) || a.rank - b.rank || a.id - b.id,
 	)[0];
+	const crossed = spanning.length > 0 ? spanning : all;
 	const signal = signalAtNode(entry.tags) || (spanning.length > 0 ? pick.signal : all.some((g) => g.signal));
-	return { name: pick.name, signal };
+	return { name: pick.name, signal, highway: MOTOR_ROADS[Math.min(...crossed.map((g) => g.rank))] };
 }

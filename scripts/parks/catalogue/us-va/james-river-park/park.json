@@ -9,10 +9,6 @@
     "timezone": "America/New_York",
     "website_url": "https://jamesriverpark.org/trails/"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks every course against the trail signs: Forest Hill (schematic map, short OSM connectors), Pony Pasture (unnamed paths matched to the map by eye), and one lap of the big loop, checking the Boulevard Bridge sidewalk is open on foot, the 13 m across the Tredegar Street lot, the 22nd Street bridge stairs and the Buttermilk Heights creek ford (#1430)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

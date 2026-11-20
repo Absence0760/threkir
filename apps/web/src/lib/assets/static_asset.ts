@@ -3,7 +3,7 @@
 // `?v=` of the file's own content hash, so a changed file reaches a browser or
 // crawler that cached the old one. Anything only the app itself loads is not
 // here: it lives beside this file and is imported through Vite, which hashes
-// its name (decisions § 2600, conventions § Web static assets).
+// its name (decisions § 2603, conventions § Web static assets).
 
 import { STATIC_ASSET_VERSIONS } from './static_asset_versions.ts';
 

@@ -25,7 +25,7 @@ function readWeb(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
 }
 // The two the app renders itself are Vite-imported from src/lib/assets/brand;
-// the other two keep a fixed public path in static/ (decisions § 2600).
+// the other two keep a fixed public path in static/ (decisions § 2603).
 const BRAND_SVGS: string[][] = [
 	['src', 'lib', 'assets', 'brand', 'logo-mark.svg'],
 	['src', 'lib', 'assets', 'brand', 'wordmark-light.svg'],

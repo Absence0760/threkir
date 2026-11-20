@@ -930,7 +930,7 @@ Scroll-linked effects (`animation-timeline: view()` / `scroll()`) go inside `@su
 
 ## Web static assets — a URL that changes with the file
 
-A browser keeps a cached file until its copy expires, so a file that changes under the same URL keeps showing the old one. Every image the web app renders therefore reaches the browser under a URL that carries its content ([decisions § 2600](decisions.md)):
+A browser keeps a cached file until its copy expires, so a file that changes under the same URL keeps showing the old one. Every image the web app renders therefore reaches the browser under a URL that carries its content ([decisions § 2603](decisions.md)):
 
 - **Only the app loads it → `apps/web/src/lib/assets/`, imported through Vite** (`import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline'`, or a relative `url(...)` in a component's `<style>`). Vite emits it as `_app/immutable/assets/<name>.<hash>`, the one path the deploy caches as immutable. `?no-inline` keeps a small file a real same-origin URL instead of a `data:` URI, which a canvas export needs. A module that unit tests import must not import an asset at the top level (tsx cannot load one); import it inside the function that uses it, as `mascot_renderer.ts` does for the GLB.
 - **Something outside the app fetches it by path → `apps/web/static/`, referenced with `?v=<hash>`.** The favicon, touch icon, PWA manifest and its icons, and the default OG image. Code names them through `staticAsset('/og-default.png')` from `#lib/assets/static_asset.ts`; `app.html`, `manifest.webmanifest` and `sw.js` carry the `?v=` literally. Both come from `pnpm gen:static-asset-versions`, which `assets/gen-icons.sh`, `gen-og-default.sh` and `gen-wordmark.sh` run for you.

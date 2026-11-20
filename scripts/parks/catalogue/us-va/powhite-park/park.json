@@ -10,10 +10,6 @@
     "website_url": "https://www.rva.gov/parks-recreation/powhite-park",
     "osm_boundary": "relation/9294688"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses against the trail signs (the city publishes no trail map; the line is OSM's) and decides whether bike traffic on these shared mountain-bike trails suits a timed run. Foot access is not confirmed in writing: runners check the park rules themselves (owner decision on #1430)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

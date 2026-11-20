@@ -5,7 +5,7 @@
 // browser that cached it keeps the old bytes until its copy expires. Until
 // mid-October 2026 the deploy sent every such file with a year-long immutable
 // header, and the logo redesign (#1091) kept showing its old colours to anyone
-// who had loaded the page before (decisions § 2600). Anything only the app's
+// who had loaded the page before (decisions § 2603). Anything only the app's
 // own code uses now lives under apps/web/src/lib/assets/ and is imported
 // through Vite, which names it by its hash. What is left in static/ has to keep
 // its path (a favicon, the PWA manifest and its icons, the default OG image),

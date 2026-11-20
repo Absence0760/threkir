@@ -10,10 +10,6 @@
     "website_url": "https://www.chesterfield.gov/Facilities/Facility/Details/Rockwood-Park-70",
     "osm_boundary": "way/315035710"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks this line against the county trail map and a GPS trace, and records the brand and data outcome on #1097 (decisions § 2460)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

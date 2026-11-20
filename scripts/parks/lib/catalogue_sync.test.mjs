@@ -10,7 +10,7 @@ import test from 'node:test';
 import { parkLoadSql } from '../load.mjs';
 import { CATALOGUE_ROOT, PUBLISHER_FILE, findParkDirs, parkCatalogueStage } from '../sync.mjs';
 import { parseRelease } from './catalogue_release.mjs';
-import { SYNC_COLUMNS, catalogueSyncSql, parkDirsFromManifests, parsePublisher, splitByRelease } from './catalogue_sync.mjs';
+import { SYNC_COLUMNS, catalogueSyncSql, loadablePayload, parkDirsFromManifests, parsePublisher, splitByRelease } from './catalogue_sync.mjs';
 
 const CLUB = '11111111-1111-4111-8111-111111111111';
 const AUTHOR = '22222222-2222-4222-8222-222222222222';
@@ -71,7 +71,8 @@ function committedParks() {
 			if (!fs.existsSync(path.join(dir, 'manifest.json'))) continue;
 			const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
 			const slugs = [...(manifest.courses ?? []), ...(manifest.race_courses ?? [])].map((/** @type {{ slug: string }} */ c) => c.slug);
-			parks.push({ rel: path.join(region, park), slug: manifest.park.slug, status: manifest.release.status, slugs });
+			const held = (manifest.release.held ?? []).map((/** @type {{ course: string }} */ h) => h.course);
+			parks.push({ rel: path.join(region, park), slug: manifest.park.slug, status: manifest.release.status, slugs, held });
 		}
 	}
 	return parks;
@@ -122,19 +123,30 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the committed stage loads Pocahontas\'s six courses as the committed club and holds every other park staged', () => {
+test('the committed stage loads every park the go-live gate passed as the committed club and holds every other park staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: /);
-	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
+	const live = committedParks().filter((p) => p.status === 'live');
+	assert.ok(live.some((p) => p.slug === 'pocahontas'), 'Pocahontas, already loaded, still passes the gate');
+	assert.match(stage.note, new RegExp(`^${live.length} park\\(s\\): `));
+	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, live.length);
+	for (const park of live) {
+		assert.ok(stage.sql.includes(`"slug":"${park.slug}"`), `${park.slug} is loaded`);
+		for (const slug of park.held) {
+			assert.ok(stage.sql.includes(`('${park.slug}', '${slug}')`), `${slug} is reported, held`);
+			assert.ok(!stage.sql.includes(`"slug":"${slug}","name"`), `${slug} is held out of the load`);
+		}
+		if (park.held.length > 0) assert.ok(stage.sql.includes(`"held":${JSON.stringify(park.held)}`), `${park.slug} names its held courses`);
+	}
+	assert.ok(live.some((p) => p.held.length > 0), 'per-course staging is exercised by the committed catalogue');
 	const staged = committedParks().filter((p) => p.status === 'staged');
 	assert.ok(staged.length > 0);
 	for (const park of staged) {
 		assert.ok(stage.note.includes(`${park.slug} (${park.slugs.length} courses): `), `${park.slug} is listed as staged with its course count`);
 		assert.ok(!stage.sql.includes(`"slug":"${park.slug}"`), `${park.slug} never reaches the load`);
 		for (const slug of park.slugs) {
-			assert.ok(stage.sql.includes(`('${park.slug}', '${slug}', 'staged')`), slug);
-			assert.ok(!stage.sql.includes(`${slug}","name"`), `${slug} is not loaded`);
+			assert.ok(stage.sql.includes(`('${park.slug}', '${slug}')`), slug);
+			assert.ok(!stage.sql.includes(`"slug":"${slug}","name"`), `${slug} is not loaded`);
 		}
 	}
 	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
@@ -190,7 +202,15 @@ test('a release is live, or staged with a reason, and nothing else', () => {
 	assert.throws(() => parseRelease('live', 'p'), /must be an object/);
 	assert.throws(() => parseRelease({ status: 'Live' }, 'p'), /"Live" is not one of live, staged/);
 	assert.throws(() => parseRelease({ staged: true }, 'p'), /undefined is not one of/, 'a misspelt key never reads as live');
-	assert.throws(() => parseRelease({ status: 'live', reason: 'x' }, 'p'), /takes only status/);
+	assert.throws(() => parseRelease({ status: 'live', reason: 'x' }, 'p'), /takes status and an optional held/);
+	assert.deepEqual(parseRelease({ status: 'live', held: [{ course: 'a-5k', reason: ' gate ' }] }, 'p'), {
+		status: 'live',
+		held: [{ course: 'a-5k', reason: 'gate' }],
+	});
+	assert.throws(() => parseRelease({ status: 'live', held: [] }, 'p'), /non-empty list/);
+	assert.throws(() => parseRelease({ status: 'live', held: [{ course: 'A K', reason: 'x' }] }, 'p'), /not a slug/);
+	assert.throws(() => parseRelease({ status: 'live', held: [{ course: 'a', reason: 'x', extra: 1 }] }, 'p'), /exactly course and reason/);
+	assert.throws(() => parseRelease({ status: 'live', held: [{ course: 'a', reason: 'x' }, { course: 'a', reason: 'y' }] }, 'p'), /twice/);
 	assert.throws(() => parseRelease({ status: 'staged' }, 'p'), /exactly status and reason/);
 	assert.throws(() => parseRelease({ status: 'staged', reason: '  ' }, 'p'), /reason must be 1-500/);
 	assert.throws(() => parseRelease({ status: 'staged', reason: 'x'.repeat(501) }, 'p'), /reason must be 1-500/);
@@ -208,13 +228,46 @@ test('a staged park is reported per course and never reaches a load call', () =>
 	const sql = catalogueSyncSql(loads, PUBLISHER, staged);
 	assert.equal(sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 	assert.ok(!sql.includes('"slug":"park-b"'), 'no payload for the staged park');
-	assert.ok(
-		sql.includes("insert into pg_temp.park_catalogue_sync (park, course_slug, action) values\n  ('park-b', 'c1', 'staged'),\n  ('park-b', 'c2', 'staged');\n"),
-	);
+	assert.ok(sql.includes("  from (values\n  ('park-b', 'c1'),\n  ('park-b', 'c2')\n) v(park, course_slug);\n"));
+	assert.match(sql, /case when exists \(select 1 from public\.park_courses pc join public\.parks p on p\.id = pc\.park_id\n\s+where p\.slug = v\.park and pc\.slug = v\.course_slug and pc\.status <> 'closed'\)\n\s+then 'held_live' else 'staged' end/);
 	assert.ok(sql.indexOf("'staged'") < sql.lastIndexOf('select s.park'), 'the staged rows are in the one result set');
-	assert.throws(() => catalogueSyncSql([live], PUBLISHER, [{ park: 'park-a', courses: ['c'], reason: 'r' }]), /park slugs repeat/);
+	assert.throws(() => catalogueSyncSql([live], PUBLISHER, [{ park: 'park-a', courses: ['c'], reason: 'r' }]), /held courses and its staged rows disagree/);
+	assert.throws(() => catalogueSyncSql([live, live], PUBLISHER, []), /park slugs repeat/);
 	assert.throws(() => catalogueSyncSql([], PUBLISHER, [{ park: "x'", courses: ['c'], reason: 'r' }]), /not a park slug/);
 	assert.match(catalogueSyncSql([], PUBLISHER, staged), /'staged'/, 'a catalogue of only staged parks still reports them');
+});
+
+test('a held course of a live park is never created: it stays out of the payload, named in held so the load never closes it', () => {
+	const park = /** @type {any} */ ({ park: { slug: 'park-c' }, region: 'R', attribution: 'A', courses: [{ slug: 'pass-5k' }, { slug: 'fail-10k' }] });
+	/** @type {import('./catalogue_release.mjs').Release} */
+	const release = { status: 'live', held: [{ course: 'fail-10k', reason: 'Go-live gate failed: source_data' }] };
+	const { live, staged } = splitByRelease([{ payload: park, release }]);
+	assert.deepEqual(live.map((p) => [p.courses.map((c) => c.slug), p.held]), [[['pass-5k'], ['fail-10k']]]);
+	assert.deepEqual(staged, [{ park: 'park-c', courses: ['fail-10k'], reason: 'Go-live gate failed: source_data' }]);
+	const sql = catalogueSyncSql(live, PUBLISHER, staged);
+	assert.ok(sql.includes('"held":["fail-10k"]'), 'the load is told which absent course to leave alone');
+	assert.ok(!sql.includes('"slug":"fail-10k"'), 'no geometry for the held course reaches the load');
+	assert.ok(sql.includes("('park-c', 'fail-10k')"), 'it is reported, held_live or staged by what is loaded');
+	assert.deepEqual(loadablePayload(park, { status: 'live' }), park, 'a park with nothing held loads whole');
+	assert.throws(() => loadablePayload(park, { status: 'live', held: [{ course: 'nope', reason: 'x' }] }), /does not name: nope/);
+	assert.throws(
+		() => loadablePayload(park, { status: 'live', held: [{ course: 'pass-5k', reason: 'x' }, { course: 'fail-10k', reason: 'x' }] }),
+		/holds every course; its release must be staged/,
+	);
+	assert.throws(() => loadablePayload(park, { status: 'staged', reason: 'x' }), /is staged/);
+});
+
+test('the one-park fallback loads only the passing courses of a park with held ones', () => {
+	const tmp = fs.mkdtempSync(path.join(tmpdir(), 'park-held-'));
+	try {
+		const dir = copyPark(tmp, 'pocahontas', { status: 'live', held: [{ course: 'swift-creek-50k', reason: 'Go-live gate failed: parking' }] });
+		const { payload: loaded, sql } = parkLoadSql(dir, { clubId: CLUB, authorId: AUTHOR, enqueueBackfill: false });
+		assert.equal(loaded.courses.length, 5);
+		assert.deepEqual(loaded.held, ['swift-creek-50k']);
+		assert.ok(!sql.includes('"slug":"swift-creek-50k"') && sql.includes('"held":["swift-creek-50k"]'));
+	} finally {
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
 });
 
 test('the stage over a catalogue with a staged park loads only the live one and names the staged one', () => {
@@ -223,10 +276,10 @@ test('the stage over a catalogue with a staged park loads only the live one and 
 		copyPark(tmp, 'pocahontas', { status: 'live' });
 		copyPark(tmp, 'held-park', { status: 'staged', reason: 'owner check pending' });
 		const stage = parkCatalogueStage({ root: tmp });
-		assert.equal(stage.note, '1 park(s): pocahontas (6 courses). Staged, not loaded: held-park (6 courses): owner check pending');
+		assert.equal(stage.note, '1 park(s): pocahontas (6 courses). Held out of the load: held-park (6 courses): owner check pending');
 		assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
 		assert.ok(!stage.sql.includes('"slug":"held-park"'));
-		assert.equal(stage.sql.match(/\('held-park', '[a-z0-9-]+', 'staged'\)/g)?.length, 6);
+		assert.equal(stage.sql.match(/\('held-park', '[a-z0-9-]+'\)/g)?.length, 6);
 	} finally {
 		fs.rmSync(tmp, { recursive: true, force: true });
 	}

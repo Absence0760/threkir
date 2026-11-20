@@ -11,8 +11,23 @@
     "osm_boundary": "relation/392207"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks all four courses at First Landing against the DCR trail guide and the trail signs (the line is OSM's; DCR data is reference only until DCR confirms its terms in writing), checks the starts by the Trail Center against the lot and the park road, and confirms with DCR whether an organised run needs a special use permit."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -128,7 +143,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "first-landing-10k",
@@ -296,7 +312,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "first-landing-half",
@@ -535,7 +552,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "first-landing-marathon",
@@ -846,7 +864,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

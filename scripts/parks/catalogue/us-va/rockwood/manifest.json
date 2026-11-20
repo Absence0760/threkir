@@ -11,8 +11,23 @@
     "osm_boundary": "way/315035710"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks this line against the county trail map and a GPS trace, and records the brand and data outcome on #1097 (decisions § 2460)."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-19",
@@ -263,7 +278,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "rockwood-park-10k",
@@ -570,7 +586,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

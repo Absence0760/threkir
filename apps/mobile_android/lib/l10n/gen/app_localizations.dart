@@ -35577,6 +35577,12 @@ abstract class AppLocalizations {
   /// **'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.'**
   String get parksSharedUseSaturdayMorningGroup;
 
+  /// Park course notice, on every course and park page: park rules apply, and a group run or an organised event may need a permit from the park, so check with the park first. Must not promise anything about any park's rules for solo runners. Never says race; web key parks.groupPermitNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.'**
+  String get parksGroupPermitNotice;
+
   /// Park courses (#1313): web key parks.attributionOsm.
   ///
   /// In en, this message translates to:

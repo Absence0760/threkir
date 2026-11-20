@@ -21236,6 +21236,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。';
 
   @override
+  String get parksGroupPermitNotice =>
+      '公園の規則に従ってください。ここでのグループランやイベントには、公園の許可が必要な場合があります。事前に公園に確認してください。';
+
+  @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';
 
   @override

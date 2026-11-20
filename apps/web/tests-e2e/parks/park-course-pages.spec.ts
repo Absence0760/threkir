@@ -223,6 +223,7 @@ test.describe('park course pages', () => {
 		);
 		await expect(cards.getByTestId('park-course-record')).toHaveCount(0);
 		await expect(page.getByTestId('park-not-affiliated')).toBeVisible();
+		await expect(page.getByTestId('park-group-permit')).toContainText('may need a permit from the park');
 	});
 
 	test('the course page: map key, one credit line, one primary action, and an inviting empty board', async ({
@@ -261,13 +262,15 @@ test.describe('park course pages', () => {
 		await expect(getDirections).toHaveAttribute('href', /destination=37\.40000%2C-78\.37000/);
 		await expect(page.getByTestId('park-course-ends-coordinates')).not.toHaveAttribute('open');
 
-		// One callout: two plain lines, safety first, the give-way note this
-		// shared course carries between them, then the required notices as
-		// one smaller line under them.
+		// One callout: safety first, the give-way note this shared course
+		// carries, the park-permit line every course carries, the lines the
+		// course's data supports, then the required notices as one smaller
+		// line under them.
 		const notices = page.getByTestId('park-course-notices');
 		await expect(notices.locator('li')).toHaveText([
 			"Follow the course line on the map and pass every checkpoint in order, or your time won't count.",
 			'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.',
+			'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.',
 			'Finish before the park closes.',
 		]);
 		await expect(notices.getByTestId('park-course-open-trail')).toHaveText(
@@ -277,6 +280,7 @@ test.describe('park course pages', () => {
 		await expect(notices.getByTestId('park-course-shared-use')).toBeVisible();
 		await expect(notices.getByTestId('park-course-times')).toBeVisible();
 		await expect(notices.getByTestId('park-course-not-affiliated')).toBeVisible();
+		await expect(notices.getByTestId('park-course-group-permit')).toBeVisible();
 
 		// No route to navigate, so the way to the start is the one filled
 		// action and the GPX download an outline one.
@@ -419,6 +423,9 @@ test.describe('park course share page', () => {
 		await expect(page.getByTestId('share-course-notices')).toBeVisible();
 		await expect(page.getByTestId('share-course-safety')).toBeVisible();
 		await expect(page.getByTestId('share-course-times')).toBeVisible();
+		await expect(page.getByTestId('share-course-group-permit')).toHaveText(
+			'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.',
+		);
 		await expect(page.getByTestId('share-course-shared-use')).toHaveCount(0);
 	});
 

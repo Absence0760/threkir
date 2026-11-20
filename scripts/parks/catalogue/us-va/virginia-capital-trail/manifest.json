@@ -12,7 +12,23 @@
   },
   "release": {
     "status": "staged",
-    "reason": "Owner checks open (#1432): the road stretches on Herring Creek Road and Courthouse Road, mile 0 at Jamestown, and event permits."
+    "reason": "Go-live gate failed: capital-trail-four-mile-creek-5k: major_road_crossing; capital-trail-four-mile-creek-10k: major_road_crossing; capital-trail-four-mile-creek-half: major_road_crossing; capital-trail-four-mile-creek-marathon: major_road_crossing; capital-trail-four-mile-creek-to-herring-creek-half: major_road_crossing; capital-trail-shiplock-marathon: major_road_crossing, parking; capital-trail-shiplock-50k: major_road_crossing; and 2 more. Details in the manifest gate_failures."
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-19",
@@ -138,7 +154,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "capital-trail-four-mile-creek-10k",
@@ -310,7 +332,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "capital-trail-four-mile-creek-half",
@@ -556,7 +584,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "capital-trail-four-mile-creek-marathon",
@@ -932,7 +966,21 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Roxbury Road (trunk) at grade 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed trunk road (trunk) at grade 2 times"
+        }
+      ]
     },
     {
       "slug": "capital-trail-four-mile-creek-to-herring-creek-half",
@@ -1172,7 +1220,21 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Roxbury Road (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed trunk road (trunk) at grade"
+        }
+      ]
     },
     {
       "slug": "capital-trail-shiplock-marathon",
@@ -1606,7 +1668,25 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Roxbury Road (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed trunk road (trunk) at grade"
+        },
+        {
+          "check": "parking",
+          "detail": "no public car park within 800 m of the finish"
+        }
+      ]
     },
     {
       "slug": "capital-trail-shiplock-50k",
@@ -2088,7 +2168,21 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Roxbury Road (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed trunk road (trunk) at grade"
+        }
+      ]
     },
     {
       "slug": "capital-trail-jamestown-marathon",
@@ -2407,7 +2501,25 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses John Tyler Memorial Highway (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses John Tyler Highway (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Jamestown Road (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "parking",
+          "detail": "no public car park within 800 m of the start (nearest 1093 m)"
+        }
+      ]
     },
     {
       "slug": "capital-trail-shiplock-to-jamestown-50mi",
@@ -3098,7 +3210,33 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses New Market Road (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Roxbury Road (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed trunk road (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses John Tyler Memorial Highway (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses John Tyler Highway (trunk) at grade"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Jamestown Road (primary) at grade with no traffic signal"
+        }
+      ]
     }
   ]
 }

@@ -10,10 +10,6 @@
     "website_url": "https://www.novaparks.com/parks/washington-and-old-dominion-railroad-regional-park",
     "osm_boundary": "relation/1991154"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs, public access at the end lots (the Purcellville and Leesburg school lots are weekend-only in term), and NOVA Parks' event rules (permit for 25 or more, the gathering regulation voted on 2026-11-19)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

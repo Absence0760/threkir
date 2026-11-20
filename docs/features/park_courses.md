@@ -292,7 +292,13 @@ section is left out and logged rather than shown empty. Reference:
 
 **Not covered.** A circle-matched segment (no usable pair of lines) has no start
 box and so no attempt. A runner who quits before the first checkpoint gets no
-card. A run scored before this shipped has no attempts until it is scored again
+card. A dropout whose first fix back is already off to the side of the finish
+box's lane (the runner turned away during it) is not read as reaching the
+finish, so it reads `stopped_short`; one whose first fix back is in the lane
+reads `gps_gap` however long the dropout. Pocahontas has no out-and-back or
+point-to-point course, so the fixture's two are synthetic (cut from Beaver
+Lake Trail's line), and no real course of either shape is in the boards
+pgTAP test yet. A run scored before this shipped has no attempts until it is scored again
 (a backfill or a track rewrite).
 
 ## Seasons and boards

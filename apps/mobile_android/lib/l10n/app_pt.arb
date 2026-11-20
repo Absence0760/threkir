@@ -5074,7 +5074,6 @@
   "planFinishFinishing": "A terminar…",
   "planFinishDone": "{name} está agora nos seus planos concluídos.",
   "planFinishFailed": "Não foi possível terminar o plano. Tente novamente.",
-  "dashboardLeadAddRun": "Adicionar corrida",
   "runRaceStopTitle": "Prova em pausa",
   "runRaceStopBody": "O relógio da prova continua a contar. Retome para continuar ou termine a prova agora.",
   "runRaceStopBodyDnf": "Percorreu menos de 90% do percurso, por isso terminar agora regista um DNF.",

@@ -17531,9 +17531,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planFinishFailed => 'プランを完了できませんでした。もう一度お試しください。';
 
   @override
-  String get dashboardLeadAddRun => 'ランを追加';
-
-  @override
   String get runRaceStopTitle => 'レース一時停止中';
 
   @override

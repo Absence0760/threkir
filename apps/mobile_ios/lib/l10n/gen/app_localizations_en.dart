@@ -18684,9 +18684,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planFinishFailed => 'Couldn\'t finish the plan. Try again.';
 
   @override
-  String get dashboardLeadAddRun => 'Add a run';
-
-  @override
   String get runRaceStopTitle => 'Race paused';
 
   @override

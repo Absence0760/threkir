@@ -5074,7 +5074,6 @@
   "planFinishFinishing": "完了しています…",
   "planFinishDone": "{name}を完了したプランに移動しました。",
   "planFinishFailed": "プランを完了できませんでした。もう一度お試しください。",
-  "dashboardLeadAddRun": "ランを追加",
   "runRaceStopTitle": "レース一時停止中",
   "runRaceStopBody": "レースの時計は動き続けています。再開して続けるか、今すぐレースを終了してください。",
   "runRaceStopBodyDnf": "コースの90%未満しか走っていないため、今終了するとDNFとして記録されます。",

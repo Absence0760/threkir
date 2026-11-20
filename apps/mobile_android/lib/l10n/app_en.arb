@@ -23954,10 +23954,6 @@
   "@planFinishFailed": {
     "description": "Error banner when finishing a plan failed; nothing changed"
   },
-  "dashboardLeadAddRun": "Add a run",
-  "@dashboardLeadAddRun": {
-    "description": "Button on the dashboard week card that opens the manual add-a-run form"
-  },
   "runRaceStopTitle": "Race paused",
   "@runRaceStopTitle": {
     "description": "Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped"

@@ -29521,12 +29521,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t finish the plan. Try again.'**
   String get planFinishFailed;
 
-  /// Button on the dashboard week card that opens the manual add-a-run form
-  ///
-  /// In en, this message translates to:
-  /// **'Add a run'**
-  String get dashboardLeadAddRun;
-
   /// Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped
   ///
   /// In en, this message translates to:

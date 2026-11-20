@@ -18913,9 +18913,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planFinishFailed => 'Impossible de terminer le plan. Réessayez.';
 
   @override
-  String get dashboardLeadAddRun => 'Ajouter une course';
-
-  @override
   String get runRaceStopTitle => 'Course en pause';
 
   @override

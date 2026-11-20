@@ -18861,9 +18861,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Plan konnte nicht abgeschlossen werden. Versuche es erneut.';
 
   @override
-  String get dashboardLeadAddRun => 'Lauf hinzufügen';
-
-  @override
   String get runRaceStopTitle => 'Rennen pausiert';
 
   @override

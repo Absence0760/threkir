@@ -1733,7 +1733,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get authErrorOffline =>
-      'Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.';
+      'Du scheinst offline zu sein. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get authErrorInvalidCredentials =>
@@ -3779,7 +3779,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runDetailShareZonesUnknown =>
-      'Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Prüfe deine Verbindung und versuche es erneut.';
+      'Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get runDetailMakePublicTitle => 'Diesen Lauf öffentlich machen?';
@@ -5421,7 +5421,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runHeatmapErrorBody =>
-      'Beim Laden deiner Läufe ist etwas schiefgelaufen. Prüfe deine Verbindung und versuche es erneut.';
+      'Beim Laden deiner Läufe ist etwas schiefgelaufen. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get runHeatmapRetry => 'Erneut versuchen';
@@ -6204,7 +6204,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get discoverSearchFailed =>
-      'Aktivitäten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Aktivitäten konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get clubsTitle => 'Clubs';
@@ -7849,11 +7849,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planImportCreateFailed =>
-      'Der Plan konnte nicht erstellt werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Der Plan konnte nicht erstellt werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get planOverlapLookupFailed =>
-      'Deine aktiven Pläne konnten für diesen Zeitraum nicht geprüft werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Deine aktiven Pläne konnten für diesen Zeitraum nicht geprüft werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get planNewStarterC25k => 'Couch-to-5K (Anfänger Geh-Lauf)';
@@ -8807,7 +8807,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachTransportError =>
-      'Coach konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Coach konnte nicht erreicht werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get coachStreamFailed =>
@@ -15733,7 +15733,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get challengeInviteLoadFailed =>
-      'Diese Einladung konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Diese Einladung konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get challengeInviteMissingTitle =>
@@ -16252,7 +16252,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get racesDetailLoadFailed =>
-      'Dieses Rennen konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Dieses Rennen konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get racesDetailNotFound => 'Dieses Rennen ist nicht mehr im Kalender.';
@@ -16477,7 +16477,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get racesSearchFailed =>
-      'Rennen konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+      'Rennen konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String racesMatchPrompt(String name) {
@@ -18386,7 +18386,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get segmentCatalogueDetailFailedBody =>
-      'Prüfe deine Verbindung und versuche es erneut.';
+      'Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get segmentCatalogueStatDistance => 'Distanz';
@@ -22827,7 +22827,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet';
 
   @override
-  String get parksNavigate => 'Diese Strecke navigieren';
+  String get parksRunThisCourse => 'Diese Strecke laufen';
+
+  @override
+  String get parksRunThisCourseFailed =>
+      'Die Strecke konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get parksShareGpx => 'GPX teilen';

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_models/core_models.dart' as cm show Route;
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 import 'package:ui_kit/ui_kit.dart' show EmptyState;
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/main.dart' show pendingArmRunWithRoute;
 import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/watch_park_courses.dart' show WatchParkCourses;
@@ -152,7 +154,12 @@ class _ParksApi extends ApiClient {
     this.seasonBoard,
     this.monthRunners = const {},
     this.failMonthRunners = false,
+    this.failRoute = false,
   }) : courses = courses ?? [_course()];
+
+  /// Run this course's read of the course route fails.
+  final bool failRoute;
+  final List<String> clippedRoutes = [];
 
   final List<ParkListing> parks;
   final List<ParkCourseListing> courses;
@@ -178,6 +185,37 @@ class _ParksApi extends ApiClient {
 
   @override
   String? get userId => viewer;
+
+  @override
+  Future<({cm.Route? route, String? ownerId})> fetchRouteById(
+    String routeId,
+  ) async {
+    if (failRoute) throw StateError('route network down');
+    return (
+      route: cm.Route(
+        id: routeId,
+        userId: 'official',
+        name: 'Pocahontas 5K',
+        // The owner's full line, which a non-owner must never be handed.
+        waypoints: const [
+          Waypoint(lat: 1, lng: 1),
+          Waypoint(lat: 2, lng: 2),
+          Waypoint(lat: 3, lng: 3),
+        ],
+        distanceMetres: 5000,
+      ),
+      ownerId: 'official',
+    );
+  }
+
+  @override
+  Future<List<Waypoint>> clipRouteForViewer(String routeId) async {
+    clippedRoutes.add(routeId);
+    return const [
+      Waypoint(lat: 37.0, lng: -77.0),
+      Waypoint(lat: 37.01, lng: -77.0),
+    ];
+  }
 
   @override
   Future<List<ParkListing>> fetchParks() async {
@@ -1679,7 +1717,7 @@ void main() {
 
     testWidgets(
         'a paved trail: Paved under surface, the shared-path notice and no '
-        'closing time, and Navigate the one filled action', (tester) async {
+        'closing time, and Run this course the one filled action', (tester) async {
       tallView(tester);
       await tester.pumpWidget(
         _host(
@@ -1831,7 +1869,7 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('Navigate puts the course on the Wear OS watch', (
+    testWidgets('Run this course puts the course on the Wear OS watch', (
       tester,
     ) async {
       tallView(tester);
@@ -1861,7 +1899,7 @@ void main() {
           ),
         );
         await _settle(tester);
-        await tester.tap(find.byKey(const Key('park-course-navigate')));
+        await tester.tap(find.byKey(const Key('park-course-run')));
         await _settle(tester);
         expect(pushes, hasLength(1));
         final sent = jsonDecode(pushes.single) as List;
@@ -1873,7 +1911,58 @@ void main() {
       }
     });
 
-    testWidgets('Navigate is the one filled action when the course has a '
+    testWidgets('Run this course loads the clipped course line into the '
+        'recorder without starting it', (tester) async {
+      tallView(tester);
+      addTearDown(() => pendingArmRunWithRoute.value = null);
+      final api = _ParksApi();
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: api,
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.byKey(const Key('park-course-run')));
+      await _settle(tester);
+      final armed = pendingArmRunWithRoute.value;
+      expect(armed?.id, 'route-1');
+      expect(api.clippedRoutes, ['route-1']);
+      expect(armed?.waypoints.map((w) => w.lat), [37.0, 37.01]);
+      await _unmount(tester);
+    });
+
+    testWidgets("Run this course says so when the course can't load, and "
+        'loads nothing', (tester) async {
+      tallView(tester);
+      addTearDown(() => pendingArmRunWithRoute.value = null);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(failRoute: true),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.byKey(const Key('park-course-run')));
+      await _settle(tester);
+      expect(pendingArmRunWithRoute.value, isNull);
+      expect(
+        find.text(
+            "Couldn't load this course. Check your connection and try again."),
+        findsOneWidget,
+      );
+      expect(find.text('Retry'), findsOneWidget);
+      await _unmount(tester);
+      await tester.pump(const Duration(seconds: 10));
+    });
+
+    testWidgets('Run this course is the one filled action when the course has a '
         'route, with GPX beside it', (tester) async {
       tallView(tester);
       await tester.pumpWidget(
@@ -1888,8 +1977,8 @@ void main() {
       await _settle(tester);
       expect(
         find.descendant(
-          of: find.byKey(const Key('park-course-navigate')),
-          matching: find.text('Navigate this course'),
+          of: find.byKey(const Key('park-course-run')),
+          matching: find.text('Run this course'),
         ),
         findsOneWidget,
       );
@@ -1984,7 +2073,7 @@ void main() {
       // A closed course offers nothing to follow: the GPX and the guide
       // included.
       expect(find.byKey(const Key('park-course-share-gpx')), findsNothing);
-      expect(find.byKey(const Key('park-course-navigate')), findsNothing);
+      expect(find.byKey(const Key('park-course-run')), findsNothing);
       expect(find.byKey(const Key('park-course-guide')), findsNothing);
       expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
       await _unmount(tester);
@@ -2058,7 +2147,7 @@ void main() {
       expect(find.byKey(const Key('park-course-report-sheet')), findsOneWidget);
     }
 
-    testWidgets('sits at the foot of the page, after the boards, not beside Navigate', (
+    testWidgets('sits at the foot of the page, after the boards, not beside Run this course', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 4000);
@@ -2075,10 +2164,10 @@ void main() {
       );
       await _settle(tester);
       final report = tester.getTopLeft(find.byKey(const Key('park-course-report')));
-      final navigate = tester.getTopLeft(find.byKey(const Key('park-course-navigate')));
+      final run = tester.getTopLeft(find.byKey(const Key('park-course-run')));
       final boards = tester.getTopLeft(find.byKey(const Key('park-board-controls')));
       expect(report.dy, greaterThan(boards.dy));
-      expect(report.dy, greaterThan(navigate.dy));
+      expect(report.dy, greaterThan(run.dy));
       expect(find.text('Report a problem with this course'), findsOneWidget);
       await _unmount(tester);
     });

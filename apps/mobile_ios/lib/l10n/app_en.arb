@@ -29167,6 +29167,10 @@
   "@parksRunThisCourseFailed": {
     "description": "Banner when Run this course could not load the course line."
   },
+  "parksRunThisCourseRecording": "Finish the run you're recording first, then load this course.",
+  "@parksRunThisCourseRecording": {
+    "description": "Banner when Run this course is pressed while a run is already recording."
+  },
   "parksShareGpx": "Share GPX",
   "@parksShareGpx": {
     "description": "Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx."

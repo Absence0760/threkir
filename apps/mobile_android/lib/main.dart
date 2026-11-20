@@ -839,12 +839,10 @@ final ValueNotifier<String?> pendingArmGuidedRun = ValueNotifier<String?>(null);
 final ValueNotifier<cm.Route?> pendingStartRunWithRoute =
     ValueNotifier<cm.Route?>(null);
 
-/// Cross-screen handoff for "load this route into the recorder", without
-/// starting it. Set by a park course's Run this course, which is pressed
-/// while browsing, often nowhere near the start line: HomeScreen switches to
-/// the recorder with the route preselected and leaves the recorder's own
-/// Start for the runner to press there. Sibling of [pendingStartRunWithRoute],
-/// whose control says Start run and so starts.
+/// Cross-screen handoff for "load this route into the recorder" without
+/// starting it, for a park course's Run this course: that is pressed while
+/// browsing, often nowhere near the start line. Sibling of
+/// [pendingStartRunWithRoute].
 final ValueNotifier<cm.Route?> pendingArmRunWithRoute =
     ValueNotifier<cm.Route?>(null);
 

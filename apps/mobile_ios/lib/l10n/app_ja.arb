@@ -6087,6 +6087,7 @@
   "parksAttributionTraced": "コースラインは公園の公開地図をもとに作成しました",
   "parksRunThisCourse": "このコースを走る",
   "parksRunThisCourseFailed": "このコースを読み込めませんでした。接続を確認して、もう一度お試しください。",
+  "parksRunThisCourseRecording": "記録中のランを終了してから、このコースを読み込んでください。",
   "parksShareGpx": "GPXを共有",
   "parksBrowseLink": "公園コース",
   "parksCourseLaps": "{n, plural, other {{n}周}}",

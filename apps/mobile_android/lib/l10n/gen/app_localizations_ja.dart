@@ -21259,6 +21259,9 @@ class AppLocalizationsJa extends AppLocalizations {
       'このコースを読み込めませんでした。接続を確認して、もう一度お試しください。';
 
   @override
+  String get parksRunThisCourseRecording => '記録中のランを終了してから、このコースを読み込んでください。';
+
+  @override
   String get parksShareGpx => 'GPXを共有';
 
   @override

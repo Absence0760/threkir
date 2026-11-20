@@ -6087,6 +6087,7 @@
   "parksAttributionTraced": "Tracé du parcours relevé sur la carte publiée du parc",
   "parksRunThisCourse": "Courir ce parcours",
   "parksRunThisCourseFailed": "Impossible de charger ce parcours. Vérifiez votre connexion et réessayez.",
+  "parksRunThisCourseRecording": "Terminez d'abord la course en cours d'enregistrement, puis chargez ce parcours.",
   "parksShareGpx": "Partager le GPX",
   "parksBrowseLink": "Parcours des parcs",
   "parksCourseLaps": "{n, plural, one {{n} tour} other {{n} tours}}",

@@ -35619,6 +35619,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load this course. Check your connection and try again.'**
   String get parksRunThisCourseFailed;
 
+  /// Banner when Run this course is pressed while a run is already recording.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish the run you\'re recording first, then load this course.'**
+  String get parksRunThisCourseRecording;
+
   /// Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx.
   ///
   /// In en, this message translates to:

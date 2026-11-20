@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart' show EmptyState;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/main.dart' show pendingArmRunWithRoute;
+import '../lib/screens/run_screen.dart' show runRecordingActive;
 import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/watch_park_courses.dart' show WatchParkCourses;
@@ -155,10 +156,14 @@ class _ParksApi extends ApiClient {
     this.monthRunners = const {},
     this.failMonthRunners = false,
     this.failRoute = false,
+    this.clipFailsClosed = false,
   }) : courses = courses ?? [_course()];
 
   /// Run this course's read of the course route fails.
   final bool failRoute;
+
+  /// `clipRouteForViewer`'s outage answer: no line at all.
+  final bool clipFailsClosed;
   final List<String> clippedRoutes = [];
 
   final List<ParkListing> parks;
@@ -211,6 +216,7 @@ class _ParksApi extends ApiClient {
   @override
   Future<List<Waypoint>> clipRouteForViewer(String routeId) async {
     clippedRoutes.add(routeId);
+    if (clipFailsClosed) return const [];
     return const [
       Waypoint(lat: 37.0, lng: -77.0),
       Waypoint(lat: 37.01, lng: -77.0),
@@ -1936,9 +1942,21 @@ void main() {
     });
 
     testWidgets("Run this course says so when the course can't load, and "
-        'loads nothing', (tester) async {
+        'loads nothing, on the phone or the watch', (tester) async {
       tallView(tester);
       addTearDown(() => pendingArmRunWithRoute.value = null);
+      SharedPreferences.setMockInitialValues({});
+      WatchParkCourses().resetForTest();
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final pushes = <Object?>[];
+      const wear = MethodChannel(WatchParkCourses.wearChannelName);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(wear, (call) async {
+        pushes.add(call.arguments);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(wear, null));
       await tester.pumpWidget(
         _host(
           ParkCourseScreen(
@@ -1958,6 +1976,68 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Retry'), findsOneWidget);
+      expect(pushes, isEmpty);
+      await _unmount(tester);
+      await tester.pump(const Duration(seconds: 10));
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Run this course loads nothing when the clip fails closed', (
+      tester,
+    ) async {
+      tallView(tester);
+      addTearDown(() => pendingArmRunWithRoute.value = null);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(clipFailsClosed: true),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.byKey(const Key('park-course-run')));
+      await _settle(tester);
+      // Never the owner's unclipped line in its place.
+      expect(pendingArmRunWithRoute.value, isNull);
+      expect(
+        find.text(
+            "Couldn't load this course. Check your connection and try again."),
+        findsOneWidget,
+      );
+      await _unmount(tester);
+      await tester.pump(const Duration(seconds: 10));
+    });
+
+    testWidgets('Run this course mid-recording says to finish first and '
+        'reads nothing', (tester) async {
+      tallView(tester);
+      runRecordingActive.value = true;
+      addTearDown(() {
+        runRecordingActive.value = false;
+        pendingArmRunWithRoute.value = null;
+      });
+      final api = _ParksApi();
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: api,
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.byKey(const Key('park-course-run')));
+      await _settle(tester);
+      expect(pendingArmRunWithRoute.value, isNull);
+      expect(api.clippedRoutes, isEmpty);
+      expect(
+        find.text(
+            "Finish the run you're recording first, then load this course."),
+        findsOneWidget,
+      );
       await _unmount(tester);
       await tester.pump(const Duration(seconds: 10));
     });

@@ -22890,6 +22890,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger ce parcours. Vérifiez votre connexion et réessayez.';
 
   @override
+  String get parksRunThisCourseRecording =>
+      'Terminez d\'abord la course en cours d\'enregistrement, puis chargez ce parcours.';
+
+  @override
   String get parksShareGpx => 'Partager le GPX';
 
   @override

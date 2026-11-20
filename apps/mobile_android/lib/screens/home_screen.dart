@@ -538,14 +538,13 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// A park course's Run this course asked for the recorder with the course
-  /// loaded. Same switch as [_onPendingStartRunWithRoute] without the start
-  /// request: the runner presses Start at the start line, not where they
-  /// happened to be browsing. A recording already running keeps going.
+  /// [_onPendingStartRunWithRoute] without the start request. The course page
+  /// refuses mid-run, since the recorder takes a new route only while idle.
   Future<void> _onPendingArmRunWithRoute() async {
     final route = pendingArmRunWithRoute.value;
     if (route == null || !mounted) return;
     pendingArmRunWithRoute.value = null;
+    if (runRecordingActive.value) return;
     if (runSummaryShowing.value) runSummaryDismissRequests.request();
     await _startRunWithRoute(route);
   }

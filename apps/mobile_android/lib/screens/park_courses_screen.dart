@@ -51,6 +51,7 @@ import '../widgets/elevation_chart.dart';
 import '../widgets/error_state.dart';
 import 'help_screen.dart' show openGuide;
 import 'public_route_screen.dart';
+import 'run_screen.dart' show runRecordingActive;
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/park_course_map.dart';
 import '../widgets/park_course_preview_sheet.dart';
@@ -1174,7 +1175,6 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
-  /// Whether Run this course is loading the course's line.
   bool _loadingRun = false;
 
   /// Load the course into the recorder, ready for the runner to press Start
@@ -1182,11 +1182,14 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
   /// browsing, often from home.
   Future<void> _runThisCourse(ApiClient api, String routeId) async {
     if (_loadingRun) return;
-    // The course goes to the wrist as the runner heads out to run it, so a
-    // watch-recorded run is timed live there too. Fire-and-forget.
-    unawaited(WatchParkCourses().courseNavigated(widget.course));
-    setState(() => _loadingRun = true);
     final l10n = AppLocalizations.of(context);
+    // The recorder takes a new route only while idle, so mid-run this would
+    // land on the live recorder with the old one and look like it worked.
+    if (runRecordingActive.value) {
+      showTopBanner(context, l10n.parksRunThisCourseRecording);
+      return;
+    }
+    setState(() => _loadingRun = true);
     try {
       final viewable = await loadViewableRoute(api, routeId);
       final route = viewable.route;
@@ -1194,6 +1197,9 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
         throw StateError('course route $routeId has no line to follow');
       }
       if (!mounted) return;
+      // The course goes to the wrist too, so a watch-recorded run is timed
+      // live there. Fire-and-forget, and only once the phone has it as well.
+      unawaited(WatchParkCourses().courseNavigated(widget.course));
       pendingArmRunWithRoute.value =
           publicRouteStartTarget(route, viewable.waypoints);
     } catch (e) {

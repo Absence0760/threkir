@@ -22826,6 +22826,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo cargar este recorrido. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
+  String get parksRunThisCourseRecording =>
+      'Termina primero la carrera que estás grabando y luego carga este recorrido.';
+
+  @override
   String get parksShareGpx => 'Compartir GPX';
 
   @override

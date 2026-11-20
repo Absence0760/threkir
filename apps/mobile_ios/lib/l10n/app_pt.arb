@@ -6087,6 +6087,7 @@
   "parksAttributionTraced": "Traçado do percurso desenhado sobre o mapa publicado do parque",
   "parksRunThisCourse": "Correr este percurso",
   "parksRunThisCourseFailed": "Não foi possível carregar este percurso. Verifique a sua ligação e tente novamente.",
+  "parksRunThisCourseRecording": "Termine primeiro a corrida que está a gravar e depois carregue este percurso.",
   "parksShareGpx": "Partilhar GPX",
   "parksBrowseLink": "Percursos de parques",
   "parksCourseLaps": "{n, plural, one {{n} volta} other {{n} voltas}}",

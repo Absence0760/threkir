@@ -22599,6 +22599,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t load this course. Check your connection and try again.';
 
   @override
+  String get parksRunThisCourseRecording =>
+      'Finish the run you\'re recording first, then load this course.';
+
+  @override
   String get parksShareGpx => 'Share GPX';
 
   @override

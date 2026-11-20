@@ -283,3 +283,39 @@ class LiveCourseTimer(private val spec: CourseTimingSpec) {
         )
     }
 }
+
+/// A course time as the runner reads it: whole seconds, "8:42:10" from an
+/// hour, "16:05" under one.
+fun formatCourseTime(elapsedS: Double): String {
+    val total = Math.round(elapsedS.coerceAtLeast(0.0))
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val sec = total % 60
+    return if (h > 0) {
+        String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, sec)
+    } else {
+        String.format(java.util.Locale.ROOT, "%d:%02d", m, sec)
+    }
+}
+
+/// What the running screen says about the course: "Timing started" while a
+/// lap is timed and none has finished since, else "Finished!" with the last
+/// lap's time. Null before the first start.
+data class CourseCueView(val finishedS: Double?)
+
+/// The cue after [events], from [current]: the last event wins.
+fun courseCueAfter(current: CourseCueView?, events: List<CourseEvent>): CourseCueView? =
+    when (val last = events.lastOrNull()) {
+        null -> current
+        is CourseEvent.Started -> CourseCueView(finishedS = null)
+        is CourseEvent.Finished -> CourseCueView(finishedS = last.elapsedS)
+    }
+
+/// The timer for a run on [route]: the course it is, when it is one of
+/// [courses] and the timer can time it; null for a saved route, a course no
+/// longer offered, or one without a usable pair of lines or a length.
+fun courseTimerFor(route: SavedRoute?, courses: List<ParkCourse>): LiveCourseTimer? {
+    val id = route?.courseId ?: return null
+    val course = courses.firstOrNull { it.id == id } ?: return null
+    return LiveCourseTimer(course.timing).takeIf { it.usable }
+}

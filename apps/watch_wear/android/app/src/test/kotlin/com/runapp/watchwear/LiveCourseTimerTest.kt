@@ -212,4 +212,43 @@ class LiveCourseTimerTest {
         assertTrue(timer.offer(0.0, 0.0, 0.0).isEmpty())
         assertNull(timer.settle())
     }
+
+    @Test
+    fun `a course time reads as the runner reads a clock`() {
+        assertEquals("8:42:10", formatCourseTime(8 * 3600 + 42 * 60 + 10.2))
+        assertEquals("16:05", formatCourseTime(965.4))
+        assertEquals("0:59", formatCourseTime(59.4))
+        assertEquals("1:00:00", formatCourseTime(3599.6))
+        assertEquals("0:00", formatCourseTime(-3.0))
+    }
+
+    @Test
+    fun `the screen says the last thing the timer did`() {
+        assertNull(courseCueAfter(null, emptyList()))
+        val started = courseCueAfter(null, listOf(CourseEvent.Started(0.0)))
+        assertEquals(CourseCueView(finishedS = null), started)
+        val done = courseCueAfter(started, listOf(CourseEvent.Finished(0.0, 965_000.0)))
+        assertEquals(CourseCueView(finishedS = 965.0), done)
+        assertEquals("a quiet fix keeps the cue", done, courseCueAfter(done, emptyList()))
+        assertEquals(started, courseCueAfter(done, listOf(CourseEvent.Started(1.0))))
+    }
+
+    @Test
+    fun `only a picked course that is still offered and timeable gets a timer`() {
+        val beaver = courses.first { it["slug"]!!.jsonPrimitive.content == "beaver-lake-trail" }
+        val course = ParkCourse(
+            id = "c1",
+            routeId = null,
+            name = "Beaver Lake Trail",
+            laps = 1,
+            timing = spec(beaver),
+            waypoints = listOf(SavedRoute.Waypoint(0.0, 0.0), SavedRoute.Waypoint(0.0, 0.001)),
+        )
+        assertNotNull(courseTimerFor(course.asRoute(), listOf(course)))
+        assertNull("no route", courseTimerFor(null, listOf(course)))
+        assertNull("a saved route", courseTimerFor(SavedRoute("r", "Mine", 1000.0, course.waypoints), listOf(course)))
+        assertNull("taken off the watch", courseTimerFor(course.asRoute(), emptyList()))
+        val untimeable = course.copy(timing = course.timing.copy(distanceM = 0.0))
+        assertNull("no length", courseTimerFor(untimeable.asRoute(), listOf(untimeable)))
+    }
 }

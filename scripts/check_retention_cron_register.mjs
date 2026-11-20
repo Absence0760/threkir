@@ -75,6 +75,10 @@ export const EXCLUDED_JOBS = [
 		name: 'park-closures-sweep',
 		reason: 'Flags park courses for review from NPS alerts and stamps gone alerts; deletes nothing.',
 	},
+	{
+		name: 'close-park-courses-failing-runs',
+		reason: 'Closes a park course whose recent runs fail the same way and files a report for review; deletes nothing.',
+	},
 	{ name: 'enqueue-event-reminders', reason: 'Enqueues reminder emails; deletes nothing.' },
 	{ name: 'enqueue-workout-reminders', reason: "Raises today's-workout reminders; deletes nothing." },
 	{

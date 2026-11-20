@@ -102,7 +102,7 @@ reports purge. The reports purge and the route-photo orphan sweep each read a
 `private.feature_flags` gate; the reports one is on (`20271022000001`), and the
 route-photo sweep does nothing until its gate is. The park course month-close
 job also raises notices, and both its sweep and its notices wait on its
-`park_course_month_notices` gate (seeded off, `20271226041343`). The health backlog purge reads the `health_backlog_purge` gate, absent (off) and declared off in `ops/prod_config.json` until counsel signs off (decisions § 2514). The other eighteen live schedules are not retention
+`park_course_month_notices` gate (seeded off, `20271226041343`). The health backlog purge reads the `health_backlog_purge` gate, absent (off) and declared off in `ops/prod_config.json` until counsel signs off (decisions § 2514). The other nineteen live schedules are not retention
 jobs and are excluded: `enqueue-token-refresh`, `build-direct-messages-body-trgm`
 (which builds the message-search index online and is a no-op once it exists), `enqueue-event-reminders`,
 `enqueue-workout-reminders`, `race-sessions-tick` (which creates, fires and
@@ -119,9 +119,12 @@ it moves money and stamps orders, and deletes nothing),
 calendar — it inserts and updates listings, and deletes nothing),
 `club-verification-recheck` (which re-checks verified clubs' domain proof and
 drops a badge whose proof has gone — it updates a request and a club, and
-deletes nothing) and `park-closures-sweep` (which flags park courses for
+deletes nothing), `park-closures-sweep` (which flags park courses for
 review from NPS alerts and stamps an alert NPS no longer lists — it inserts
-and updates flags, and deletes nothing). (`refresh-mv-weekly-mileage` is gone
+and updates flags, and deletes nothing) and `close-park-courses-failing-runs`
+(which closes a park course whose recent runs fail the same way and files a
+report for an admin — it updates the course and inserts a log row, a report
+and notices, and deletes nothing). (`refresh-mv-weekly-mileage` is gone
 entirely — `20270530_001` dropped the materialized view and unscheduled it.) Window tightening is a
 single-file edit to the function body. The `gdpr_dsar_closeouts_test.sql`
 pgtap suite pins the existence of `purge-stale-jobs`; the matching pins for

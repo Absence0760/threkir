@@ -1,4 +1,4 @@
--- Pins migration 20280107000001_park_course_attempt_closures.sql: real runs
+-- Pins migration 20280107001432_park_course_attempt_closures.sql: real runs
 -- check a park course after launch. A course whose recent runs fail the same
 -- way, from enough different runners, is closed the way an operator closes
 -- one; too few runs, too few runners, runner-side outcomes, old evidence and

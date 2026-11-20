@@ -221,7 +221,7 @@ comment on function private.close_park_courses_failing_runs(boolean, timestamptz
   'checkpoint, off the course in one tenth of its length) is half or more and comes from 5 or more runners. '
   'Logs the close with a null actor, files a pending report for /admin/reports and notifies the admins. Does '
   'nothing unless the park_course_attempt_closures flag is on; p_dry_run returns what it would close. '
-  'Scheduled by pg_cron entry `close-park-courses-failing-runs` (05:37 UTC daily). 20280107000001.';
+  'Scheduled by pg_cron entry `close-park-courses-failing-runs` (05:37 UTC daily). 20280107001432.';
 
 -- 05:37 UTC daily, a minute no other job uses; after the night's retention
 -- jobs, and late night across the US parks the catalogue covers.

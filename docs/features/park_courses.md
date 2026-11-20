@@ -30,7 +30,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
 | "Report a problem with this course" (issue #1346, migrations `20271213000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
 | NPS closures job (`park-closures-sweep`, migrations `20271214131302` + `20271214131303`, decisions § 2454): a daily read of NPS alerts that flags courses for operator review at `/admin/park-alerts`, never closing one itself. Inert until `NPS_API_KEY` is set and the schedule is armed. See *Reports and closures* | Shipped (code); waits on the NPS key |
-| Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile) | Shipped |
+| Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile). A course the run started and got no time on gets a card below the chips saying which rule it missed (stopped short, a missed checkpoint, too far off the course, the wrong way round) with a bar of how far along it got, linking to the course; owner only, and a failed read leaves the cards out (web `RunParkCourseAttempts.svelte` over `fetchParkCourseAttempts`, issue #1446) | Shipped |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
 | Live start and finish on the phone (#1446): following a course's route, the run screen says "Timing started" on leaving the start box and "Finished! 8:42:10" with a buzz when the board would time the run (the same `computeGlobalSegmentEffort`), and a stop between the two says on the summary that it won't count and the run is still saved. See [run_recording.md § Live park course timing](run_recording.md#live-park-course-timing-1446) | Shipped, Android + iOS; web records no runs |
@@ -1679,6 +1679,11 @@ These gate going live, not the code:
   course; never asked for by anyone else); Flutter
   `test/run_park_course_chips_test.dart`; `api_client`
   `park_course_reads_test.dart` (`fetchParkCourseBySlugs`).
+- Run detail attempts (web): `src/lib/parks/park_course_attempts.test.ts`
+  (each outcome's sentence, the link, the bar and the unit); Playwright
+  `parks/run-park-course-attempts.spec.ts` (the card, its bar and link, a
+  skipped checkpoint, a failed read leaving the page standing, no card for a
+  run with no attempt, never asked for by anyone else).
 - Official passport board: `node --test scripts/official/lib/official_catalogue.test.mjs`
   (the region required and validated for `park_courses`, refused elsewhere,
   the fixture `fixtures/virginia-park-passport.json`); pgTAP

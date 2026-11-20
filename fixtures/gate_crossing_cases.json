@@ -4,7 +4,8 @@
  "readers": [
   "apps/web/src/lib/geo/gate_crossing.test.ts",
   "apps/mobile_android/test/gate_crossing_test.dart",
-  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/GateCrossingTest.kt"
+  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/GateCrossingTest.kt",
+  "apps/watch_ios/WatchAppTests/GateCrossingTests.swift"
  ],
  "schema": {
   "general": [

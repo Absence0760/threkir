@@ -6463,5 +6463,21 @@
   "filterBarSort": "Trier",
   "filterBarSource": "Source",
   "runsSearchHint": "Rechercher par nom de course",
-  "filterBarRegion": "Région"
+  "filterBarRegion": "Région",
+  "runCourseTimingStarted": "Chrono lancé",
+  "runCourseFinished": "Arrivée ! {time}",
+  "runCourseStoppedShort": "Ce ne sera pas compté comme un temps sur le parcours. Votre course est quand même enregistrée.",
+  "runDetailParkCourseAttempts": "Parcours de parc sans temps",
+  "runDetailParkCourseAttemptStoppedShort": "{course} : pas de temps. Vous avez couru {progress} sur {total}. Courez tout le parcours pour obtenir un temps.",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course} : pas de temps. Vous avez manqué le point de contrôle {n} sur {count}. Restez sur le tracé du parcours pour passer par chacun.",
+  "runDetailParkCourseAttemptOffCourse": "{course} : pas de temps. Vous vous êtes trop éloigné du parcours. Restez sur le tracé du parcours.",
+  "runDetailParkCourseAttemptGpsGap": "{course} : pas de temps. Votre enregistrement présente une interruption au moment où vous avez atteint l'arrivée, nous n'avons donc pas pu le chronométrer. Continuez d'enregistrer jusqu'à avoir franchi la ligne.",
+  "runDetailParkCourseAttemptWrongDirection": "{course} : pas de temps. Vous l'avez couru dans le mauvais sens. Suivez les flèches sur la carte du parcours.",
+  "runDetailParkCourseAttemptProgress": "{progress} sur {total}",
+  "runDetailParkCourseAttemptProgressLabel": "Distance parcourue sur le parcours",
+  "runCourseOffCourseCheckpoint": "Vous êtes sorti du parcours. Revenez au point de contrôle {number}.",
+  "runCourseOffCourseLine": "Vous êtes sorti du parcours. Revenez sur le tracé.",
+  "runCourseTimingStartedNamed": "Chrono lancé : {course}",
+  "runCourseCheckpointLabel": "Point de contrôle {number}",
+  "runCourseCheckpointPassedLabel": "Point de contrôle {number}, franchi"
 }

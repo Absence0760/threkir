@@ -58,6 +58,21 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// auxiliary (L4) effect — see `didUpdateLocations`.
     @Published var routeNavigator: RouteNavigator?
 
+    /// Live park course timing (#1446): the box rule run on this run's own
+    /// line fixes against the course the phone sent (`ParkCourseStore`), or
+    /// nil when no course is armed. Fed after everything the recording
+    /// commits, as an auxiliary (L4) effect — see `feedCourseTimer`.
+    private var courseTimer: CourseBoxTimer?
+    /// What the run and summary screens say about the course.
+    @Published private(set) var courseTiming: CourseTimingDisplay?
+    /// The course buzz, injectable so a test can count it.
+    var courseHaptic: (CourseTimingHaptic) -> Void = { haptic in
+        switch haptic {
+        case .started: WKInterfaceDevice.current().play(.start)
+        case .finished: WKInterfaceDevice.current().play(.success)
+        }
+    }
+
     /// Live race mode's auxiliary (L4) seam, handed over by `ContentView`.
     /// Both halves default to no-ops, so the recorder runs with no transport
     /// wired and nothing a failed race effect does can reach the run — see
@@ -422,6 +437,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         resetDistanceEstimator()
         announcer.reset()
         armRouteGuidance()
+        armCourseTiming()
         armWorkout()
         mapTrail.reset()
         mapPosition = nil
@@ -508,6 +524,34 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         mapRoute = armedRoute?.coordinates.map {
             MiniMapPoint(latitude: $0.latitude, longitude: $0.longitude)
         } ?? []
+    }
+
+    /// A fresh timer for the course the phone last sent, if any.
+    func armCourseTiming(_ course: ParkCourse? = ParkCourseStore.load()) {
+        courseTimer = course?.makeTimer()
+        courseTiming = nil
+    }
+
+    /// The course timer reads the fixes the server's matcher reads: every
+    /// stored fix on the line (not flagged `offTrack`), timed by the stored
+    /// `ts` as the server parses it — whole seconds, the precision
+    /// `ISO8601DateFormatter` writes — so the wrist's time is the time the
+    /// course board will show.
+    func feedCourseTimer(_ records: [TrackPointRecord]) {
+        guard let timer = courseTimer else { return }
+        var events: [CourseTimingEvent] = []
+        for record in records where !record.isOffTrack {
+            guard let date = iso8601.date(from: record.ts) else { continue }
+            events += timer.offer(lat: record.lat, lng: record.lng, tMs: date.timeIntervalSince1970 * 1000)
+        }
+        publishCourseTiming(events)
+    }
+
+    private func publishCourseTiming(_ events: [CourseTimingEvent], buzz: Bool = true) {
+        guard !events.isEmpty else { return }
+        let haptic = CourseTimingDisplay.haptic(for: events, before: courseTiming)
+        courseTiming = CourseTimingDisplay.next(courseTiming, after: events)
+        if buzz, let haptic { courseHaptic(haptic) }
     }
 
     /// `priorSteps` is what a continued run had counted before the app was
@@ -668,9 +712,15 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         var count = 0
         var segments = 0
         var last: TrackPointRecord?
+        armCourseTiming()
+        var courseEvents: [CourseTimingEvent] = []
         store.forEachTrackPoint { record in
             if record.opensSegment(pointsBefore: count) { segments += 1 }
             count += 1
+            if let timer = courseTimer, !record.isOffTrack, let date = iso8601.date(from: record.ts) {
+                courseEvents += timer.offer(lat: record.lat, lng: record.lng,
+                                            tMs: date.timeIntervalSince1970 * 1000)
+            }
             // The map is the line; a fix stored only for the server's
             // distance replay is not on it.
             guard !record.isOffTrack else { return }
@@ -683,6 +733,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         markSegmentStart = count > 0
         mapTrail = trail
         mapPosition = last.map { MiniMapPoint(latitude: $0.lat, longitude: $0.lng) }
+        // The course the run was being timed on, caught up from the file
+        // without a buzz: the runner felt those when they happened.
+        publishCourseTiming(courseEvents, buzz: false)
 
         armRouteGuidance()
         announcer.reset()
@@ -819,6 +872,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         workoutView = nil
 
         state = .finished
+        // A recording that ends inside the finish box counts — the server's
+        // tail rule, applied once the last fix is in.
+        if let event = courseTimer?.settle() { publishCourseTiming([event]) }
+        courseTimer = nil
         publishComplicationSnapshot()
         announcer.announceFinish(distanceMetres: distanceMetres, durationSeconds: duration)
 
@@ -864,6 +921,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         preciseLocationOff = false
         fullAccuracyAsked = false
         routeNavigator = nil
+        courseTimer = nil
+        courseTiming = nil
         mapRoute = []
         mapTrail.reset()
         mapPosition = nil
@@ -1197,6 +1256,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: fix.coordinate.longitude
             )
         }
+
+        // Park course timing: pure value maths over fixes already on disk,
+        // and a buzz that returns nothing.
+        feedCourseTimer(newPoints)
 
         // Spoken split, last of all: by here the distance this cue describes
         // is already banked, already on disk and already on screen, so the

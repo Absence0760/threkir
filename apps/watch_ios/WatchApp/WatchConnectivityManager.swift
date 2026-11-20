@@ -388,6 +388,12 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
             ArmedRouteStore.save(route)
             DispatchQueue.main.async { self.armedRoute = route }
         }
+        // The park course to time live (#1446), under its own key beside the
+        // route. Stored only: the recorder reads it at Start. A refused
+        // course clears the one held, because the phone has replaced it.
+        if let course = ParkCourse.push(in: payload) {
+            ParkCourseStore.apply(course)
+        }
         // The picker's list of starred routes. Independent of the armed
         // route above — a push may carry either, both or neither — and an
         // empty array is the runner having unstarred their last one, so it

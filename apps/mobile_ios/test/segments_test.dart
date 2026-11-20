@@ -705,4 +705,218 @@ void main() {
     expect(linesChain(at(90), at(90, northM: 14)), isTrue);
     expect(linesChain(at(90), at(90, northM: 20)), isFalse);
   });
+
+  // Why no time (issue #1446): a straight 1000 m course due east, its start
+  // line at 0 m and its finish line at 1000 m, checkpoints at 250, 500 and
+  // 750 m, run at 4 m/s with a fix a second. Mirrors
+  // apps/web/src/lib/segments/segments.test.ts.
+  group('attempts', () {
+    const lat0 = 37.5;
+    const lng0 = -77.5;
+    double toLng(double x) =>
+        lng0 + (x / (6371008.8 * math.cos(lat0 * math.pi / 180))) * (180 / math.pi);
+    double toLat(double y) => lat0 + (y / 6371008.8) * (180 / math.pi);
+    Waypoint at(double x, [double y = 0]) =>
+        Waypoint(lat: toLat(y), lng: toLng(x));
+    Gate gateAt(double x) => Gate(
+        lat: toLat(0), lng: toLng(x), bearingDeg: 90, halfWidthM: 15);
+    final straight = GlobalSegmentGeometry(
+      points: [at(0), at(500), at(1000)],
+      distanceM: 1000,
+      checkpoints: [at(250), at(500), at(750)],
+      startGate: gateAt(0),
+      endGate: gateAt(1000),
+    );
+    List<Waypoint> walk(List<List<double>> path) {
+      final out = <Waypoint>[];
+      var t = 0;
+      final base = DateTime.utc(2026, 9, 1, 9);
+      for (var k = 1; k < path.length; k++) {
+        final ax = path[k - 1][0], ay = path[k - 1][1];
+        final bx = path[k][0], by = path[k][1];
+        final dist = math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+        final steps = math.max(1, (dist / 4).round());
+        for (var s = k == 1 ? 0 : 1; s <= steps; s++) {
+          final f = s / steps;
+          final p = at(ax + f * (bx - ax), ay + f * (by - ay));
+          out.add(Waypoint(
+              lat: p.lat,
+              lng: p.lng,
+              timestamp: base.add(Duration(seconds: t))));
+          t++;
+        }
+      }
+      return out;
+    }
+
+    test('attempt: a run timed on the course has none', () {
+      expect(
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-20, 0],
+                [1020, 0]
+              ]),
+              straight),
+          isNull);
+    });
+
+    test(
+        'attempt: a run that never leaves the start box has none, nor one on '
+        'a segment without lines', () {
+      expect(
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-40, 0],
+                [-12, 0]
+              ]),
+              straight),
+          isNull);
+      final circles = GlobalSegmentGeometry(
+        points: straight.points,
+        distanceM: straight.distanceM,
+        checkpoints: straight.checkpoints,
+      );
+      expect(
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-20, 0],
+                [600, 0]
+              ]),
+              circles),
+          isNull);
+    });
+
+    test('attempt: stopping at 600 m is stopped_short at 600 m', () {
+      final a = diagnoseGlobalSegmentAttempt(
+          walk([
+            [-20, 0],
+            [600, 0]
+          ]),
+          straight)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
+      expect((a.progressM - 600).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
+      expect(a.courseM, 1000);
+      expect(a.missedCheckpoint, isNull);
+      expect(a.checkpointCount, 3);
+    });
+
+    test(
+        'attempt: going 60 m round checkpoint 2 and finishing is '
+        'skipped_checkpoint 2 at 400 m', () {
+      final a = diagnoseGlobalSegmentAttempt(
+          walk([
+            [-20, 0],
+            [400, 0],
+            [400, 60],
+            [600, 60],
+            [600, 0],
+            [1020, 0]
+          ]),
+          straight)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.skippedCheckpoint);
+      expect(a.missedCheckpoint, 2);
+      expect((a.progressM - 400).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
+    });
+
+    // `b` starts gapS seconds after `a`'s last fix: a GPS dropout.
+    List<Waypoint> dropout(List<Waypoint> a, List<Waypoint> b, int gapS) {
+      final shift = a.last.timestamp!
+          .add(Duration(seconds: gapS))
+          .difference(b.first.timestamp!);
+      return [
+        ...a,
+        for (final p in b)
+          Waypoint(lat: p.lat, lng: p.lng, timestamp: p.timestamp!.add(shift)),
+      ];
+    }
+
+    test(
+        'attempt: reaching the finish across a 200 s dropout, then cooling '
+        'down, is gps_gap at the full length', () {
+      // 54 m in 200 s against 4 m/s so far: the timer refuses the gap.
+      final track = dropout(
+          walk([
+            [-20, 0],
+            [950, 0]
+          ]),
+          walk([
+            [1004, 0],
+            [1100, 0]
+          ]),
+          200);
+      expect(computeGlobalSegmentEffort(track, straight), isNull);
+      final a = diagnoseGlobalSegmentAttempt(track, straight)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.gpsGap);
+      expect(a.progressM >= 990, isTrue, reason: 'progress ${a.progressM}');
+      expect(a.missedCheckpoint, isNull);
+    });
+
+    test(
+        'attempt: a recording ending 3 m short of the finish after a 400 s '
+        'dropout is gps_gap', () {
+      final track = dropout(
+          walk([
+            [-20, 0],
+            [950, 0]
+          ]),
+          walk([
+            [997, 0],
+            [998, 0]
+          ]),
+          400);
+      expect(computeGlobalSegmentEffort(track, straight), isNull);
+      final a = diagnoseGlobalSegmentAttempt(track, straight)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.gpsGap);
+    });
+
+    test(
+        'attempt: an out-and-back with mirrored checkpoints: timed out and '
+        'back, stopped_short at the turn, never wrong_direction', () {
+      final oab = GlobalSegmentGeometry(
+        points: [at(0), at(500), at(0)],
+        distanceM: 1000,
+        checkpoints: [at(250), at(500), at(250)],
+        startGate: gateAt(0),
+        endGate: Gate(
+            lat: toLat(0), lng: toLng(0), bearingDeg: 270, halfWidthM: 15),
+      );
+      final full = walk([
+        [-20, 0],
+        [500, 0],
+        [-20, 0]
+      ]);
+      expect(computeGlobalSegmentEffort(full, oab), isNotNull);
+      expect(diagnoseGlobalSegmentAttempt(full, oab), isNull);
+      final a = diagnoseGlobalSegmentAttempt(
+          walk([
+            [-20, 0],
+            [500, 0]
+          ]),
+          oab)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
+      expect((a.progressM - 500).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
+    });
+
+    test(
+        'attempt: a dropout mid-course and then stopping at 600 m is still '
+        'stopped_short', () {
+      final track = dropout(
+          walk([
+            [-20, 0],
+            [300, 0]
+          ]),
+          walk([
+            [500, 0],
+            [600, 0]
+          ]),
+          200);
+      final a = diagnoseGlobalSegmentAttempt(track, straight)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
+      expect((a.progressM - 600).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
+    });
+  });
 }

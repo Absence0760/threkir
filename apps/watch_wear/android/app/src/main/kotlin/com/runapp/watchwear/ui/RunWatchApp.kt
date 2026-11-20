@@ -346,6 +346,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     raceRun = state.raceRun,
                     raceToStartM = state.raceToStartM,
                     workoutView = state.workoutView,
+                    courseCue = state.courseCue,
                     onPause = vm::pause,
                     onResume = vm::resume,
                     onLap = vm::markLap,
@@ -364,9 +365,10 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     onSignIn = vm::openSignIn,
                     onStartNext = vm::startNextRun,
                     onDiscard = vm::discard,
+                    courseCue = state.courseCue,
                 )
                 Stage.RoutePicker -> RoutePickerScreen(
-                    routes = state.routes,
+                    routes = state.courses.map { it.asRoute() } + state.routes,
                     selectedId = state.selectedRoute?.id,
                     loading = state.routesLoading,
                     unavailable = state.routesUnavailable,
@@ -1731,6 +1733,8 @@ internal fun RunningScreen(
     raceToStartM: Double?,
     /// The live step of today's workout; null on a free run.
     workoutView: com.runapp.watchwear.workout.WorkoutView?,
+    /// "Timing started" / "Finished!" on a park course; null otherwise.
+    courseCue: com.runapp.watchwear.CourseCueView?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onLap: () -> Unit,
@@ -1781,6 +1785,15 @@ internal fun RunningScreen(
                     style = MaterialTheme.typography.body1,
                     color = Color.White.copy(alpha = 0.72f),
                 )
+                if (courseCue != null) {
+                    Spacer(Modifier.height(2.dp))
+                    // Ambient: white outline-weight text, no fill.
+                    Text(
+                        courseCueText(courseCue),
+                        style = MaterialTheme.typography.title3,
+                        color = Color.White,
+                    )
+                }
                 if (paused) {
                     Spacer(Modifier.height(2.dp))
                     Text(
@@ -1884,6 +1897,16 @@ internal fun RunningScreen(
             }
             if (raceRun != null) {
                 RaceCaption(raceRun = raceRun, shadow = captionShadow)
+            }
+            // Big and short: the moment the box is left or entered is the
+            // one glance the runner gives the wrist.
+            if (courseCue != null) {
+                Text(
+                    courseCueText(courseCue),
+                    style = MaterialTheme.typography.title3.copy(shadow = captionShadow),
+                    color = MaterialTheme.colors.primary,
+                    maxLines = 1,
+                )
             }
             // How far the start line is, until the start is timed: before the
             // race binds as well as after, so the runner on the line before GO
@@ -2164,7 +2187,11 @@ private fun RoutePickerScreen(
                             maxLines = 1,
                         )
                         Text(
-                            distanceLabel(r.distanceM, preferredUnit),
+                            if (r.courseId != null) {
+                                stringResource(R.string.route_course_caption, distanceLabel(r.distanceM, preferredUnit))
+                            } else {
+                                distanceLabel(r.distanceM, preferredUnit)
+                            },
                             style = MaterialTheme.typography.caption3,
                             color = DuskPalette.mistMuted,
                         )
@@ -2208,6 +2235,16 @@ private fun RoutePickerScreen(
         }
     }
 }
+
+@Composable
+private fun courseCueText(cue: com.runapp.watchwear.CourseCueView): String =
+    when (val s = cue.finishedS) {
+        null -> stringResource(R.string.course_timing_started)
+        else -> stringResource(
+            if (cue.laps > 1) R.string.course_finished_best else R.string.course_finished,
+            com.runapp.watchwear.formatCourseTime(s),
+        )
+    }
 
 /// The race line on the running screen: the gun clock while the race is
 /// live, ticking from the device clock against the offset-corrected gun so it
@@ -2353,6 +2390,9 @@ internal fun PostRunScreen(
     onSignIn: () -> Unit,
     onStartNext: () -> Unit,
     onDiscard: () -> Unit,
+    /// The park course's cue at the Stop: a finished course shows the time
+    /// the board will keep.
+    courseCue: com.runapp.watchwear.CourseCueView? = null,
 ) {
     // Same edge-anchored Box pattern as PreRun + Running. The recorded
     // track fills the watch face as a background; headline stats hug
@@ -2406,6 +2446,13 @@ internal fun PostRunScreen(
                         } else {
                             stringResource(R.string.race_result_dnf)
                         },
+                        style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                        color = MaterialTheme.colors.primary,
+                    )
+                }
+                if (courseCue?.finishedS != null) {
+                    Text(
+                        courseCueText(courseCue),
                         style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
                         color = MaterialTheme.colors.primary,
                     )

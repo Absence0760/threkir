@@ -24067,4 +24067,85 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Region';
+
+  @override
+  String get runCourseTimingStarted => 'Timing started';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Finished! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'This won\'t count as a course time. Your run is still saved.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Park courses with no time';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: no time. You ran $progress of $total. Run the whole course to get a time.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: no time. You missed checkpoint $n of $count. Stay on the course line to pass every one.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: no time. You ran too far off the course. Stay on the course line.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: no time. Your recording has a gap where you reached the finish, so we couldn\'t time it. Keep recording until you\'re past the line.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: no time. You ran it the wrong way round. Follow the arrows on the course map.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress of $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'How far along the course you got';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'You\'re off the course. Head back to checkpoint $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'You\'re off the course. Head back to the course line.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Timing started: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Checkpoint $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Checkpoint $number, passed';
+  }
 }

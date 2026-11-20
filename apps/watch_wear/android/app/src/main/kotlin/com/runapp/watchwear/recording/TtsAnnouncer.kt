@@ -180,6 +180,18 @@ class TtsAnnouncer(context: Context) {
             workoutCue = true,
         )
 
+    /// "Timing started" or "Finished! 8:42:10" on a park course (#1446),
+    /// ahead of any split: the box is the moment.
+    fun announceCourse(start: Boolean, timeLabel: String?) =
+        speak(
+            if (start || timeLabel == null) {
+                appContext.getString(R.string.course_timing_started)
+            } else {
+                appContext.getString(R.string.course_finished, timeLabel)
+            },
+            workoutCue = true,
+        )
+
     fun announcePaceAlert(tooSlow: Boolean) =
         speak(
             appContext.getString(

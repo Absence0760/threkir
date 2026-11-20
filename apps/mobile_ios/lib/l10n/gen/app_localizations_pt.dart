@@ -24346,6 +24346,86 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Região';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometragem iniciada';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Meta cortada! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Percursos de parque sem tempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sem tempo. Correu $progress de $total. Corra o percurso completo para obter um tempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sem tempo. Falhou o ponto de controlo $n de $count. Mantenha-se na linha do percurso para passar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sem tempo. A sua gravação tem uma falha no ponto em que chegou à meta, por isso não conseguimos cronometrá-la. Continue a gravar até passar a linha.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Até onde chegou no percurso';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Saiu do percurso. Volte ao ponto de controlo $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine => 'Saiu do percurso. Volte ao traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controlo $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controlo $number, concluído';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -48669,4 +48749,85 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get filterBarRegion => 'Região';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometragem iniciada';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Chegada! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Isso não vai contar como tempo do percurso. Sua corrida continua salva.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Percursos de parque sem tempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sem tempo. Você correu $progress de $total. Corra o percurso inteiro para ter um tempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sem tempo. Você pulou o ponto de controle $n de $count. Fique na linha do percurso para passar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sem tempo. Você se afastou demais do percurso. Fique na linha do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sem tempo. Sua gravação tem uma falha bem no ponto em que você chegou à linha de chegada, então não conseguimos cronometrá-la. Continue gravando até passar da linha.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sem tempo. Você correu no sentido contrário. Siga as setas no mapa do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Até onde você chegou no percurso';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Você saiu do percurso. Volte para o ponto de controle $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Você saiu do percurso. Volte para o traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controle $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controle $number, concluído';
+  }
 }

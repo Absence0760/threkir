@@ -18,6 +18,7 @@ class _MockChannel {
   Object? throwOnPush;
   Object? throwOnAvailable;
   Object? throwOnPushSaved;
+  Object? throwOnPushParkCourse;
 
   void install() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -40,6 +41,9 @@ class _MockChannel {
         return null;
       case 'push_saved':
         if (throwOnPushSaved != null) throw throwOnPushSaved!;
+        return null;
+      case 'push_park_course':
+        if (throwOnPushParkCourse != null) throw throwOnPushParkCourse!;
         return null;
     }
     return null;
@@ -68,6 +72,51 @@ List<Waypoint> _line(int count) => [
         // Douglas-Peucker has real geometry to spend its budget on.
         Waypoint(lat: 51.5 + i * 0.0001, lng: -0.12 + (i % 7) * 0.00002),
     ];
+
+/// The fixture's Beaver Lake course (`fixtures/wear_park_courses_payload.json`)
+/// as the rows the phone reads it from.
+ParkCourseListing _parkCourse({
+  Object? checkpoints = const [],
+  double? endBearing = 191.48459767326835,
+  double startHalfWidth = 15,
+}) =>
+    ParkCourseListing(
+      course: ParkCourseRow.fromJson({
+        'id': 'course-1',
+        'park_id': 'park-1',
+        'global_segment_id': 'seg-1',
+        'route_id': 'route-1',
+        'slug': 'beaver-lake',
+        'course_shape': 'loop',
+        'status': 'open',
+        'geometry_source': 'osm',
+        'checkpoints': checkpoints,
+        'created_at': '2026-11-20T00:00:00Z',
+        'laps': 1,
+      }),
+      segment: GlobalSegmentRow.fromJson({
+        'id': 'seg-1',
+        'name': 'Beaver Lake Trail',
+        'waypoints': [
+          {'lat': 37.386024, 'lng': -77.584133},
+          {'lat': 37.384171, 'lng': -77.585807},
+          {'lat': 37.382147, 'lng': -77.590548},
+          {'lat': 37.386024, 'lng': -77.584133},
+        ],
+        'distance_m': 3595,
+        'surface': 'trail',
+        'is_active': true,
+        'created_at': '2026-11-20T00:00:00Z',
+        'start_gate_lat': 37.386024,
+        'start_gate_lng': -77.584133,
+        'start_gate_bearing_deg': 153.1484956563911,
+        'start_gate_half_width_m': startHalfWidth,
+        'end_gate_lat': 37.386024,
+        'end_gate_lng': -77.584133,
+        'end_gate_bearing_deg': endBearing,
+        'end_gate_half_width_m': 15,
+      }),
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -168,8 +217,9 @@ void main() {
       final points = _line(4);
       await pushLine(points);
 
-      final call = channel.calls.single;
-      expect(call.method, 'push');
+      expect(channel.calls.map((c) => c.method),
+          ['push_park_course', 'push']);
+      final call = channel.calls.last;
       final args = Map<String, dynamic>.from(call.arguments as Map);
       expect(args['route_id'], 'route-1');
       expect(args['route_name'], 'Riverside loop');
@@ -199,6 +249,145 @@ void main() {
       channel.throwOnPush =
           PlatformException(code: 'watch_unavailable', message: 'no watch');
       await expectLater(pushLine(_line(4)), throwsA(isA<PlatformException>()));
+    });
+
+    test('a plain route clears the course the wrist holds, before arming',
+        () async {
+      // The watch times any run against the course it holds, so arming a
+      // route with no course must empty it, or that run is timed by the
+      // last course's lines.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      await pushLine(_line(4));
+      final first = channel.calls.first;
+      expect(first.method, 'push_park_course');
+      expect(first.arguments, {'park_course': <String, Object>{}});
+    });
+
+    test('a refused course stops the arm before the route changes', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      channel.throwOnPushParkCourse =
+          PlatformException(code: 'bad_park_course');
+      await expectLater(pushLine(_line(4)), throwsA(isA<PlatformException>()));
+      expect(channel.calls.map((c) => c.method), ['push_park_course']);
+    });
+  });
+
+  group('encodeParkCourseForWatch', () {
+    test('carries the thirteen keys ParkCourse.decode reads, from the rows',
+        () {
+      final dict = AppleWatchRouteBridge.encodeParkCourseForWatch(
+        _parkCourse(checkpoints: [
+          {'lat': 37.384171, 'lng': -77.585807},
+          {'lat': 37.382147, 'lng': -77.590548},
+        ]),
+      )!;
+      expect(dict, {
+        'course_id': 'course-1',
+        'course_name': 'Beaver Lake Trail',
+        'course_distance_m': 3595.0,
+        'start_gate_lat': 37.386024,
+        'start_gate_lng': -77.584133,
+        'start_gate_bearing_deg': 153.1484956563911,
+        'start_gate_half_width_m': 15.0,
+        'end_gate_lat': 37.386024,
+        'end_gate_lng': -77.584133,
+        'end_gate_bearing_deg': 191.48459767326835,
+        'end_gate_half_width_m': 15.0,
+        'checkpoint_lat': [37.384171, 37.382147],
+        'checkpoint_lng': [-77.585807, -77.590548],
+      });
+      // No polyline: the box rule reads none, and the armed route is the
+      // line the runner follows.
+      expect(dict.keys.where((k) => k.contains('route')), isEmpty);
+    });
+
+    test('no checkpoints is two empty arrays, not missing keys', () {
+      final dict =
+          AppleWatchRouteBridge.encodeParkCourseForWatch(_parkCourse())!;
+      expect(dict['checkpoint_lat'], isEmpty);
+      expect(dict['checkpoint_lng'], isEmpty);
+    });
+
+    test('refuses a course the wrist could not box-time', () {
+      expect(
+        AppleWatchRouteBridge.encodeParkCourseForWatch(
+            _parkCourse(endBearing: null)),
+        isNull,
+      );
+      expect(
+        AppleWatchRouteBridge.encodeParkCourseForWatch(
+            _parkCourse(checkpoints: 'oops')),
+        isNull,
+      );
+      expect(
+        AppleWatchRouteBridge.encodeParkCourseForWatch(
+            _parkCourse(startHalfWidth: 0)),
+        isNull,
+      );
+    });
+
+    test('refuses more checkpoints than the watch holds, rather than cutting',
+        () {
+      List<Map<String, double>> cps(int n) => [
+            for (var i = 0; i < n; i++) {'lat': 37.38 + i * 1e-5, 'lng': -77.58},
+          ];
+      expect(
+        AppleWatchRouteBridge.encodeParkCourseForWatch(
+            _parkCourse(checkpoints: cps(kMaxAppleWatchParkCourseCheckpoints))),
+        isNotNull,
+      );
+      expect(
+        AppleWatchRouteBridge.encodeParkCourseForWatch(_parkCourse(
+            checkpoints: cps(kMaxAppleWatchParkCourseCheckpoints + 1))),
+        isNull,
+      );
+    });
+  });
+
+  group('armParkCourse', () {
+    test('arms the course line as the route, with the course, on iOS',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(await AppleWatchRouteBridge.armParkCourse(_parkCourse()), isTrue);
+      expect(channel.calls.map((c) => c.method),
+          ['available', 'push_park_course', 'push']);
+      final course = Map<String, Object?>.from(
+          (channel.calls[1].arguments as Map)['park_course'] as Map);
+      expect(course['course_id'], 'course-1');
+      final route = Map<String, Object?>.from(channel.calls[2].arguments as Map);
+      expect(route['route_id'], 'route-1');
+      expect(route['route_name'], 'Beaver Lake Trail');
+      expect(route['route_lat'], [37.386024, 37.384171, 37.382147, 37.386024]);
+    });
+
+    test('off iOS, with no watch, or for an untimeable course, sends nothing',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(await AppleWatchRouteBridge.armParkCourse(_parkCourse()), isFalse);
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(
+          await AppleWatchRouteBridge.armParkCourse(
+              _parkCourse(endBearing: null)),
+          isFalse);
+      channel.available = false;
+      expect(await AppleWatchRouteBridge.armParkCourse(_parkCourse()), isFalse);
+      expect(channel.calls.map((c) => c.method), ['available']);
+    });
+
+    test('a refused push is logged, never thrown at the course screen',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      channel.throwOnPush = PlatformException(code: 'bad_route');
+      expect(await AppleWatchRouteBridge.armParkCourse(_parkCourse()), isFalse);
+    });
+
+    test('clearParkCourse sends the empty course and swallows a failure',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      channel.throwOnPushParkCourse = PlatformException(code: 'x');
+      await AppleWatchRouteBridge.clearParkCourse();
+      expect(channel.calls.single.arguments,
+          {'park_course': <String, Object>{}});
     });
   });
 

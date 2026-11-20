@@ -37788,6 +37788,110 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Region'**
   String get filterBarRegion;
+
+  /// Big message on the recording screen, also spoken, when the runner following a park course leaves its start box going forward and the course time starts
+  ///
+  /// In en, this message translates to:
+  /// **'Timing started'**
+  String get runCourseTimingStarted;
+
+  /// Big message on the recording screen, also spoken, when the runner following a park course reaches its finish and the time will count on the course board. The recording keeps going.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished! {time}'**
+  String runCourseFinished(String time);
+
+  /// One line on the finished-run summary when the runner stopped a park course after its timing started and before finishing it: no course time, but the run itself is kept
+  ///
+  /// In en, this message translates to:
+  /// **'This won\'t count as a course time. Your run is still saved.'**
+  String get runCourseStoppedShort;
+
+  /// Run detail (owner only, #1446): group name read before the cards for park courses this run started but got no time on
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses with no time'**
+  String get runDetailParkCourseAttempts;
+
+  /// Run detail park course attempt card: the run left the start but the recording ended before the finish. progress and total are distances in the runner's unit, e.g. 2.10 km of 5.00 km
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.'**
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  );
+
+  /// Run detail park course attempt card: the run missed a checkpoint (passed out of order or not at all). n is the first one missed, count the course's checkpoints
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.'**
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  );
+
+  /// Run detail park course attempt card: every checkpoint passed but the run covered far more distance than the course, so it left the course line
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran too far off the course. Stay on the course line.'**
+  String runDetailParkCourseAttemptOffCourse(String course);
+
+  /// Run detail park course attempt card: the run reached the finish, but across a gap in the recording (GPS dropped out or the recording was paused) too long to time, so it got no time
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. Your recording has a gap where you reached the finish, so we couldn\'t time it. Keep recording until you\'re past the line.'**
+  String runDetailParkCourseAttemptGpsGap(String course);
+
+  /// Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.'**
+  String runDetailParkCourseAttemptWrongDirection(String course);
+
+  /// Run detail park course attempt card: text under the progress bar, distances in the runner's unit, e.g. 2.10 km of 5.00 km
+  ///
+  /// In en, this message translates to:
+  /// **'{progress} of {total}'**
+  String runDetailParkCourseAttemptProgress(String progress, String total);
+
+  /// Screen-reader name of the progress bar on a park course attempt card; its value is the runDetailParkCourseAttemptProgress text
+  ///
+  /// In en, this message translates to:
+  /// **'How far along the course you got'**
+  String get runDetailParkCourseAttemptProgressLabel;
+
+  /// Banner on the recording screen, also spoken, when the runner timing a park course has strayed far enough from the course line to miss its next checkpoint. Names the next checkpoint not yet passed, counted from 1.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re off the course. Head back to checkpoint {number}.'**
+  String runCourseOffCourseCheckpoint(int number);
+
+  /// Banner on the recording screen, also spoken, when the runner timing a park course has strayed from the course line after passing every checkpoint
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re off the course. Head back to the course line.'**
+  String get runCourseOffCourseLine;
+
+  /// Big message on the recording screen, also spoken, when the runner leaves the start box of a park course the app found near them (they did not pick it) and the course time starts
+  ///
+  /// In en, this message translates to:
+  /// **'Timing started: {course}'**
+  String runCourseTimingStartedNamed(String course);
+
+  /// Screen-reader label of a park course checkpoint on the live run map that the runner has not passed yet
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoint {number}'**
+  String runCourseCheckpointLabel(int number);
+
+  /// Screen-reader label of a park course checkpoint on the live run map that the runner has passed
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoint {number}, passed'**
+  String runCourseCheckpointPassedLabel(int number);
 }
 
 class _AppLocalizationsDelegate

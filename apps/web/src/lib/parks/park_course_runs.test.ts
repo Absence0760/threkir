@@ -2,9 +2,10 @@
 // (issue #1342 step 5c). The TS reader of fixtures/park_course_runs.json, the
 // case table the `segments` pair shares with
 // apps/mobile_android/test/park_course_runs_test.dart: synthetic 1 Hz runs
-// with realistic GPS error over the six committed Pocahontas course lines,
-// each scored against all six courses at once, as the segment-match function
-// scores a run against its bbox candidates.
+// with realistic GPS error over the six committed Pocahontas course lines and
+// two synthetic ones (an out-and-back and a point to point), each scored
+// against all eight courses at once, as the segment-match function scores a
+// run against its bbox candidates.
 //
 // Each case is checked twice: against what it is for (an effort within
 // tolerance of the true elapsed time between its marks, or none), and
@@ -17,13 +18,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
 	computeGlobalSegmentEfforts,
+	diagnoseGlobalSegmentAttempts,
 	type GlobalSegmentEffortResult,
 	type GlobalSegmentGeometry,
 } from '../segments/segments';
 import {
+	attemptOf,
 	caseDefs,
 	courseEndBearing,
 	decodeTrack,
+	fixtureCourses,
+	hopM,
 	loadCourses,
 	paceMps,
 	simulate,
@@ -83,8 +88,84 @@ for (const c of fixture.cases) {
 			assert.equal(Date.parse(r.started_at) - baseMs, recorded.started_offset_ms);
 			assert.equal(r.matched_by, recorded.matched_by);
 		});
+		const attempts = diagnoseGlobalSegmentAttempts(track, geometries);
+		attempts.forEach((a, i) => {
+			assert.deepEqual(a === null ? undefined : attemptOf(a), c.attempts[slugs[i]], `${slugs[i]}: why no time`);
+		});
 	});
 }
+
+// Issue #1446: a run that set out on a course and got no time says which rule
+// it missed and how far along it got.
+test('each refused Beaver Lake run names the rule it missed', () => {
+	const beaverOf = (key: string) => caseBy(key).attempts['beaver-lake-trail'];
+	const shortcut = beaverOf('beaver_shortcut');
+	assert.equal(shortcut?.outcome, 'skipped_checkpoint');
+	assert.equal(shortcut?.missed_checkpoint, 2);
+	assert.equal(shortcut?.checkpoint_count, 4);
+	assert.equal(shortcut?.course_m, 3595);
+	// The shortcut leaves the trail at 1245 m, but its first stretch runs
+	// within the 35 m tolerance of the trail up the spur's neck, so the
+	// furthest point on the line short of checkpoint 2 lies a little past it.
+	assert.ok(Math.abs((shortcut?.progress_m ?? 0) - 1245) <= 205, `left at 1245 m, reported ${shortcut?.progress_m} m`);
+	assert.equal(beaverOf('beaver_cut')?.outcome, 'skipped_checkpoint');
+	assert.equal(beaverOf('beaver_cut')?.missed_checkpoint, 2);
+	assert.equal(beaverOf('beaver_wrong_way')?.outcome, 'wrong_direction');
+	assert.equal(beaverOf('beaver_wrong_way')?.progress_m, 0);
+	const short = beaverOf('beaver_short');
+	assert.equal(short?.outcome, 'stopped_short');
+	assert.ok(Math.abs((short?.progress_m ?? 0) - (3595 - 150)) <= 35, `stopped 150 m short, reported ${short?.progress_m} m`);
+	assert.equal(beaverOf('beaver_detour')?.outcome, 'off_course');
+	assert.equal(beaverOf('beaver_nearby'), undefined, 'never crossed a line');
+});
+
+// An out-and-back's finish entry is its start edge facing back, so every
+// forward start also opens a reverse attempt; only a run back into the box
+// past more reversed checkpoints than in-order ones keeps it. Its checkpoints
+// (500 m out, the turn, 700 m from the finish) do not mirror.
+test('an out-and-back: timed clean with no attempt, a stop at the turn is stopped_short, an early turn skips the turn checkpoint', () => {
+	const slug = 'synthetic-out-and-back';
+	const oab = (key: string) => caseBy(key).attempts[slug];
+	assert.ok(caseBy('oab_clean').matched[slug], 'the clean run is timed');
+	assert.deepEqual(caseBy('oab_clean').attempts, {});
+	const turn = oab('oab_stopped_at_turn');
+	assert.equal(turn?.outcome, 'stopped_short', 'a stop at the turn is not the wrong way round');
+	assert.ok(Math.abs((turn?.progress_m ?? 0) - 1400) <= 35, `stopped at the turn, reported ${turn?.progress_m} m`);
+	const early = oab('oab_turned_early');
+	assert.equal(early?.outcome, 'skipped_checkpoint');
+	assert.equal(early?.missed_checkpoint, 2);
+	assert.equal(early?.checkpoint_count, 3);
+	assert.ok(Math.abs((early?.progress_m ?? 0) - 1250) <= 35, `turned at 1250 m, reported ${early?.progress_m} m`);
+	const c = fixture.courses.find((x) => x.slug === slug);
+	assert.ok(c);
+	const cps = c.checkpoints;
+	assert.ok(
+		Math.abs(c.start_gate.lat - c.end_gate.lat) < 1e-9 && Math.abs(((c.end_gate.bearing_deg - c.start_gate.bearing_deg + 360) % 360) - 180) < 1e-6,
+		'its start and finish are one spot facing opposite ways',
+	);
+	assert.ok(hopM(cps[0], cps[2]) > 70, 'checkpoints 1 and 3 are further apart than two tolerances: they do not mirror');
+});
+
+test('a point to point: timed clean, stopped_short 400 m out, and a GPS dropout at the finish is gps_gap', () => {
+	const slug = 'synthetic-point-to-point';
+	const p2p = (key: string) => caseBy(key).attempts[slug];
+	assert.ok(caseBy('ptp_clean').matched[slug], 'the clean run is timed');
+	const short = p2p('ptp_stopped_short');
+	assert.equal(short?.outcome, 'stopped_short');
+	assert.ok(Math.abs((short?.progress_m ?? 0) - (2601 - 400)) <= 35, `stopped 400 m short, reported ${short?.progress_m} m`);
+	const gap = p2p('ptp_dropout_at_finish');
+	assert.equal(gap?.outcome, 'gps_gap', 'it reached the finish: not stopped short, not off course');
+	assert.equal(gap?.progress_m, gap?.course_m);
+	const track = decodeTrack(caseBy('ptp_dropout_at_finish').track, baseMs);
+	const longest = Math.max(...track.slice(1).map((p, i) => (Date.parse(p.ts!) - Date.parse(track[i].ts!)) / 1000));
+	assert.ok(longest > 60 && longest <= 300, `a gap the timer may finish across only at the runner's pace: ${longest} s`);
+});
+
+test('a run timed on any course has no attempt where it was timed or where it passed through', () => {
+	for (const c of fixture.cases) {
+		if (Object.keys(c.matched).length > 0) assert.deepEqual(c.attempts, {}, c.key);
+	}
+});
 
 test('the fixture covers every case issue #1342 step 5c lists', () => {
 	const keys = new Set(fixture.cases.map((c) => c.key));
@@ -100,6 +181,7 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 		'beaver_cut',
 		'beaver_wrong_way',
 		'beaver_short',
+		'beaver_detour',
 		'beaver_nearby',
 		'beaver_three_laps',
 		'5k_two_passes_slow_fast',
@@ -107,6 +189,12 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 		'10k_one_lap',
 		'marathon_one_lap',
 		'50k_one_lap',
+		'oab_clean',
+		'oab_stopped_at_turn',
+		'oab_turned_early',
+		'ptp_clean',
+		'ptp_stopped_short',
+		'ptp_dropout_at_finish',
 	]) {
 		assert.ok(keys.has(key), `no case ${key}`);
 	}
@@ -160,7 +248,7 @@ test('a run that completes a shorter course is timed on it: one lap of the 10K i
 
 test('the three-lap run is timed on its fastest lap, the second', () => {
 	const c = caseBy('beaver_three_laps');
-	const def = caseDefs(loadCourses(read)).find((d) => d.key === c.key);
+	const def = caseDefs(fixtureCourses(read)).find((d) => d.key === c.key);
 	assert.ok(def);
 	const marks = simulate(def.plan).marks;
 	const lap2 = marks.lap2_end - marks.lap1_end;
@@ -176,7 +264,7 @@ test('the three-lap run is timed on its fastest lap, the second', () => {
 // opened the next on a one-point loop, and lap 2 was the time in 2 of 60
 // seeds of the middle-fastest run.
 {
-	const courses = loadCourses(read);
+	const courses = fixtureCourses(read);
 	const def = caseDefs(courses).find((d) => d.key === 'beaver_three_laps');
 	assert.ok(def);
 	const beaver = courses.find((c) => c.slug === 'beaver-lake-trail');

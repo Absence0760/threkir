@@ -19,6 +19,7 @@ Future<void> _pump(
   Waypoint? currentPosition,
   bool followRunner = true,
   bool approximateLocation = false,
+  List<LiveCheckpointMark> liveCheckpoints = const [],
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -33,6 +34,7 @@ Future<void> _pump(
             currentPosition: currentPosition,
             followRunner: followRunner,
             approximateLocation: approximateLocation,
+            liveCheckpoints: liveCheckpoints,
           ),
         ),
       ),
@@ -633,6 +635,82 @@ void main() {
           const Color(0xFFF2EFE9)), greaterThanOrEqualTo(3));
       expect(contrast(mapCourseGuideLine(darkBasemap: false),
           const Color(0xFFAAD3DF)), greaterThanOrEqualTo(3));
+    });
+  });
+
+  group('live course checkpoints (#1446)', () {
+    Future<void> pumpMarker(WidgetTester tester, LiveCheckpointMark mark,
+        {bool reduceMotion = false}) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: reduceMotion),
+          child: Scaffold(
+            body: Center(child: LiveCheckpointMarker(mark: mark)),
+          ),
+        ),
+      ));
+      await tester.pump();
+    }
+
+    testWidgets('an unpassed checkpoint is its number, with no tick',
+        (tester) async {
+      await pumpMarker(tester,
+          const LiveCheckpointMark(lat: 51.5, lng: -0.1, number: 3, passed: false));
+      expect(find.text('3'), findsOneWidget);
+      expect(find.byIcon(Icons.check), findsNothing);
+      expect(find.bySemanticsLabel('Checkpoint 3'), findsOneWidget);
+    });
+
+    testWidgets('a passed checkpoint carries a tick beside its number',
+        (tester) async {
+      await pumpMarker(tester,
+          const LiveCheckpointMark(lat: 51.5, lng: -0.1, number: 3, passed: true));
+      expect(find.text('3'), findsOneWidget);
+      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(find.bySemanticsLabel('Checkpoint 3, passed'), findsOneWidget);
+    });
+
+    testWidgets('with reduce motion the tick appears with no animation',
+        (tester) async {
+      await pumpMarker(
+          tester,
+          const LiveCheckpointMark(
+              lat: 51.5, lng: -0.1, number: 1, passed: false),
+          reduceMotion: true);
+      await pumpMarker(
+          tester,
+          const LiveCheckpointMark(
+              lat: 51.5, lng: -0.1, number: 1, passed: true),
+          reduceMotion: true);
+      final switcher =
+          tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher));
+      expect(switcher.duration, Duration.zero);
+      expect(find.byKey(const ValueKey('live-checkpoint-1-ahead')), findsNothing,
+          reason: 'no fade-out of the old marker is left behind');
+    });
+
+    testWidgets('a checkpoint that cannot be placed costs only itself',
+        (tester) async {
+      await _pump(
+        tester,
+        track: [_w(51.5, -0.1), _w(51.5005, -0.1)],
+        currentPosition: _w(51.5005, -0.1),
+        liveCheckpoints: const [
+          LiveCheckpointMark(
+              lat: double.nan, lng: -0.1, number: 1, passed: true),
+          LiveCheckpointMark(
+              lat: 51.5003, lng: -0.1, number: 2, passed: false),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('current-position-marker')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('live-checkpoint-2-ahead')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('live-checkpoint-1-passed')),
+          findsNothing);
     });
   });
 }

@@ -76,6 +76,7 @@ import '../training_service.dart';
 import '../widgets/run_gear_chips.dart';
 import '../widgets/run_plan_link_prompt.dart';
 import '../widgets/run_race_section.dart';
+import '../widgets/run_park_course_attempts.dart';
 import '../widgets/run_park_course_chips.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
@@ -1740,6 +1741,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           track: run.track,
         ),
         RunParkCourseChips(api: widget.apiClient!, runId: run.id),
+        RunParkCourseAttempts(
+            api: widget.apiClient!, runId: run.id, unit: unit),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: RunGearChips(

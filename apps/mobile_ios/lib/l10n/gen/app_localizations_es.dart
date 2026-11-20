@@ -24322,4 +24322,85 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Región';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometraje iniciado';
+
+  @override
+  String runCourseFinished(String time) {
+    return '¡Meta! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Recorridos de parque sin tiempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sin tiempo. Corriste $progress de $total. Corre todo el recorrido para conseguir un tiempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sin tiempo. Te saltaste el punto de control $n de $count. Mantente en la línea del recorrido para pasar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sin tiempo. Te alejaste demasiado del recorrido. Mantente en la línea del recorrido.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sin tiempo. Tu grabación tiene un corte justo donde llegaste a la meta, así que no pudimos cronometrarla. Sigue grabando hasta pasar la línea.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sin tiempo. Lo corriste en sentido contrario. Sigue las flechas del mapa del recorrido.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Cuánto avanzaste en el recorrido';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Te has salido del recorrido. Vuelve al punto de control $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Te has salido del recorrido. Vuelve al trazado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometraje iniciado: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Punto de control $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Punto de control $number, superado';
+  }
 }

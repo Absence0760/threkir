@@ -23,6 +23,8 @@ import type { TrackPoint } from '../types';
 import { GATE_EARTH_RADIUS_M, GATE_HALF_WIDTH_SEGMENT_M, type Gate } from '../geo/gate_crossing';
 import {
 	computeGlobalSegmentEfforts,
+	diagnoseGlobalSegmentAttempts,
+	type CourseAttempt,
 	type GlobalSegmentEffortResult,
 	type GlobalSegmentGeometry,
 } from '../segments/segments';
@@ -74,6 +76,8 @@ export interface ParkCourse {
 	gates: { start: Gate; end: Gate };
 	gateSources: { start: 'derived' | 'curator'; end: 'derived' | 'curator' };
 	geometry: GlobalSegmentGeometry;
+	/** Not in the catalogue: a shape the park lacks, built here (`syntheticCourses`). */
+	synthetic: boolean;
 }
 
 // ─────────────────────────── geometry ───────────────────────────
@@ -235,9 +239,94 @@ export function loadCourses(read: RepoReader, parkDir: string = PARK_DIR): ParkC
 				startGate: gates.start,
 				endGate: gates.end,
 			},
+			synthetic: false,
 		};
 	});
 }
+
+/** Where the synthetic courses' GeoJSON is committed, beside the fixture. */
+export const SYNTHETIC_DIR = 'fixtures/park_course_runs';
+
+/**
+ * The two shapes Pocahontas has no course of, an out-and-back and a point to
+ * point, built from Beaver Lake Trail's own line (real trail curvature) and
+ * moved 6 km south of the park and apart from each other, so no case over the
+ * catalogue courses comes near them, nor they near it. Their lines are what
+ * the database would derive from the line, and their GeoJSON is written to
+ * SYNTHETIC_DIR so every consumer of the fixture reads them like the rest.
+ *
+ * - `synthetic-out-and-back`: the trail's first 1400 m out and the same way
+ *   back, 2800 m, its start and finish one spot facing opposite ways. Its
+ *   checkpoints do not mirror: 500 m out, the turn, and 700 m from the finish
+ *   on the way back, so the reverse walk the diagnosis makes on every forward
+ *   start (the finish edge is the start edge reversed) is pinned on a course
+ *   where the reversed and in-order counts differ.
+ * - `synthetic-point-to-point`: the trail's first 2600 m one way.
+ */
+export function syntheticCourses(catalogue: readonly ParkCourse[]): ParkCourse[] {
+	const beaver = catalogue.find((c) => c.slug === 'beaver-lake-trail');
+	if (!beaver) throw new Error('the synthetic courses are built from beaver-lake-trail');
+	const moved = (pts: readonly LatLng[], eastM: number) =>
+		pts.map((p) => roundE6(offset(offset(p, 180, 6000), 90, eastM)));
+	const out = slice(beaver.line, 0, 1400);
+	const oab = moved([...out, ...[...out].reverse().slice(1)], 0);
+	const p2p = moved(slice(beaver.line, 0, 2600), 3000);
+	const at = (line: LatLng[], m: number) => {
+		const upTo = slice(line, 0, m);
+		return roundE6(upTo[upTo.length - 1]);
+	};
+	const build = (slug: string, line: LatLng[], checkpointsM: number[]): ParkCourse => {
+		const lineM = lengthM(line);
+		const gates = derivedGates(line);
+		const checkpoints = checkpointsM.map((m) => at(line, m));
+		const distanceM = Math.round(lineM);
+		return {
+			slug,
+			geojson: `${SYNTHETIC_DIR}/${slug}.geojson`,
+			distanceM,
+			laps: 1,
+			checkpoints,
+			line,
+			lineM,
+			leadM: 0,
+			gates,
+			gateSources: { start: 'derived', end: 'derived' },
+			geometry: { points: line, distance_m: distanceM, checkpoints, startGate: gates.start, endGate: gates.end },
+			synthetic: true,
+		};
+	};
+	const oabM = lengthM(oab);
+	return [
+		build('synthetic-out-and-back', oab, [500, oabM / 2, oabM - 700]),
+		build('synthetic-point-to-point', p2p, [650, 1300, 1950]),
+	];
+}
+
+/** The catalogue's courses and the synthetic ones: every course the fixture times. */
+export function fixtureCourses(read: RepoReader): ParkCourse[] {
+	const catalogue = loadCourses(read);
+	return [...catalogue, ...syntheticCourses(catalogue)];
+}
+
+/** A synthetic course's GeoJSON as committed under SYNTHETIC_DIR. */
+export function syntheticGeojson(c: ParkCourse): string {
+	const fc = {
+		type: 'FeatureCollection',
+		features: [
+			{
+				type: 'Feature',
+				properties: {
+					name: c.slug,
+					_doc: 'A synthetic course for fixtures/park_course_runs.json, written by scripts/gen_park_course_runs.mjs from apps/web/src/lib/parks/course_run_fixture.ts (syntheticCourses); not a real course, do not edit by hand.',
+				},
+				geometry: { type: 'LineString', coordinates: c.line.map((p) => [p.lng, p.lat]) },
+			},
+		],
+	};
+	return `${JSON.stringify(fc, null, '\t')}\n`;
+}
+
+const roundE6 = (p: LatLng): LatLng => ({ lat: Math.round(p.lat * 1e6) / 1e6, lng: Math.round(p.lng * 1e6) / 1e6 });
 
 // ─────────────────────────── the generator ───────────────────────────
 
@@ -560,6 +649,31 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			},
 			want: { effort: false },
 		});
+		// Off along a side trail and back: every checkpoint passed in order and
+		// the finish line crossed, but 1100 m more than the loop, past the 25 %
+		// length guard. Away from the loop's middle, so the spur meets no part
+		// of it.
+		const mid = beaver.line.reduce((m, p) => ({ lat: m.lat + p.lat / beaver.line.length, lng: m.lng + p.lng / beaver.line.length }), { lat: 0, lng: 0 });
+		const spurAt = slice(beaver.line, 900, 901)[0];
+		const awayXY = planeXY(mid.lat, mid.lng, spurAt.lat, spurAt.lng);
+		const spurEnd = offset(spurAt, (Math.atan2(awayXY.x, awayXY.y) * 180) / Math.PI, 550);
+		defs.push({
+			key: 'beaver_detour',
+			name: 'beaver-lake-trail: a 550 m side trail and back before finishing',
+			course: beaver.slug,
+			why: 'the loop to 900 m, 550 m straight out away from the loop and back, the rest of the loop: every checkpoint passed and the finish crossed, 1100 m long, past the 25 % length guard',
+			plan: {
+				seed: 118,
+				steps: [
+					...arrive(beaver, v),
+					{ kind: 'move', path: slice(beaver.line, 0, 900), speedMps: v },
+					{ kind: 'move', path: [spurAt, spurEnd, spurAt], speedMps: v },
+					{ kind: 'move', path: slice(beaver.line, 900, L), speedMps: v, endMark: 'finish' },
+					...leave(beaver.line[beaver.line.length - 1], beaver.gates.end.bearingDeg, v),
+				],
+			},
+			want: { effort: false },
+		});
 		const along = beaver.gates.start.bearingDeg + 90;
 		const shifted = beaver.line.map((p) => offset(p, along, 60));
 		defs.push({
@@ -659,11 +773,91 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			want: { effort: false },
 		});
 	}
+
+	// An out-and-back: its finish entry is its start edge facing back, so
+	// every forward start also opens a reverse attempt, which only a run back
+	// into the box past more reversed checkpoints than in-order ones keeps.
+	{
+		const oab = by('synthetic-out-and-back');
+		const v = paceMps(330);
+		const half = oab.lineM / 2;
+		const end = oab.line[oab.line.length - 1];
+		clean(oab.slug, 330, 141);
+		defs.push({
+			key: 'oab_stopped_at_turn',
+			name: 'synthetic-out-and-back: stopping at the turn',
+			course: oab.slug,
+			why: 'out to the turn (checkpoints 1 and 2 passed) and a stop there: half the course, never back into the box',
+			plan: {
+				seed: 142,
+				steps: [...arrive(oab, v), { kind: 'move', path: slice(oab.line, 0, half), speedMps: v }, { kind: 'hold', seconds: 30, endMark: 'stopped' }],
+			},
+			want: { effort: false },
+		});
+		defs.push({
+			key: 'oab_turned_early',
+			name: 'synthetic-out-and-back: turning back 150 m before the turn',
+			course: oab.slug,
+			why: 'out to 150 m short of the turn (checkpoint 2), back the same way and over the finish: 300 m short, inside the 25 % length guard, so only the checkpoint refuses it',
+			plan: {
+				seed: 143,
+				steps: [
+					...arrive(oab, v),
+					{ kind: 'move', path: slice(oab.line, 0, half - 150), speedMps: v },
+					{ kind: 'move', path: slice(oab.line, half + 150, oab.lineM), speedMps: v, endMark: 'finish' },
+					...leave(end, oab.gates.end.bearingDeg, v),
+				],
+			},
+			want: { effort: false },
+		});
+	}
+
+	// A point to point, and a GPS dropout as the runner reaches its finish.
+	{
+		const p2p = by('synthetic-point-to-point');
+		const v = paceMps(330);
+		const L = p2p.lineM;
+		const end = p2p.line[p2p.line.length - 1];
+		const eb = p2p.gates.end.bearingDeg;
+		clean(p2p.slug, 330, 151);
+		defs.push({
+			key: 'ptp_stopped_short',
+			name: 'synthetic-point-to-point: stopping 400 m short of the finish',
+			course: p2p.slug,
+			why: 'every checkpoint passed, then the run ends 400 m before the line',
+			plan: {
+				seed: 152,
+				steps: [...arrive(p2p, v), { kind: 'move', path: slice(p2p.line, 0, L - 400), speedMps: v }, { kind: 'hold', seconds: 30, endMark: 'stopped' }],
+			},
+			want: { effort: false },
+		});
+		defs.push({
+			key: 'ptp_dropout_at_finish',
+			name: 'synthetic-point-to-point: the GPS drops out as the runner reaches the finish',
+			course: p2p.slug,
+			why: 'every checkpoint passed, then no fix from 60 m short of the line, through a 4 minute stop there, to 6 m past it: a gap of about 260 s crossed at a tenth of the runner\'s pace, which the timer refuses, then a cool-down out of the box',
+			plan: {
+				seed: 153,
+				steps: [
+					...arrive(p2p, v),
+					{ kind: 'move', path: slice(p2p.line, 0, L - 60), speedMps: v },
+					{ kind: 'move', path: slice(p2p.line, L - 60, L - 59), speedMps: v, mark: 'gap_in' },
+					{ kind: 'hold', seconds: 240 },
+					{ kind: 'move', path: [...slice(p2p.line, L - 59, L), offset(end, eb, 6)], speedMps: v, endMark: 'gap_out' },
+					...leave(offset(end, eb, 6), eb, v),
+				],
+				canopy: [{ fromMark: 'gap_in', toMark: 'gap_out', everyS: 10_000, noiseScale: 1 }],
+			},
+			want: { effort: false },
+		});
+	}
 	return defs;
 }
 
-/** `swift-creek-half` → `half`, `beaver-lake-trail` → `beaver`. */
+/** `swift-creek-half` → `half`, `beaver-lake-trail` → `beaver`, `synthetic-out-and-back` → `oab`, `synthetic-point-to-point` → `ptp` (a three-letter key outside the Material Symbols vocabulary, so the icon-font subset never mistakes it for an icon). */
 function short(slug: string): string {
+	if (slug === 'synthetic-out-and-back') return 'oab';
+	if (slug === 'synthetic-point-to-point') return 'ptp';
 	return slug === 'beaver-lake-trail' ? 'beaver' : slug.replace('swift-creek-', '');
 }
 
@@ -679,6 +873,15 @@ export interface FixtureEffort {
 	matched_by: string;
 }
 
+/** Why a run got no time on a course (`diagnoseGlobalSegmentAttempts`), in the database's column names. */
+export interface FixtureAttempt {
+	outcome: string;
+	progress_m: number;
+	course_m: number;
+	missed_checkpoint: number | null;
+	checkpoint_count: number;
+}
+
 export interface FixtureCase {
 	key: string;
 	name: string;
@@ -688,6 +891,8 @@ export interface FixtureCase {
 	want: { effort: true; truth_s: number; tolerance_s: number } | { effort: false };
 	/** What the matcher gave this run on every course of the park (only courses it timed). */
 	matched: Record<string, FixtureEffort>;
+	/** Why the run got no time, on every course it set out on and was not timed on. */
+	attempts: Record<string, FixtureAttempt>;
 	extent: { min_lat: number; min_lng: number; max_lat: number; max_lng: number };
 	/** First fix [lat, lng] in 1e-6 degrees, then [dlat, dlng] per fix; 1 s apart unless `gaps` names [index, seconds]. */
 	track: { first: [number, number]; d: number[]; gaps: [number, number][] };
@@ -700,6 +905,8 @@ export interface FixtureCourse {
 	checkpoints: LatLng[];
 	start_gate: { lat: number; lng: number; bearing_deg: number; half_width_m: number; source: string };
 	end_gate: { lat: number; lng: number; bearing_deg: number; half_width_m: number; source: string };
+	/** Not a Pocahontas catalogue course (`syntheticCourses`); park_course_boards_test.sql leaves it out. */
+	synthetic: boolean;
 }
 
 export interface CourseRunFixture {
@@ -743,12 +950,22 @@ function effortOf(e: GlobalSegmentEffortResult, baseMs: number): FixtureEffort {
 	};
 }
 
+export function attemptOf(a: CourseAttempt): FixtureAttempt {
+	return {
+		outcome: a.outcome,
+		progress_m: a.progressM,
+		course_m: a.courseM,
+		missed_checkpoint: a.missedCheckpoint,
+		checkpoint_count: a.checkpointCount,
+	};
+}
+
 function gateJson(g: Gate, source: string) {
 	return { lat: g.lat, lng: g.lng, bearing_deg: g.bearingDeg, half_width_m: g.halfWidthM, source };
 }
 
 export function buildCourseRunFixture(read: RepoReader): CourseRunFixture {
-	const courses = loadCourses(read);
+	const courses = fixtureCourses(read);
 	const baseMs = Date.parse(BASE_TIME);
 	const cases: FixtureCase[] = caseDefs(courses).map((def) => {
 		const run = simulate(def.plan);
@@ -758,6 +975,10 @@ export function buildCourseRunFixture(read: RepoReader): CourseRunFixture {
 		const matched: Record<string, FixtureEffort> = {};
 		results.forEach((r, i) => {
 			if (r) matched[courses[i].slug] = effortOf(r, baseMs);
+		});
+		const attempts: Record<string, FixtureAttempt> = {};
+		diagnoseGlobalSegmentAttempts(track, courses.map((c) => c.geometry)).forEach((a, i) => {
+			if (a) attempts[courses[i].slug] = attemptOf(a);
 		});
 		let want: FixtureCase['want'] = { effort: false };
 		const w = def.want;
@@ -785,13 +1006,14 @@ export function buildCourseRunFixture(read: RepoReader): CourseRunFixture {
 			why: def.why,
 			want,
 			matched,
+			attempts,
 			extent: { min_lat: minLat, min_lng: minLng, max_lat: maxLat, max_lng: maxLng },
 			track: encoded,
 		};
 	});
 	return {
 		_doc:
-			'Synthetic runs over the six Pocahontas park courses (issue #1342 step 5c), generated by apps/web/src/lib/parks/course_run_fixture.ts through scripts/gen_park_course_runs.mjs; do not edit by hand. Read by apps/web/src/lib/parks/park_course_runs.test.ts, apps/mobile_android/test/park_course_runs_test.dart and supabase/functions/segment-match/park_course_runs.test.ts; park_course_boards_test.sql carries the matched efforts. Each course line is the committed GeoJSON named; the lines are what the database derives (or the curated line). `matched` is the matcher\'s result on every course, `want` what the case is for: an effort within tolerance_s of truth_s on its own course, or none.',
+			'Synthetic runs over the six Pocahontas park courses (issue #1342 step 5c) and two synthetic courses of the shapes the park lacks, an out-and-back and a point to point (issue #1446, GeoJSON under fixtures/park_course_runs/, `synthetic` true), generated by apps/web/src/lib/parks/course_run_fixture.ts through scripts/gen_park_course_runs.mjs; do not edit by hand. Read by apps/web/src/lib/parks/park_course_runs.test.ts, apps/mobile_android/test/park_course_runs_test.dart and supabase/functions/segment-match/park_course_runs.test.ts; park_course_boards_test.sql carries the matched efforts of the catalogue courses. Each course line is the committed GeoJSON named; the lines are what the database derives (or the curated line). `matched` is the matcher\'s result on every course, `attempts` why it gave none on each course the run set out on (diagnoseGlobalSegmentAttempts), `want` what the case is for: an effort within tolerance_s of truth_s on its own course, or none.',
 		base_time: BASE_TIME,
 		courses: courses.map((c) => ({
 			slug: c.slug,
@@ -800,6 +1022,7 @@ export function buildCourseRunFixture(read: RepoReader): CourseRunFixture {
 			checkpoints: c.checkpoints,
 			start_gate: gateJson(c.gates.start, c.gateSources.start),
 			end_gate: gateJson(c.gates.end, c.gateSources.end),
+			synthetic: c.synthetic,
 		})),
 		cases,
 	};

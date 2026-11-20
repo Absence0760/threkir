@@ -6463,5 +6463,21 @@
   "filterBarSort": "Sortieren",
   "filterBarSource": "Quelle",
   "runsSearchHint": "Läufe nach Namen suchen",
-  "filterBarRegion": "Region"
+  "filterBarRegion": "Region",
+  "runCourseTimingStarted": "Zeitmessung gestartet",
+  "runCourseFinished": "Im Ziel! {time}",
+  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert.",
+  "runDetailParkCourseAttempts": "Parkstrecken ohne Zeit",
+  "runDetailParkCourseAttemptStoppedShort": "{course}: keine Zeit. Du bist {progress} von {total} gelaufen. Lauf die ganze Strecke, um eine Zeit zu bekommen.",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: keine Zeit. Du hast Kontrollpunkt {n} von {count} verpasst. Bleib auf der Streckenlinie, um an jedem vorbeizulaufen.",
+  "runDetailParkCourseAttemptOffCourse": "{course}: keine Zeit. Du bist zu weit von der Strecke abgekommen. Bleib auf der Streckenlinie.",
+  "runDetailParkCourseAttemptGpsGap": "{course}: keine Zeit. Deine Aufzeichnung hat eine Lücke an der Stelle, an der du ins Ziel gekommen bist, deshalb konnten wir keine Zeit messen. Lass die Aufzeichnung laufen, bis du über die Ziellinie bist.",
+  "runDetailParkCourseAttemptWrongDirection": "{course}: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.",
+  "runDetailParkCourseAttemptProgress": "{progress} von {total}",
+  "runDetailParkCourseAttemptProgressLabel": "Wie weit du auf der Strecke gekommen bist",
+  "runCourseOffCourseCheckpoint": "Du bist von der Strecke abgekommen. Lauf zurück zu Kontrollpunkt {number}.",
+  "runCourseOffCourseLine": "Du bist von der Strecke abgekommen. Lauf zurück auf die Strecke.",
+  "runCourseTimingStartedNamed": "Zeitmessung gestartet: {course}",
+  "runCourseCheckpointLabel": "Kontrollpunkt {number}",
+  "runCourseCheckpointPassedLabel": "Kontrollpunkt {number}, passiert"
 }

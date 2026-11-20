@@ -22664,4 +22664,82 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get filterBarRegion => '地域';
+
+  @override
+  String get runCourseTimingStarted => '計測開始';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'ゴール！$time';
+  }
+
+  @override
+  String get runCourseStoppedShort => 'コースのタイムとしては記録されません。ランは保存されています。';
+
+  @override
+  String get runDetailParkCourseAttempts => 'タイムが記録されなかった公園コース';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course：タイムなし。$totalのうち$progressを走りました。タイムを記録するにはコース全体を走ってください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course：タイムなし。$countか所のうちチェックポイント$nを通過しませんでした。すべて通過するにはコースラインから外れないでください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course：タイムなし。コースから大きく外れました。コースラインから外れないでください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course：タイムなし。ゴールに着いたところで記録が途切れていたため、タイムを計測できませんでした。ゴールラインを越えるまで記録を続けてください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$totalのうち$progress';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel => 'コースをどこまで進んだか';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'コースから外れています。チェックポイント$numberに戻ってください。';
+  }
+
+  @override
+  String get runCourseOffCourseLine => 'コースから外れています。コースに戻ってください。';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return '計測開始：$course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'チェックポイント$number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'チェックポイント$number、通過済み';
+  }
 }

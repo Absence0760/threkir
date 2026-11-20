@@ -1,7 +1,8 @@
 /// The segment-match scoring pass over the real Pocahontas courses (issue
 /// #1342 step 5c). Every synthetic run in fixtures/park_course_runs.json goes
 /// through `scoreRun` as the job worker's call would: the stored gzipped
-/// track, the six courses as `global_segments_in_bbox` rows carrying their
+/// track, the eight courses (six Pocahontas, an out-and-back and a point to
+/// point) as `global_segments_in_bbox` rows carrying their
 /// lines, their checkpoints from `park_courses`. What reaches
 /// `record_segment_match` must be exactly what the web matcher recorded for
 /// that run, which is also what park_course_boards_test.sql writes and reads
@@ -34,6 +35,7 @@ type Fixture = {
     key: string;
     name: string;
     matched: Record<string, { time_seconds: number; started_offset_ms: number; matched_by: string }>;
+    attempts: Record<string, Record<string, unknown>>;
     extent: { min_lat: number; min_lng: number; max_lat: number; max_lng: number };
     track: { first: [number, number]; d: number[]; gaps: [number, number][] };
   }[];
@@ -64,7 +66,8 @@ const candidates = await Promise.all(
     };
   }),
 );
-const checkpointRows = fixture.courses.map((c, i) => ({ global_segment_id: segId(i), checkpoints: c.checkpoints }));
+const courseId = (i: number) => `cbc00000-0000-4000-8000-00000000000${i + 1}`;
+const checkpointRows = fixture.courses.map((c, i) => ({ id: courseId(i), global_segment_id: segId(i), checkpoints: c.checkpoints }));
 
 /// The stored track as the phone's sync uploads it: points with an ISO ts.
 function storedTrack(t: Fixture['cases'][number]['track']): { lat: number; lng: number; ts: string }[] {
@@ -100,6 +103,7 @@ function fakeClient(track: Blob) {
       }
       if (name === 'global_segments_in_bbox') return Promise.resolve({ data: candidates, error: null });
       if (name === 'record_segment_match') return Promise.resolve({ data: 'recorded', error: null });
+      if (name === 'record_park_course_attempts') return Promise.resolve({ data: 'recorded', error: null });
       return Promise.resolve({ data: null, error: { code: 'unscripted' } });
     },
     storage: {
@@ -154,6 +158,24 @@ for (const c of fixture.cases) {
       assertEquals(Date.parse(e.started_at) - baseMs, want[i].started_offset_ms);
       assertEquals(e.matched_by, want[i].matched_by);
     });
+
+    // Why no time (issue #1446): exactly the attempts the web matcher
+    // recorded, keyed by park course, for the same bytes, after the efforts.
+    const att = fake.calls.find((x) => x.name === 'record_park_course_attempts')!.args;
+    assertEquals(att.p_track_version, 'v1');
+    assertEquals(att.p_matcher_version, 4);
+    assertEquals(
+      att.p_attempts,
+      fixture.courses.flatMap((course, i) => {
+        const a = c.attempts[course.slug];
+        return a ? [{ park_course_id: courseId(i), ...a }] : [];
+      }),
+    );
+    assert(
+      fake.calls.findIndex((x) => x.name === 'record_park_course_attempts') >
+        fake.calls.findIndex((x) => x.name === 'record_segment_match'),
+      'attempts are written after the efforts',
+    );
   });
 }
 

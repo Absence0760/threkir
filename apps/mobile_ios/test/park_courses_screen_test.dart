@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -15,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart' show EmptyState;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
+import '../lib/watch_park_courses.dart' show WatchParkCourses;
 import '../lib/widgets/elevation_chart.dart';
 import '../lib/widgets/live_run_map.dart' show mapStartZoneColour;
 import '../lib/widgets/park_course_map.dart';
@@ -1805,6 +1807,48 @@ void main() {
       );
       expect(_creditsOffMap(tester, 'OpenStreetMap'), 1);
       await _unmount(tester);
+    });
+
+    testWidgets('Navigate puts the course on the Wear OS watch', (
+      tester,
+    ) async {
+      tallView(tester);
+      SharedPreferences.setMockInitialValues({});
+      WatchParkCourses().resetForTest();
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final pushes = <String>[];
+      const wear = MethodChannel(WatchParkCourses.wearChannelName);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(wear, (call) async {
+        pushes.add((call.arguments as Map)['courses_json'] as String);
+        return null;
+      });
+      try {
+        await tester.pumpWidget(
+          _host(
+            ParkCourseScreen(
+              api: _ParksApi(),
+              listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+              course: _course(
+                routeId: 'route-1',
+                startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+                endGate: (lat: 37.0, lng: -77.0, bearing: 180, halfWidth: 15),
+              ),
+            ),
+          ),
+        );
+        await _settle(tester);
+        await tester.tap(find.byKey(const Key('park-course-navigate')));
+        await _settle(tester);
+        expect(pushes, hasLength(1));
+        final sent = jsonDecode(pushes.single) as List;
+        expect((sent.single as Map)['id'], 'c1');
+        await _unmount(tester);
+      } finally {
+        messenger.setMockMethodCallHandler(wear, null);
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('Navigate is the one filled action when the course has a '

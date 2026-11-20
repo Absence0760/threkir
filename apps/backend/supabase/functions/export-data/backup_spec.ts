@@ -135,6 +135,10 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// global_segment_efforts — the subject's times on catalogue segments,
 		// park courses included. Mirror of the Go worker's exportPersonalDataSpecs.
 		{ entry: 'global_segment_efforts.json', table: 'global_segment_efforts', filter: uidEq, select: '*' },
+		// park_course_attempts — why each of the subject's runs got no time on a
+		// park course it set out on (issue #1446). Mirror of the Go worker's
+		// exportPersonalDataSpecs.
+		{ entry: 'park_course_attempts.json', table: 'park_course_attempts', filter: uidEq, select: '*' },
 		{ entry: 'gear.json', table: 'gear', filter: `owner_id=eq.${uid}`, select: '*' },
 		// gear_wear_logs (migration 20270225_001) + gear_rotations
 		// (migration 20270227_001) — owner-private gear sub-data, keyed by

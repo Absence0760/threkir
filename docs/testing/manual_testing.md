@@ -382,6 +382,23 @@ See [decisions.md §37](../architecture/decisions.md#37-segments-v1-are-slices-o
 
 ---
 
+## Park course timing
+
+See [park_courses.md](../features/park_courses.md) (the box rule, "Why no time", live timing) and decisions § 2589 and §§ 2595 to 2599. Do these on a staged course loaded locally (`bin/seed-demo.sh`) or a live one; nobody has walked these on a device yet.
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| Live start and finish (phone) | On a park course page tap "Navigate this course", start a run, leave the green start box going forward, run the course, enter the red finish box | "Timing started" with a short buzz on leaving the start box; "Finished! <time>" with a stronger buzz on entering the finish box; the time matches the board after upload. Voice cues follow the voice setting. |
+| Nearby course, no navigation (phone) | Start a run at a course's start box without tapping Navigate, then leave the box going forward | "Timing started: <course>" once; nothing if offline, and the run records normally either way. |
+| Off the course (phone) | During a timed course, walk more than 35 m off the line | One "You're off the course. Head back to checkpoint N." with a banner and a buzz; it clears once back within 25 m and doesn't repeat on GPS jitter. |
+| Checkpoints on the live map (phone) | Run a timed course past each checkpoint | Each checkpoint is a grey number until passed, then ticked; a screen reader says "Checkpoint 3, passed". |
+| Stop short (phone) | Start a timed course and stop before the finish | Stopping is never blocked; the summary says "This won't count as a course time. Your run is still saved." and the run saves. |
+| Why no time (web + mobile) | Owner opens run detail of a run that left a course's start box but got no time (stopped short, skipped a checkpoint, too far off, wrong way) | One card per course with one plain sentence naming the rule missed and a bar "<progress> of <total>" in the runner's unit (metres or yards under 1 km / 1 mi); nobody else sees it. |
+| Wrist (Wear OS) | Navigate one or more courses on the phone, then open the watch's route picker | Courses appear as "Course · 5.0 km"; running one gives "Timing started" / "Finished!" with a buzz, and the summary shows the best lap's time. |
+| Wrist (Apple Watch) | Navigate a course on the phone with the watch paired | The course arms on the watch; leaving the start box and entering the finish box give the cues and haptics; the time matches the board. |
+
+---
+
 ## Photos on runs
 
 See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table--storage-bucket-visibility-tracks-the-parent-run).

@@ -1,6 +1,7 @@
 /// The `segment-match` processor (issue #1313 Phase 1, decisions § 2392):
 /// score one run's stored track against the catalogue segments near it, or
-/// one batch of a launch backfill, and write the efforts as the service role.
+/// one batch of a launch backfill, and write the efforts, and why each park
+/// course the run set out on got no time (issue #1446), as the service role.
 ///
 /// The timing rule is the canonical web matcher, bundled into
 /// `_shared/segment_matcher.generated.js` (scripts/gen_edge_segment_matcher.mjs),
@@ -20,6 +21,8 @@ import {
 } from '../_shared/smoothed_sidecar.ts';
 import {
   computeGlobalSegmentEfforts,
+  diagnoseGlobalSegmentAttempts,
+  GLOBAL_SEGMENT_MATCHER_VERSION,
   globalSegmentGeometry,
   parseCourseCheckpoints,
   trackExtent,
@@ -158,6 +161,8 @@ export interface CandidateRow {
 }
 
 export interface CheckpointRow {
+  /// The park course's own id, which its attempts are keyed by.
+  id?: string;
   global_segment_id: string;
   checkpoints: unknown;
 }
@@ -187,6 +192,57 @@ export function scorableGeometries(
     geometries.push(globalSegmentGeometry(seg, cps));
   }
   return { ids, geometries };
+}
+
+// ─────────────────────────── why no time ───────────────────────────
+
+/// One `diagnoseGlobalSegmentAttempts` result (the web `CourseAttempt`).
+export type Attempt = {
+  outcome: string;
+  progressM: number;
+  courseM: number;
+  missedCheckpoint: number | null;
+  checkpointCount: number;
+} | null;
+
+// A type alias, not an interface: only an alias gets the implicit index
+// signature that lets the rows pass as the RPC's `Json` argument.
+export type AttemptRow = {
+  park_course_id: string;
+  outcome: string;
+  progress_m: number;
+  course_m: number;
+  missed_checkpoint: number | null;
+  checkpoint_count: number;
+};
+
+/// The `record_park_course_attempts` payload (issue #1446): one row per
+/// scored candidate that is a park course and that the run set out on without
+/// a time. A catalogue segment that is no park course has no attempt to keep.
+export function attemptRows(
+  ids: readonly string[],
+  attempts: readonly Attempt[],
+  checkpointRows: readonly CheckpointRow[],
+): AttemptRow[] {
+  const courseOf = new Map<string, string>();
+  for (const row of checkpointRows) {
+    if (typeof row.id === 'string') courseOf.set(row.global_segment_id, row.id);
+  }
+  const rows: AttemptRow[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    const a = attempts[i];
+    const course = courseOf.get(ids[i]);
+    if (!a || !course) continue;
+    rows.push({
+      park_course_id: course,
+      outcome: a.outcome,
+      progress_m: a.progressM,
+      course_m: a.courseM,
+      missed_checkpoint: a.missedCheckpoint,
+      checkpoint_count: a.checkpointCount,
+    });
+  }
+  return rows;
 }
 
 // ─────────────────────────── one run ───────────────────────────
@@ -294,7 +350,7 @@ export async function scoreRun(client: DbClient, runId: string): Promise<RunResu
     for (let i = 0; i < ids.length; i += IN_FILTER_CHUNK) {
       const { data: cps, error: cpErr } = await client
         .from('park_courses')
-        .select('global_segment_id, checkpoints')
+        .select('id, global_segment_id, checkpoints')
         .in('global_segment_id', ids.slice(i, i + IN_FILTER_CHUNK));
       // Fail closed, as the web scorer does: without the checkpoints a course
       // would time a run that cut it.
@@ -331,5 +387,25 @@ export async function scoreRun(client: DbClient, runId: string): Promise<RunResu
   if (recErr) throw new Error(`effort write failed (${recErr.code ?? 'unknown'})`);
   if (status === 'stale') return none('stale');
   if (status === 'missing') return none('missing');
+
+  // Every pass replaces the run's attempts, an empty list included, so a run
+  // re-scored onto a time (or off a moved course) keeps none it no longer has.
+  // The efforts are committed by now and the attempts only explain a missing
+  // time, so a failure here is logged and the pass still counts as recorded:
+  // it must never cost the run its times (layered resilience).
+  try {
+    const attempts = attemptRows(ids, diagnoseGlobalSegmentAttempts(points, geometries), checkpointRows);
+    const { data: attStatus, error: attErr } = await client.rpc('record_park_course_attempts', {
+      p_run_id: runId,
+      p_track_version: src.track_version,
+      p_matcher_version: GLOBAL_SEGMENT_MATCHER_VERSION,
+      p_attempts: attempts,
+    });
+    if (attErr) throw new Error(`attempt write failed (${attErr.code ?? 'unknown'})`);
+    if (attStatus === 'stale') return none('stale');
+    if (attStatus === 'missing') return none('missing');
+  } catch (e) {
+    console.error('segment-match: park course attempts not recorded:', e instanceof Error ? e.message : 'unknown');
+  }
   return { outcome: 'recorded', matched: efforts.length };
 }

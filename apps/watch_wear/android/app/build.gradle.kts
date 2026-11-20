@@ -260,6 +260,7 @@ tasks.withType<Test>().configureEach {
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearAuthBridge.kt"),
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt"),
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearWorkoutBridge.kt"),
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearParkCoursesBridge.kt"),
             // WorkoutPushFixtureTest + WorkoutRunnerTest: the payload and the
             // step-runner vectors the phone and watchOS are held to, and the
             // phone writer's payload version.
@@ -276,6 +277,12 @@ tasks.withType<Test>().configureEach {
             // GateCrossingTest: the gate_crossing case table web and the
             // phone read too.
             root.resolve("fixtures/gate_crossing_cases.json"),
+            // LiveCourseTimerTest, CourseGatesTest, ParkCourseBridgeTest: the
+            // matcher's park course runs, the course_gates case table and the
+            // /park_courses payload contract.
+            root.resolve("fixtures/park_course_runs.json"),
+            root.resolve("fixtures/course_gates_cases.json"),
+            root.resolve("fixtures/wear_park_courses_payload.json"),
         )
             .withPathSensitivity(PathSensitivity.NAME_ONLY)
             .withPropertyName("guardedCrossTreeFiles")

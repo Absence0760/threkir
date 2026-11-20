@@ -31255,5 +31255,144 @@
   "filterBarRegion": "Region",
   "@filterBarRegion": {
     "description": "Heading of the region choices in a list's filter sheet (the segment catalogue)"
+  },
+  "runCourseTimingStarted": "Timing started",
+  "@runCourseTimingStarted": {
+    "description": "Big message on the recording screen, also spoken, when the runner following a park course leaves its start box going forward and the course time starts"
+  },
+  "runCourseFinished": "Finished! {time}",
+  "@runCourseFinished": {
+    "description": "Big message on the recording screen, also spoken, when the runner following a park course reaches its finish and the time will count on the course board. The recording keeps going.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "8:42:10"
+      }
+    }
+  },
+  "runCourseStoppedShort": "This won't count as a course time. Your run is still saved.",
+  "@runCourseStoppedShort": {
+    "description": "One line on the finished-run summary when the runner stopped a park course after its timing started and before finishing it: no course time, but the run itself is kept"
+  },
+  "runDetailParkCourseAttempts": "Park courses with no time",
+  "@runDetailParkCourseAttempts": {
+    "description": "Run detail (owner only, #1446): group name read before the cards for park courses this run started but got no time on"
+  },
+  "runDetailParkCourseAttemptStoppedShort": "{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.",
+  "@runDetailParkCourseAttemptStoppedShort": {
+    "description": "Run detail park course attempt card: the run left the start but the recording ended before the finish. progress and total are distances in the runner's unit, e.g. 2.10 km of 5.00 km",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "progress": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.",
+  "@runDetailParkCourseAttemptSkippedCheckpoint": {
+    "description": "Run detail park course attempt card: the run missed a checkpoint (passed out of order or not at all). n is the first one missed, count the course's checkpoints",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptOffCourse": "{course}: no time. You ran too far off the course. Stay on the course line.",
+  "@runDetailParkCourseAttemptOffCourse": {
+    "description": "Run detail park course attempt card: every checkpoint passed but the run covered far more distance than the course, so it left the course line",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptGpsGap": "{course}: no time. Your recording has a gap where you reached the finish, so we couldn't time it. Keep recording until you're past the line.",
+  "@runDetailParkCourseAttemptGpsGap": {
+    "description": "Run detail park course attempt card: the run reached the finish, but across a gap in the recording (GPS dropped out or the recording was paused) too long to time, so it got no time",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptWrongDirection": "{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.",
+  "@runDetailParkCourseAttemptWrongDirection": {
+    "description": "Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptProgress": "{progress} of {total}",
+  "@runDetailParkCourseAttemptProgress": {
+    "description": "Run detail park course attempt card: text under the progress bar, distances in the runner's unit, e.g. 2.10 km of 5.00 km",
+    "placeholders": {
+      "progress": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptProgressLabel": "How far along the course you got",
+  "@runDetailParkCourseAttemptProgressLabel": {
+    "description": "Screen-reader name of the progress bar on a park course attempt card; its value is the runDetailParkCourseAttemptProgress text"
+  },
+  "runCourseOffCourseCheckpoint": "You're off the course. Head back to checkpoint {number}.",
+  "@runCourseOffCourseCheckpoint": {
+    "description": "Banner on the recording screen, also spoken, when the runner timing a park course has strayed far enough from the course line to miss its next checkpoint. Names the next checkpoint not yet passed, counted from 1.",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "runCourseOffCourseLine": "You're off the course. Head back to the course line.",
+  "@runCourseOffCourseLine": {
+    "description": "Banner on the recording screen, also spoken, when the runner timing a park course has strayed from the course line after passing every checkpoint"
+  },
+  "runCourseTimingStartedNamed": "Timing started: {course}",
+  "@runCourseTimingStartedNamed": {
+    "description": "Big message on the recording screen, also spoken, when the runner leaves the start box of a park course the app found near them (they did not pick it) and the course time starts",
+    "placeholders": {
+      "course": {
+        "type": "String",
+        "example": "Beaver Lake Trail"
+      }
+    }
+  },
+  "runCourseCheckpointLabel": "Checkpoint {number}",
+  "@runCourseCheckpointLabel": {
+    "description": "Screen-reader label of a park course checkpoint on the live run map that the runner has not passed yet",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "runCourseCheckpointPassedLabel": "Checkpoint {number}, passed",
+  "@runCourseCheckpointPassedLabel": {
+    "description": "Screen-reader label of a park course checkpoint on the live run map that the runner has passed",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
   }
 }

@@ -28,6 +28,7 @@ import com.runapp.watchwear.MainActivity
 import com.runapp.watchwear.Pedometer
 import com.runapp.watchwear.R
 import com.runapp.watchwear.tiles.formatElapsed
+import com.runapp.watchwear.formatCourseTime
 import com.runapp.watchwear.workout.HapticPattern
 import com.runapp.watchwear.workout.VoiceVerbosity
 import com.runapp.watchwear.workout.WorkoutCue
@@ -255,6 +256,10 @@ class RunRecordingService : Service() {
             ACTION_LAP -> markLap()
             ACTION_STOP -> stopRecording()
             ACTION_RACE_CUE -> raceCue(intent.getStringExtra(EXTRA_RACE_CUE))
+            ACTION_COURSE_CUE -> courseCue(
+                intent.getStringExtra(EXTRA_COURSE_CUE),
+                intent.getDoubleExtra(EXTRA_COURSE_ELAPSED_S, Double.NaN),
+            )
         }
         return START_STICKY
     }
@@ -584,6 +589,25 @@ class RunRecordingService : Service() {
         }
     }
 
+    /// A park course's start or finish (#1446): the race cue's buzzes (the
+    /// new-step buzz to start, the completion buzz to finish) and the spoken
+    /// line, each its own L4 effect, so neither can reach the run.
+    private fun courseCue(kind: String?, elapsedS: Double) {
+        val start = kind == RACE_CUE_START
+        if (!start && kind != RACE_CUE_FINISH) return
+        try {
+            vibrate(if (start) WorkoutHaptics.STEP else WorkoutHaptics.COMPLETE, "course $kind")
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "course $kind haptic failed", e)
+        }
+        try {
+            val label = if (start || !elapsedS.isFinite()) null else formatCourseTime(elapsedS)
+            cues?.announceCourse(start, label)
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "course $kind cue not spoken", e)
+        }
+    }
+
     private fun pauseRecording() {
         if (RecordingRepository.metrics.value.stage != RecordingRepository.Stage.Recording) return
         pausedSinceMs = System.currentTimeMillis()
@@ -835,6 +859,7 @@ class RunRecordingService : Service() {
             Triple(bankedDistanceM() + distanceEstimator.distanceM, livePace.secondsPerKm, opensSegment)
         }
         trackWriter?.append(p, distM = newDistance, offTrack = !track, segmentStart = segmentStart)
+        if (track) publishCourseFix(p)
         if (!track) {
             RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
             announceProgress(newDistance, pace)
@@ -875,6 +900,16 @@ class RunRecordingService : Service() {
             )
         }
         announceProgress(newDistance, pace)
+    }
+
+    /// The stored line fix to the live course timer, at its stored `ts`
+    /// (`CourseFixFeed`). L4: the timer's feed never costs the recording a fix.
+    private fun publishCourseFix(p: GpsPoint) {
+        try {
+            CourseFixFeed.publish(CourseFix.of(runId, p))
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "course fix not published; the run records on", e)
+        }
     }
 
     /// The split announcement and the pace-drift alert, after every fix that
@@ -1201,6 +1236,12 @@ class RunRecordingService : Service() {
         const val EXTRA_RACE_CUE = "race_cue"
         const val RACE_CUE_START = "start"
         const val RACE_CUE_FINISH = "finish"
+        /// A park course's start or finish (#1446): [EXTRA_COURSE_CUE] is
+        /// [RACE_CUE_START] or [RACE_CUE_FINISH], and a finish carries
+        /// [EXTRA_COURSE_ELAPSED_S].
+        const val ACTION_COURSE_CUE = "com.runapp.watchwear.action.COURSE_CUE"
+        const val EXTRA_COURSE_CUE = "course_cue"
+        const val EXTRA_COURSE_ELAPSED_S = "course_elapsed_s"
         const val EXTRA_RUN_ID = "run_id"
         const val EXTRA_ACTIVITY_TYPE = "activity_type"
         /// JSON array of `{"lat": .., "lng": ..}` objects — the picked
@@ -1321,6 +1362,16 @@ class RunRecordingService : Service() {
                 Intent(context, RunRecordingService::class.java).apply {
                     action = ACTION_RACE_CUE
                     putExtra(EXTRA_RACE_CUE, kind)
+                },
+            )
+        }
+
+        fun courseCue(context: Context, kind: String, elapsedS: Double?) {
+            context.startService(
+                Intent(context, RunRecordingService::class.java).apply {
+                    action = ACTION_COURSE_CUE
+                    putExtra(EXTRA_COURSE_CUE, kind)
+                    if (elapsedS != null) putExtra(EXTRA_COURSE_ELAPSED_S, elapsedS)
                 },
             )
         }

@@ -110,6 +110,7 @@ Deno.test('a full pass times the run with the matcher and records it for the byt
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: NEAR_SEGMENTS,
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(track()) },
     // The course has a checkpoint 900 m east of the line: the run misses it.
@@ -162,6 +163,7 @@ Deno.test('a segment with lines is timed by its crossings, off-track fixes exclu
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: { data: [gated], error: null },
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(points) },
   });
@@ -187,6 +189,60 @@ Deno.test('a failed checkpoint read scores nothing and fails the pass', async ()
   }
   assert(threw, 'a checkpoint read failure must throw (500, retried), never score without the rule');
   assert(!fake.calls.some((c) => c.name === 'record_segment_match'), 'nothing may be written');
+});
+
+Deno.test('every pass replaces the run\'s park course attempts after its efforts, and a failed write keeps the efforts', async () => {
+  const ok = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  assertEquals((await scoreRun(ok.client, RUN)).outcome, 'recorded');
+  const att = ok.calls.find((c) => c.name === 'record_park_course_attempts')!.args;
+  // Circle-matched candidates have no start box, so the run set out on none:
+  // the write still goes, empty, so an attempt the run no longer has is gone.
+  assertEquals(att, { p_run_id: RUN, p_track_version: 'v1', p_matcher_version: 4, p_attempts: [] });
+
+  const failing = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: null, error: { code: '23514' } },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  // The efforts are committed before the attempts, which only explain a
+  // missing time: a failed attempts write is logged, never a failed pass, so
+  // it cannot fail the job or stall a backfill batch on that run.
+  const logged: unknown[][] = [];
+  const realError = console.error;
+  console.error = (...args: unknown[]) => logged.push(args);
+  try {
+    const result = await scoreRun(failing.client, RUN);
+    const written = failing.calls.find((c) => c.name === 'record_segment_match')!.args.p_efforts as unknown[];
+    assert(written.length > 0, 'the efforts were written');
+    assertEquals(result, { outcome: 'recorded', matched: written.length });
+  } finally {
+    console.error = realError;
+  }
+  assertEquals(logged.length, 1);
+  assert(String(logged[0][1]).includes('23514'), `logged ${JSON.stringify(logged)}`);
+
+  const stale = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'stale', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  assertEquals((await scoreRun(stale.client, RUN)).outcome, 'stale');
 });
 
 Deno.test('outcomes that leave nothing to score are final, and stale bytes retry', async () => {
@@ -287,6 +343,7 @@ Deno.test('the checkpoint read is chunked at the in-filter bound', async () => {
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: { data: many, error: null },
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(track()) },
   });

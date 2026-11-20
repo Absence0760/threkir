@@ -682,6 +682,10 @@ struct RunStatsView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
+            if let course = workoutManager.courseTiming {
+                CourseTimingView(display: course)
+            }
+
             if let view = workoutManager.workoutView {
                 Text(view.stepLine)
                     .font(.caption)
@@ -973,6 +977,48 @@ struct RouteGuidanceView: View {
     }
 }
 
+// MARK: - Park course timing
+
+/// The park course line (#1446): "Timing started" once the runner leaves the
+/// start box, "Finished! 8:42:10" once a lap counts ("Finished! Best 21:42",
+/// the fastest, once several have), and — on the summary of a
+/// run stopped mid-course — that it is not a course time. One short line in
+/// large type, read at a glance mid-stride; the buzz that comes with each is
+/// `WorkoutManager.courseHaptic`.
+struct CourseTimingView: View {
+    let display: CourseTimingDisplay
+    var runEnded = false
+
+    var body: some View {
+        switch display {
+        case let .finished(seconds, laps):
+            Group {
+                if laps > 1 {
+                    Text("Finished! Best \(CourseTimingDisplay.clock(seconds: seconds))")
+                } else {
+                    Text("Finished! \(CourseTimingDisplay.clock(seconds: seconds))")
+                }
+            }
+                .font(.headline)
+                .foregroundColor(AppTheme.coral)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        case .timing:
+            if runEnded {
+                Text("Course not finished")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("Timing started")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.lilac)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+        }
+    }
+}
+
 // MARK: - Paused View
 
 struct PausedView: View {
@@ -1138,6 +1184,10 @@ struct PostRunView: View {
                     }
                 }
                 .padding(.vertical, 4)
+
+                if let course = workoutManager.courseTiming {
+                    CourseTimingView(display: course, runEnded: true)
+                }
 
                 if let laps = workoutManager.finishedRun?.laps, !laps.isEmpty {
                     SplitsView(laps: laps)

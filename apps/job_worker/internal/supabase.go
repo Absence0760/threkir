@@ -2300,6 +2300,9 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{name: "segment_efforts.json", table: schema.TableSegmentEfforts, filter: uidEq, sel: "*"},
 		// global_segment_efforts — the subject's times on the global/famous-segment catalogue.
 		{name: "global_segment_efforts.json", table: schema.TableGlobalSegmentEfforts, filter: uidEq, sel: "*"},
+		// park_course_attempts — why each of the subject's runs got no time on a
+		// park course it set out on (migration 20280106001446, issue #1446).
+		{name: "park_course_attempts.json", table: schema.TableParkCourseAttempts, filter: uidEq, sel: "*"},
 		// gear + run_gear — owner-private inventory + join.
 		{name: "gear.json", table: schema.TableGear, filter: "owner_id=eq." + uid, sel: "*"},
 		// gear_wear_logs — the subject's dated per-shoe wear observations

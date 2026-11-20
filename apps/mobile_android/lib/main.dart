@@ -57,6 +57,7 @@ import 'watch_ingest.dart';
 import 'watch_ingest_queue.dart';
 import 'wear_auth_bridge.dart';
 import 'wear_routes_bridge.dart';
+import 'watch_park_courses.dart' show WatchParkCourses;
 import 'widgets/undo_bar.dart';
 
 /// Holds the auth-state subscription registered in [main]. Top-level so
@@ -599,6 +600,8 @@ void main() async {
         // drops the diff cache, so it is the right idempotent nudge.
         WearRoutesBridge().attach(routeStore);
         AppleWatchRouteBridge().attach(routeStore);
+        // The park courses the departing runner navigated, on both wrists.
+        unawaited(WatchParkCourses().clear());
         wipeScreenOwnedOfflineStores().catchError((Object e) {
           debugPrint('Screen-owned store wipe on signedOut failed: $e');
         });
@@ -623,6 +626,8 @@ void main() async {
     // The same list on the other wrist. `AppleWatchRouteBridge` no-ops off
     // iOS, so this costs an Android build one early return.
     AppleWatchRouteBridge().attach(routeStore);
+    // The park courses the runner navigated, restated to the Wear OS watch.
+    unawaited(WatchParkCourses().attach());
     // Native-push device-token registration. No-ops when Firebase isn't
     // configured on the device (FirebasePushMessaging.isAvailable == false).
     // L4 auxiliary effect — attach() never throws into the startup path.

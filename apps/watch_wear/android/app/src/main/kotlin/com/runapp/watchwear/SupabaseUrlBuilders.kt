@@ -20,32 +20,45 @@ import java.util.zip.GZIPOutputStream
 /// Backed by the partial index `idx_routes_user_starred` (user_id,
 /// updated_at desc) WHERE is_starred → O(starred) read. Cap at 30
 /// for the rare power user.
-internal const val FETCH_ROUTES_STARRED_QUERY =
-    "select=id,name,waypoints,distance_m&is_starred=eq.true&order=updated_at.desc&limit=30"
+///
+/// Scoped to the signed-in runner's own rows by `user_id=eq.`. RLS lets a
+/// club member read a club route, and `is_starred` is the OWNER's curation,
+/// so without the filter a route a club admin starred reached a member's
+/// wrist with its raw waypoints, past the privacy-zone clipping a non-owner
+/// read gets everywhere else (decisions § 33). The phone applies the same
+/// owner-only rule before its push (`watch_route_visibility.dart`).
+internal fun fetchRoutesStarredQuery(userId: String): String =
+    "select=id,name,waypoints,distance_m&user_id=eq.${encodeQueryValue(userId)}" +
+        "&is_starred=eq.true&order=updated_at.desc&limit=30"
 
 /// Query-string for the first-launch fallback: 10 most-recently-
 /// updated owned routes. A new user without starred routes still
 /// needs *something* in the watch picker. Capped tighter than the
 /// starred path because this is undirected — better to show too few
-/// than fill the picker with stale GPX imports.
-internal const val FETCH_ROUTES_FALLBACK_QUERY =
-    "select=id,name,waypoints,distance_m&order=updated_at.desc&limit=10"
+/// than fill the picker with stale GPX imports. Owner-scoped for the
+/// reason [fetchRoutesStarredQuery] is: RLS alone returns club routes too.
+internal fun fetchRoutesFallbackQuery(userId: String): String =
+    "select=id,name,waypoints,distance_m&user_id=eq.${encodeQueryValue(userId)}" +
+        "&order=updated_at.desc&limit=10"
+
+private fun encodeQueryValue(value: String): String =
+    java.net.URLEncoder.encode(value, Charsets.UTF_8.name())
 
 /// Compose the absolute URL the OkHttp request hits, given a base
 /// supabase URL + a query-string predicate from above.
 internal fun buildFetchRoutesUrl(baseUrl: String, query: String): String =
     "$baseUrl/rest/v1/routes?$query"
 
-/// Decide which routes query to fire FIRST. Pure logic so the
-/// starred-vs-fallback decision is testable.
+/// Decide which routes query to fire FIRST for [userId]. Pure logic so
+/// the starred-vs-fallback decision is testable.
 ///
 /// Returns the starred query unconditionally — the production code
-/// then inspects the result and falls back to [chooseFallbackQuery]
+/// then inspects the result and falls back to [chooseFallbackRoutesQuery]
 /// when the starred result is empty. Splitting the decision in two
 /// pure helpers lets tests pin both paths independently.
-internal fun chooseFirstRoutesQuery(): String = FETCH_ROUTES_STARRED_QUERY
+internal fun chooseFirstRoutesQuery(userId: String): String = fetchRoutesStarredQuery(userId)
 
-internal fun chooseFallbackRoutesQuery(): String = FETCH_ROUTES_FALLBACK_QUERY
+internal fun chooseFallbackRoutesQuery(userId: String): String = fetchRoutesFallbackQuery(userId)
 
 // ───────────────────────── refreshAccessToken ─────────────────────────
 

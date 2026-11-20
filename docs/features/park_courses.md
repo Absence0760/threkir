@@ -10,6 +10,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 |---|---|
 | `parks` + `park_courses` tables, RLS, grants | Shipped (migration `20271115002383`) |
 | Checkpoint rule in the catalogue matcher (`segments` parity pair) | Shipped, web + Dart |
+| Live course timing on the Apple Watch (#1446): "Timing started" on leaving the start box, "Finished! 8:42:10" on entering the finish box, each with a buzz (every lap buzzes; the line kept on screen and on the summary is the fastest lap, the one the board keeps: "Finished! Best 21:42" once there are two), by the box rule streamed on the watch's own line fixes (`CourseBoxTiming.swift`, a one-way port of `_scoreByGates`, held to `segments_gate_cases.json` and `park_course_runs.json` to the millisecond) (decisions § 2598, § 2599) | Built and simulator-tested on watchOS; the phone sends the `park_course` push on Navigate this course (row below). No device run |
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
@@ -23,16 +24,20 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, eight point-to-point and out-and-back courses, decisions § 2581) is committed `staged` and not loaded until its owner checks in #1432 are done. High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; four linear race courses, 10K to 50K) is committed `staged` the same way (#1432). See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, nine point-to-point and out-and-back courses up to 50 miles, decisions § 2581) is committed `staged` and not loaded until its owner checks in #1432 are done. High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; six linear race courses, 10K to 100K) is committed `staged` the same way (#1432). See *Loading courses* |
+| Live course timing on the Wear OS watch: "Timing started" / "Finished! 8:42:10" with a buzz (each lap announced with its own time; the screen and the summary keep the fastest, "Finished! Best 21:42", what the board keeps), fed every stored line fix at its stored `ts`, by the matcher's box rule ported to Kotlin (`LiveCourseTimer.kt`, the `live_course_timer` pair, held to `fixtures/park_course_runs.json`; issue #1446, decisions § 2595) (decisions § 2595, § 2599) | Built and unit-tested; the phone writes the `/park_courses` Data Layer item (row below), not yet run on a device |
+| The phone puts courses on the watches (#1446): Navigate this course sends the course to the wrist. Wear OS gets the courses the runner navigated, newest first, up to 8, as `/park_courses` (`watch_park_courses.dart` + `WearParkCoursesBridge.kt`, held to `fixtures/wear_park_courses_payload.json`), restated at startup and emptied on sign-out; the Apple Watch gets the one being navigated as its armed route plus the `park_course` push (`AppleWatchRouteBridge.armParkCourse`, claim (7c) of `check_watch_ios_source.mjs`), and every other arm clears it. Public catalogue geometry only | Built and unit-tested on both phones, no paired device run |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
 | "Report a problem with this course" (issue #1346, migrations `20271213000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
 | NPS closures job (`park-closures-sweep`, migrations `20271214131302` + `20271214131303`, decisions § 2454): a daily read of NPS alerts that flags courses for operator review at `/admin/park-alerts`, never closing one itself. Inert until `NPS_API_KEY` is set and the schedule is armed. See *Reports and closures* | Shipped (code); waits on the NPS key |
-| Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile) | Shipped |
+| Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile). A course the run started and got no time on gets a card below the chips saying which rule it missed (stopped short, a missed checkpoint, too far off the course, the wrong way round) with a bar of how far along it got, linking to the course; owner only, and a failed read leaves the cards out (web `RunParkCourseAttempts.svelte` over `fetchParkCourseAttempts`, issue #1446) | Shipped |
+| Run detail park course attempts, mobile half (#1446): the owner sees one card per park course the run started but got no time on, the one sentence saying which rule it missed (stopped short, missed checkpoint n of count, off the course, wrong way round) and a bar of how far along it got in their unit, opening the course; a failed read leaves the section out (`RunParkCourseAttempts`, `get_run_park_course_attempts`) | Shipped on mobile |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
+| Live start and finish on the phone (#1446): following a course's route, the run screen says "Timing started" on leaving the start box and "Finished! 8:42:10" with a buzz when the board would time the run (the same `computeGlobalSegmentEffort`), and a stop between the two says on the summary that it won't count and the run is still saved. Off the line by more than the 35 m checkpoint tolerance it says "You're off the course. Head back to checkpoint 3." (voice, buzz, banner, once until back within 25 m); the live map numbers each checkpoint and ticks it when passed (the matcher's own `advanceCheckpointWalk`); and a run that follows no course finds one whose start box it leaves (`fetchParkCoursesStartingIn`, a 400 m box on the start line) and says "Timing started: {course}". See [run_recording.md § Live park course timing](run_recording.md#live-park-course-timing-1446) (decisions § 2597) | Shipped, Android + iOS; web records no runs |
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 | Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
@@ -50,8 +55,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 | **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 | **Manassas National Battlefield Park, 5 km and 10 km (2 laps)** (NPS `mana`; issue #1434): built from OSM, every walked way checked against the NPS Public Trails layer, under `scripts/parks/catalogue/us-va/manassas/`. No half or marathon: every 21.1 km loop crosses US-29 or VA-234 at grade four or more times a lap | **Staged**: waits on the owner's ground check and the permit question. See *Pre-deploy checklist* |
-| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile and 100K wait for their own courses now that the distances exist (§ 2593) | **Staged**: waits on the owner's ground check, the Farmville closure and the permit question. See *Pre-deploy checklist* |
-| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **Staged**: waits on the owner's ground check, end-lot access and NOVA Parks' event rules. See *Pre-deploy checklist* |
+| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km, 50 miles and 100 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile turns about 4 km past High Bridge Station, just before Rice's Depot Road; the 100K turns about 1.9 km before the trail's east end near Burkeville, so its snapshot carries the two ways past Orchard Road (§ 2593) | **Staged**: waits on the owner's ground check, the Farmville closure and the permit question. See *Pre-deploy checklist* |
+| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point, and Purcellville to Clarks Crossing and back, 100 km** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **Staged**: waits on the owner's ground check, end-lot access and NOVA Parks' event rules. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -210,6 +215,91 @@ Every run is scored on the server (decisions § 2392):
   the next; a run already scored once is only read again when its stored extent
   (`run_track_extents`) can reach the segment. A second call while one is queued
   returns the same job.
+
+## Why no time
+
+Issue #1446, decisions § 2596. A run that set out on a course and got no time says which rule it
+missed and how far along it got, on run detail, to its owner only, one card per
+course beside the course chips.
+
+**The rule** is `diagnoseGlobalSegmentAttempts` in the `segments` parity pair
+(web `segments/segments.ts`, Dart `lib/segments.dart`, the same fixture cases
+on both). It never changes a time: it runs the box timer first and only
+explains a null, so no matcher version bump came with it.
+
+- An **attempt** opens where the run leaves the course's start box forward
+  (`gateTimingEdges`, with the timer's first-fix slack) and closes where it next
+  enters the finish box having covered the length guard's lower bound (75 %),
+  where it ends in the finish box as the timer's tail rule reads it, or at the
+  end of the recording. Attempts never overlap; a lapped loop's finish opens
+  the next. A run that never left the start box has none; a run timed on the
+  course has none.
+- A run that crosses into the course **backward through the finish box** opens
+  a reverse attempt. A wrong-way run never leaves the start box forward, so this
+  is the only way it is seen. It counts only when it reaches the start box from
+  the course side having covered 75 % of the length and passed at least two
+  checkpoints in reverse order, more than in order.
+- The **outcome**, in precedence order: `wrong_direction` (a counted reverse
+  attempt; progress 0, since none of the course was run its way round);
+  `skipped_checkpoint` (a checkpoint not passed in order, by the timer's own
+  first-in-tolerance walk, and the run entered the finish box or got further
+  along the line than that checkpoint; `missed_checkpoint` is the first one);
+  `gps_gap` (reached the finish box with every checkpoint passed and within
+  the length guard, but across a gap between fixes of more than 60 s, or ended
+  in it with such a gap before its last stretch there: the timer refused the
+  gap, so the card says the recording has a gap where the runner reached the
+  finish, not that they stopped short or left the course); `off_course`
+  (entered the finish box with every checkpoint passed, yet untimed: the 25 %
+  length guard); `stopped_short` (anything else that ended before the finish
+  box).
+- **A gap at the finish** is read the way the timer reads one. The gap
+  detector refuses any crossing across more than 60 s
+  (`GATE_REJECT_GAP_S`), so an attempt closes at the finish when the fix before
+  the gap is short of the finish edge or outside its lane and the fix after it
+  is in the lane at or past the edge (`intoFinishLane`, shared with the
+  timer's `enteredAcrossGap`), of any length. The timer itself accepts such a
+  gap only up to 300 s and at 0.4 to 1.5 times the runner's average speed, so
+  every gap the diagnosis sees at the finish is one it refused.
+- **Progress** follows the run along the course line: each fix within 35 m of
+  the line is placed at the nearest point of the line to where the runner
+  should be by now, searched from just behind the last placed point to 1.5
+  times the distance covered since then ahead, so a loop's two ends, a lapped
+  course's laps and an out-and-back's legs are told apart. The furthest placed
+  point not past the first missed checkpoint is the progress, scaled to the
+  stored length. Of several attempts the furthest counts.
+- **Three filters** keep a run on one course from reporting every course it
+  passes through. The six Pocahontas courses share trailheads and trails, and
+  without them a clean half marathon reported three courses it never set out
+  on: an attempt that spent half or more of its time inside an effort the run
+  was timed by (on any segment) is dropped; a forward attempt on a course with
+  checkpoints counts only once it passed the first; a reverse attempt must
+  close as above. An untimed run that follows several courses' shared line
+  still reports each (the 50K's one-lap case reports the half, the marathon
+  and the 50K).
+
+**Server.** The `segment-match` function writes the attempts after the efforts
+on every pass, through `record_park_course_attempts` (same stale-bytes refusal;
+a re-score replaces the run's rows, an empty list included), into
+`park_course_attempts`, owner-only by RLS. The attempts pass has its own
+`try`/`catch`: a throw in the diagnosis or a failed write is logged and the
+pass still returns the efforts it recorded, so it never fails the job or
+stalls a backfill batch on that run; the attempts then wait for the run's next
+scoring (`handler.test.ts`). Clients read
+`get_run_park_course_attempts` through web `fetchParkCourseAttempts` and Dart
+`ApiClient.fetchParkCourseAttempts`; both throw on a failed read, so the card
+section is left out and logged rather than shown empty. Reference:
+[api_database.md](../backend/api_database.md) (`park_course_attempts`).
+
+**Not covered.** A circle-matched segment (no usable pair of lines) has no start
+box and so no attempt. A runner who quits before the first checkpoint gets no
+card. A dropout whose first fix back is already off to the side of the finish
+box's lane (the runner turned away during it) is not read as reaching the
+finish, so it reads `stopped_short`; one whose first fix back is in the lane
+reads `gps_gap` however long the dropout. Pocahontas has no out-and-back or
+point-to-point course, so the fixture's two are synthetic (cut from Beaver
+Lake Trail's line), and no real course of either shape is in the boards
+pgTAP test yet. A run scored before this shipped has no attempts until it is scored again
+(a backfill or a track rewrite).
 
 ## Seasons and boards
 
@@ -1323,8 +1413,8 @@ These gate going live, not the code:
       `release` goes `live`: the owner walks each start and finish against
       the trail signs and lots, confirms the Farmville section (Main Street
       to Osborne Road, closed for the River Road bridge rebuild "through
-      November") has reopened, since the half and the marathon run through
-      it, and checks DCR's daily parking fees and whether a standing course
+      November") has reopened, since the half, the marathon, the 50 mile and the 100K run
+      through it, and checks DCR's daily parking fees and whether a standing course
       needs a Special Use Permit. Walk the route guides and set
       `ground_checked_at`.
 - [ ] **Washington & Old Dominion Trail (staged, issue #1432).** Before its
@@ -1359,6 +1449,34 @@ These gate going live, not the code:
 
 ## Tests
 
+- Why no time (issue #1446): the shared fixture `fixtures/park_course_runs.json`
+  records every case's attempts on every course, asserted exactly by
+  `parks/park_course_runs.test.ts`, its Dart twin and the segment-match
+  `park_course_runs.test.ts` (what reaches `record_park_course_attempts`);
+  `beaver_shortcut` / `beaver_cut` are `skipped_checkpoint` 2, `beaver_wrong_way`
+  `wrong_direction`, `beaver_short` `stopped_short` 150 m short, `beaver_detour`
+  `off_course`, and no timed run has an attempt. The two synthetic courses
+  (below) add the shapes Pocahontas lacks: on the out-and-back, whose
+  checkpoints do not mirror, `oab_clean` is timed with no attempt,
+  `oab_stopped_at_turn` is `stopped_short` at the turn (not `wrong_direction`,
+  although every forward start there also opens a reverse attempt) and
+  `oab_turned_early` is `skipped_checkpoint` 2; on the point to point,
+  `ptp_clean` is timed, `ptp_stopped_short` is `stopped_short` 400 m out and
+  `ptp_dropout_at_finish` (no fix from 60 m short of the line, through a stop,
+  to 6 m past it, about 260 s refused at a tenth of the runner's pace) is
+  `gps_gap` at the full length. Eight synthetic `attempt:` cases in
+  `segments.test.ts` / `segments_test.dart`, among them a 200 s dropout into
+  the finish box then a cool-down and a 400 s dropout ending 3 m short of it
+  (each `gps_gap`), a dropout mid-course and a stop (still `stopped_short`),
+  and an out-and-back with mirrored checkpoints (timed out and back,
+  `stopped_short` at the turn). pgTAP
+  `park_course_attempts_test.sql` (the write, its stale and missing refusals,
+  the replace, the CHECKs, owner-only reads of the table and the RPC, anon
+  refused both, no client write, the cascade on a run delete). The Art 20
+  export: Go `park_course_attempts_export_test.go` (one spec, the subject's
+  own rows by `user_id`, every column). Row readers:
+  `park_courses.test.ts` (`parkCourseAttemptFromRow`) and core_models
+  `park_course_attempt_test.dart`.
 - Reports and closures: pgTAP
   `apps/backend/supabase/tests/park_course_reports_test.sql` (anon and
   authenticated refused the filing RPC and the table, the insert path signed
@@ -1456,16 +1574,23 @@ These gate going live, not the code:
 - A run over a real course reaches its board (#1342 step 5c, the automated
   form of the hand test): `fixtures/park_course_runs.json`, seeded 1 Hz runs
   with about 5 m RMS of correlated GPS error over the six committed
-  Pocahontas lines (a minute in the lot, a lead-in, the course, a cool-down),
+  Pocahontas lines and two synthetic courses (a minute in the lot, a lead-in,
+  the course, a cool-down). The synthetic courses are the shapes the park
+  lacks, an out-and-back and a point to point, cut from Beaver Lake Trail's
+  line and moved 6 km south of the park (`syntheticCourses`), their GeoJSON
+  generated into `fixtures/park_course_runs/` and their runs left out of the
+  pgTAP block (no catalogue row exists for them);
   generated by `parks/course_run_fixture.ts` with `pnpm gen:park-course-runs`
   (`parks/course_run_fixture.test.ts` fails when it, or the generated block of
   the pgTAP test below, is stale). Cases: a clean run of every course within
   `2 × 8 m / pace` of its true elapsed time, a stop with sparse fixes under the
   trees, a shortcut that skips a checkpoint, the loop the wrong way, stopping
-  short, passing nearby, three laps, two 5K passes either way round, and one
-  lap of each two-lap course. Read by `parks/park_course_runs.test.ts` ↔
-  `test/park_course_runs_test.dart` (every case scored on all six courses, to
-  the millisecond), by Deno `segment-match/park_course_runs.test.ts` (the
+  short, passing nearby, three laps, two 5K passes either way round, one
+  lap of each two-lap course, and on the synthetic courses a clean run, a stop
+  short (at the turn of the out-and-back) and an early turn and a GPS dropout
+  at the finish. Read by `parks/park_course_runs.test.ts` ↔
+  `test/park_course_runs_test.dart` (every case scored on all eight courses,
+  to the millisecond), by Deno `segment-match/park_course_runs.test.ts` (the
   function's `scoreRun` sends exactly those efforts) and by pgTAP
   `park_course_boards_test.sql`, which loads the real catalogue through
   `private.load_park_catalogue`, checks the database's lines are the
@@ -1603,6 +1728,11 @@ These gate going live, not the code:
   course; never asked for by anyone else); Flutter
   `test/run_park_course_chips_test.dart`; `api_client`
   `park_course_reads_test.dart` (`fetchParkCourseBySlugs`).
+- Run detail attempts (web): `src/lib/parks/park_course_attempts.test.ts`
+  (each outcome's sentence, the link, the bar and the unit); Playwright
+  `parks/run-park-course-attempts.spec.ts` (the card, its bar and link, a
+  skipped checkpoint, a failed read leaving the page standing, no card for a
+  run with no attempt, never asked for by anyone else).
 - Official passport board: `node --test scripts/official/lib/official_catalogue.test.mjs`
   (the region required and validated for `park_courses`, refused elsewhere,
   the fixture `fixtures/virginia-park-passport.json`); pgTAP

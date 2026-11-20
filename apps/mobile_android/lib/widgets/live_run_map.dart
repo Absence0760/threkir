@@ -490,6 +490,21 @@ class MapMarkerPin {
   });
 }
 
+/// A park course checkpoint on the live map during a timed course run
+/// (#1446): its 1-based number and whether this attempt has passed it.
+class LiveCheckpointMark {
+  final double lat;
+  final double lng;
+  final int number;
+  final bool passed;
+  const LiveCheckpointMark({
+    required this.lat,
+    required this.lng,
+    required this.number,
+    required this.passed,
+  });
+}
+
 class LiveRunMap extends StatefulWidget {
   /// The GPS track recorded so far.
   final List<Waypoint> track;
@@ -633,6 +648,7 @@ class LiveRunMap extends StatefulWidget {
     this.courseMarkers = const [],
     this.courseStartGate,
     this.courseFinishGate,
+    this.liveCheckpoints = const [],
     this.markerPlacing = false,
     this.onMarkerPlace,
     this.onMarkerTap,
@@ -662,6 +678,10 @@ class LiveRunMap extends StatefulWidget {
   /// the markers. Null for no line at that end.
   final CourseGate? courseStartGate;
   final CourseGate? courseFinishGate;
+
+  /// A timed park course's checkpoints: numbered and grey until passed, then
+  /// ticked. Empty = no checkpoint layer.
+  final List<LiveCheckpointMark> liveCheckpoints;
 
   /// When true, a map tap reports its lat/lng up via [onMarkerPlace]
   /// (the marker-editor "tap to drop a pin" mode) instead of doing
@@ -1166,6 +1186,29 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
       ..forward();
   }
 
+  List<Widget> _liveCheckpointLayer(BuildContext context) {
+    try {
+      return [
+        MarkerLayer(
+          key: const ValueKey('live-course-checkpoints'),
+          markers: [
+            for (final m in widget.liveCheckpoints)
+              if (m.lat.isFinite && m.lng.isFinite)
+                Marker(
+                  point: LatLng(m.lat, m.lng),
+                  width: 30.0 + 8 * '${m.number}'.length,
+                  height: 24,
+                  child: LiveCheckpointMarker(mark: m),
+                ),
+          ],
+        ),
+      ];
+    } catch (e) {
+      debugPrint('live checkpoint layer failed: $e');
+      return const [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final trackLatLngs = _smoothedTrackFor(widget.track);
@@ -1446,6 +1489,11 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
               darkBasemap: darkBasemap,
             ),
 
+            // L3: a checkpoint that cannot be drawn costs its layer, never
+            // the map under it.
+            if (widget.liveCheckpoints.isNotEmpty)
+              ..._liveCheckpointLayer(context),
+
             // Course markers (aid stations, cutoffs, …). Coloured pins
             // above the trace with a label; tapping one (in edit mode)
             // reports its id up so the host can edit / delete it.
@@ -1576,6 +1624,62 @@ class _DistanceMarkerPin extends StatelessWidget {
 /// Coloured course-marker pin + label. Mirrors the `route-marker-bg` +
 /// `route-marker-label` MapLibre layers on `RunMap.svelte` (coloured
 /// circle, white halo, label below).
+class LiveCheckpointMarker extends StatelessWidget {
+  const LiveCheckpointMarker({super.key, required this.mark});
+
+  final LiveCheckpointMark mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final passed = mark.passed;
+    final fill = passed ? scheme.primary : scheme.surfaceContainerHighest;
+    final ink = passed ? scheme.onPrimary : scheme.onSurfaceVariant;
+    final style = Theme.of(context)
+        .textTheme
+        .labelMedium
+        ?.copyWith(color: ink, fontWeight: FontWeight.w700);
+    // Never colour alone: a passed checkpoint carries a tick beside its
+    // number, an unpassed one only the number.
+    final body = DecoratedBox(
+      key: ValueKey(
+          'live-checkpoint-${mark.number}-${passed ? 'passed' : 'ahead'}'),
+      decoration: ShapeDecoration(
+        color: fill,
+        shape: StadiumBorder(side: BorderSide(color: ink, width: 1.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (passed) ...[
+                Icon(Icons.check, size: 14, color: ink),
+                const SizedBox(width: 2),
+              ],
+              Text('${mark.number}', style: style),
+            ],
+          ),
+        ),
+      ),
+    );
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return Semantics(
+      label: passed
+          ? l10n.runCourseCheckpointPassedLabel(mark.number)
+          : l10n.runCourseCheckpointLabel(mark.number),
+      excludeSemantics: true,
+      child: AnimatedSwitcher(
+        duration: reduceMotion ? Duration.zero : AppMotion.brief,
+        child: body,
+      ),
+    );
+  }
+}
+
 class _CourseMarkerPin extends StatelessWidget {
   final String label;
   final String color;

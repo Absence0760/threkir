@@ -19,6 +19,10 @@ data class SavedRoute(
     val name: String,
     val distanceM: Double,
     val waypoints: List<Waypoint>,
+    /// The park course this row is, when the phone put one on the watch
+    /// (`ParkCourse.asRoute`): the run is then timed live on the course.
+    /// Null for a saved route.
+    val courseId: String? = null,
 ) {
     /// Lightweight conversion to the `RouteMath` input type. Avoids
     /// leaking the `SavedRoute` shape into pure-math territory — the

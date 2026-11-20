@@ -6463,5 +6463,21 @@
   "filterBarSort": "並べ替え",
   "filterBarSource": "ソース",
   "runsSearchHint": "ランの名前で検索",
-  "filterBarRegion": "地域"
+  "filterBarRegion": "地域",
+  "runCourseTimingStarted": "計測開始",
+  "runCourseFinished": "ゴール！{time}",
+  "runCourseStoppedShort": "コースのタイムとしては記録されません。ランは保存されています。",
+  "runDetailParkCourseAttempts": "タイムが記録されなかった公園コース",
+  "runDetailParkCourseAttemptStoppedShort": "{course}：タイムなし。{total}のうち{progress}を走りました。タイムを記録するにはコース全体を走ってください。",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}：タイムなし。{count}か所のうちチェックポイント{n}を通過しませんでした。すべて通過するにはコースラインから外れないでください。",
+  "runDetailParkCourseAttemptOffCourse": "{course}：タイムなし。コースから大きく外れました。コースラインから外れないでください。",
+  "runDetailParkCourseAttemptGpsGap": "{course}：タイムなし。ゴールに着いたところで記録が途切れていたため、タイムを計測できませんでした。ゴールラインを越えるまで記録を続けてください。",
+  "runDetailParkCourseAttemptWrongDirection": "{course}：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。",
+  "runDetailParkCourseAttemptProgress": "{total}のうち{progress}",
+  "runDetailParkCourseAttemptProgressLabel": "コースをどこまで進んだか",
+  "runCourseOffCourseCheckpoint": "コースから外れています。チェックポイント{number}に戻ってください。",
+  "runCourseOffCourseLine": "コースから外れています。コースに戻ってください。",
+  "runCourseTimingStartedNamed": "計測開始：{course}",
+  "runCourseCheckpointLabel": "チェックポイント{number}",
+  "runCourseCheckpointPassedLabel": "チェックポイント{number}、通過済み"
 }

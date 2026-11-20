@@ -30,6 +30,7 @@ import {
 	checkpointMarks,
 	courseNotices,
 	parkKindOf,
+	parkCourseAttemptFromRow,
 } from './park_courses';
 
 test('parseCourseCheckpoints: reads an ordered list of points', () => {
@@ -502,3 +503,44 @@ test('parkKindOf: only an explicit trail is a trail', () => {
 	assert.equal(parkKindOf({}), 'park');
 	assert.equal(parkKindOf(null), 'park');
 });
+
+// Why no time (issue #1446): the run-detail card's row reader.
+{
+	const row = {
+		park_course_id: 'c-1',
+		course_name: 'Beaver Lake Trail',
+		park_name: 'Pocahontas State Park',
+		region_code: 'US-VA',
+		park_slug: 'pocahontas',
+		course_slug: 'beaver-lake-trail',
+		outcome: 'skipped_checkpoint',
+		progress_m: 1447,
+		course_m: 3595,
+		missed_checkpoint: 2,
+		checkpoint_count: 4,
+	};
+
+	test('parkCourseAttemptFromRow reads a whole row into the card shape', () => {
+		assert.deepEqual(parkCourseAttemptFromRow(row), {
+			parkCourseId: 'c-1',
+			courseName: 'Beaver Lake Trail',
+			parkName: 'Pocahontas State Park',
+			region: 'US-VA',
+			parkSlug: 'pocahontas',
+			courseSlug: 'beaver-lake-trail',
+			outcome: 'skipped_checkpoint',
+			progressM: 1447,
+			courseM: 3595,
+			missedCheckpoint: 2,
+			checkpointCount: 4,
+		});
+		assert.equal(parkCourseAttemptFromRow({ ...row, outcome: 'stopped_short', missed_checkpoint: null })?.missedCheckpoint, null);
+		assert.equal(parkCourseAttemptFromRow({ ...row, outcome: 'gps_gap', missed_checkpoint: null })?.outcome, 'gps_gap');
+	});
+
+	test('parkCourseAttemptFromRow leaves out a row it cannot read whole rather than guessing', () => {
+		assert.equal(parkCourseAttemptFromRow({ ...row, outcome: 'lost' }), null);
+		assert.equal(parkCourseAttemptFromRow({ ...row, progress_m: null as unknown as number }), null);
+		assert.equal(parkCourseAttemptFromRow({ ...row, missed_checkpoint: 'two' as unknown as number }), null);
+	});
+}

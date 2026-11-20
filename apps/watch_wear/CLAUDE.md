@@ -84,6 +84,9 @@ apps/watch_wear/
             │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo, the finish line re-armed after an undo and a restart
             │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
             │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course, the kept server clock offset (24 h) and an undone finish (decisions § 2450)
+            │   ├── CourseGates.kt           # box half of the `course_gates` pair, one-way port: `gateBoxParts`, `gateTimingEdges`, `linesChain` (fixtures/course_gates_cases.json)
+            │   ├── LiveCourseTimer.kt       # live park-course timer (#1446, decisions § 2595): the matcher's box rule streamed fix by fix, `CourseEvent.Started` / `Finished`, `settle` on Stop; held to fixtures/park_course_runs.json
+            │   ├── ParkCourseBridge.kt      # Wearable Data Layer listener for the park courses the phone puts on the watch (`/park_courses`, fail-closed; fixtures/wear_park_courses_payload.json)
             │   ├── LineCalibration.kt       # debug builds only: the #1304 line-calibration capture + scoring + CSV, Kotlin half of the phone's `line_calibration.dart` (decisions § 2453)
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
             │   ├── ui/LineCalibrationScreen.kt # debug builds only: the line-calibration screen, opened from the pre-run list behind `BuildConfig.DEBUG`
@@ -561,6 +564,36 @@ Updates: `RunRecordingService` calls `ActiveRunComplicationService.requestUpdate
 What the UI exposes during a recording, for quick reference when reading
 `ui/RunWatchApp.kt`:
 
+**Live park course timing (#1446, decisions § 2595).** A course the phone put
+on the watch (`ParkCourseBridge`, `/park_courses`) is a row at the top of the
+route picker captioned "Course · 5.0 km". Picking it makes `start()` build a
+`LiveCourseTimer` (`courseTimerFor`), fed every line fix the track file
+stores, at its stored `ts`, the fixes and instants the server's matcher reads:
+`RunRecordingService.onGps` publishes each non-`offTrack` fix to
+`recording/CourseFixFeed` right after `TrackWriter.append`, and
+`RunViewModel.observeCourseFixes` offers each to the timer in its own catch.
+Not the conflated `Metrics.latestPoint` on the device clock: that dropped any
+fix the screen was slow to collect, and a dropped fix inside a checkpoint
+circle left the wrist silent while the board timed the run. Leaving the
+start box forward says "Timing started", entering the finish box having passed
+every checkpoint in order within the length guard says "Finished! 8:42:10":
+each buzzes (the workout's step and completion buzzes) and speaks through
+`RunRecordingService.courseCue`, every lap with its own time. The running
+screen shows the cue in `title3` above the clock, in ambient too, and the
+post-run summary shows a finished one: once a lap finishes it stays on the
+FASTEST lap's time, the one the board keeps ("Finished! Best 21:42" from the
+second lap, `course_finished_best`), and a later start does not hide it. Stop settles the timer first, so a
+recording that ends in the finish box (or 5 m short) finishes there. The rule
+is the server matcher's (`LiveCourseTimerTest` replays
+`fixtures/park_course_runs.json` and `SegmentsGateCasesTest` every box case of
+`fixtures/segments_gate_cases.json`, both to the matcher's millisecond); the board's time is still the server's. The phone writes
+`/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
+`WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
+path and keys held by `DataLayerContractTest`): the courses the runner opened
+Navigate this course on, newest first, up to 8 and under ~90 KB, restated at
+phone startup and emptied on sign-out. Wiring pinned by
+`ParkCourseWiringTest`.
+
 **Post-run Discard is a two-press confirm, like the recovery prompt's.**
 `PostRunScreen`'s bottom-end `×` renders only on the `!synced` branch, and
 `RunViewModel.discard` is `store.remove(id)` — the queue is the only place
@@ -720,8 +753,12 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
 - **Route overlay (no map).** Pre-run Route chip → `Stage.RoutePicker`
   (backed by `LocalRouteStore` + `SupabaseClient.fetchRoutes`).
   The fetch is filtered server-side to **starred routes only**
-  (`is_starred=eq.true&order=updated_at.desc&limit=30`) so a runner
-  with 200 saved routes doesn't have to scroll a 1.4-inch screen.
+  (`user_id=eq.<uid>&is_starred=eq.true&order=updated_at.desc&limit=30`)
+  so a runner with 200 saved routes doesn't have to scroll a 1.4-inch
+  screen. Both queries carry the owner filter: RLS returns a club route
+  to every member and `is_starred` is the owner's curation, so without
+  it a route a club admin starred reached a member's wrist unclipped
+  (decisions § 33; the phone's `watch_route_visibility.dart` rule).
   When the starred query returns empty (first-launch / un-curated
   user) `fetchRoutes` falls back to the 10 most-recently-updated
   owned routes so the picker isn't empty before the runner has

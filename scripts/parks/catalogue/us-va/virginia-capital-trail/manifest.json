@@ -2408,6 +2408,697 @@
         ]
       },
       "route_guide_checked_at": null
+    },
+    {
+      "slug": "capital-trail-shiplock-to-jamestown-50mi",
+      "name": "Great Shiplock Park to Jamestown, 50 miles",
+      "race_distance": "50mi",
+      "course_shape": "point_to_point",
+      "distance_m": 80467.2,
+      "start": {
+        "lat": 37.513522,
+        "lng": -77.415871
+      },
+      "finish": {
+        "lat": 37.228568,
+        "lng": -76.781405
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/19928705,way/19935964,way/19935971,way/279673447,way/424824141,way/424824148,way/531825844,way/531825845,way/531855345,way/531855347,way/542245248,way/542245249,way/613666027,way/613666030,way/756132219,way/756132220,way/880369053,way/880386556,way/880386557,way/931882707,way/931882708,way/1024124764,way/1024124765,way/1029114818,way/1029114819,way/1029114820,way/1029114821,way/1029114822,way/1029114823,way/1066422653,way/1066422654,way/1069372699,way/1069372700,way/1069372701,way/1069372702,way/1069372712,way/1069372713,way/1069376367,way/1069376368,way/1069376369,way/1069376370,way/1088461493,way/1133258813,way/1213073375,way/1213073376,way/1213073385,way/1213073386,way/1213073387,way/1213073388,way/1223509412,way/1223509413,way/1223509416,way/1223509417,way/1223509433,way/1223509434,way/1347598700,way/1347598701,way/1347598702,way/1347598703,way/1347598705,way/1347598706,way/1347598707,way/1347598708,way/1347620975,way/1347620976,way/1414448657,way/1414491036,way/1414491037,way/1415052808,way/1415052809,way/1415052810,way/1415052811,way/1415052812,way/1415052813,way/1415052814,way/1415052815,way/1428146918,way/1428146919,way/1428152047,way/1428152048,way/1486416394,way/1486419172,way/1486419173,way/1486419174,way/1486419175,way/1486419176,way/1486419177,way/1486419178,way/1486419179,way/1486419180,way/1486419181,way/1486419182,way/1486419183,way/1486419184,way/1486419185,way/1486419186,way/1486419187,way/1486419188,way/1486419189,way/1486419190,way/1486419191,way/1540852752,way/1550468319,way/1550468320,way/1550471022,way/1550471023,way/1550933947,way/1550933948,way/1550959525,way/1550959526,way/294875026,way/294875039,way/600835130,way/600835131,way/1202360708,way/1202360709,way/1202360710,way/1202360711,way/1221203690,way/1221203691,way/1221203694,way/1221203695,way/1364573838,way/1364573839,way/1414448648,way/1414448649,way/1414448658,way/1414448659,way/1414448660,way/1414491027,way/1414491028",
+      "source_checked_at": "2026-11-19",
+      "geojson": "capital-trail-shiplock-to-jamestown-50mi.geojson",
+      "elevation_m": 218,
+      "checkpoints": [
+        {
+          "lat": 37.488168,
+          "lng": -77.401536
+        },
+        {
+          "lat": 37.463826,
+          "lng": -77.38102
+        },
+        {
+          "lat": 37.444805,
+          "lng": -77.352458
+        },
+        {
+          "lat": 37.456293,
+          "lng": -77.333364
+        },
+        {
+          "lat": 37.432935,
+          "lng": -77.325789
+        },
+        {
+          "lat": 37.418284,
+          "lng": -77.295276
+        },
+        {
+          "lat": 37.404727,
+          "lng": -77.263153
+        },
+        {
+          "lat": 37.383892,
+          "lng": -77.242272
+        },
+        {
+          "lat": 37.363649,
+          "lng": -77.226397
+        },
+        {
+          "lat": 37.341351,
+          "lng": -77.21614
+        },
+        {
+          "lat": 37.329818,
+          "lng": -77.184052
+        },
+        {
+          "lat": 37.334284,
+          "lng": -77.153543
+        },
+        {
+          "lat": 37.333918,
+          "lng": -77.11857
+        },
+        {
+          "lat": 37.339287,
+          "lng": -77.084839
+        },
+        {
+          "lat": 37.33692,
+          "lng": -77.05205
+        },
+        {
+          "lat": 37.336239,
+          "lng": -77.018061
+        },
+        {
+          "lat": 37.32685,
+          "lng": -76.98632
+        },
+        {
+          "lat": 37.306658,
+          "lng": -76.959744
+        },
+        {
+          "lat": 37.289188,
+          "lng": -76.929119
+        },
+        {
+          "lat": 37.269677,
+          "lng": -76.900234
+        },
+        {
+          "lat": 37.26367,
+          "lng": -76.866451
+        },
+        {
+          "lat": 37.253657,
+          "lng": -76.831413
+        },
+        {
+          "lat": 37.253892,
+          "lng": -76.795991
+        }
+      ],
+      "waypoint_count": 1288,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at Great Shiplock Park on Dock Street and walk about 1.6 km east along the trail to the start line. The finish is on the trail a short walk before it meets Colonial Parkway at the Jamestown Trailhead.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Virginia Capital Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1016
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cattle Drive",
+            "at_m": 2615
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Tree Hill Lane",
+            "at_m": 2882
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Osborne Turnpike",
+            "at_m": 3017
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3353,
+            "order": 1,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 4030
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Chatsworth Road",
+            "at_m": 4419
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Freeless Street",
+            "at_m": 4590
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Messer Road",
+            "at_m": 6114
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Laburnum Avenue",
+            "signal": true,
+            "at_m": 6433
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6706,
+            "order": 2,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6980
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7267
+          },
+          {
+            "kind": "climb",
+            "gain_m": 12,
+            "length_m": 300,
+            "at_m": 7286
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Towhee Lane",
+            "at_m": 7345
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willson Road",
+            "signal": true,
+            "at_m": 8107
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Gregg Road",
+            "at_m": 9878
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10058,
+            "order": 3,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Strath Road",
+            "at_m": 10160
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wood Mill Drive",
+            "at_m": 10643
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11291
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11602
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kinvan Road",
+            "at_m": 12406
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 13411,
+            "order": 4,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Doran Road",
+            "at_m": 13765
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16720
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16764,
+            "order": 5,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 16874
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 17612
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 17948
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 18281
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 18800
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 19611
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 19779
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20117,
+            "order": 6,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 21274
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 22870
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 23135
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 23378
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 23470,
+            "order": 7,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24768
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 25493
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 25965
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26822,
+            "order": 8,
+            "of": 23
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30175,
+            "order": 9,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 30455
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 31840
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 33014
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 33528,
+            "order": 10,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 33679
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 35872
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 36605
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 36881,
+            "order": 11,
+            "of": 23
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Herring Creek Road",
+            "at_m": 36992
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "State Route 640",
+            "at_m": 37082
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Virginia Capital Trail",
+            "at_m": 37282
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40234,
+            "order": 12,
+            "of": 23
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 43586,
+            "order": 13,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wilcox Wharf Road",
+            "at_m": 44658
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 46588
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 46939,
+            "order": 14,
+            "of": 23
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Courthouse Road",
+            "at_m": 47592
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Virginia Capital Trail",
+            "at_m": 48157
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 48360
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "John Tyler Memorial Highway",
+            "at_m": 49256
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 49570
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 50292,
+            "order": 15,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 51853
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 53645,
+            "order": 16,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sturgeon Point Road",
+            "at_m": 55952
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 55994
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 56955
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 56998,
+            "order": 17,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Adams Bridge Road",
+            "at_m": 57303
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Farmers Rest Road",
+            "at_m": 58010
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 60350,
+            "order": 18,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wilcox Neck Road",
+            "at_m": 63178
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 63703,
+            "order": 19,
+            "of": 23
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 67056,
+            "order": 20,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Blue Crab Way",
+            "at_m": 68921
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 69041
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 70409,
+            "order": 21,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "John Tyler Highway",
+            "at_m": 70896
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 73762,
+            "order": 22,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Two Rivers Road",
+            "at_m": 74024
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Governor's Landing Road",
+            "at_m": 74985
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 75431
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heritage Landing Road",
+            "at_m": 75942
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "John Rolfe Lane",
+            "at_m": 76145
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Greensprings Road",
+            "at_m": 76696
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 77114,
+            "order": 23,
+            "of": 23
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 77735
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 77984
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "4-H Club Road",
+            "at_m": 80020
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Jamestown Road",
+            "at_m": 80330
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Jamestown Road Service Road",
+            "at_m": 80348
+          },
+          {
+            "kind": "finish",
+            "at_m": 80467
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     }
   ]
 }

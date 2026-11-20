@@ -6087,6 +6087,61 @@ class ApiClient {
     );
   }
 
+  /// The park course whose route is [routeId] (the route "Navigate this
+  /// course" hands the recorder), with its catalogue segment, for live course
+  /// timing on the run screen (#1446). Null when no listed course uses the
+  /// route, or RLS hides it. Throws on a failed read.
+  Future<ParkCourseListing?> fetchParkCourseForRoute(String routeId) async {
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colRouteId, routeId)
+        .limit(1)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    return ParkCourseListing(
+      course: ParkCourseRow.fromJson(course),
+      segment: GlobalSegmentRow.fromJson(
+        (course['global_segments'] as Map).cast<String, dynamic>(),
+      ),
+    );
+  }
+
+  /// The listed park courses whose start line lies inside the box, with their
+  /// catalogue segment, for live course timing on a run that follows no
+  /// course (#1446). The box is all that leaves the phone, the same kind of
+  /// read as the route and segment map queries. A closed course takes no
+  /// times, so it is left out; RLS hides an inactive park's courses and a
+  /// pulled segment. Throws on a failed read.
+  Future<List<ParkCourseListing>> fetchParkCoursesStartingIn({
+    required double minLat,
+    required double minLng,
+    required double maxLat,
+    required double maxLng,
+  }) async {
+    const lat = '${GlobalSegmentRow.table}.${GlobalSegmentRow.colStartGateLat}';
+    const lng = '${GlobalSegmentRow.table}.${GlobalSegmentRow.colStartGateLng}';
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, ${GlobalSegmentRow.table}!inner(*)')
+        .neq(ParkCourseRow.colStatus, 'closed')
+        .gte(lat, minLat)
+        .lte(lat, maxLat)
+        .gte(lng, minLng)
+        .lte(lng, maxLng)
+        .limit(50);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Walked by keyset
   /// like [fetchAllParkCourses]. Throws on a failed read.
@@ -6361,6 +6416,22 @@ class ApiClient {
     return [
       for (final r in (data as List? ?? const <dynamic>[]))
         Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// Why one of the caller's own runs got no time on each park course it set
+  /// out on (`get_run_park_course_attempts`, issue #1446), for run detail's
+  /// "no time" cards beside the course chips. Mirrors web
+  /// `fetchParkCourseAttempts`. A row this build cannot read whole is left
+  /// out; throws on a failed read, as [fetchRunParkCourseTimes] does.
+  Future<List<ParkCourseAttempt>> fetchParkCourseAttempts(String runId) async {
+    final data = await _client.rpc('get_run_park_course_attempts',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        if (ParkCourseAttempt.fromRow(Map<String, dynamic>.from(r as Map))
+            case final a?)
+          a,
     ];
   }
 

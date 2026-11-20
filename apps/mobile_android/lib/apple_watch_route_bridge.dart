@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:core_models/core_models.dart' show Route, Waypoint;
+import 'package:core_models/core_models.dart'
+    show ParkCourseListing, Route, Waypoint;
 import 'package:flutter/foundation.dart'
     show
         TargetPlatform,
@@ -11,6 +12,7 @@ import 'package:flutter/foundation.dart'
         visibleForTesting;
 import 'package:flutter/services.dart';
 
+import 'live_course_timing.dart' show liveCourseGeometry;
 import 'local_route_store.dart';
 import 'watch_route_visibility.dart';
 import 'route_simplify.dart' show simplifyToBudget;
@@ -52,6 +54,12 @@ const int kMaxAppleWatchSavedRoutes = 12;
 /// watch's 40 m off-route threshold alone: `RouteNavigator` projects
 /// perpendicular to a segment rather than snapping to a vertex.
 const int kMaxAppleWatchSavedRoutePoints = 128;
+
+/// Checkpoints one park course push may carry. Must match
+/// `ParkCourse.maxCheckpoints` on the watch and
+/// `WatchIngestBridge.maxParkCourseCheckpoints` on the phone, both of which
+/// refuse a longer list whole; `park_courses.checkpoints` holds at most 50.
+const int kMaxAppleWatchParkCourseCheckpoints = 50;
 
 /// Why a saved route cannot be sent to the Apple Watch.
 enum AppleWatchRouteRefusal {
@@ -150,15 +158,24 @@ class AppleWatchRouteBridge {
     }
   }
 
-  /// Queue [points] as the watch's armed route. Throws
-  /// [PlatformException] when the payload is rejected or no watch can take
-  /// it — the caller surfaces that to the runner rather than reporting a
-  /// push that never happened.
+  /// Queue [points] as the watch's armed route, with [parkCourse] (built by
+  /// [encodeParkCourseForWatch]) as the course the wrist times it by, or no
+  /// course. Throws [PlatformException] when the payload is rejected or no
+  /// watch can take it — the caller surfaces that to the runner rather than
+  /// reporting a push that never happened.
+  ///
+  /// Every arm states the course, an empty one included: the watch times any
+  /// run against the course it holds (`ParkCourseStore`), so arming a plain
+  /// route without clearing it would time that run by the previous course's
+  /// lines. The course goes FIRST, so a refused course stops the arm before
+  /// the route changes, and a refused route leaves a course that needs no
+  /// route to be timed.
   static Future<void> push({
     required String id,
     required String name,
     required double distanceMetres,
     required List<Waypoint> points,
+    Map<String, Object>? parkCourse,
   }) async {
     if (defaultTargetPlatform != TargetPlatform.iOS) {
       throw PlatformException(
@@ -166,6 +183,9 @@ class AppleWatchRouteBridge {
         message: 'Apple Watch push is iOS-only',
       );
     }
+    await _channel.invokeMethod<void>('push_park_course', {
+      'park_course': parkCourse ?? const <String, Object>{},
+    });
     await _channel.invokeMethod<void>('push', {
       'route_id': id,
       'route_name': name,
@@ -173,6 +193,101 @@ class AppleWatchRouteBridge {
       'route_lat': [for (final p in points) p.lat],
       'route_lng': [for (final p in points) p.lng],
     });
+  }
+
+  // ---- The park course timed on the wrist (phone -> watch) ---------------
+
+  /// The `park_course` dictionary the watch times [listing] by
+  /// (`ParkCourse.decode` in `apps/watch_ios/WatchApp/ParkCourse.swift`):
+  /// the catalogue segment's two lines and stored length, and the course's
+  /// checkpoints as parallel arrays. Null when the wrist could not box-time
+  /// it, by the phone's own live rule ([liveCourseGeometry]: both lines
+  /// usable, a positive length, checkpoints the parser reads) or past the
+  /// checkpoint cap, so nothing is armed that the watch would refuse.
+  ///
+  /// Public catalogue geometry only: no route of the runner's, nothing
+  /// clipped or unclipped of anyone's.
+  static Map<String, Object>? encodeParkCourseForWatch(
+    ParkCourseListing listing,
+  ) {
+    final geometry = liveCourseGeometry(listing);
+    if (geometry == null) return null;
+    final start = geometry.startGate!;
+    final end = geometry.endGate!;
+    if (!(start.halfWidthM > 0) || !(end.halfWidthM > 0)) return null;
+    final checkpoints = geometry.checkpoints;
+    if (checkpoints.length > kMaxAppleWatchParkCourseCheckpoints) return null;
+    if (listing.course.id.isEmpty) return null;
+    return {
+      'course_id': listing.course.id,
+      'course_name': listing.segment.name,
+      'course_distance_m': geometry.distanceM,
+      // Spelled out rather than built from a prefix, so claim (7c) of
+      // `scripts/check_watch_ios_source.mjs` reads every key.
+      'start_gate_lat': start.lat,
+      'start_gate_lng': start.lng,
+      'start_gate_bearing_deg': start.bearingDeg,
+      'start_gate_half_width_m': start.halfWidthM,
+      'end_gate_lat': end.lat,
+      'end_gate_lng': end.lng,
+      'end_gate_bearing_deg': end.bearingDeg,
+      'end_gate_half_width_m': end.halfWidthM,
+      'checkpoint_lat': [for (final c in checkpoints) c.lat],
+      'checkpoint_lng': [for (final c in checkpoints) c.lng],
+    };
+  }
+
+  /// Queue [listing] as the wrist's armed route and the course it times:
+  /// what "Navigate this course" does on an iPhone with a paired watch.
+  /// The route is the course line itself (the segment polyline, thinned to
+  /// [kMaxAppleWatchRoutePoints]). Never throws: nobody is waiting on it,
+  /// so a course the wrist cannot time, no paired watch or a refused push is
+  /// logged and the phone carries on. Returns whether both reached the
+  /// native side.
+  static Future<bool> armParkCourse(ParkCourseListing listing) async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return false;
+    try {
+      final course = encodeParkCourseForWatch(listing);
+      if (course == null) return false;
+      final shaped = appleWatchRouteFromWaypoints(
+        liveCourseGeometry(listing)!.points,
+      );
+      final points = shaped.points;
+      if (points == null) return false;
+      if (!await isAvailable()) return false;
+      // single-flight: a method-channel push to the watch, not a route.
+      await push(
+        id: listing.course.routeId ?? listing.course.id,
+        name: listing.segment.name,
+        distanceMetres: listing.segment.distanceM,
+        points: points,
+        parkCourse: course,
+      );
+      return true;
+    } on MissingPluginException catch (e) {
+      debugPrint('Apple Watch park course push has no native side: $e');
+      return false;
+    } on PlatformException catch (e) {
+      debugPrint('Apple Watch park course push refused: $e');
+      return false;
+    } catch (e) {
+      debugPrint('Apple Watch park course push failed: $e');
+      return false;
+    }
+  }
+
+  /// Clear the course the wrist holds, so nothing of the departing account's
+  /// is timed after sign-out. The armed route itself is left as it is, as it
+  /// always was. Never throws.
+  static Future<void> clearParkCourse() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      await _channel.invokeMethod<void>('push_park_course', {
+        'park_course': const <String, Object>{},
+      });
+    } catch (e) {
+      debugPrint('Apple Watch park course clear failed: $e');
+    }
   }
 
   // ---- The wrist's route picker (phone -> watch) -------------------------

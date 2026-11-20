@@ -24322,4 +24322,85 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Region';
+
+  @override
+  String get runCourseTimingStarted => 'Zeitmessung gestartet';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Im Ziel! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Parkstrecken ohne Zeit';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: keine Zeit. Du bist $progress von $total gelaufen. Lauf die ganze Strecke, um eine Zeit zu bekommen.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: keine Zeit. Du hast Kontrollpunkt $n von $count verpasst. Bleib auf der Streckenlinie, um an jedem vorbeizulaufen.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: keine Zeit. Du bist zu weit von der Strecke abgekommen. Bleib auf der Streckenlinie.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: keine Zeit. Deine Aufzeichnung hat eine Lücke an der Stelle, an der du ins Ziel gekommen bist, deshalb konnten wir keine Zeit messen. Lass die Aufzeichnung laufen, bis du über die Ziellinie bist.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress von $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Wie weit du auf der Strecke gekommen bist';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Du bist von der Strecke abgekommen. Lauf zurück zu Kontrollpunkt $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Du bist von der Strecke abgekommen. Lauf zurück auf die Strecke.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Zeitmessung gestartet: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Kontrollpunkt $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Kontrollpunkt $number, passiert';
+  }
 }

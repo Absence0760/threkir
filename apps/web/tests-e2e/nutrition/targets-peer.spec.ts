@@ -34,7 +34,7 @@ test.describe('/nutrition/targets — reachable, derived, editable', () => {
 		await admin.from('user_settings').update({ prefs }).eq('user_id', USER_A.id);
 	});
 
-	test('header link → derivation + macros + a route back to the Art 9 editor', async ({ page }) => {
+	test('control-row link → derivation + macros + a route back to the Art 9 editor', async ({ page }) => {
 		await page.goto('/nutrition');
 
 		// The peer is one click from the day view, and present regardless of data.

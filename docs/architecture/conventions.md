@@ -928,6 +928,16 @@ Motion on the public pages (`/`, `/login`, `/auth/*`) is a decoration over a fin
 
 Scroll-linked effects (`animation-timeline: view()` / `scroll()`) go inside `@supports` plus the no-preference query, so a browser without scroll timelines shows the finished state. Rendered art never sits under copy (the gradient guard cannot measure a raster). Regenerate it with `assets/marketing/gen-marketing.sh`; don't hand-edit the WebP or SVG.
 
+## Web static assets — a URL that changes with the file
+
+A browser keeps a cached file until its copy expires, so a file that changes under the same URL keeps showing the old one. Every image the web app renders therefore reaches the browser under a URL that carries its content ([decisions § 2600](decisions.md)):
+
+- **Only the app loads it → `apps/web/src/lib/assets/`, imported through Vite** (`import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline'`, or a relative `url(...)` in a component's `<style>`). Vite emits it as `_app/immutable/assets/<name>.<hash>`, the one path the deploy caches as immutable. `?no-inline` keeps a small file a real same-origin URL instead of a `data:` URI, which a canvas export needs. A module that unit tests import must not import an asset at the top level (tsx cannot load one); import it inside the function that uses it, as `mascot_renderer.ts` does for the GLB.
+- **Something outside the app fetches it by path → `apps/web/static/`, referenced with `?v=<hash>`.** The favicon, touch icon, PWA manifest and its icons, and the default OG image. Code names them through `staticAsset('/og-default.png')` from `#lib/assets/static_asset.ts`; `app.html`, `manifest.webmanifest` and `sw.js` carry the `?v=` literally. Both come from `pnpm gen:static-asset-versions`, which `assets/gen-icons.sh`, `gen-og-default.sh` and `gen-wordmark.sh` run for you.
+- **Exempt: a path an outside party names exactly** — `bimi-logo.svg` (the BIMI DNS record), `email-logo.png` (sent mail) and `wordmark.svg` (not rendered by the app). These are never referenced by the app with a query.
+
+`static_asset_fingerprint_guard.test.ts` fails on a bare reference to a static image, a stale `?v=`, a new image in `static/` without a reason in its `FIXED_PATH` list, or a directory of images under `static/`.
+
 ## Material Symbols icons
 
 The web app loads Material Symbols Outlined as a webfont and renders icons via **font ligatures** — `<span class="material-symbols">close</span>`, `<span class="material-symbols">menu_open</span>`, etc. Ligatures only form when the icon name is the only text node inside the span, **with no surrounding whitespace**. That means `<span class="material-symbols">{cond ? 'menu' : 'menu_open'}</span>` works, but breaking the expression onto its own line — leaving newlines and indentation between the tags — makes the browser render the literal text `"menu_open"`. Keep dynamic icon names on the same line as their tags.

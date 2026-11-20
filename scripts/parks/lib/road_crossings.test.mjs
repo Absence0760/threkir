@@ -52,9 +52,9 @@ test('signalAtNode reads the three ways OSM tags a signal on a crossing', () => 
 
 test('a road with arms either side of the course is crossed, named or not', () => {
 	const named = { tags: {}, roads: [road({ highway: 'secondary', name: 'Hunter Mill Road' }, [north, south])] };
-	assert.deepEqual(roadCrossingAt(named, here, prev, next), { name: 'Hunter Mill Road', signal: false });
+	assert.deepEqual(roadCrossingAt(named, here, prev, next), { name: 'Hunter Mill Road', signal: false, highway: 'secondary' });
 	const unnamed = { tags: {}, roads: [road({ highway: 'residential' }, [north, south])] };
-	assert.deepEqual(roadCrossingAt(unnamed, here, prev, next), { name: null, signal: false });
+	assert.deepEqual(roadCrossingAt(unnamed, here, prev, next), { name: null, signal: false, highway: 'residential' });
 	assert.equal(roadCrossingAt(undefined, here, prev, next), null);
 });
 
@@ -63,7 +63,7 @@ test('one road split into two ways at the crossing is still one road crossed', (
 		tags: {},
 		roads: [road({ highway: 'tertiary', name: 'Maple Avenue' }, [north], 60), road({ highway: 'tertiary', name: 'Maple Avenue' }, [south], 61)],
 	};
-	assert.deepEqual(roadCrossingAt(entry, here, prev, next), { name: 'Maple Avenue', signal: false });
+	assert.deepEqual(roadCrossingAt(entry, here, prev, next), { name: 'Maple Avenue', signal: false, highway: 'tertiary' });
 });
 
 test('a road that ends at the trail, or lies on one side of it, is not crossed', () => {
@@ -83,7 +83,7 @@ test('a road the course turns onto or follows is not crossed', () => {
 			road({ highway: 'residential', name: 'Oak Street' }, [north, south], 71),
 		],
 	};
-	assert.deepEqual(roadCrossingAt(along, here, prev, next), { name: 'Oak Street', signal: false });
+	assert.deepEqual(roadCrossingAt(along, here, prev, next), { name: 'Oak Street', signal: false, highway: 'residential' });
 });
 
 test('a bridge, a tunnel, an unnamed service road or a closed road is not crossed', () => {

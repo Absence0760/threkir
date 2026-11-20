@@ -1,0 +1,182 @@
+{
+  "park": {
+    "slug": "manassas",
+    "name": "Manassas National Battlefield Park",
+    "kind": "park",
+    "agency": "nps",
+    "nps_park_code": "mana",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.nps.gov/mana/planyourvisit/hiking.htm",
+    "osm_boundary": "relation/3554290"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses at Brawner Farm against the NPS trail map and the blazes (most of each lap is on the yellow-blazed bridle loop shared with horses), and confirms with the park whether an organised run needs a special use permit (NPS lists $100 with three weeks' review)."
+  },
+  "trail_review": {
+    "checked_at": "2026-11-19",
+    "source_urls": [
+      "https://www.nps.gov/mana/planyourvisit/hiking.htm",
+      "https://www.nps.gov/mana/planyourvisit/upload/TrailMap-Accessible.jpg",
+      "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/FeatureServer/0/query?where=UNITCODE%3D%27MANA%27&outFields=*&f=geojson"
+    ],
+    "designated": [
+      46526117,
+      151179143,
+      151179144,
+      331251623,
+      331331001,
+      482753982,
+      482754003,
+      1304503572
+    ],
+    "refused": {
+      "46523927": "unnamed path on the Brawner Farm loop's south-east arm; the NPS Public Trails layer has no line on it (its nearest line is up to 113 m away)",
+      "331330952": "unnamed north-south path in the middle of Brawner Farm; no matching line in the NPS Public Trails layer (up to 92 m off)"
+    },
+    "fords": []
+  },
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "manassas-5k",
+      "name": "Manassas National Battlefield Park, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "laps": 1,
+      "surface": "trail",
+      "osm_ways": [
+        151179144,
+        151179143,
+        46526117,
+        331331001,
+        1304503572,
+        482753982,
+        331251623,
+        482754003
+      ],
+      "lead_in_via": [
+        4755507503,
+        595248186,
+        1640051740,
+        595248183
+      ],
+      "loop_via": [
+        595248183,
+        3383934269,
+        218123320,
+        1645170318,
+        1645170319,
+        3383934265,
+        3383934309,
+        1645170336,
+        1645170332,
+        13809660820,
+        13809652997,
+        13809652996,
+        13809652958,
+        4755507871,
+        4755507719,
+        218054137,
+        218054256,
+        3771331064,
+        218054265,
+        12081380898,
+        3383934434,
+        3383934468,
+        3383033511,
+        12081412472,
+        3383033522,
+        3384736434,
+        3383033811,
+        3383033796,
+        3383033586,
+        3383033585,
+        3383033582,
+        3383934356,
+        3383033581,
+        3383033498,
+        4755507870,
+        4755507849,
+        595248183
+      ],
+      "start_note": "Start and finish on the Brawner Farm Loop Trail just east of the Brawner Farm lot. One lap: a short way south-east on the Brawner Farm Loop Trail, north-east to the Brawner Farm bridle loop, then clockwise round the bridle loop (shared with horses): south towards Lee Highway without reaching it, west, north and east along the far edges of the farm, and back south-west on the trail through the middle of the farm. No road is crossed.",
+      "route_guide": {
+        "getting_there": "Park at the Brawner Farm Interpretive Center lot, reached from Pageland Lane. Walk east on the Brawner Farm Loop Trail; the start line is a short way along it.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 3
+    },
+    {
+      "slug": "manassas-10k",
+      "name": "Manassas National Battlefield Park, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "laps": 2,
+      "surface": "trail",
+      "osm_ways": [
+        151179144,
+        151179143,
+        46526117,
+        331331001,
+        1304503572,
+        482753982,
+        331251623,
+        482754003
+      ],
+      "lead_in_via": [
+        4755507503,
+        595248186,
+        1640051740,
+        595248183
+      ],
+      "loop_via": [
+        595248183,
+        3383934269,
+        218123320,
+        1645170318,
+        1645170319,
+        3383934265,
+        3383934309,
+        1645170336,
+        1645170332,
+        13809660820,
+        13809652997,
+        13809652996,
+        13809652958,
+        4755507871,
+        4755507719,
+        218054137,
+        218054256,
+        3771331064,
+        218054265,
+        12081380898,
+        3383934434,
+        3383934468,
+        3383033511,
+        12081412472,
+        3383033522,
+        3384736434,
+        3383033811,
+        3383033796,
+        3383033586,
+        3383033585,
+        3383033582,
+        3383934356,
+        3383033581,
+        3383033498,
+        4755507870,
+        4755507849,
+        595248183
+      ],
+      "start_note": "Start and finish on the Brawner Farm Loop Trail just east of the Brawner Farm lot. Each lap: a short way south-east on the Brawner Farm Loop Trail, north-east to the Brawner Farm bridle loop, then clockwise round the bridle loop (shared with horses): south towards Lee Highway without reaching it, west, north and east along the far edges of the farm, and back south-west on the trail through the middle of the farm. No road is crossed.",
+      "route_guide": {
+        "getting_there": "Park at the Brawner Farm Interpretive Center lot, reached from Pageland Lane. Walk east on the Brawner Farm Loop Trail; the start line is a short way along it.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 3
+    }
+  ]
+}

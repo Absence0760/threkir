@@ -294,7 +294,14 @@
 </svelte:head>
 
 <div class="page">
-	<RunSurfaceTabs active="plans" />
+	<RunSurfaceTabs active="plans">
+		{#snippet actions()}
+			<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('plansPage.newPlan')}
+			</button>
+		{/snippet}
+	</RunSurfaceTabs>
 	<div class="surface-toolbar">
 		<div class="toolbar">
 			<!-- A filter over nothing is noise: with no plans every bucket is 0.
@@ -328,10 +335,6 @@
 						{m('plansPage.describeWithAi')}
 					</a>
 				{/if}
-				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
-					<span class="material-symbols" aria-hidden="true">add</span>
-					{m('plansPage.newPlan')}
-				</button>
 			</div>
 		</div>
 	</div>

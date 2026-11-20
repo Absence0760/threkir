@@ -716,7 +716,13 @@
      Asserting the filtered count before this races the in-flight
      refetch. -->
 <div class="page" data-testid="runs-surface" data-list-state={loading ? 'loading' : `loaded-${lastFetchMode}`}>
-	<RunSurfaceTabs active="runs" />
+	<RunSurfaceTabs active="runs">
+		{#snippet actions()}
+			{#if !selecting}
+				<button class="add-btn" type="button" onclick={() => (showRunModal = true)}>{m('runs.addRunShort')}</button>
+			{/if}
+		{/snippet}
+	</RunSurfaceTabs>
 
 	{#snippet listSkeleton()}
 		<div class="run-list run-list-skel" aria-hidden="true">
@@ -848,7 +854,6 @@
 				{:else}
 					<a class="link-btn" href="/runs/heatmap">{m('runs.heatmap')}</a>
 					<button class="link-btn" onclick={() => (selecting = true)} type="button">{m('runs.select')}</button>
-					<button class="add-btn" type="button" onclick={() => (showRunModal = true)}>{m('runs.addRunShort')}</button>
 				{/if}
 			</div>
 		</div>

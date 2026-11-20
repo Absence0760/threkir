@@ -359,10 +359,6 @@
 			<span class="material-symbols" aria-hidden="true">upload_file</span>
 			{m('routesPage.import')}
 		</button>
-		<a href="/routes/new" class="btn btn-primary btn-sm">
-			<span class="material-symbols" aria-hidden="true">add</span>
-			{m('routesPage.newRoute')}
-		</a>
 	</div>
 {/snippet}
 
@@ -401,7 +397,14 @@
 {/snippet}
 
 <div class="page">
-	<RunSurfaceTabs active="routes" />
+	<RunSurfaceTabs active="routes">
+		{#snippet actions()}
+			<a href="/routes/new" class="btn btn-primary" data-testid="routes-new">
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('routesPage.newRoute')}
+			</a>
+		{/snippet}
+	</RunSurfaceTabs>
 	<RoutesViewNav view={tab === 'explore' ? 'routes' : 'mine'} />
 
 	{#if tab === 'mine'}
@@ -454,8 +457,8 @@
 			<!-- The list's control row is FilterBar (conventions.md § Web lists):
 			     the search, the Starred toggle (a lone chip, so it sits in the
 			     search row as a toggle button rather than on a line of its own),
-			     Import and New route, and a Filters sheet holding surface,
-			     distance and sort. -->
+			     Import, and a Filters sheet holding surface, distance and sort.
+			     New route is the page's primary action, on the title row. -->
 			<FilterBar
 				idPrefix="routes"
 				search={routeSearch}

@@ -7988,6 +7988,8 @@ export const messages = {
 	"parks.agencyNps": "National Park Service",
 	"parks.agencyState": "Parque estadual",
 	"parks.agencyCounty": "Parque do condado",
+	"parks.agencyUsfs": "Floresta nacional",
+	"parks.agencyUsfws": "Refúgio de vida selvagem",
 	"parks.agencyOther": "Parque",
 	"parks.kindTrail": "Trilho",
 	"parks.shapeLoop": "Circular",

@@ -7989,6 +7989,8 @@ export const messages = {
 	"parks.agencyNps": "National Park Service",
 	"parks.agencyState": "Parc d'État",
 	"parks.agencyCounty": "Parc de comté",
+	"parks.agencyUsfs": "Forêt nationale",
+	"parks.agencyUsfws": "Refuge faunique",
 	"parks.agencyOther": "Parc",
 	"parks.kindTrail": "Sentier",
 	"parks.shapeLoop": "Boucle",

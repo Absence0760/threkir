@@ -7984,6 +7984,8 @@ export const messages = {
 	"parks.agencyNps": "国立公園局",
 	"parks.agencyState": "州立公園",
 	"parks.agencyCounty": "郡立公園",
+	"parks.agencyUsfs": "国有林",
+	"parks.agencyUsfws": "野生生物保護区",
 	"parks.agencyOther": "公園",
 	"parks.kindTrail": "トレイル",
 	"parks.shapeLoop": "周回",

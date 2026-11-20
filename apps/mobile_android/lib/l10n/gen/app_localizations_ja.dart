@@ -21064,6 +21064,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksAgencyCounty => '郡立公園';
 
   @override
+  String get parksAgencyUsfs => '国有林';
+
+  @override
+  String get parksAgencyUsfws => '野生生物保護区';
+
+  @override
   String get parksAgencyOther => '公園';
 
   @override

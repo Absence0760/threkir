@@ -6030,6 +6030,8 @@
   "parksAgencyNps": "国立公園局",
   "parksAgencyState": "州立公園",
   "parksAgencyCounty": "郡立公園",
+  "parksAgencyUsfs": "国有林",
+  "parksAgencyUsfws": "野生生物保護区",
   "parksAgencyOther": "公園",
   "parksKindTrail": "トレイル",
   "parksShapeLoop": "周回",

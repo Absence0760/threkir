@@ -74,7 +74,9 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 - **Parks:** `slug`, `name`, `kind` (`park` / `trail`: a long trail through
   several parks that belongs to none, such as the Virginia Capital Trail, is
   its own catalogue entry; cards and the park page call it "Trail" in place of
-  the agency label; decisions § 2581), `agency` (`nps` / `state` / `county` / `other`),
+  the agency label; decisions § 2581), `agency` (`nps` / `state` / `county` / `usfs` / `usfws` / `other`;
+  a US Forest Service national forest reads "National forest", a US Fish &
+  Wildlife Service refuge "Wildlife refuge"; decisions § 2593),
   `nps_park_code` (the NPS Data API `parkCode`, `shen`; only on an `nps` park,
   required there by the catalogue check, which the closures sweep reads),
   `region_code` (ISO 3166-2, `US-VA`; the URL segment is its lower case),

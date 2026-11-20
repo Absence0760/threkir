@@ -442,6 +442,23 @@ void main() {
       expect(find.text('State park'), findsOneWidget);
     });
 
+    testWidgets('a national forest and a wildlife refuge read as such', (
+      tester,
+    ) async {
+      final api = _ParksApi(
+        parks: [
+          _park(id: 'f1', name: 'Jefferson National Forest', agency: 'usfs'),
+          _park(id: 'r1', name: 'Back Bay Refuge', agency: 'usfws'),
+        ],
+        courses: const [],
+      );
+      await tester.pumpWidget(_host(ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.text('National forest'), findsOneWidget);
+      expect(find.text('Wildlife refuge'), findsOneWidget);
+      expect(find.text('Park'), findsNothing);
+    });
+
     testWidgets('groups parks under their region, each a card with its '
         'courses, count and distance range', (tester) async {
       final api = _ParksApi(

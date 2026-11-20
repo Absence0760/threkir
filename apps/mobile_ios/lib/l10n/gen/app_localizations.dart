@@ -35277,6 +35277,18 @@ abstract class AppLocalizations {
   /// **'County park'**
   String get parksAgencyCounty;
 
+  /// Park courses (#1431): a place the US Forest Service runs, e.g. the George Washington & Jefferson National Forests. Web key parks.agencyUsfs.
+  ///
+  /// In en, this message translates to:
+  /// **'National forest'**
+  String get parksAgencyUsfs;
+
+  /// Park courses (#1431): a national wildlife refuge the US Fish & Wildlife Service runs. Web key parks.agencyUsfws.
+  ///
+  /// In en, this message translates to:
+  /// **'Wildlife refuge'**
+  String get parksAgencyUsfws;
+
   /// Park courses (#1313): web key parks.agencyOther.
   ///
   /// In en, this message translates to:

@@ -15,7 +15,7 @@ import { assertNoThirdPartyMarks } from './third_party_marks.mjs';
 
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
-export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'];
+export const PARK_AGENCIES = ['nps', 'state', 'county', 'usfs', 'usfws', 'other'];
 /** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */
 export const PARK_KINDS = ['park', 'trail'];
 export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'];

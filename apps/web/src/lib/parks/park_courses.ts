@@ -12,7 +12,7 @@ import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.
 import { haversineMetres } from '../geo/haversine.ts';
 import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
-export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
+export const PARK_AGENCIES = ['nps', 'state', 'county', 'usfs', 'usfws', 'other'] as const;
 export type ParkAgency = (typeof PARK_AGENCIES)[number];
 
 /** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */

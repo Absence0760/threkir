@@ -28919,6 +28919,14 @@
   "@parksAgencyCounty": {
     "description": "Park courses (#1313): web key parks.agencyCounty."
   },
+  "parksAgencyUsfs": "National forest",
+  "@parksAgencyUsfs": {
+    "description": "Park courses (#1431): a place the US Forest Service runs, e.g. the George Washington & Jefferson National Forests. Web key parks.agencyUsfs."
+  },
+  "parksAgencyUsfws": "Wildlife refuge",
+  "@parksAgencyUsfws": {
+    "description": "Park courses (#1431): a national wildlife refuge the US Fish & Wildlife Service runs. Web key parks.agencyUsfws."
+  },
   "parksAgencyOther": "Park",
   "@parksAgencyOther": {
     "description": "Park courses (#1313): web key parks.agencyOther."

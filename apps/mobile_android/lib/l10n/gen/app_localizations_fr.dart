@@ -22678,6 +22678,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksAgencyCounty => 'Parc de comté';
 
   @override
+  String get parksAgencyUsfs => 'Forêt nationale';
+
+  @override
+  String get parksAgencyUsfws => 'Refuge faunique';
+
+  @override
   String get parksAgencyOther => 'Parc';
 
   @override

@@ -6030,6 +6030,8 @@
   "parksAgencyNps": "National Park Service",
   "parksAgencyState": "Parc d'État",
   "parksAgencyCounty": "Parc de comté",
+  "parksAgencyUsfs": "Forêt nationale",
+  "parksAgencyUsfws": "Refuge faunique",
   "parksAgencyOther": "Parc",
   "parksKindTrail": "Sentier",
   "parksShapeLoop": "Boucle",

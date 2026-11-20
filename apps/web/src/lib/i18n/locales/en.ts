@@ -8018,6 +8018,8 @@ export const en = {
 	"parks.agencyNps": "National Park Service",
 	"parks.agencyState": "State park",
 	"parks.agencyCounty": "County park",
+	"parks.agencyUsfs": "National forest",
+	"parks.agencyUsfws": "Wildlife refuge",
 	"parks.agencyOther": "Park",
 	"parks.kindTrail": "Trail",
 	"parks.shapeLoop": "Loop",

@@ -22390,6 +22390,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksAgencyCounty => 'County park';
 
   @override
+  String get parksAgencyUsfs => 'National forest';
+
+  @override
+  String get parksAgencyUsfws => 'Wildlife refuge';
+
+  @override
   String get parksAgencyOther => 'Park';
 
   @override

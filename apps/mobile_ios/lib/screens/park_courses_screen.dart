@@ -462,6 +462,8 @@ String agencyLabel(AppLocalizations l10n, String agency) => switch (agency) {
   'nps' => l10n.parksAgencyNps,
   'state' => l10n.parksAgencyState,
   'county' => l10n.parksAgencyCounty,
+  'usfs' => l10n.parksAgencyUsfs,
+  'usfws' => l10n.parksAgencyUsfws,
   _ => l10n.parksAgencyOther,
 };
 

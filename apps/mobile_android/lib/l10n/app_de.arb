@@ -6030,6 +6030,8 @@
   "parksAgencyNps": "National Park Service",
   "parksAgencyState": "State Park",
   "parksAgencyCounty": "County Park",
+  "parksAgencyUsfs": "Nationalforst",
+  "parksAgencyUsfws": "Wildschutzgebiet",
   "parksAgencyOther": "Park",
   "parksKindTrail": "Weg",
   "parksShapeLoop": "Rundstrecke",

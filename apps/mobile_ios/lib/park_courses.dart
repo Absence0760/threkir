@@ -13,7 +13,14 @@ import 'route_gpx.dart';
 import 'route_guide.dart';
 import 'run_stats.dart' show haversineMetres;
 
-const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
+const List<String> kParkAgencies = [
+  'nps',
+  'state',
+  'county',
+  'usfs',
+  'usfws',
+  'other',
+];
 
 /// What a catalogue entry is: a park, or a long trail through several parks
 /// that belongs to none (decisions § 2581). Mirrors web `PARK_KINDS`.

@@ -22615,6 +22615,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksAgencyCounty => 'Parque del condado';
 
   @override
+  String get parksAgencyUsfs => 'Bosque nacional';
+
+  @override
+  String get parksAgencyUsfws => 'Refugio de vida silvestre';
+
+  @override
   String get parksAgencyOther => 'Parque';
 
   @override

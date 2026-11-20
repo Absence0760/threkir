@@ -22640,6 +22640,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksAgencyCounty => 'Parque do condado';
 
   @override
+  String get parksAgencyUsfs => 'Floresta nacional';
+
+  @override
+  String get parksAgencyUsfws => 'Refúgio de vida selvagem';
+
+  @override
   String get parksAgencyOther => 'Parque';
 
   @override
@@ -46927,6 +46933,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksAgencyCounty => 'Parque do condado';
+
+  @override
+  String get parksAgencyUsfs => 'Floresta nacional';
+
+  @override
+  String get parksAgencyUsfws => 'Refúgio de vida silvestre';
 
   @override
   String get parksAgencyOther => 'Parque';

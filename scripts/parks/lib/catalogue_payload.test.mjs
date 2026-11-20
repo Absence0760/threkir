@@ -279,6 +279,16 @@ test('an nps park carries its NPS park code into the payload, and no other park 
 	assert.throws(refused((m) => (m.park.nps_park_code = 'shen')), /only an nps park takes an nps_park_code/);
 });
 
+test('a national forest or a wildlife refuge loads with its own agency and no NPS park code', () => {
+	for (const agency of ['usfs', 'usfws']) {
+		const m = manifest();
+		m.park.agency = agency;
+		const park = cataloguePayload(m, squareOnly).park;
+		assert.deepEqual([park.agency, park.nps_park_code], [agency, null]);
+		assert.throws(refused((m) => Object.assign(m.park, { agency, nps_park_code: 'gwje' })), /only an nps park takes an nps_park_code/);
+	}
+});
+
 test('the manifest is refused where the database would refuse it', () => {
 	assert.throws(refused((m) => (m.park.slug = 'Test Park')), /park slug/);
 	assert.throws(refused((m) => (m.park.agency = 'federal')), /park agency federal/);

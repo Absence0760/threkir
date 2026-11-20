@@ -49,6 +49,8 @@ Every `park.json` `park` names its `kind`: `park`, or `trail` for a long trail t
 
 A National Park Service unit (`"agency": "nps"` in `park.json`'s `park`) also needs its `nps_park_code`, the NPS Data API `parkCode` (`shen` for Shenandoah, the code in the unit's nps.gov URL). The payload check refuses an `nps` park without one and any other park with one. The daily closures sweep reads the unit's NPS alerts by that code and flags its courses for review (decisions § 2454).
 
+A national forest (George Washington & Jefferson National Forests) is `"agency": "usfs"` and a national wildlife refuge `"agency": "usfws"` (decisions § 2593). Neither takes an `nps_park_code`, and the closures sweep does not read them: no feed of theirs is wired in, so their courses' closure, permit and seasonal-access notes come from the forest or refuge's own pages, recorded in `trail_review` with the URL and checked date. A refuge often limits hours or closes trails for hunts or nesting seasons; say so in the release `reason`.
+
 A trail course (`courses`) is a loop. A point-to-point or out-and-back course on a rail trail is a race course (see *Linear race courses*).
 
 ## Route guides

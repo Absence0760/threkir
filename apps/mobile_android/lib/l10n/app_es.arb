@@ -6030,6 +6030,8 @@
   "parksAgencyNps": "National Park Service",
   "parksAgencyState": "Parque estatal",
   "parksAgencyCounty": "Parque del condado",
+  "parksAgencyUsfs": "Bosque nacional",
+  "parksAgencyUsfws": "Refugio de vida silvestre",
   "parksAgencyOther": "Parque",
   "parksKindTrail": "Sendero",
   "parksShapeLoop": "Circular",

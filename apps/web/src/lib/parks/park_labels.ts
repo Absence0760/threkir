@@ -15,6 +15,8 @@ export const AGENCY_LABEL: Record<ParkAgency, MessageKey> = {
 	nps: 'parks.agencyNps',
 	state: 'parks.agencyState',
 	county: 'parks.agencyCounty',
+	usfs: 'parks.agencyUsfs',
+	usfws: 'parks.agencyUsfws',
 	other: 'parks.agencyOther',
 };
 

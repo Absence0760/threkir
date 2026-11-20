@@ -1,7 +1,7 @@
 {
   "feature_flags": {
     "health_backlog_purge": { "enabled": false },
-    "park_course_attempt_closures": { "enabled": false }
+    "park_course_attempt_closures": { "enabled": true, "signoff": "https://github.com/jaredhoward-dev/threkir/pull/1456" }
   },
   "function_env": {},
   "web_env": {},

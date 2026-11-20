@@ -49,6 +49,9 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Poor Farm Park, 5 km, 10 km (2 laps) and half-marathon distance (3 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 | **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 | **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
+| **Manassas National Battlefield Park, 5 km and 10 km (2 laps)** (NPS `mana`; issue #1434): built from OSM, every walked way checked against the NPS Public Trails layer, under `scripts/parks/catalogue/us-va/manassas/`. No half or marathon: every 21.1 km loop crosses US-29 or VA-234 at grade four or more times a lap | **Staged**: waits on the owner's ground check and the permit question. See *Pre-deploy checklist* |
+| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile and 100K wait for their own courses now that the distances exist (§ 2593) | **Staged**: waits on the owner's ground check, the Farmville closure and the permit question. See *Pre-deploy checklist* |
+| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **Staged**: waits on the owner's ground check, end-lot access and NOVA Parks' event rules. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -1307,6 +1310,34 @@ These gate going live, not the code:
       Road, which no course walks. Walk the route guides and set
       `ground_checked_at`, and confirm with DCR that a standing course needs
       no Special Use Permit. Trails are shared with horses and bikes.
+- [ ] **Manassas National Battlefield Park (staged, issue #1434).** Before
+      its `release` goes `live`: the owner walks both courses at Brawner Farm
+      against the NPS trail map and the blazes (most of each lap is the
+      yellow-blazed bridle loop, shared with horses; the loop crosses no
+      road), walks the route guide and sets `ground_checked_at`, and asks the
+      park whether a standing timed course needs a special use permit (NPS
+      lists $100 with three weeks' review). Ways 46523927 and 331330952 are
+      refused: OSM maps them at Brawner Farm but the NPS trails layer has no
+      line there.
+- [ ] **High Bridge Trail State Park (staged, issue #1432).** Before its
+      `release` goes `live`: the owner walks each start and finish against
+      the trail signs and lots, confirms the Farmville section (Main Street
+      to Osborne Road, closed for the River Road bridge rebuild "through
+      November") has reopened, since the half and the marathon run through
+      it, and checks DCR's daily parking fees and whether a standing course
+      needs a Special Use Permit. Walk the route guides and set
+      `ground_checked_at`.
+- [ ] **Washington & Old Dominion Trail (staged, issue #1432).** Before its
+      `release` goes `live`: the owner walks each start and finish against
+      the trail signs, confirms public access at the end lots (the
+      Purcellville and Leesburg school lots are weekend-only in term; the
+      Deerpath, Clarks Crossing and Vienna lots are unconfirmed), and checks
+      NOVA Parks' event rules (a permit at 25 or more people, and the
+      gathering regulation voted on 2026-11-19). OSM names the bridge way
+      59337961 "W&OD Trail" rather than the trail's full name, so the route
+      guide shows two "straight onto" steps around km 31.7; fix the name on
+      OSM and re-run the snapshot. Walk the route guides and set
+      `ground_checked_at`.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

@@ -24322,4 +24322,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Region';
+
+  @override
+  String get runCourseTimingStarted => 'Zeitmessung gestartet';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Im Ziel! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert.';
 }

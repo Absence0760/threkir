@@ -6463,5 +6463,8 @@
   "filterBarSort": "Ordenar",
   "filterBarSource": "Fuente",
   "runsSearchHint": "Buscar actividades por nombre",
-  "filterBarRegion": "Región"
+  "filterBarRegion": "Región",
+  "runCourseTimingStarted": "Cronometraje iniciado",
+  "runCourseFinished": "¡Meta! {time}",
+  "runCourseStoppedShort": "No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente."
 }

@@ -24067,4 +24067,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Region';
+
+  @override
+  String get runCourseTimingStarted => 'Timing started';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Finished! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'This won\'t count as a course time. Your run is still saved.';
 }

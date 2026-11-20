@@ -24322,4 +24322,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Región';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometraje iniciado';
+
+  @override
+  String runCourseFinished(String time) {
+    return '¡Meta! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente.';
 }

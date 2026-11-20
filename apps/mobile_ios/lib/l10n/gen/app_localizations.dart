@@ -37788,6 +37788,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Region'**
   String get filterBarRegion;
+
+  /// Big message on the recording screen, also spoken, when the runner following a park course leaves its start box going forward and the course time starts
+  ///
+  /// In en, this message translates to:
+  /// **'Timing started'**
+  String get runCourseTimingStarted;
+
+  /// Big message on the recording screen, also spoken, when the runner following a park course reaches its finish and the time will count on the course board. The recording keeps going.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished! {time}'**
+  String runCourseFinished(String time);
+
+  /// One line on the finished-run summary when the runner stopped a park course after its timing started and before finishing it: no course time, but the run itself is kept
+  ///
+  /// In en, this message translates to:
+  /// **'This won\'t count as a course time. Your run is still saved.'**
+  String get runCourseStoppedShort;
 }
 
 class _AppLocalizationsDelegate

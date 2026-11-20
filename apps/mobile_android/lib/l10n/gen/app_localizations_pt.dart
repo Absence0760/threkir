@@ -24346,6 +24346,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Região';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometragem iniciada';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Meta cortada! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -48669,4 +48681,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get filterBarRegion => 'Região';
+
+  @override
+  String get runCourseTimingStarted => 'Cronometragem iniciada';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Chegada! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Isso não vai contar como tempo do percurso. Sua corrida continua salva.';
 }

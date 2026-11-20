@@ -6463,5 +6463,8 @@
   "filterBarSort": "Ordenar",
   "filterBarSource": "Fonte",
   "runsSearchHint": "Pesquisar corridas pelo nome",
-  "filterBarRegion": "Região"
+  "filterBarRegion": "Região",
+  "runCourseTimingStarted": "Cronometragem iniciada",
+  "runCourseFinished": "Meta cortada! {time}",
+  "runCourseStoppedShort": "Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma."
 }

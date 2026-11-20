@@ -281,9 +281,20 @@ final class CourseBoxTimerTests: XCTestCase {
         XCTAssertEqual(display, .finished(seconds: 31_330))
         XCTAssertNil(CourseTimingDisplay.haptic(for: [.started(atMs: 9)], before: display),
                      "no start buzz once a lap has finished")
+    }
+
+    /// The board's format: rounded to the nearest second, no hour field under
+    /// an hour (`formatDuration` / `formatEffortTime` / `formatCourseTime`).
+    func testTheClockReadsWhatTheBoardShows() {
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 1301.6), "21:42")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 59.5), "1:00")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 59.4), "0:59")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 3599.6), "1:00:00")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 31_330.6), "8:42:11")
         XCTAssertEqual(CourseTimingDisplay.clock(seconds: 31_330), "8:42:10")
-        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 1296.67), "0:21:36")
-        XCTAssertEqual(CourseTimingDisplay.clock(seconds: .nan), "0:00:00")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: 0), "0:00")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: -3), "0:00")
+        XCTAssertEqual(CourseTimingDisplay.clock(seconds: .nan), "0:00")
     }
 
     func testTheRecorderBuzzesOnceForTheStartAndOnceForTheFinish() throws {

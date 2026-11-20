@@ -171,11 +171,14 @@ enum CourseTimingDisplay: Equatable {
         return nil
     }
 
-    /// `8:42:10` — hours always shown, so a 50 mile time and a 5K read the
-    /// same way: `0:21:36`. Whole seconds, truncated, as a stopwatch reads.
+    /// A course time as the board reads it: whole seconds, rounded to the
+    /// nearest, `8:42:11` from an hour and `21:42` under one — the rule of
+    /// the web's `formatDuration`, the phone's `formatEffortTime` and Wear's
+    /// `formatCourseTime`, so the wrist never reads a second short of them.
     static func clock(seconds: Double) -> String {
-        let total = max(0, Int(seconds.isFinite ? seconds : 0))
-        return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+        let total = seconds.isFinite ? Int(max(0, seconds).rounded()) : 0
+        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 }
 

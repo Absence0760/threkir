@@ -23,16 +23,13 @@ List<Waypoint> _straightTrack({
   final t0 = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
   const degPerM = 1 / 111320;
   for (var i = 0; i < points; i++) {
-    out.add(
-      Waypoint(
-        lat: startLat + i * stepM * degPerM,
-        lng: lng,
-        timestamp: DateTime.fromMillisecondsSinceEpoch(
+    out.add(Waypoint(
+      lat: startLat + i * stepM * degPerM,
+      lng: lng,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
           t0 + (i * stepS * 1000).round(),
-          isUtc: true,
-        ),
-      ),
-    );
+          isUtc: true),
+    ));
   }
   return out;
 }
@@ -68,9 +65,10 @@ void main() {
       isNull,
     );
     expect(
-      computeEffortFromTrack([
-        Waypoint(lat: 0, lng: 0, timestamp: DateTime.utc(2026, 1, 1)),
-      ], const SegmentSlice(startDistanceM: 0, endDistanceM: 100)),
+      computeEffortFromTrack(
+        [Waypoint(lat: 0, lng: 0, timestamp: DateTime.utc(2026, 1, 1))],
+        const SegmentSlice(startDistanceM: 0, endDistanceM: 100),
+      ),
       isNull,
     );
   });
@@ -208,10 +206,7 @@ void main() {
     expect(
       computeGlobalSegmentEffort(
         const [],
-        GlobalSegmentGeometry(
-          points: [coordAt(0), coordAt(100)],
-          distanceM: 100,
-        ),
+        GlobalSegmentGeometry(points: [coordAt(0), coordAt(100)], distanceM: 100),
       ),
       isNull,
     );
@@ -267,7 +262,9 @@ void main() {
         points: [coordAt(100), coordAt(600)],
         distanceM: 500,
         // ~1 km east of the track: the far side of a cut-through.
-        checkpoints: [const Waypoint(lat: 37.0 + 350 / 111320, lng: -121.988)],
+        checkpoints: [
+          const Waypoint(lat: 37.0 + 350 / 111320, lng: -121.988),
+        ],
       ),
     );
     expect(eff, isNull);
@@ -286,22 +283,20 @@ void main() {
     expect(eff, isNull);
   });
 
-  test(
-    'checkpoints: a checkpoint outside the start-end window refuses the match',
-    () {
-      final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
-      final eff = computeGlobalSegmentEffort(
-        track,
-        GlobalSegmentGeometry(
-          points: [coordAt(100), coordAt(600)],
-          distanceM: 500,
-          // On the track, but after the end crossing.
-          checkpoints: [coordAt(800)],
-        ),
-      );
-      expect(eff, isNull);
-    },
-  );
+  test('checkpoints: a checkpoint outside the start-end window refuses the match',
+      () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // On the track, but after the end crossing.
+        checkpoints: [coordAt(800)],
+      ),
+    );
+    expect(eff, isNull);
+  });
 
   // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
 
@@ -311,15 +306,10 @@ void main() {
     for (var i = 0; i < n; i++) {
       final lat = -60 + ((i * 13) % 120).toDouble();
       final lng = -180 + ((i * 29) % 360).toDouble();
-      out.add(
-        GlobalSegmentGeometry(
-          points: [
-            Waypoint(lat: lat, lng: lng),
-            Waypoint(lat: lat + 0.004, lng: lng),
-          ],
-          distanceM: 450,
-        ),
-      );
+      out.add(GlobalSegmentGeometry(
+        points: [Waypoint(lat: lat, lng: lng), Waypoint(lat: lat + 0.004, lng: lng)],
+        distanceM: 450,
+      ));
     }
     return out;
   }
@@ -327,25 +317,15 @@ void main() {
   test('global sweep: each entry equals the single-segment result', () {
     final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
     final catalogue = <GlobalSegmentGeometry>[
-      GlobalSegmentGeometry(
-        points: [coordAt(100), coordAt(600)],
-        distanceM: 500,
-      ),
-      GlobalSegmentGeometry(
-        points: [coordAt(600), coordAt(100)],
-        distanceM: 500,
-      ),
-      GlobalSegmentGeometry(
-        points: [coordAt(100), coordAt(600)],
-        distanceM: 200,
-      ),
+      GlobalSegmentGeometry(points: [coordAt(100), coordAt(600)], distanceM: 500),
+      GlobalSegmentGeometry(points: [coordAt(600), coordAt(100)], distanceM: 500),
+      GlobalSegmentGeometry(points: [coordAt(100), coordAt(600)], distanceM: 200),
       ...distantCatalogue(3),
     ];
 
     final swept = computeGlobalSegmentEfforts(track, catalogue);
-    final oneByOne = catalogue
-        .map((s) => computeGlobalSegmentEffort(track, s))
-        .toList();
+    final oneByOne =
+        catalogue.map((s) => computeGlobalSegmentEffort(track, s)).toList();
 
     expect(swept.length, catalogue.length);
     for (var i = 0; i < catalogue.length; i++) {
@@ -358,23 +338,19 @@ void main() {
     expect(swept.sublist(3).every((e) => e == null), isTrue);
   });
 
-  test(
-    'global sweep: a segment just inside the tolerance is still matched',
-    () {
-      // The extent test must be conservative — a segment offset laterally by
-      // less than the tolerance is a real match and must survive the reject.
-      final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
-      final offsetDeg =
-          30 / (111320 * math.cos(37 * math.pi / 180)); // ~30 m east
-      Waypoint nudge(double d) =>
-          Waypoint(lat: coordAt(d).lat, lng: coordAt(d).lng + offsetDeg);
-      final eff = computeGlobalSegmentEfforts(track, [
-        GlobalSegmentGeometry(points: [nudge(100), nudge(600)], distanceM: 500),
-      ]).first;
-      expect(eff, isNotNull);
-      expect((eff!.timeSeconds - 100).abs() < 2, isTrue);
-    },
-  );
+  test('global sweep: a segment just inside the tolerance is still matched', () {
+    // The extent test must be conservative — a segment offset laterally by
+    // less than the tolerance is a real match and must survive the reject.
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final offsetDeg = 30 / (111320 * math.cos(37 * math.pi / 180)); // ~30 m east
+    Waypoint nudge(double d) =>
+        Waypoint(lat: coordAt(d).lat, lng: coordAt(d).lng + offsetDeg);
+    final eff = computeGlobalSegmentEfforts(track, [
+      GlobalSegmentGeometry(points: [nudge(100), nudge(600)], distanceM: 500),
+    ]).first;
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100).abs() < 2, isTrue);
+  });
 
   test('global sweep: a run straddling the antimeridian still matches', () {
     // The extent is a planar frame, so it goes through geo.dart's unwrapping —
@@ -384,16 +360,12 @@ void main() {
     final t0 = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
     final track = <Waypoint>[];
     for (var i = 0; i < 200; i++) {
-      track.add(
-        Waypoint(
-          lat: 0.5 + i * 5 * degPerM,
-          lng: i < 100 ? 179.9999 : -179.9999,
-          timestamp: DateTime.fromMillisecondsSinceEpoch(
-            t0 + i * 1000,
-            isUtc: true,
-          ),
-        ),
-      );
+      track.add(Waypoint(
+        lat: 0.5 + i * 5 * degPerM,
+        lng: i < 100 ? 179.9999 : -179.9999,
+        timestamp:
+            DateTime.fromMillisecondsSinceEpoch(t0 + i * 1000, isUtc: true),
+      ));
     }
     final eff = computeGlobalSegmentEfforts(track, [
       GlobalSegmentGeometry(points: [track[20], track[120]], distanceM: 500),
@@ -414,9 +386,8 @@ void main() {
     ];
 
     final swept = computeEffortsFromTrack(track, slices);
-    final oneByOne = slices
-        .map((s) => computeEffortFromTrack(track, s))
-        .toList();
+    final oneByOne =
+        slices.map((s) => computeEffortFromTrack(track, s)).toList();
 
     expect(swept.length, slices.length);
     for (var i = 0; i < slices.length; i++) {
@@ -438,11 +409,8 @@ void main() {
         SegmentSlice(startDistanceM: start, endDistanceM: start + 500),
       );
       expect(eff, isNotNull, reason: 'no effort at start $start');
-      expect(
-        (eff!.timeSeconds - 100).abs() < 1,
-        isTrue,
-        reason: '500 m at 5 m/s from $start should be ~100 s',
-      );
+      expect((eff!.timeSeconds - 100).abs() < 1, isTrue,
+          reason: '500 m at 5 m/s from $start should be ~100 s');
     }
   });
 
@@ -452,11 +420,8 @@ void main() {
   /// to the segment start, then the nearest AFTER it to the segment end, both
   /// within tolerance. The extent test is only allowed to skip work — never to
   /// change this answer.
-  bool scanMatches(
-    List<Waypoint> track,
-    GlobalSegmentGeometry seg, {
-    double toleranceM = 35,
-  }) {
+  bool scanMatches(List<Waypoint> track, GlobalSegmentGeometry seg,
+      {double toleranceM = 35}) {
     if (track.length < 2 || seg.points.length < 2 || seg.distanceM <= 0) {
       return false;
     }
@@ -466,8 +431,7 @@ void main() {
       final dLng = (bLng - aLng) * math.pi / 180;
       final sLat = math.sin(dLat / 2);
       final sLng = math.sin(dLng / 2);
-      final h =
-          sLat * sLat +
+      final h = sLat * sLat +
           math.cos(aLat * math.pi / 180) *
               math.cos(bLat * math.pi / 180) *
               sLng *
@@ -494,70 +458,58 @@ void main() {
     return endIdx >= 0 && endBest <= toleranceM;
   }
 
-  test(
-    'global sweep: the extent test never rejects a segment the full scan matches',
-    () {
-      // The prefilter is only sound if it is conservative. Sweep a range of
-      // track latitudes (including polar, where a degree of longitude collapses)
-      // and antimeridian crossings, against segments nudged out to and past the
-      // tolerance in both axes.
-      const degPerM = 1 / 111320;
-      final t0 = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
-      List<Waypoint> makeTrack(double lat0, double lng0, double lngDrift) => [
-        for (var i = 0; i < 120; i++)
-          Waypoint(
-            lat: lat0 + i * 5 * degPerM,
-            lng: lng0 + i * lngDrift,
-            timestamp: DateTime.fromMillisecondsSinceEpoch(
-              t0 + i * 1000,
-              isUtc: true,
+  test('global sweep: the extent test never rejects a segment the full scan matches',
+      () {
+    // The prefilter is only sound if it is conservative. Sweep a range of
+    // track latitudes (including polar, where a degree of longitude collapses)
+    // and antimeridian crossings, against segments nudged out to and past the
+    // tolerance in both axes.
+    const degPerM = 1 / 111320;
+    final t0 = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
+    List<Waypoint> makeTrack(double lat0, double lng0, double lngDrift) => [
+          for (var i = 0; i < 120; i++)
+            Waypoint(
+              lat: lat0 + i * 5 * degPerM,
+              lng: lng0 + i * lngDrift,
+              timestamp:
+                  DateTime.fromMillisecondsSinceEpoch(t0 + i * 1000, isUtc: true),
             ),
-          ),
-      ];
+        ];
 
-      var matched = 0;
-      for (final (lat0, lng0, drift) in <(double, double, double)>[
-        (37, -122, 0),
-        (0.5, 179.99, 0.00002),
-        (60, 11, 0.00001),
-        (89.9, 10, 0.0001),
-        (-33.9, 151.2, 0),
-      ]) {
-        final track = makeTrack(lat0, lng0, drift);
-        double metresEast(double lat, double m) =>
-            m * degPerM / math.cos(lat * math.pi / 180);
-        for (final offsetM in <double>[0, 10, 34, 36, 200, 5000]) {
-          for (final axis in <String>['lat', 'lng']) {
-            Waypoint shift(int i) => Waypoint(
-              lat: track[i].lat + (axis == 'lat' ? offsetM * degPerM : 0),
-              lng:
-                  track[i].lng +
-                  (axis == 'lng' ? metresEast(track[i].lat, offsetM) : 0),
-            );
-            final seg = GlobalSegmentGeometry(
-              points: [shift(20), shift(100)],
-              distanceM: 400,
-            );
-            final swept = computeGlobalSegmentEfforts(track, [seg]).first;
-            if (!scanMatches(track, seg)) continue;
-            matched++;
-            expect(
-              swept,
-              isNotNull,
-              reason:
-                  'extent test rejected a real match: '
-                  'lat0=$lat0 offset=${offsetM}m axis=$axis',
-            );
-          }
+    var matched = 0;
+    for (final (lat0, lng0, drift) in <(double, double, double)>[
+      (37, -122, 0),
+      (0.5, 179.99, 0.00002),
+      (60, 11, 0.00001),
+      (89.9, 10, 0.0001),
+      (-33.9, 151.2, 0),
+    ]) {
+      final track = makeTrack(lat0, lng0, drift);
+      double metresEast(double lat, double m) =>
+          m * degPerM / math.cos(lat * math.pi / 180);
+      for (final offsetM in <double>[0, 10, 34, 36, 200, 5000]) {
+        for (final axis in <String>['lat', 'lng']) {
+          Waypoint shift(int i) => Waypoint(
+                lat: track[i].lat + (axis == 'lat' ? offsetM * degPerM : 0),
+                lng: track[i].lng +
+                    (axis == 'lng' ? metresEast(track[i].lat, offsetM) : 0),
+              );
+          final seg = GlobalSegmentGeometry(
+            points: [shift(20), shift(100)],
+            distanceM: 400,
+          );
+          final swept = computeGlobalSegmentEfforts(track, [seg]).first;
+          if (!scanMatches(track, seg)) continue;
+          matched++;
+          expect(swept, isNotNull,
+              reason: 'extent test rejected a real match: '
+                  'lat0=$lat0 offset=${offsetM}m axis=$axis');
         }
       }
-      expect(
-        matched >= 10,
-        isTrue,
-        reason: 'oracle produced too few matches to be meaningful ($matched)',
-      );
-    },
-  );
+    }
+    expect(matched >= 10, isTrue,
+        reason: 'oracle produced too few matches to be meaningful ($matched)');
+  });
 
   // ─── Line position: the smoother's fix over the raw one ───
 
@@ -575,32 +527,28 @@ void main() {
           lat: straight[i].lat,
           lng: straight[i].lng + (i.isEven ? lngOff : -lngOff),
           timestamp: straight[i].timestamp,
-          smoothedLat: pair == 'both' || pair == 'latOnly'
-              ? straight[i].lat
-              : null,
-          smoothedLng: pair == 'both' || pair == 'lngOnly'
-              ? straight[i].lng
-              : null,
+          smoothedLat:
+              pair == 'both' || pair == 'latOnly' ? straight[i].lat : null,
+          smoothedLng:
+              pair == 'both' || pair == 'lngOnly' ? straight[i].lng : null,
         ),
     ];
   }
 
-  test(
-    'line: a global segment is matched on the smoothed line through a raw zig-zag',
-    () {
-      final segment = GlobalSegmentGeometry(
-        points: [coordAt(100), coordAt(600)],
-        distanceM: 500,
-      );
-      // Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
-      expect(computeGlobalSegmentEffort(zigZagTrack('none'), segment), isNull);
-      final eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
-      expect(eff, isNotNull);
-      // The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
-      expect((eff!.timeSeconds - 100).abs() < 1e-6, isTrue);
-      expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20));
-    },
-  );
+  test('line: a global segment is matched on the smoothed line through a raw zig-zag',
+      () {
+    final segment = GlobalSegmentGeometry(
+      points: [coordAt(100), coordAt(600)],
+      distanceM: 500,
+    );
+    // Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
+    expect(computeGlobalSegmentEffort(zigZagTrack('none'), segment), isNull);
+    final eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
+    expect(eff, isNotNull);
+    // The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
+    expect((eff!.timeSeconds - 100).abs() < 1e-6, isTrue);
+    expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20));
+  });
 
   test('line: a route slice is timed on the smoothed line distance', () {
     const slice = SegmentSlice(startDistanceM: 100, endDistanceM: 600);
@@ -627,11 +575,8 @@ void main() {
       expect(eff, isNotNull, reason: pair);
       expect(eff!.timeSeconds, raw.timeSeconds, reason: pair);
       expect(eff.startedAt, raw.startedAt, reason: pair);
-      expect(
-        computeGlobalSegmentEffort(zigZagTrack(pair), segment),
-        isNull,
-        reason: pair,
-      );
+      expect(computeGlobalSegmentEffort(zigZagTrack(pair), segment), isNull,
+          reason: pair);
     }
   });
 
@@ -639,13 +584,12 @@ void main() {
   //
   // The Dart reader of fixtures/segments_gate_cases.json, the case table the
   // `segments` pair shares with apps/web/src/lib/segments/segments.test.ts.
-  final gateFixture =
-      jsonDecode(
-            File('../../fixtures/segments_gate_cases.json').readAsStringSync(),
-          )
-          as Map<String, dynamic>;
+  final gateFixture = jsonDecode(
+          File('../../fixtures/segments_gate_cases.json').readAsStringSync())
+      as Map<String, dynamic>;
   final gateBase = DateTime.parse(gateFixture['base_time'] as String);
-  final gateCases = (gateFixture['cases'] as List).cast<Map<String, dynamic>>();
+  final gateCases =
+      (gateFixture['cases'] as List).cast<Map<String, dynamic>>();
 
   Gate? fixtureGate(Object? raw) {
     if (raw == null) return null;
@@ -659,12 +603,12 @@ void main() {
   }
 
   List<Waypoint> fixturePoints(Object? raw) => [
-    for (final p in (raw as List? ?? const []).cast<Map<String, dynamic>>())
-      Waypoint(
-        lat: (p['lat'] as num).toDouble(),
-        lng: (p['lng'] as num).toDouble(),
-      ),
-  ];
+        for (final p in (raw as List? ?? const []).cast<Map<String, dynamic>>())
+          Waypoint(
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+          ),
+      ];
 
   for (final c in gateCases) {
     test('gate fixture: ${c['name']}', () {
@@ -674,9 +618,8 @@ void main() {
           Waypoint(
             lat: (p['lat'] as num).toDouble(),
             lng: (p['lng'] as num).toDouble(),
-            timestamp: gateBase.add(
-              Duration(milliseconds: ((p['t'] as num) * 1000).round()),
-            ),
+            timestamp: gateBase.add(Duration(
+                milliseconds: ((p['t'] as num) * 1000).round())),
             offTrack: p['off_track'] == true,
           ),
       ];
@@ -702,10 +645,8 @@ void main() {
         isTrue,
         reason: 'time ${got.timeSeconds} vs ${expected['time_seconds']}',
       );
-      expect(
-        got.startedAt.difference(gateBase).inMilliseconds,
-        expected['started_offset_ms'],
-      );
+      expect(got.startedAt.difference(gateBase).inMilliseconds,
+          expected['started_offset_ms']);
     });
   }
 
@@ -725,7 +666,8 @@ void main() {
     }
   });
 
-  test('a circle match reports matched_by zone, and the matcher version is '
+  test(
+      'a circle match reports matched_by zone, and the matcher version is '
       'past the lap rule of 3', () {
     final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
     final eff = computeGlobalSegmentEffort(
@@ -743,14 +685,15 @@ void main() {
     expect(kGlobalSegmentGapSpeedMax, 1.5);
   });
 
-  test('linesChain: a loop finishing on its start line, facing within 90 '
+  test(
+      'linesChain: a loop finishing on its start line, facing within 90 '
       'degrees of it, chains its laps', () {
     Gate at(double bearingDeg, {double northM = 0}) => Gate(
-      lat: 37.5 + northM / 111195,
-      lng: -77.5,
-      bearingDeg: bearingDeg,
-      halfWidthM: 15,
-    );
+          lat: 37.5 + northM / 111195,
+          lng: -77.5,
+          bearingDeg: bearingDeg,
+          halfWidthM: 15,
+        );
     // Beaver Lake: one point, the finish facing 38 degrees off the start.
     expect(linesChain(at(153.1), at(191.5)), isTrue);
     // Across north: 350 and 20 are 30 degrees apart, not 330.
@@ -771,13 +714,12 @@ void main() {
     const lat0 = 37.5;
     const lng0 = -77.5;
     double toLng(double x) =>
-        lng0 +
-        (x / (6371008.8 * math.cos(lat0 * math.pi / 180))) * (180 / math.pi);
+        lng0 + (x / (6371008.8 * math.cos(lat0 * math.pi / 180))) * (180 / math.pi);
     double toLat(double y) => lat0 + (y / 6371008.8) * (180 / math.pi);
     Waypoint at(double x, [double y = 0]) =>
         Waypoint(lat: toLat(y), lng: toLng(x));
-    Gate gateAt(double x) =>
-        Gate(lat: toLat(0), lng: toLng(x), bearingDeg: 90, halfWidthM: 15);
+    Gate gateAt(double x) => Gate(
+        lat: toLat(0), lng: toLng(x), bearingDeg: 90, halfWidthM: 15);
     final straight = GlobalSegmentGeometry(
       points: [at(0), at(500), at(1000)],
       distanceM: 1000,
@@ -797,13 +739,10 @@ void main() {
         for (var s = k == 1 ? 0 : 1; s <= steps; s++) {
           final f = s / steps;
           final p = at(ax + f * (bx - ax), ay + f * (by - ay));
-          out.add(
-            Waypoint(
+          out.add(Waypoint(
               lat: p.lat,
               lng: p.lng,
-              timestamp: base.add(Duration(seconds: t)),
-            ),
-          );
+              timestamp: base.add(Duration(seconds: t))));
           t++;
         }
       }
@@ -812,85 +751,73 @@ void main() {
 
     test('attempt: a run timed on the course has none', () {
       expect(
-        diagnoseGlobalSegmentAttempt(
-          walk([
-            [-20, 0],
-            [1020, 0],
-          ]),
-          straight,
-        ),
-        isNull,
-      );
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-20, 0],
+                [1020, 0]
+              ]),
+              straight),
+          isNull);
     });
 
-    test('attempt: a run that never leaves the start box has none, nor one on '
+    test(
+        'attempt: a run that never leaves the start box has none, nor one on '
         'a segment without lines', () {
       expect(
-        diagnoseGlobalSegmentAttempt(
-          walk([
-            [-40, 0],
-            [-12, 0],
-          ]),
-          straight,
-        ),
-        isNull,
-      );
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-40, 0],
+                [-12, 0]
+              ]),
+              straight),
+          isNull);
       final circles = GlobalSegmentGeometry(
         points: straight.points,
         distanceM: straight.distanceM,
         checkpoints: straight.checkpoints,
       );
       expect(
-        diagnoseGlobalSegmentAttempt(
-          walk([
-            [-20, 0],
-            [600, 0],
-          ]),
-          circles,
-        ),
-        isNull,
-      );
+          diagnoseGlobalSegmentAttempt(
+              walk([
+                [-20, 0],
+                [600, 0]
+              ]),
+              circles),
+          isNull);
     });
 
     test('attempt: stopping at 600 m is stopped_short at 600 m', () {
       final a = diagnoseGlobalSegmentAttempt(
-        walk([
-          [-20, 0],
-          [600, 0],
-        ]),
-        straight,
-      )!;
+          walk([
+            [-20, 0],
+            [600, 0]
+          ]),
+          straight)!;
       expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
-      expect(
-        (a.progressM - 600).abs() <= 2,
-        isTrue,
-        reason: 'progress ${a.progressM}',
-      );
+      expect((a.progressM - 600).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
       expect(a.courseM, 1000);
       expect(a.missedCheckpoint, isNull);
       expect(a.checkpointCount, 3);
     });
 
-    test('attempt: going 60 m round checkpoint 2 and finishing is '
+    test(
+        'attempt: going 60 m round checkpoint 2 and finishing is '
         'skipped_checkpoint 2 at 400 m', () {
       final a = diagnoseGlobalSegmentAttempt(
-        walk([
-          [-20, 0],
-          [400, 0],
-          [400, 60],
-          [600, 60],
-          [600, 0],
-          [1020, 0],
-        ]),
-        straight,
-      )!;
+          walk([
+            [-20, 0],
+            [400, 0],
+            [400, 60],
+            [600, 60],
+            [600, 0],
+            [1020, 0]
+          ]),
+          straight)!;
       expect(a.outcome, ParkCourseAttemptOutcome.skippedCheckpoint);
       expect(a.missedCheckpoint, 2);
-      expect(
-        (a.progressM - 400).abs() <= 2,
-        isTrue,
-        reason: 'progress ${a.progressM}',
-      );
+      expect((a.progressM - 400).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
     });
 
     // `b` starts gapS seconds after `a`'s last fix: a GPS dropout.
@@ -905,20 +832,20 @@ void main() {
       ];
     }
 
-    test('attempt: reaching the finish across a 200 s dropout, then cooling '
+    test(
+        'attempt: reaching the finish across a 200 s dropout, then cooling '
         'down, is gps_gap at the full length', () {
       // 54 m in 200 s against 4 m/s so far: the timer refuses the gap.
       final track = dropout(
-        walk([
-          [-20, 0],
-          [950, 0],
-        ]),
-        walk([
-          [1004, 0],
-          [1100, 0],
-        ]),
-        200,
-      );
+          walk([
+            [-20, 0],
+            [950, 0]
+          ]),
+          walk([
+            [1004, 0],
+            [1100, 0]
+          ]),
+          200);
       expect(computeGlobalSegmentEffort(track, straight), isNull);
       final a = diagnoseGlobalSegmentAttempt(track, straight)!;
       expect(a.outcome, ParkCourseAttemptOutcome.gpsGap);
@@ -926,44 +853,41 @@ void main() {
       expect(a.missedCheckpoint, isNull);
     });
 
-    test('attempt: a recording ending 3 m short of the finish after a 400 s '
+    test(
+        'attempt: a recording ending 3 m short of the finish after a 400 s '
         'dropout is gps_gap', () {
       final track = dropout(
-        walk([
-          [-20, 0],
-          [950, 0],
-        ]),
-        walk([
-          [997, 0],
-          [998, 0],
-        ]),
-        400,
-      );
+          walk([
+            [-20, 0],
+            [950, 0]
+          ]),
+          walk([
+            [997, 0],
+            [998, 0]
+          ]),
+          400);
       expect(computeGlobalSegmentEffort(track, straight), isNull);
       final a = diagnoseGlobalSegmentAttempt(track, straight)!;
       expect(a.outcome, ParkCourseAttemptOutcome.gpsGap);
     });
 
-    test('attempt: a dropout mid-course and then stopping at 600 m is still '
+    test(
+        'attempt: a dropout mid-course and then stopping at 600 m is still '
         'stopped_short', () {
       final track = dropout(
-        walk([
-          [-20, 0],
-          [300, 0],
-        ]),
-        walk([
-          [500, 0],
-          [600, 0],
-        ]),
-        200,
-      );
+          walk([
+            [-20, 0],
+            [300, 0]
+          ]),
+          walk([
+            [500, 0],
+            [600, 0]
+          ]),
+          200);
       final a = diagnoseGlobalSegmentAttempt(track, straight)!;
       expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
-      expect(
-        (a.progressM - 600).abs() <= 2,
-        isTrue,
-        reason: 'progress ${a.progressM}',
-      );
+      expect((a.progressM - 600).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
     });
   });
 }

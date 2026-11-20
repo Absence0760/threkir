@@ -4,12 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 
 import 'course_gates.dart'
-    show
-        GateBoxLayout,
-        GatePoint,
-        gateTimingEdges,
-        kCourseGateBoxDepthM,
-        planeXY;
+    show GateBoxLayout, GatePoint, gateTimingEdges, kCourseGateBoxDepthM, planeXY;
 import 'gate_crossing.dart';
 import 'geo.dart' show unwrapLonDeg;
 import 'run_stats.dart' show haversineMetres;
@@ -29,10 +24,7 @@ import 'run_stats.dart' show haversineMetres;
 class SegmentSlice {
   final double startDistanceM;
   final double endDistanceM;
-  const SegmentSlice({
-    required this.startDistanceM,
-    required this.endDistanceM,
-  });
+  const SegmentSlice({required this.startDistanceM, required this.endDistanceM});
 }
 
 class EffortResult {
@@ -47,7 +39,8 @@ class EffortResult {
 EffortResult? computeEffortFromTrack(
   List<Waypoint> track,
   SegmentSlice segment,
-) => computeEffortsFromTrack(track, [segment]).first;
+) =>
+    computeEffortsFromTrack(track, [segment]).first;
 
 /// Times a run track over many segment slices at once, returning one result
 /// per input slice. Identical per-slice semantics to [computeEffortFromTrack],
@@ -126,10 +119,8 @@ EffortResult? _effortFromIndex(
     // constructor applies ToInteger). `.round()` rounds half away from zero, so
     // an interpolated 2997.7386 ms start was written as …02.998Z here and
     // …02.997Z on web for the same effort.
-    startedAt: DateTime.fromMillisecondsSinceEpoch(
-      startMs.truncate(),
-      isUtc: true,
-    ),
+    startedAt:
+        DateTime.fromMillisecondsSinceEpoch(startMs.truncate(), isUtc: true),
   );
 }
 
@@ -293,11 +284,7 @@ List<GlobalSegmentEffortResult?> computeGlobalSegmentEfforts(
       // centre.
       const reach = kCourseGateBoxDepthM + kGlobalSegmentBoxSlackM;
       if (!_boundsAdmit(
-        bounds,
-        start.lat,
-        start.lng,
-        start.halfWidthM + reach,
-      )) {
+          bounds, start.lat, start.lng, start.halfWidthM + reach)) {
         continue;
       }
       if (!_boundsAdmit(bounds, end.lat, end.lng, end.halfWidthM + reach)) {
@@ -392,11 +379,7 @@ GlobalSegmentEffortResult? _scoreByGates(
   GateProjection prevEntry = (s: double.nan, u: double.nan);
 
   _PendingStart? pick(
-    double endCoveredM,
-    int endIdx,
-    double endMs,
-    _FixGap gap,
-  ) {
+      double endCoveredM, int endIdx, double endMs, _FixGap gap) {
     pending = [
       for (final s in pending)
         if (endCoveredM - s.crossing.coveredM <= maxCovered) s,
@@ -412,12 +395,7 @@ GlobalSegmentEffortResult? _scoreByGates(
         continue;
       }
       if (!_passesCheckpoints(
-        line,
-        segment.checkpoints,
-        s.fromIdx,
-        endIdx,
-        toleranceM,
-      )) {
+          line, segment.checkpoints, s.fromIdx, endIdx, toleranceM)) {
         continue;
       }
       picked = s;
@@ -504,19 +482,17 @@ GlobalSegmentEffortResult? _scoreByGates(
       if (atStart.s >= 0 &&
           atStart.s <= kGlobalSegmentBoxSlackM &&
           atStart.u.abs() <= exit.halfWidthM) {
-        pending.add(
-          _PendingStart(
-            GateCrossing(
-              direction: GateDirection.forward,
-              fraction: 0,
-              tMs: tMs,
-              coveredM: index.cum[i],
-              offsetM: atStart.u,
-              gapped: false,
-            ),
-            i,
+        pending.add(_PendingStart(
+          GateCrossing(
+            direction: GateDirection.forward,
+            fraction: 0,
+            tMs: tMs,
+            coveredM: index.cum[i],
+            offsetM: atStart.u,
+            gapped: false,
           ),
-        );
+          i,
+        ));
       }
     }
     prevIdx = i;
@@ -535,10 +511,8 @@ GlobalSegmentEffortResult? _scoreByGates(
   if (startMs == null || endMs == null) return null;
   return GlobalSegmentEffortResult(
     timeSeconds: (endMs - startMs) / 1000,
-    startedAt: DateTime.fromMillisecondsSinceEpoch(
-      startMs.round(),
-      isUtc: true,
-    ),
+    startedAt:
+        DateTime.fromMillisecondsSinceEpoch(startMs.round(), isUtc: true),
     matchedBy: GlobalSegmentMatchedBy.gate,
   );
 }
@@ -582,10 +556,7 @@ GateCrossing? _enteredAcrossGap(
 /// at or past it. Mirrors `intoFinishLane` in
 /// `apps/web/src/lib/segments/segments.ts`.
 bool _intoFinishLane(
-  GateProjection prev,
-  GateProjection cur,
-  double halfWidthM,
-) =>
+        GateProjection prev, GateProjection cur, double halfWidthM) =>
     (prev.s < 0 || prev.u.abs() > halfWidthM) &&
     cur.s >= 0 &&
     cur.u.abs() <= halfWidthM;
@@ -596,11 +567,7 @@ bool _intoFinishLane(
 /// [kGlobalSegmentGapSpeedMin]..[kGlobalSegmentGapSpeedMax] of their average
 /// from [start] to the fix before the gap.
 bool _plausibleGap(
-  _PendingStart start,
-  List<double> cum,
-  _FixGap gap,
-  int toIdx,
-) {
+    _PendingStart start, List<double> cum, _FixGap gap, int toIdx) {
   if (gap.gapS > kGlobalSegmentFinishMaxGapS || gap.fromIdx < 0) return false;
   final soFarS = (gap.fromMs - start.crossing.tMs) / 1000;
   final soFarM = cum[gap.fromIdx] - start.crossing.coveredM;
@@ -622,14 +589,12 @@ bool _passesCheckpoints(
   int endIdx,
   double toleranceM,
 ) =>
-    advanceCheckpointWalk(
-      track,
-      checkpoints,
-      passed: 0,
-      fromIdx: startIdx,
-      toIdx: endIdx,
-      toleranceM: toleranceM,
-    ).passed ==
+    advanceCheckpointWalk(track, checkpoints,
+            passed: 0,
+            fromIdx: startIdx,
+            toIdx: endIdx,
+            toleranceM: toleranceM)
+        .passed ==
     checkpoints.length;
 
 /// The checkpoint rule [computeGlobalSegmentEffort] scores by, resumable so a
@@ -670,12 +635,12 @@ bool _passesCheckpoints(
 /// short. Mirrors `ATTEMPT_OUTCOME_RANK` in
 /// `apps/web/src/lib/segments/segments.ts`.
 int _attemptRank(ParkCourseAttemptOutcome o) => switch (o) {
-  ParkCourseAttemptOutcome.stoppedShort => 0,
-  ParkCourseAttemptOutcome.offCourse => 1,
-  ParkCourseAttemptOutcome.gpsGap => 2,
-  ParkCourseAttemptOutcome.skippedCheckpoint => 3,
-  ParkCourseAttemptOutcome.wrongDirection => 4,
-};
+      ParkCourseAttemptOutcome.stoppedShort => 0,
+      ParkCourseAttemptOutcome.offCourse => 1,
+      ParkCourseAttemptOutcome.gpsGap => 2,
+      ParkCourseAttemptOutcome.skippedCheckpoint => 3,
+      ParkCourseAttemptOutcome.wrongDirection => 4,
+    };
 
 /// Why a run that set out on a gated course got no time on it (issue #1446).
 /// Mirrors `CourseAttempt` in `apps/web/src/lib/segments/segments.ts`.
@@ -718,11 +683,8 @@ List<CourseAttempt?> diagnoseGlobalSegmentAttempts(
   double toleranceM = 35,
 }) {
   final out = List<CourseAttempt?>.filled(segments.length, null);
-  final efforts = computeGlobalSegmentEfforts(
-    track,
-    segments,
-    toleranceM: toleranceM,
-  );
+  final efforts =
+      computeGlobalSegmentEfforts(track, segments, toleranceM: toleranceM);
   final line = trackLine(track);
   if (line.length < 2) return out;
   final bounds = _trackBounds(line);
@@ -740,30 +702,16 @@ List<CourseAttempt?> diagnoseGlobalSegmentAttempts(
     if (segment.points.length < 2 || !(segment.distanceM > 0)) continue;
     final start = segment.startGate;
     final end = segment.endGate;
-    if (start == null ||
-        end == null ||
-        !gateUsable(start) ||
-        !gateUsable(end)) {
+    if (start == null || end == null || !gateUsable(start) || !gateUsable(end)) {
       continue;
     }
-    if (!_boundsAdmit(
-      bounds,
-      start.lat,
-      start.lng,
-      start.halfWidthM + kCourseGateBoxDepthM + kGlobalSegmentBoxSlackM,
-    )) {
+    if (!_boundsAdmit(bounds, start.lat, start.lng,
+        start.halfWidthM + kCourseGateBoxDepthM + kGlobalSegmentBoxSlackM)) {
       continue;
     }
     index ??= _distanceIndex(line);
     out[i] = _diagnoseByGates(
-      line,
-      index,
-      segment,
-      start,
-      end,
-      timed,
-      toleranceM,
-    );
+        line, index, segment, start, end, timed, toleranceM);
   }
   return out;
 }
@@ -773,9 +721,9 @@ CourseAttempt? diagnoseGlobalSegmentAttempt(
   List<Waypoint> track,
   GlobalSegmentGeometry segment, {
   double toleranceM = 35,
-}) => diagnoseGlobalSegmentAttempts(track, [
-  segment,
-], toleranceM: toleranceM).first;
+}) =>
+    diagnoseGlobalSegmentAttempts(track, [segment], toleranceM: toleranceM)
+        .first;
 
 class _TimedSpan {
   final double startMs;
@@ -793,12 +741,7 @@ class _AttemptWindow {
   /// length guard.
   final bool gapped;
   const _AttemptWindow(
-    this.fromIdx,
-    this.toIdx,
-    this.reverse,
-    this.entered,
-    this.gapped,
-  );
+      this.fromIdx, this.toIdx, this.reverse, this.entered, this.gapped);
 }
 
 class _OpenAttempt {
@@ -865,11 +808,8 @@ CourseAttempt? _diagnoseByGates(
     // the timer's own _enteredAcrossGap reads it.
     ({double tMs, double coveredM, bool gapped})? entered;
     if (endCrossing != null && endCrossing.direction == GateDirection.forward) {
-      entered = (
-        tMs: endCrossing.tMs,
-        coveredM: endCrossing.coveredM,
-        gapped: false,
-      );
+      entered =
+          (tMs: endCrossing.tMs, coveredM: endCrossing.coveredM, gapped: false);
     } else if (prevIdx >= 0 &&
         gapS > kGateRejectGapS &&
         _intoFinishLane(prevEntry, inFinish, entry.halfWidthM)) {
@@ -921,22 +861,20 @@ CourseAttempt? _diagnoseByGates(
     prevMs = tMs;
   }
   if (fwd != null) {
-    final tailM = tailIdx >= 0 ? index.cum[tailIdx] - fwd.coveredM : double.nan;
+    final tailM =
+        tailIdx >= 0 ? index.cum[tailIdx] - fwd.coveredM : double.nan;
     final tail = tailM >= minCovered;
-    windows.add(
-      _AttemptWindow(
-        math.max(fwd.fromIdx, 0),
-        tail ? tailIdx : prevIdx,
-        false,
-        tail,
-        tail && tailGapS > kGateRejectGapS && tailM <= maxCovered,
-      ),
-    );
+    windows.add(_AttemptWindow(
+      math.max(fwd.fromIdx, 0),
+      tail ? tailIdx : prevIdx,
+      false,
+      tail,
+      tail && tailGapS > kGateRejectGapS && tailM <= maxCovered,
+    ));
   }
   if (rev != null) {
     windows.add(
-      _AttemptWindow(math.max(rev.fromIdx, 0), prevIdx, true, false, false),
-    );
+        _AttemptWindow(math.max(rev.fromIdx, 0), prevIdx, true, false, false));
   }
   if (windows.isEmpty) return null;
 
@@ -957,10 +895,7 @@ CourseAttempt? _diagnoseByGates(
 }
 
 bool _insideTimedEffort(
-  List<Waypoint> line,
-  _AttemptWindow w,
-  List<_TimedSpan> timed,
-) {
+    List<Waypoint> line, _AttemptWindow w, List<_TimedSpan> timed) {
   if (timed.isEmpty) return false;
   final from = line[w.fromIdx].timestamp;
   final to = line[w.toIdx].timestamp;
@@ -985,12 +920,7 @@ class _CourseLine {
   final List<double> along;
   final List<double> checkpointAlong;
   const _CourseLine(
-    this.origin,
-    this.xs,
-    this.ys,
-    this.along,
-    this.checkpointAlong,
-  );
+      this.origin, this.xs, this.ys, this.along, this.checkpointAlong);
 }
 
 double _hypot(double x, double y) => math.sqrt(x * x + y * y);
@@ -1075,21 +1005,11 @@ CourseAttempt? _judgeWindow(
   final count = checkpoints.length;
   final courseM = math.max(1, segment.distanceM.round());
   final passed = _checkpointsPassedInOrder(
-    line,
-    checkpoints,
-    w.fromIdx,
-    w.toIdx,
-    toleranceM,
-  );
+      line, checkpoints, w.fromIdx, w.toIdx, toleranceM);
   if (w.reverse) {
     if (!w.entered || count < 2) return null;
-    final reversed = _checkpointsPassedInOrder(
-      line,
-      checkpoints.reversed.toList(),
-      w.fromIdx,
-      w.toIdx,
-      toleranceM,
-    );
+    final reversed = _checkpointsPassedInOrder(line,
+        checkpoints.reversed.toList(), w.fromIdx, w.toIdx, toleranceM);
     if (reversed < 2 || reversed <= passed) return null;
     return CourseAttempt(
       outcome: ParkCourseAttemptOutcome.wrongDirection,
@@ -1105,9 +1025,8 @@ CourseAttempt? _judgeWindow(
   final ys = course.ys;
   final along = course.along;
   final lineM = along.last;
-  final cap = passed < count
-      ? course.checkpointAlong[passed] + toleranceM
-      : lineM;
+  final cap =
+      passed < count ? course.checkpointAlong[passed] + toleranceM : lineM;
   var pos = 0.0;
   var lastIdx = w.fromIdx;
   var reached = 0.0;
@@ -1132,9 +1051,9 @@ CourseAttempt? _judgeWindow(
       final dx = xs[k + 1] - xs[k];
       final dy = ys[k + 1] - ys[k];
       final t = math.min(
-        1.0,
-        math.max(0.0, ((f.x - xs[k]) * dx + (f.y - ys[k]) * dy) / (len * len)),
-      );
+          1.0,
+          math.max(
+              0.0, ((f.x - xs[k]) * dx + (f.y - ys[k]) * dy) / (len * len)));
       if (_hypot(xs[k] + t * dx - f.x, ys[k] + t * dy - f.y) > toleranceM) {
         continue;
       }
@@ -1154,12 +1073,11 @@ CourseAttempt? _judgeWindow(
   }
 
   final progressM = math.min(
-    courseM,
-    math.max(
-      0,
-      (lineM > 0 ? (reached / lineM) * segment.distanceM : 0.0).round(),
-    ),
-  );
+      courseM,
+      math.max(
+          0,
+          (lineM > 0 ? (reached / lineM) * segment.distanceM : 0.0)
+              .round()));
   if (passed < count && (w.entered || furthest > cap)) {
     return CourseAttempt(
       outcome: ParkCourseAttemptOutcome.skippedCheckpoint,
@@ -1173,8 +1091,8 @@ CourseAttempt? _judgeWindow(
     outcome: w.gapped
         ? ParkCourseAttemptOutcome.gpsGap
         : w.entered
-        ? ParkCourseAttemptOutcome.offCourse
-        : ParkCourseAttemptOutcome.stoppedShort,
+            ? ParkCourseAttemptOutcome.offCourse
+            : ParkCourseAttemptOutcome.stoppedShort,
     progressM: progressM,
     courseM: courseM,
     missedCheckpoint: null,
@@ -1281,12 +1199,8 @@ EffortResult? _scoreAgainstTrack(
   var startIdx = -1;
   var startBest = double.infinity;
   for (var i = 0; i < track.length; i++) {
-    final d = haversineMetres(
-      track[i].lineLat,
-      track[i].lineLng,
-      start.lat,
-      start.lng,
-    );
+    final d =
+        haversineMetres(track[i].lineLat, track[i].lineLng, start.lat, start.lng);
     if (d < startBest) {
       startBest = d;
       startIdx = i;
@@ -1297,12 +1211,8 @@ EffortResult? _scoreAgainstTrack(
   var endIdx = -1;
   var endBest = double.infinity;
   for (var i = startIdx + 1; i < track.length; i++) {
-    final d = haversineMetres(
-      track[i].lineLat,
-      track[i].lineLng,
-      end.lat,
-      end.lng,
-    );
+    final d =
+        haversineMetres(track[i].lineLat, track[i].lineLng, end.lat, end.lng);
     if (d < endBest) {
       endBest = d;
       endIdx = i;
@@ -1323,12 +1233,7 @@ EffortResult? _scoreAgainstTrack(
   }
 
   if (!_passesCheckpoints(
-    track,
-    segment.checkpoints,
-    startIdx,
-    endIdx,
-    toleranceM,
-  )) {
+      track, segment.checkpoints, startIdx, endIdx, toleranceM)) {
     return null;
   }
 
@@ -1358,13 +1263,16 @@ Future<int> autoComputeEffortsForRun({
   if (segments.isEmpty) return 0;
 
   var written = 0;
-  final efforts = computeEffortsFromTrack(track, [
-    for (final seg in segments)
-      SegmentSlice(
-        startDistanceM: seg.startDistanceM,
-        endDistanceM: seg.endDistanceM,
-      ),
-  ]);
+  final efforts = computeEffortsFromTrack(
+    track,
+    [
+      for (final seg in segments)
+        SegmentSlice(
+          startDistanceM: seg.startDistanceM,
+          endDistanceM: seg.endDistanceM,
+        ),
+    ],
+  );
   for (var i = 0; i < segments.length; i++) {
     final seg = segments[i];
     final eff = efforts[i];
@@ -1385,7 +1293,11 @@ Future<int> autoComputeEffortsForRun({
   return written;
 }
 
-double? _msAtDistance(List<Waypoint> track, List<double> cum, double target) {
+double? _msAtDistance(
+  List<Waypoint> track,
+  List<double> cum,
+  double target,
+) {
   // [cum] is non-decreasing, so the first index reaching [target] is a binary
   // search rather than a walk from the start of the track.
   var lo = 1;
@@ -1414,3 +1326,4 @@ double? _msAtDistance(List<Waypoint> track, List<double> cum, double target) {
   }
   return null;
 }
+

@@ -11,10 +11,10 @@
   },
   "release": {
     "status": "staged",
-    "reason": "Held until the owner walks the Forest Hill Park line against the trail signs (the park map is schematic, and the build uses short OSM connectors such as the steps south of the lake). The Buttermilk + North Bank half and marathon are not built yet: they wait on Boulevard Bridge pedestrian access, the closed Texas Beach footbridge and the North Bank reroute, and the OSM junction fixes listed on #1430."
+    "reason": "Held until the owner walks the Forest Hill Park line and the Pony Pasture lap against the trail signs (the park map is schematic; Forest Hill uses short OSM connectors such as the steps south of the lake, and Pony Pasture's unnamed paths are matched to the map by eye). The Buttermilk + North Bank half and marathon wait on the checks listed on #1430."
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
-  "snapshot_fetched_at": "2026-11-19",
+  "snapshot_fetched_at": "2026-11-20",
   "courses": [],
   "race_courses": [
     {
@@ -34,7 +34,7 @@
       "surface": "trail",
       "geometry_source": "osm",
       "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
-      "source_checked_at": "2026-11-19",
+      "source_checked_at": "2026-11-20",
       "geojson": "forest-hill-park-5k.geojson",
       "elevation_m": 111,
       "checkpoints": [
@@ -195,7 +195,7 @@
       "surface": "trail",
       "geometry_source": "osm",
       "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
-      "source_checked_at": "2026-11-19",
+      "source_checked_at": "2026-11-20",
       "geojson": "forest-hill-park-10k.geojson",
       "elevation_m": 219,
       "checkpoints": [
@@ -393,6 +393,614 @@
             "kind": "surface",
             "surface": "paved",
             "at_m": 9850
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pony-pasture-5k",
+      "name": "Pony Pasture Loop, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4813.9,
+      "lead_in_m": 247.4,
+      "start_line_from_lead_in_start_m": 154.4,
+      "start_finish": {
+        "lat": 37.550891,
+        "lng": -77.518252
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/287520819,way/291918810,way/291918811,way/291918812,way/291918813,way/291918815,way/291918817,way/1138638175,way/1138638176,way/1138638178,way/1138638179,way/1138638180,way/1147644037,way/1153890673,way/1482339238,way/1482339240,way/1482339241,way/1482341764,way/1482341765,way/1482344196,way/1486029052,way/1486029053,way/1486029054,way/1486029055,way/1561728250,way/1561728251",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pony-pasture-5k.geojson",
+      "elevation_m": 0,
+      "checkpoints": [
+        {
+          "lat": 37.547797,
+          "lng": -77.514393
+        },
+        {
+          "lat": 37.544853,
+          "lng": -77.509284
+        },
+        {
+          "lat": 37.545789,
+          "lng": -77.507737
+        },
+        {
+          "lat": 37.548434,
+          "lng": -77.511562
+        }
+      ],
+      "waypoint_count": 179,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Pony Pasture lot on Riverside Drive. The start line is on the gravel riverside trail that leaves the east side of the lot, about 154 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "R.B. Young Riverside Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 93
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 93
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 275
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 641
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 641
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 725
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 951
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1000,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1292
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1303
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1320
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1350
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "The Wetlands",
+            "at_m": 1516
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1516
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2000,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2239
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2239
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 2360
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3000,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3113
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 3444
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3444
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3607
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3627
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 3668
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3668
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3883
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3883
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4000,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4142
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4142
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4230
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4330
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4395
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4520
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4800
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4859
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 4859
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pony-pasture-10k",
+      "name": "Pony Pasture Loop, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4813.9,
+      "lead_in_m": 247.4,
+      "start_line_from_lead_in_start_m": 61.3,
+      "start_finish": {
+        "lat": 37.550968,
+        "lng": -77.519287
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/287520819,way/291918810,way/291918811,way/291918812,way/291918813,way/291918815,way/291918817,way/1138638175,way/1138638176,way/1138638178,way/1138638179,way/1138638180,way/1147644037,way/1153890673,way/1482339238,way/1482339240,way/1482339241,way/1482341764,way/1482341765,way/1482344196,way/1486029052,way/1486029053,way/1486029054,way/1486029055,way/1561728250,way/1561728251",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pony-pasture-10k.geojson",
+      "elevation_m": 6,
+      "checkpoints": [
+        {
+          "lat": 37.547776,
+          "lng": -77.51419
+        },
+        {
+          "lat": 37.544163,
+          "lng": -77.510245
+        },
+        {
+          "lat": 37.545979,
+          "lng": -77.507455
+        },
+        {
+          "lat": 37.548858,
+          "lng": -77.513926
+        },
+        {
+          "lat": 37.547947,
+          "lng": -77.5158
+        },
+        {
+          "lat": 37.546649,
+          "lng": -77.508699
+        },
+        {
+          "lat": 37.545848,
+          "lng": -77.507812
+        },
+        {
+          "lat": 37.548375,
+          "lng": -77.511371
+        }
+      ],
+      "waypoint_count": 361,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Pony Pasture lot on Riverside Drive. The start line is on the gravel riverside trail that leaves the east side of the lot, about 61 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "R.B. Young Riverside Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 186
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 186
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 368
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 734
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 734
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 818
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 1044
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1111,
+            "order": 1,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1385
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1396
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1413
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1443
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "The Wetlands",
+            "at_m": 1609
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1609
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2222,
+            "order": 2,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2332
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2332
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 2453
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3206
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 3,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 3538
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3538
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3700
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3720
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 3761
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3761
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3976
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3976
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4235
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4235
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4323
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4423
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4444,
+            "order": 4,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4488
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4613
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4893
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4952
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5556,
+            "order": 5,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 6,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7778,
+            "order": 7,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8889,
+            "order": 8,
+            "of": 8
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 9766
           },
           {
             "kind": "finish",

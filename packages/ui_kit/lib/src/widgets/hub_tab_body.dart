@@ -57,6 +57,70 @@ class PrimaryAction {
       );
 }
 
+/// One entry in a tab's overflow menu: an action people take now and then,
+/// which would otherwise hold the FAB or a slot in the control row.
+@immutable
+class HubMenuItem {
+  const HubMenuItem({
+    required this.label,
+    required this.icon,
+    required this.onSelected,
+    this.itemKey,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onSelected;
+
+  /// The rendered entry's key, for a test to find it by.
+  final Key? itemKey;
+
+  bool looksLike(HubMenuItem other) =>
+      other.label == label && other.icon == icon && other.itemKey == itemKey;
+}
+
+bool _menusLookAlike(List<HubMenuItem>? a, List<HubMenuItem>? b) {
+  if (a == null || b == null) return a == b;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!a[i].looksLike(b[i])) return false;
+  }
+  return true;
+}
+
+/// A ⋮ button opening the entries [read] returns. It reads them again when
+/// the menu opens and when an entry is picked, so a hub calls the newest
+/// closures a body has published, not the ones it had when it last built.
+Widget _menuButton(
+  BuildContext context,
+  List<HubMenuItem> Function() read, {
+  String? tooltip,
+}) =>
+    PopupMenuButton<int>(
+      key: const Key('hub-menu'),
+      icon: const Icon(Icons.more_vert),
+      tooltip: tooltip ?? MaterialLocalizations.of(context).showMenuTooltip,
+      onSelected: (i) {
+        final now = read();
+        if (i < now.length) now[i].onSelected();
+      },
+      itemBuilder: (_) {
+        final items = read();
+        return [
+          for (var i = 0; i < items.length; i++)
+            PopupMenuItem<int>(
+              key: items[i].itemKey,
+              value: i,
+              child: ListTile(
+                leading: Icon(items[i].icon),
+                title: Text(items[i].label),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ];
+      },
+    );
+
 /// The primary actions a hub's tab bodies have published, by tab. The hub
 /// listens and renders the active tab's as its one FAB.
 class HubPrimaryActions extends ChangeNotifier {
@@ -73,6 +137,24 @@ class HubPrimaryActions extends ChangeNotifier {
   }
 
   PrimaryAction? of(Object tab) => _actions[tab];
+
+  final Map<Object, List<HubMenuItem>> _menus = {};
+
+  /// The overflow menu [tab]'s body has published, empty when it has none.
+  List<HubMenuItem> menuOf(Object tab) => _menus[tab] ?? const [];
+
+  /// Stores [menu] for [tab], notifying only when the entries would look
+  /// different, as [publish] does for the primary action.
+  void publishMenu(Object tab, List<HubMenuItem> menu) {
+    if (_disposed) return;
+    final before = _menus[tab];
+    if (menu.isEmpty) {
+      if (_menus.remove(tab) != null) notifyListeners();
+      return;
+    }
+    _menus[tab] = menu;
+    if (!_menusLookAlike(menu, before)) notifyListeners();
+  }
 
   /// Tabs whose list is scrolling down, whose FAB shows its icon only.
   final Set<Object> _collapsed = {};
@@ -180,6 +262,38 @@ class HubFab extends StatelessWidget {
       );
 }
 
+/// The hub's ⋮: the overflow menu [actions] holds for [tab], or nothing. The
+/// hub puts it at the end of its title row, where a pushed page's app bar
+/// keeps its own.
+class HubMenu extends StatelessWidget {
+  const HubMenu({
+    super.key,
+    required this.actions,
+    required this.tab,
+    this.tooltip,
+  });
+
+  final HubPrimaryActions actions;
+  final Object tab;
+
+  /// The button's name, so it can match the ⋮ another root page keeps in the
+  /// same place. Defaults to Material's "Show menu".
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: actions,
+        builder: (context, _) {
+          if (actions.menuOf(tab).isEmpty) return const SizedBox.shrink();
+          return _menuButton(
+            context,
+            () => actions.menuOf(tab),
+            tooltip: tooltip,
+          );
+        },
+      );
+}
+
 /// The bar that replaces a list's controls while rows are selected: close,
 /// the count, and the actions on the selection.
 @immutable
@@ -204,12 +318,13 @@ class HubSelection {
 /// names it (issue #1374; the Social hub's contract since decisions § 54).
 ///
 /// Inside a hub ([HubTabScope]) it hands [primary] to the hub, which shows it
-/// as its one FAB, puts [actions] at the end of the control row, and wraps
-/// [body] in a pull-to-refresh when [onRefresh] is given. Mounted on its own
-/// (pushed where no hub is listening, or in a test) it builds the page a
-/// pushed screen is: [title] said in a heading above the controls, a small
-/// app bar that repeats it once the heading has scrolled away, and [primary]
-/// as its FAB.
+/// as its one FAB, hands [menu] to the hub's ⋮ ([HubMenu]), puts [actions] at
+/// the end of the control row, and wraps [body] in a pull-to-refresh when
+/// [onRefresh] is given. Mounted on its own (pushed where no hub is
+/// listening, or in a test) it builds the page a pushed screen is: [title]
+/// said in a heading above the controls, a small app bar that repeats it once
+/// the heading has scrolled away and holds [menu] as its ⋮, and [primary] as
+/// its FAB.
 class HubTabBody extends StatefulWidget {
   const HubTabBody({
     super.key,
@@ -218,6 +333,7 @@ class HubTabBody extends StatefulWidget {
     this.filters,
     this.actions = const [],
     this.primary,
+    this.menu = const [],
     this.banner,
     this.selection,
     this.onRefresh,
@@ -236,6 +352,10 @@ class HubTabBody extends StatefulWidget {
   final List<Widget> actions;
 
   final PrimaryAction? primary;
+
+  /// Actions taken now and then: the hub's ⋮ at the end of its title row
+  /// while this tab shows, or the app bar's ⋮ when mounted on its own.
+  final List<HubMenuItem> menu;
 
   /// One line between the controls and the content: an offline notice, a
   /// stale-data warning, a summary.
@@ -256,6 +376,9 @@ class _HubTabBodyState extends State<HubTabBody> {
   /// What this body last handed the hub, so a withdrawal never removes an
   /// action a newer body for the same tab has published since.
   PrimaryAction? _published;
+
+  /// The menu this body last handed the hub, for the same reason.
+  List<HubMenuItem>? _publishedMenu;
 
   @override
   void didChangeDependencies() {
@@ -303,6 +426,14 @@ class _HubTabBodyState extends State<HubTabBody> {
   }
 
   void _withdraw(HubTabScope scope) {
+    final menu = _publishedMenu;
+    if (menu != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (identical(scope.actions.menuOf(scope.tab), menu)) {
+          scope.actions.publishMenu(scope.tab, const []);
+        }
+      });
+    }
     final mine = _published;
     if (mine == null) return;
     // After the frame: a hub listening to the store must not be marked
@@ -317,6 +448,7 @@ class _HubTabBodyState extends State<HubTabBody> {
   void _publish() {
     final scope = _scope;
     if (scope == null) return;
+    _publishMenu(scope);
     final action = widget.selection == null ? widget.primary : null;
     final current = scope.actions.of(scope.tab);
     if (action != null && action.looksLike(current)) {
@@ -331,6 +463,30 @@ class _HubTabBodyState extends State<HubTabBody> {
         return;
       }
       scope.actions.publish(scope.tab, _published = next);
+    });
+  }
+
+  /// The menu hides while rows are selected, as the primary action does.
+  void _publishMenu(HubTabScope scope) {
+    final menu = widget.selection == null ? widget.menu : const <HubMenuItem>[];
+    if (_menusLookAlike(menu, scope.actions.menuOf(scope.tab))) {
+      // Same entries: keep the newest closures without a rebuild.
+      if (menu.isNotEmpty) {
+        scope.actions.publishMenu(scope.tab, _publishedMenu = menu);
+      }
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_scope, scope)) return;
+      final next = widget.selection == null
+          ? widget.menu
+          : const <HubMenuItem>[];
+      if (next.isEmpty &&
+          !identical(scope.actions.menuOf(scope.tab), _publishedMenu)) {
+        return;
+      }
+      scope.actions.publishMenu(scope.tab, next);
+      _publishedMenu = next.isEmpty ? null : next;
     });
   }
 
@@ -450,7 +606,13 @@ class _HubTabBodyState extends State<HubTabBody> {
                   title: Text(selection.title),
                   actions: selection.actions,
                 )
-              : AppBar(title: PageBarTitle(widget.title)),
+              : AppBar(
+                  title: PageBarTitle(widget.title),
+                  actions: [
+                    if (widget.menu.isNotEmpty)
+                      _menuButton(context, () => widget.menu),
+                  ],
+                ),
           body: PageBody(
             child: NestedScrollView(
               headerSliverBuilder: (context, _) => [

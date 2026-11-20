@@ -82,7 +82,7 @@ export const en = {
 	'nav.social': 'Social',
 	'nav.messages': 'Messages',
 	'nav.messagesUnread': '{n} unread',
-	// Run-surface sub-tab strip (Runs · Plans · Races & courses · Routes · Segments) — RunSurfaceTabs.svelte
+	// Run-surface sub-tab strip (Runs · Plans · Races & courses · Routes) under the Training title — RunSurfaceTabs.svelte
 	'runSurface.label': 'Run surface sections',
 	'runSurface.tabRuns': 'Runs',
 	'runSurface.tabRoutes': 'Routes',

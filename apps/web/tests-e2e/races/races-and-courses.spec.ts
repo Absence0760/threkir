@@ -9,7 +9,7 @@ import { USER_A, USER_B } from '../fixtures/users';
 /**
  * Races & courses (issue #1352): `/races` holds two sections, the race
  * calendar ("Upcoming races") and the park courses ("Run any time"), each
- * loading and failing on its own. The run-surface strip is five tabs in the
+ * loading and failing on its own. The run-surface strip is four tabs in the
  * mobile order with no Parks tab, and `/parks` stays reachable directly and
  * from the section's "See all N courses" heading link, which shows only when
  * the list is cut short (issue #1374). Run any time lists parks, each opening

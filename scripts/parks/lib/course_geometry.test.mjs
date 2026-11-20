@@ -365,7 +365,16 @@ test('slice interpolates elevation at the cut', () => {
 });
 
 test('race distances are the standard ones', () => {
-	assert.deepEqual(RACE_DISTANCES_M, { '5k': 5000, '10k': 10000, half: 21097.5, marathon: 42195, '50k': 50000 });
+	assert.deepEqual(RACE_DISTANCES_M, {
+		'5k': 5000,
+		'10k': 10000,
+		half: 21097.5,
+		marathon: 42195,
+		'50k': 50000,
+		'50mi': 80467.2,
+		'100k': 100000,
+	});
+	assert.equal(RACE_DISTANCES_M['50mi'], Math.round(50 * 1609.344 * 10) / 10);
 });
 
 test('distanceDeviation is signed and relative', () => {

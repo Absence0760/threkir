@@ -58,12 +58,14 @@ const US_STATES = Object.freeze({
 });
 
 /** @type {Readonly<Record<string, string>>} */
-const RACE_DISTANCE_WORDS = Object.freeze({
+export const RACE_DISTANCE_WORDS = Object.freeze({
 	'5k': '5 km',
 	'10k': '10 km',
 	half: 'the half-marathon distance (21.1 km)',
 	marathon: 'the marathon distance (42.2 km)',
 	'50k': '50 km',
+	'50mi': '50 miles (80.5 km)',
+	'100k': '100 km',
 });
 
 /**

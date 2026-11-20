@@ -441,6 +441,8 @@ export const RACE_DISTANCES_M = Object.freeze({
 	half: 21097.5,
 	marathon: 42195,
 	'50k': 50000,
+	'50mi': 80467.2,
+	'100k': 100000,
 });
 
 /**

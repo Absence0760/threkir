@@ -22863,6 +22863,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Des groupes organisés empruntent ces chemins le samedi matin. Cédez-leur le passage et évitez de chronométrer un effort au milieu d\'eux.';
 
   @override
+  String get parksGroupPermitNotice =>
+      'Courir un parcours seul ne pose aucun problème. Vous venez en groupe ou organisez un événement ? Le parc peut exiger une autorisation, renseignez-vous auprès du parc avant de venir.';
+
+  @override
   String get parksAttributionOsm =>
       'Tracé du parcours © contributeurs d\'OpenStreetMap';
 

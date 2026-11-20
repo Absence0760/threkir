@@ -22799,6 +22799,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Hay grupos organizados que usan estos senderos los sábados por la mañana. Cédeles el paso y evita hacer un intento cronometrado en medio de ellos.';
 
   @override
+  String get parksGroupPermitNotice =>
+      'Correr un recorrido por tu cuenta no tiene problema. ¿Vienes con un grupo u organizas un evento? Puede que el parque exija un permiso, así que consúltalo antes con el parque.';
+
+  @override
   String get parksAttributionOsm =>
       'Trazado del recorrido © colaboradores de OpenStreetMap';
 

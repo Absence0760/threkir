@@ -874,8 +874,14 @@ class _ParkScreenState extends State<ParkScreen> {
                           ),
                       ],
                       const SizedBox(height: 24),
-                      _NotAffiliatedNote(
+                      _ParkFootNote(
                         key: const Key('park-not-affiliated'),
+                        text: l10n.parksNotAffiliated,
+                      ),
+                      const SizedBox(height: 4),
+                      _ParkFootNote(
+                        key: const Key('park-group-permit'),
+                        text: l10n.parksGroupPermitNotice,
                       ),
                     ],
                   ),
@@ -961,14 +967,15 @@ class _ParkCourseCard extends StatelessWidget {
   }
 }
 
-class _NotAffiliatedNote extends StatelessWidget {
-  const _NotAffiliatedNote({super.key});
+class _ParkFootNote extends StatelessWidget {
+  final String text;
+  const _ParkFootNote({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Text(
-      AppLocalizations.of(context).parksNotAffiliated,
+      text,
       style: theme.textTheme.labelSmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
       ),
@@ -1809,8 +1816,9 @@ class _CourseRouteGuide extends StatelessWidget {
 }
 
 /// The course page's one notices callout: the safety rules first, the
-/// give-way note when an organised group shares the paths, the long-course
-/// warning when it applies, then the times and not-affiliated notes.
+/// give-way note when an organised group shares the paths, the park-permit
+/// line every course carries, the long-course warning when it applies, then
+/// the times and not-affiliated notes.
 class _CourseNotices extends StatelessWidget {
   /// The lines the course's data supports ([courseNotices]).
   final List<CourseNotice> notices;
@@ -1854,6 +1862,13 @@ class _CourseNotices extends StatelessWidget {
                 theme.textTheme.bodyMedium,
               ),
             ],
+            const SizedBox(height: 10),
+            row(
+              const Key('park-course-group-permit'),
+              Icons.assignment_outlined,
+              l10n.parksGroupPermitNotice,
+              theme.textTheme.bodyMedium,
+            ),
             for (final n in notices) ...[
               const SizedBox(height: 10),
               switch (n) {

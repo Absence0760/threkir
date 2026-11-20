@@ -11781,5 +11781,1659 @@
    "lon": -77.7046127,
    "ele": 162.2
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "63370696": {
+    "tags": {
+     "crossing": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8817380,
+      "tags": {
+       "highway": "residential",
+       "name": "Ayr Hill Avenue Northeast"
+      },
+      "arms": [
+       {
+        "node": 4934814892,
+        "lat": 38.90443,
+        "lon": -77.2670997
+       },
+       {
+        "node": 5560969709,
+        "lat": 38.9043036,
+        "lon": -77.2672563
+       }
+      ]
+     }
+    ]
+   },
+   "63370713": {
+    "tags": {
+     "crossing": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8834890,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Church Street Northeast"
+      },
+      "arms": [
+       {
+        "node": 4933050704,
+        "lat": 38.9034821,
+        "lon": -77.2652306
+       },
+       {
+        "node": 5139736965,
+        "lat": 38.903212,
+        "lon": -77.2655125
+       }
+      ]
+     }
+    ]
+   },
+   "63370722": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "highway": "traffic_signals"
+    },
+    "roads": [
+     {
+      "id": 698134455,
+      "tags": {
+       "access": "yes",
+       "highway": "primary",
+       "name": "Maple Avenue East"
+      },
+      "arms": [
+       {
+        "node": 5589173521,
+        "lat": 38.9024871,
+        "lon": -77.2640623
+       },
+       {
+        "node": 64045031,
+        "lat": 38.902621,
+        "lon": -77.263895
+       }
+      ]
+     }
+    ]
+   },
+   "63398897": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 172893601,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "motor_vehicle": "yes",
+       "name": "Sunrise Valley Drive"
+      },
+      "arms": [
+       {
+        "node": 64015844,
+        "lat": 38.942267,
+        "lon": -77.3213005
+       }
+      ]
+     },
+     {
+      "id": 1159550924,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "motor_vehicle": "yes",
+       "name": "Sunrise Valley Drive"
+      },
+      "arms": [
+       {
+        "node": 64015846,
+        "lat": 38.9418497,
+        "lon": -77.3217823
+       }
+      ]
+     }
+    ]
+   },
+   "63407945": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8800749,
+      "tags": {
+       "highway": "motorway_link"
+      },
+      "arms": [
+       {
+        "node": 63407943,
+        "lat": 39.1453168,
+        "lon": -77.6913191
+       },
+       {
+        "node": 63407949,
+        "lat": 39.1453363,
+        "lon": -77.6917342
+       }
+      ]
+     }
+    ]
+   },
+   "63415244": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "crossing:signals": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8845760,
+      "tags": {
+       "highway": "residential",
+       "name": "Isaac Newton Square"
+      },
+      "arms": [
+       {
+        "node": 747400255,
+        "lat": 38.9517043,
+        "lon": -77.3399227
+       },
+       {
+        "node": 1842116518,
+        "lat": 38.951427,
+        "lon": -77.3400636
+       }
+      ]
+     }
+    ]
+   },
+   "63418462": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 988079716,
+      "tags": {
+       "highway": "primary",
+       "name": "Hunter Mill Road"
+      },
+      "arms": [
+       {
+        "node": 469882334,
+        "lat": 38.932787,
+        "lon": -77.305039
+       },
+       {
+        "node": 63749784,
+        "lat": 38.9326251,
+        "lon": -77.3050176
+       }
+      ]
+     }
+    ]
+   },
+   "63425551": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 244628276,
+      "tags": {
+       "highway": "secondary",
+       "name": "Hamilton Station Road"
+      },
+      "arms": [
+       {
+        "node": 1699958281,
+        "lat": 39.1443569,
+        "lon": -77.6514764
+       }
+      ]
+     },
+     {
+      "id": 244645207,
+      "tags": {
+       "highway": "secondary",
+       "name": "Hamilton Station Road"
+      },
+      "arms": [
+       {
+        "node": 1699958218,
+        "lat": 39.1442398,
+        "lon": -77.6515338
+       }
+      ]
+     }
+    ]
+   },
+   "63429946": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8802988,
+      "tags": {
+       "highway": "motorway_link"
+      },
+      "arms": [
+       {
+        "node": 10811916100,
+        "lat": 39.1437727,
+        "lon": -77.6917704
+       },
+       {
+        "node": 63429949,
+        "lat": 39.1437935,
+        "lon": -77.6915699
+       }
+      ]
+     }
+    ]
+   },
+   "63446001": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 140498305,
+      "tags": {
+       "highway": "primary",
+       "name": "South King Street"
+      },
+      "arms": [
+       {
+        "node": 2274358660,
+        "lat": 39.1118315,
+        "lon": -77.5661777
+       },
+       {
+        "node": 1539276523,
+        "lat": 39.1120135,
+        "lon": -77.5660983
+       }
+      ]
+     }
+    ]
+   },
+   "63483694": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8807319,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Simpson Circle"
+      },
+      "arms": [
+       {
+        "node": 63483686,
+        "lat": 39.147896,
+        "lon": -77.619072
+       },
+       {
+        "node": 1699958290,
+        "lat": 39.1477963,
+        "lon": -77.6190983
+       }
+      ]
+     }
+    ]
+   },
+   "63488738": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 168056618,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Harrison Street Southeast"
+      },
+      "arms": [
+       {
+        "node": 63488736,
+        "lat": 39.11034,
+        "lon": -77.563158
+       },
+       {
+        "node": 747541675,
+        "lat": 39.1105935,
+        "lon": -77.5632286
+       }
+      ]
+     }
+    ]
+   },
+   "63507794": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 449869871,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Smith Switch Road"
+      },
+      "arms": [
+       {
+        "node": 746919558,
+        "lat": 39.0269767,
+        "lon": -77.4589299
+       },
+       {
+        "node": 768969457,
+        "lat": 39.026922,
+        "lon": -77.4603688
+       }
+      ]
+     }
+    ]
+   },
+   "63514685": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "highway": "traffic_signals"
+    },
+    "roads": [
+     {
+      "id": 8809665,
+      "tags": {
+       "highway": "secondary",
+       "name": "Catoctin Circle Southeast"
+      },
+      "arms": [
+       {
+        "node": 1548176805,
+        "lat": 39.1078717,
+        "lon": -77.5578257
+       },
+       {
+        "node": 1548176807,
+        "lat": 39.1078086,
+        "lon": -77.5579182
+       }
+      ]
+     }
+    ]
+   },
+   "63521748": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8810215,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "name": "Catoctin Circle Southwest"
+      },
+      "arms": [
+       {
+        "node": 1471353364,
+        "lat": 39.1125488,
+        "lon": -77.5788096
+       }
+      ]
+     },
+     {
+      "id": 242097005,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "name": "Catoctin Circle Southwest"
+      },
+      "arms": [
+       {
+        "node": 1296931167,
+        "lat": 39.1123353,
+        "lon": -77.5786822
+       }
+      ]
+     }
+    ]
+   },
+   "63532377": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8818844,
+      "tags": {
+       "highway": "residential",
+       "name": "Ivandale Road"
+      },
+      "arms": [
+       {
+        "node": 63399364,
+        "lat": 39.146174,
+        "lon": -77.6700953
+       },
+       {
+        "node": 63672267,
+        "lat": 39.146472,
+        "lon": -77.670159
+       }
+      ]
+     }
+    ]
+   },
+   "63532762": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 8815502,
+      "tags": {
+       "highway": "residential",
+       "name": "Dominion Lane"
+      },
+      "arms": [
+       {
+        "node": 63604534,
+        "lat": 38.983825,
+        "lon": -77.4040564
+       }
+      ]
+     }
+    ]
+   },
+   "63532797": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8814740,
+      "tags": {
+       "highway": "residential",
+       "name": "Ruritan Road"
+      },
+      "arms": [
+       {
+        "node": 63599135,
+        "lat": 39.0075,
+        "lon": -77.429147
+       },
+       {
+        "node": 746919710,
+        "lat": 39.0073753,
+        "lon": -77.4292402
+       }
+      ]
+     }
+    ]
+   },
+   "63532868": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 43359308,
+      "tags": {
+       "highway": "secondary",
+       "name": "Ashburn Road"
+      },
+      "arms": [
+       {
+        "node": 63635396,
+        "lat": 39.0442319,
+        "lon": -77.4873783
+       },
+       {
+        "node": 6219740491,
+        "lat": 39.0436456,
+        "lon": -77.4874439
+       }
+      ]
+     }
+    ]
+   },
+   "665401737": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8812575,
+      "tags": {
+       "highway": "residential",
+       "name": "Ruritan Circle"
+      },
+      "arms": [
+       {
+        "node": 746919506,
+        "lat": 39.0061355,
+        "lon": -77.4283299
+       },
+       {
+        "node": 63562086,
+        "lat": 39.0060038,
+        "lon": -77.4286044
+       }
+      ]
+     }
+    ]
+   },
+   "746919562": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8836956,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Ferndale Avenue"
+      },
+      "arms": [
+       {
+        "node": 63965006,
+        "lat": 38.975416,
+        "lon": -77.39283
+       },
+       {
+        "node": 746919641,
+        "lat": 38.9754879,
+        "lon": -77.3927221
+       }
+      ]
+     }
+    ]
+   },
+   "746919587": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8832674,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Station Street"
+      },
+      "arms": [
+       {
+        "node": 14018335548,
+        "lat": 38.9703874,
+        "lon": -77.3856738
+       },
+       {
+        "node": 14018335550,
+        "lat": 38.970346,
+        "lon": -77.3858169
+       }
+      ]
+     }
+    ]
+   },
+   "746919686": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 60116846,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "motor_vehicle": "designated"
+      },
+      "arms": [
+       {
+        "node": 64021438,
+        "lat": 38.9783967,
+        "lon": -77.3965825
+       },
+       {
+        "node": 746919417,
+        "lat": 38.9782544,
+        "lon": -77.3967363
+       }
+      ]
+     }
+    ]
+   },
+   "746919715": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1416874404,
+      "tags": {
+       "highway": "secondary",
+       "name": "Crestview Drive"
+      },
+      "arms": [
+       {
+        "node": 63895231,
+        "lat": 38.979888,
+        "lon": -77.398758
+       },
+       {
+        "node": 63895234,
+        "lat": 38.979758,
+        "lon": -77.398791
+       }
+      ]
+     }
+    ]
+   },
+   "747324036": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 60166895,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 747324642,
+        "lat": 39.0653875,
+        "lon": -77.5130163
+       },
+       {
+        "node": 747324488,
+        "lat": 39.0651245,
+        "lon": -77.5130241
+       }
+      ]
+     }
+    ]
+   },
+   "747324213": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1011849461,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Cochran Mill Road"
+      },
+      "arms": [
+       {
+        "node": 63638747,
+        "lat": 39.073715,
+        "lon": -77.528176
+       },
+       {
+        "node": 63638749,
+        "lat": 39.0738937,
+        "lon": -77.5280996
+       }
+      ]
+     }
+    ]
+   },
+   "747324604": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 32284892,
+      "tags": {
+       "highway": "residential",
+       "name": "Lawson Road Southeast"
+      },
+      "arms": [
+       {
+        "node": 63608002,
+        "lat": 39.0997635,
+        "lon": -77.5466566
+       },
+       {
+        "node": 9727696732,
+        "lat": 39.0997951,
+        "lon": -77.5465545
+       }
+      ]
+     }
+    ]
+   },
+   "747369889": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8832848,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Old Reston Avenue"
+      },
+      "arms": [
+       {
+        "node": 63911503,
+        "lat": 38.955716,
+        "lon": -77.351655
+       },
+       {
+        "node": 63911506,
+        "lat": 38.955637,
+        "lon": -77.351685
+       }
+      ]
+     }
+    ]
+   },
+   "747400012": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "crossing:signals": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 173384458,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 314489521,
+        "lat": 38.9519045,
+        "lon": -77.3422817
+       },
+       {
+        "node": 747400244,
+        "lat": 38.9522613,
+        "lon": -77.34212
+       }
+      ]
+     }
+    ]
+   },
+   "747400095": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8820950,
+      "tags": {
+       "highway": "residential",
+       "name": "Buckthorn Lane"
+      },
+      "arms": [
+       {
+        "node": 747400032,
+        "lat": 38.9362442,
+        "lon": -77.3116182
+       },
+       {
+        "node": 63713658,
+        "lat": 38.935811,
+        "lon": -77.31179
+       }
+      ]
+     }
+    ]
+   },
+   "747400098": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 173382999,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "motor_vehicle": "yes",
+       "name": "Sunset Hills Road"
+      },
+      "arms": [
+       {
+        "node": 1308278261,
+        "lat": 38.9470154,
+        "lon": -77.3282223
+       },
+       {
+        "node": 2361038674,
+        "lat": 38.9470604,
+        "lon": -77.327432
+       }
+      ]
+     }
+    ]
+   },
+   "747400116": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "crossing:signals": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8814146,
+      "tags": {
+       "highway": "residential",
+       "name": "Michael Faraday Court"
+      },
+      "arms": [
+       {
+        "node": 63594658,
+        "lat": 38.9492366,
+        "lon": -77.3326831
+       },
+       {
+        "node": 747400148,
+        "lat": 38.949615,
+        "lon": -77.3325071
+       }
+      ]
+     }
+    ]
+   },
+   "747541655": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8809870,
+      "tags": {
+       "highway": "residential",
+       "name": "Valley View Avenue Southwest"
+      },
+      "arms": [
+       {
+        "node": 63515799,
+        "lat": 39.113436,
+        "lon": -77.571365
+       },
+       {
+        "node": 63515807,
+        "lat": 39.113505,
+        "lon": -77.571374
+       }
+      ]
+     }
+    ]
+   },
+   "747541716": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 770760633,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Sycolin Road Southeast"
+      },
+      "arms": [
+       {
+        "node": 63476193,
+        "lat": 39.105525,
+        "lon": -77.553421
+       }
+      ]
+     },
+     {
+      "id": 770760634,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Sycolin Road Southeast"
+      },
+      "arms": [
+       {
+        "node": 63476192,
+        "lat": 39.10546,
+        "lon": -77.553395
+       }
+      ]
+     }
+    ]
+   },
+   "747541836": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8816175,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Dry Mill Road Southwest"
+      },
+      "arms": [
+       {
+        "node": 1548161917,
+        "lat": 39.1135629,
+        "lon": -77.5743064
+       },
+       {
+        "node": 1548161920,
+        "lat": 39.1132775,
+        "lon": -77.5747989
+       }
+      ]
+     }
+    ]
+   },
+   "747560956": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 965455783,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 63399314,
+        "lat": 39.1321165,
+        "lon": -77.6075414
+       },
+       {
+        "node": 747561045,
+        "lat": 39.1320245,
+        "lon": -77.6073068
+       }
+      ]
+     }
+    ]
+   },
+   "747561106": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 345149688,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Dry Mill Road"
+      },
+      "arms": [
+       {
+        "node": 63445430,
+        "lat": 39.137637,
+        "lon": -77.6096358
+       },
+       {
+        "node": 63445428,
+        "lat": 39.1378218,
+        "lon": -77.609543
+       }
+      ]
+     }
+    ]
+   },
+   "1837338631": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 172891129,
+      "tags": {
+       "access": "yes",
+       "highway": "secondary",
+       "motor_vehicle": "yes",
+       "name": "Sunrise Valley Drive"
+      },
+      "arms": [
+       {
+        "node": 1837338658,
+        "lat": 38.9416743,
+        "lon": -77.3217452
+       },
+       {
+        "node": 1837338566,
+        "lat": 38.942185,
+        "lon": -77.3211807
+       }
+      ]
+     }
+    ]
+   },
+   "2106532375": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8807319,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Simpson Circle"
+      },
+      "arms": [
+       {
+        "node": 63483840,
+        "lat": 39.1434272,
+        "lon": -77.6118863
+       },
+       {
+        "node": 63483845,
+        "lat": 39.1434134,
+        "lon": -77.6116836
+       }
+      ]
+     }
+    ]
+   },
+   "2106532377": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 128385703,
+      "tags": {
+       "highway": "primary",
+       "name": "Berlin Turnpike"
+      },
+      "arms": [
+       {
+        "node": 63407943,
+        "lat": 39.1453168,
+        "lon": -77.6913191
+       },
+       {
+        "node": 1699958198,
+        "lat": 39.1456755,
+        "lon": -77.691259
+       }
+      ]
+     },
+     {
+      "id": 732648601,
+      "tags": {
+       "highway": "motorway_link"
+      },
+      "arms": [
+       {
+        "node": 6860550377,
+        "lat": 39.1454407,
+        "lon": -77.6911846,
+        "signal_m": 12
+       }
+      ]
+     }
+    ]
+   },
+   "2106532378": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8810232,
+      "tags": {
+       "highway": "tertiary",
+       "name": "North Maple Avenue"
+      },
+      "arms": [
+       {
+        "node": 63522107,
+        "lat": 39.1421605,
+        "lon": -77.7006297
+       },
+       {
+        "node": 63522103,
+        "lat": 39.1420066,
+        "lon": -77.7009331
+       }
+      ]
+     }
+    ]
+   },
+   "2106532379": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8812260,
+      "tags": {
+       "highway": "tertiary",
+       "name": "North Hatcher Avenue"
+      },
+      "arms": [
+       {
+        "node": 63556152,
+        "lat": 39.1383726,
+        "lon": -77.7131041
+       },
+       {
+        "node": 63556154,
+        "lat": 39.1385338,
+        "lon": -77.7131201
+       }
+      ]
+     }
+    ]
+   },
+   "2518479093": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "crossing:signals": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 169300590,
+      "tags": {
+       "highway": "secondary",
+       "name": "North 21st Street"
+      },
+      "arms": [
+       {
+        "node": 6799060227,
+        "lat": 39.1386316,
+        "lon": -77.7164466
+       }
+      ]
+     },
+     {
+      "id": 925792349,
+      "tags": {
+       "highway": "secondary",
+       "name": "North 21st Street"
+      },
+      "arms": [
+       {
+        "node": 1804672956,
+        "lat": 39.1385128,
+        "lon": -77.71642
+       }
+      ]
+     }
+    ]
+   },
+   "2519084643": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8799213,
+      "tags": {
+       "highway": "residential",
+       "name": "North Maple"
+      },
+      "arms": [
+       {
+        "node": 63390259,
+        "lat": 39.1413096,
+        "lon": -77.7033704
+       },
+       {
+        "node": 8140177966,
+        "lat": 39.1415201,
+        "lon": -77.7033871
+       }
+      ]
+     }
+    ]
+   },
+   "2880441454": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 583843052,
+      "tags": {
+       "highway": "secondary",
+       "name": "Van Buren Street"
+      },
+      "arms": [
+       {
+        "node": 8886493076,
+        "lat": 38.9673623,
+        "lon": -77.3817803,
+        "signal_m": 3
+       },
+       {
+        "node": 63514203,
+        "lat": 38.9672817,
+        "lon": -77.3818431
+       }
+      ]
+     }
+    ]
+   },
+   "2880441455": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 551582176,
+      "tags": {
+       "highway": "secondary",
+       "name": "Van Buren Street"
+      },
+      "arms": [
+       {
+        "node": 8886493075,
+        "lat": 38.9672594,
+        "lon": -77.3817123,
+        "signal_m": 3
+       },
+       {
+        "node": 10154062346,
+        "lat": 38.9675012,
+        "lon": -77.3815439
+       }
+      ]
+     }
+    ]
+   },
+   "2880445566": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 173880592,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Grace Street"
+      },
+      "arms": [
+       {
+        "node": 746919722,
+        "lat": 38.9732094,
+        "lon": -77.3895553
+       },
+       {
+        "node": 63904450,
+        "lat": 38.973072,
+        "lon": -77.38972
+       }
+      ]
+     }
+    ]
+   },
+   "2945987859": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 149315348,
+      "tags": {
+       "highway": "secondary",
+       "name": "Hirst Road"
+      },
+      "arms": [
+       {
+        "node": 63621879,
+        "lat": 39.143379,
+        "lon": -77.694067
+       },
+       {
+        "node": 1700056915,
+        "lat": 39.1436267,
+        "lon": -77.6945378
+       }
+      ]
+     }
+    ]
+   },
+   "4018343057": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 69353485,
+      "tags": {
+       "highway": "motorway_link"
+      },
+      "arms": [
+       {
+        "node": 4237776314,
+        "lat": 39.141984,
+        "lon": -77.6122794
+       },
+       {
+        "node": 63393725,
+        "lat": 39.1419174,
+        "lon": -77.6125649
+       }
+      ]
+     }
+    ]
+   },
+   "4384729285": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8799980,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9214341989,
+        "lat": 39.1461729,
+        "lon": -77.6720028
+       },
+       {
+        "node": 9214341988,
+        "lat": 39.1462904,
+        "lon": -77.6722059
+       }
+      ]
+     }
+    ]
+   },
+   "6799648521": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 725106663,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9216692275,
+        "lat": 39.143893,
+        "lon": -77.643739
+       },
+       {
+        "node": 6799648522,
+        "lat": 39.1441203,
+        "lon": -77.643886
+       }
+      ]
+     }
+    ]
+   },
+   "8140132715": {
+    "tags": {
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 244647964,
+      "tags": {
+       "highway": "service",
+       "motor_vehicle": "private"
+      },
+      "arms": [
+       {
+        "node": 2519425941,
+        "lat": 39.1272693,
+        "lon": -77.6068982
+       },
+       {
+        "node": 3773514507,
+        "lat": 39.1272244,
+        "lon": -77.6070336
+       }
+      ]
+     }
+    ]
+   },
+   "8140290658": {
+    "tags": {
+     "crossing:signals": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1162554617,
+      "tags": {
+       "highway": "residential",
+       "name": "Meadowlark Drive"
+      },
+      "arms": [
+       {
+        "node": 8140290657,
+        "lat": 39.1452458,
+        "lon": -77.6380895
+       },
+       {
+        "node": 63463769,
+        "lat": 39.1449157,
+        "lon": -77.6380913
+       }
+      ]
+     }
+    ]
+   },
+   "8140290667": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 8802487,
+      "tags": {
+       "highway": "motorway_link"
+      },
+      "arms": [
+       {
+        "node": 8140290669,
+        "lat": 39.1443889,
+        "lon": -77.6515099
+       },
+       {
+        "node": 63425553,
+        "lat": 39.1441885,
+        "lon": -77.6516679
+       }
+      ]
+     }
+    ]
+   },
+   "8931364389": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 965455784,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8931364386,
+        "lat": 39.1350089,
+        "lon": -77.6080578
+       },
+       {
+        "node": 8931364388,
+        "lat": 39.1350556,
+        "lon": -77.6078227
+       }
+      ]
+     }
+    ]
+   },
+   "9063335630": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1072206068,
+      "tags": {
+       "highway": "primary",
+       "name": "South Sterling Boulevard"
+      },
+      "arms": [
+       {
+        "node": 63434080,
+        "lat": 38.9936026,
+        "lon": -77.4177376
+       },
+       {
+        "node": 665381723,
+        "lat": 38.9936556,
+        "lon": -77.4176634
+       }
+      ]
+     }
+    ]
+   },
+   "9063335631": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1446407793,
+      "tags": {
+       "highway": "primary",
+       "name": "South Sterling Boulevard"
+      },
+      "arms": [
+       {
+        "node": 63433955,
+        "lat": 38.9937447,
+        "lon": -77.4178605
+       },
+       {
+        "node": 63433956,
+        "lat": 38.9936953,
+        "lon": -77.417932
+       }
+      ]
+     }
+    ]
+   },
+   "12554088019": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1392281200,
+      "tags": {
+       "highway": "primary",
+       "name": "Elden Street"
+      },
+      "arms": [
+       {
+        "node": 5328442245,
+        "lat": 38.9697401,
+        "lon": -77.3849597
+       },
+       {
+        "node": 5523485942,
+        "lat": 38.9697368,
+        "lon": -77.3850332
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

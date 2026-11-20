@@ -4754,5 +4754,775 @@
    "lon": -78.3969702,
    "ele": 99
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "209964321": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1132498097,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209964319,
+        "lat": 37.3185728,
+        "lon": -78.3296103
+       },
+       {
+        "node": 209964322,
+        "lat": 37.3186937,
+        "lon": -78.3295056
+       }
+      ]
+     }
+    ]
+   },
+   "217418876": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20401252,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 217418872,
+        "lat": 37.2596561,
+        "lon": -78.6759111
+       },
+       {
+        "node": 217418878,
+        "lat": 37.2595459,
+        "lon": -78.6759057
+       }
+      ]
+     }
+    ]
+   },
+   "217529124": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20405358,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 217529116,
+        "lat": 37.263212,
+        "lon": -78.287841
+       },
+       {
+        "node": 217529129,
+        "lat": 37.263234,
+        "lon": -78.287799
+       }
+      ]
+     }
+    ]
+   },
+   "217625210": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1463200856,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 217625207,
+        "lat": 37.252639,
+        "lon": -78.276238
+       },
+       {
+        "node": 217625215,
+        "lat": 37.252774,
+        "lon": -78.275998
+       }
+      ]
+     }
+    ]
+   },
+   "217766421": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 204762921,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 217505762,
+        "lat": 37.281921,
+        "lon": -78.299312
+       },
+       {
+        "node": 217505771,
+        "lat": 37.281994,
+        "lon": -78.299155
+       }
+      ]
+     }
+    ]
+   },
+   "1756867822": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1462893824,
+      "tags": {
+       "highway": "service",
+       "name": "Camp Paradise Road"
+      },
+      "arms": [
+       {
+        "node": 7026739488,
+        "lat": 37.301721,
+        "lon": -78.311482
+       },
+       {
+        "node": 5811999187,
+        "lat": 37.3017691,
+        "lon": -78.3116429
+       }
+      ]
+     }
+    ]
+   },
+   "1756867827": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20399189,
+      "tags": {
+       "highway": "residential",
+       "name": "Moran Road"
+      },
+      "arms": [
+       {
+        "node": 217361801,
+        "lat": 37.227297,
+        "lon": -78.259274
+       },
+       {
+        "node": 217361803,
+        "lat": 37.227462,
+        "lon": -78.259265
+       }
+      ]
+     }
+    ]
+   },
+   "1757067703": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19973165,
+      "tags": {
+       "highway": "tertiary",
+       "name": "River Road"
+      },
+      "arms": [
+       {
+        "node": 1757067705,
+        "lat": 37.3235916,
+        "lon": -78.3375333
+       },
+       {
+        "node": 210075615,
+        "lat": 37.3238722,
+        "lon": -78.3367825
+       }
+      ]
+     }
+    ]
+   },
+   "1757324977": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20409588,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 217635950,
+        "lat": 37.264168,
+        "lon": -78.653867
+       },
+       {
+        "node": 217635954,
+        "lat": 37.264452,
+        "lon": -78.654043
+       }
+      ]
+     }
+    ]
+   },
+   "1757324980": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20413584,
+      "tags": {
+       "highway": "residential",
+       "name": "Heights School Road"
+      },
+      "arms": [
+       {
+        "node": 217754754,
+        "lat": 37.260638,
+        "lon": -78.663691
+       },
+       {
+        "node": 217754769,
+        "lat": 37.26083,
+        "lon": -78.663868
+       }
+      ]
+     }
+    ]
+   },
+   "1757324993": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1463775660,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "name": "Harvey-Jones Lane"
+      },
+      "arms": [
+       {
+        "node": 13427337009,
+        "lat": 37.2703,
+        "lon": -78.641805
+       },
+       {
+        "node": 217533541,
+        "lat": 37.270378,
+        "lon": -78.641853
+       }
+      ]
+     }
+    ]
+   },
+   "1757344937": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20415969,
+      "tags": {
+       "highway": "residential",
+       "name": "Sulphur Spring Road"
+      },
+      "arms": [
+       {
+        "node": 217829151,
+        "lat": 37.283221,
+        "lon": -78.616364
+       },
+       {
+        "node": 12175962715,
+        "lat": 37.2840353,
+        "lon": -78.6172057
+       }
+      ]
+     }
+    ]
+   },
+   "1757344956": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20407970,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 217365462,
+        "lat": 37.297376,
+        "lon": -78.576241
+       },
+       {
+        "node": 217594982,
+        "lat": 37.2978081,
+        "lon": -78.5764159
+       }
+      ]
+     }
+    ]
+   },
+   "1757353979": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 191661467,
+      "tags": {
+       "highway": "residential",
+       "name": "Hardtimes Road"
+      },
+      "arms": [
+       {
+        "node": 11348908845,
+        "lat": 37.3064346,
+        "lon": -78.4884947
+       },
+       {
+        "node": 217781416,
+        "lat": 37.30659,
+        "lon": -78.488507
+       }
+      ]
+     },
+     {
+      "id": 1223501051,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 11348908846,
+        "lat": 37.306444,
+        "lon": -78.4883091
+       }
+      ]
+     }
+    ]
+   },
+   "1757353988": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20415885,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Prospect Road"
+      },
+      "arms": [
+       {
+        "node": 217826758,
+        "lat": 37.3024079,
+        "lon": -78.5306953
+       },
+       {
+        "node": 13427004630,
+        "lat": 37.3025411,
+        "lon": -78.5306922
+       }
+      ]
+     }
+    ]
+   },
+   "1757353991": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20414365,
+      "tags": {
+       "highway": "residential",
+       "name": "Oliver Road"
+      },
+      "arms": [
+       {
+        "node": 217518564,
+        "lat": 37.303215,
+        "lon": -78.52209
+       },
+       {
+        "node": 217782171,
+        "lat": 37.303342,
+        "lon": -78.522207
+       }
+      ]
+     }
+    ]
+   },
+   "1757354037": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20404978,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 1757354040,
+        "lat": 37.3039925,
+        "lon": -78.5136322
+       },
+       {
+        "node": 217518949,
+        "lat": 37.3040956,
+        "lon": -78.5136417
+       }
+      ]
+     }
+    ]
+   },
+   "1757371754": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20414068,
+      "tags": {
+       "highway": "residential",
+       "name": "Appomattox Street"
+      },
+      "arms": [
+       {
+        "node": 217772498,
+        "lat": 37.3044848,
+        "lon": -78.3962103
+       },
+       {
+        "node": 3740845547,
+        "lat": 37.304302,
+        "lon": -78.3962209
+       }
+      ]
+     }
+    ]
+   },
+   "1801102532": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20401836,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Rice's Depot Road"
+      },
+      "arms": [
+       {
+        "node": 217687940,
+        "lat": 37.27002,
+        "lon": -78.294645
+       },
+       {
+        "node": 217811131,
+        "lat": 37.270075,
+        "lon": -78.294455
+       }
+      ]
+     }
+    ]
+   },
+   "1985256741": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 108400543,
+      "tags": {
+       "highway": "primary",
+       "name": "North Main Street"
+      },
+      "arms": [
+       {
+        "node": 217757964,
+        "lat": 37.3045702,
+        "lon": -78.3909002
+       },
+       {
+        "node": 217792829,
+        "lat": 37.3049617,
+        "lon": -78.3906488
+       }
+      ]
+     }
+    ]
+   },
+   "3708517504": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1463230612,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8981918423,
+        "lat": 37.3043824,
+        "lon": -78.3951455
+       },
+       {
+        "node": 6197993050,
+        "lat": 37.3040912,
+        "lon": -78.395333
+       }
+      ]
+     }
+    ]
+   },
+   "11348908853": {
+    "tags": {
+     "highway": "trailhead"
+    },
+    "roads": [
+     {
+      "id": 1132991717,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 10563584517,
+        "lat": 37.3090173,
+        "lon": -78.3821176
+       }
+      ]
+     }
+    ]
+   },
+   "13418672364": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20415336,
+      "tags": {
+       "highway": "residential",
+       "name": "Aspen Hill Road"
+      },
+      "arms": [
+       {
+        "node": 13418672365,
+        "lat": 37.2869331,
+        "lon": -78.3026812
+       },
+       {
+        "node": 217812393,
+        "lat": 37.2870062,
+        "lon": -78.3026022
+       }
+      ]
+     }
+    ]
+   },
+   "13418769013": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 191661472,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Five Forks Road"
+      },
+      "arms": [
+       {
+        "node": 217831593,
+        "lat": 37.267227,
+        "lon": -78.64762
+       },
+       {
+        "node": 217816246,
+        "lat": 37.267676,
+        "lon": -78.647966
+       }
+      ]
+     }
+    ]
+   },
+   "13418769017": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 469890796,
+      "tags": {
+       "highway": "residential",
+       "name": "Hidden Lake Road"
+      },
+      "arms": [
+       {
+        "node": 217788039,
+        "lat": 37.2970153,
+        "lon": -78.5781968
+       },
+       {
+        "node": 13418769016,
+        "lat": 37.2970538,
+        "lon": -78.5781831
+       }
+      ]
+     }
+    ]
+   },
+   "13418769021": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20414955,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Prospect Road"
+      },
+      "arms": [
+       {
+        "node": 13418769020,
+        "lat": 37.3028292,
+        "lon": -78.5589874
+       },
+       {
+        "node": 13418769019,
+        "lat": 37.3029043,
+        "lon": -78.559004
+       }
+      ]
+     }
+    ]
+   },
+   "13427336993": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1378816937,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 13427336992,
+        "lat": 37.2599369,
+        "lon": -78.6769691
+       },
+       {
+        "node": 13427336991,
+        "lat": 37.2600283,
+        "lon": -78.6769559
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

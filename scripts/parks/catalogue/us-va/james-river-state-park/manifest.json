@@ -75,6 +75,12 @@
             "at_m": 249
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Canoe Landing Road",
+            "at_m": 457
+          },
+          {
             "kind": "junction",
             "turn": "right",
             "name": "River Trail",
@@ -97,6 +103,12 @@
             "gain_m": 18,
             "length_m": 510,
             "at_m": 1701
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Canoe Landing Road",
+            "at_m": 1744
           },
           {
             "kind": "junction",
@@ -138,6 +150,12 @@
             "gain_m": 17,
             "length_m": 240,
             "at_m": 4357
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cabin Road",
+            "at_m": 4715
           },
           {
             "kind": "finish",
@@ -220,6 +238,12 @@
             "at_m": 65
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Canoe Landing Road",
+            "at_m": 273
+          },
+          {
             "kind": "climb",
             "gain_m": 57,
             "length_m": 1040,
@@ -236,6 +260,12 @@
             "at_m": 2000,
             "order": 1,
             "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 2032
           },
           {
             "kind": "climb",
@@ -280,6 +310,18 @@
             "of": 4
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 6452
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Campground Loop",
+            "at_m": 6534
+          },
+          {
             "kind": "junction",
             "turn": "left",
             "name": "Cabell Creek Connector Trail",
@@ -319,6 +361,12 @@
             "turn": "right",
             "way": "path",
             "at_m": 9598
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cabin Road",
+            "at_m": 9899
           },
           {
             "kind": "finish",
@@ -407,6 +455,12 @@
             "turn": "left",
             "way": "path",
             "at_m": 456
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 559
           },
           {
             "kind": "checkpoint",
@@ -505,6 +559,12 @@
             "at_m": 12718
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 13007
+          },
+          {
             "kind": "junction",
             "turn": "straight",
             "name": "Running Creek Trail",
@@ -527,6 +587,12 @@
             "at_m": 15070,
             "order": 5,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Canoe Landing Road",
+            "at_m": 15315
           },
           {
             "kind": "checkpoint",
@@ -580,6 +646,12 @@
             "turn": "right",
             "way": "path",
             "at_m": 20630
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cabin Road",
+            "at_m": 20896
           },
           {
             "kind": "finish",
@@ -694,6 +766,12 @@
             "at_m": 569
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 672
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3246,
             "order": 1,
@@ -790,6 +868,12 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Park Road",
+            "at_m": 13119
+          },
+          {
             "kind": "junction",
             "turn": "straight",
             "name": "Running Creek Trail",
@@ -806,6 +890,12 @@
             "gain_m": 24,
             "length_m": 240,
             "at_m": 14687
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Canoe Landing Road",
+            "at_m": 15427
           },
           {
             "kind": "checkpoint",
@@ -865,6 +955,12 @@
             "turn": "right",
             "way": "path",
             "at_m": 20743
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cabin Road",
+            "at_m": 21008
           },
           {
             "kind": "lap",

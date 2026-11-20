@@ -20546,5 +20546,6067 @@
    "lon": -76.8006849,
    "ele": 7.5
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "209223812": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223818,
+        "lat": 37.340704,
+        "lon": -77.076616
+       }
+      ]
+     },
+     {
+      "id": 1066422655,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223808,
+        "lat": 37.340773,
+        "lon": -77.0771193
+       }
+      ]
+     },
+     {
+      "id": 1133258813,
+      "tags": {
+       "highway": "residential",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 3857572060,
+        "lat": 37.3404448,
+        "lon": -77.0776813
+       }
+      ]
+     }
+    ]
+   },
+   "209223818": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223812,
+        "lat": 37.3406127,
+        "lon": -77.0770293
+       },
+       {
+        "node": 209223819,
+        "lat": 37.340813,
+        "lon": -77.076193
+       }
+      ]
+     }
+    ]
+   },
+   "209223819": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223818,
+        "lat": 37.340704,
+        "lon": -77.076616
+       },
+       {
+        "node": 7233605296,
+        "lat": 37.3408319,
+        "lon": -77.0761161
+       }
+      ]
+     }
+    ]
+   },
+   "209223821": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 7233605296,
+        "lat": 37.3408319,
+        "lon": -77.0761161
+       },
+       {
+        "node": 209223823,
+        "lat": 37.3409795,
+        "lon": -77.0755298
+       }
+      ]
+     }
+    ]
+   },
+   "209223823": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223821,
+        "lat": 37.340924,
+        "lon": -77.075741
+       }
+      ]
+     },
+     {
+      "id": 531855345,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369403,
+        "lat": 37.34103,
+        "lon": -77.075338
+       }
+      ]
+     },
+     {
+      "id": 1133258812,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 10565845225,
+        "lat": 37.3411448,
+        "lon": -77.0757244
+       }
+      ]
+     }
+    ]
+   },
+   "209225684": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 3857572147,
+        "lat": 37.330033,
+        "lon": -77.181852
+       },
+       {
+        "node": 209225687,
+        "lat": 37.330095,
+        "lon": -77.182043
+       }
+      ]
+     }
+    ]
+   },
+   "209225687": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225684,
+        "lat": 37.330055,
+        "lon": -77.18191
+       },
+       {
+        "node": 209225689,
+        "lat": 37.330121,
+        "lon": -77.182181
+       }
+      ]
+     }
+    ]
+   },
+   "209225689": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225687,
+        "lat": 37.330095,
+        "lon": -77.182043
+       },
+       {
+        "node": 209225691,
+        "lat": 37.330133,
+        "lon": -77.182322
+       }
+      ]
+     }
+    ]
+   },
+   "209225691": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225689,
+        "lat": 37.330121,
+        "lon": -77.182181
+       },
+       {
+        "node": 14293953569,
+        "lat": 37.3301329,
+        "lon": -77.1823313
+       }
+      ]
+     }
+    ]
+   },
+   "209225696": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 3857572148,
+        "lat": 37.330132,
+        "lon": -77.182464
+       },
+       {
+        "node": 3857572149,
+        "lat": 37.3301041,
+        "lon": -77.1828444
+       }
+      ]
+     }
+    ]
+   },
+   "209237575": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19929417,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209237571,
+        "lat": 37.3392194,
+        "lon": -77.0812504
+       },
+       {
+        "node": 209237577,
+        "lat": 37.3395787,
+        "lon": -77.0813124
+       }
+      ]
+     }
+    ]
+   },
+   "209239139": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19929518,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209239137,
+        "lat": 37.33326,
+        "lon": -77.1188
+       },
+       {
+        "node": 209239145,
+        "lat": 37.334027,
+        "lon": -77.118865
+       }
+      ]
+     }
+    ]
+   },
+   "209240507": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19929618,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209240504,
+        "lat": 37.3012181,
+        "lon": -76.9508779
+       },
+       {
+        "node": 12997522278,
+        "lat": 37.3014668,
+        "lon": -76.9507918
+       }
+      ]
+     }
+    ]
+   },
+   "209248782": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369406,
+        "lat": 37.341229,
+        "lon": -77.0745438
+       }
+      ]
+     },
+     {
+      "id": 531855345,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369403,
+        "lat": 37.34103,
+        "lon": -77.075338
+       }
+      ]
+     },
+     {
+      "id": 531855348,
+      "tags": {
+       "highway": "residential"
+      },
+      "arms": [
+       {
+        "node": 209248786,
+        "lat": 37.3410399,
+        "lon": -77.075003
+       }
+      ]
+     }
+    ]
+   },
+   "209251366": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19930239,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209251365,
+        "lat": 37.334032,
+        "lon": -77.152928
+       },
+       {
+        "node": 209251367,
+        "lat": 37.3342444,
+        "lon": -77.1528588
+       }
+      ]
+     }
+    ]
+   },
+   "209284394": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19931966,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 14101999704,
+        "lat": 37.3399716,
+        "lon": -77.0547433
+       },
+       {
+        "node": 209284399,
+        "lat": 37.3397745,
+        "lon": -77.0548764
+       }
+      ]
+     }
+    ]
+   },
+   "209318059": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1230442230,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 11410864889,
+        "lat": 37.3386029,
+        "lon": -77.2060652
+       },
+       {
+        "node": 11410864890,
+        "lat": 37.3385729,
+        "lon": -77.2061336
+       }
+      ]
+     }
+    ]
+   },
+   "209328615": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19934454,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209328612,
+        "lat": 37.338724,
+        "lon": -77.018901
+       },
+       {
+        "node": 209328618,
+        "lat": 37.3387265,
+        "lon": -77.0198556
+       }
+      ]
+     }
+    ]
+   },
+   "209339175": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19934930,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209339172,
+        "lat": 37.3406166,
+        "lon": -77.0596861
+       },
+       {
+        "node": 209339178,
+        "lat": 37.3407484,
+        "lon": -77.0595397
+       }
+      ]
+     }
+    ]
+   },
+   "209357589": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19935690,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209221988,
+        "lat": 37.3413799,
+        "lon": -77.0618072
+       },
+       {
+        "node": 209329986,
+        "lat": 37.340986,
+        "lon": -77.062027
+       }
+      ]
+     }
+    ]
+   },
+   "209366617": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 12997916811,
+        "lat": 37.331685,
+        "lon": -77.1817801
+       }
+      ]
+     },
+     {
+      "id": 1414491033,
+      "tags": {
+       "highway": "trunk",
+       "name": "John Tyler Memorial Highway"
+      },
+      "arms": [
+       {
+        "node": 209366613,
+        "lat": 37.330849,
+        "lon": -77.182441
+       },
+       {
+        "node": 209366621,
+        "lat": 37.332488,
+        "lon": -77.181368
+       }
+      ]
+     }
+    ]
+   },
+   "209368909": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 11348980844,
+        "lat": 37.33149,
+        "lon": -77.1817582
+       },
+       {
+        "node": 3857572146,
+        "lat": 37.3307004,
+        "lon": -77.1818211
+       }
+      ]
+     }
+    ]
+   },
+   "209368912": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 3857572146,
+        "lat": 37.3307004,
+        "lon": -77.1818211
+       },
+       {
+        "node": 209368915,
+        "lat": 37.330456,
+        "lon": -77.181863
+       }
+      ]
+     }
+    ]
+   },
+   "209368915": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209368912,
+        "lat": 37.330649,
+        "lon": -77.181829
+       },
+       {
+        "node": 209368920,
+        "lat": 37.330315,
+        "lon": -77.181871
+       }
+      ]
+     }
+    ]
+   },
+   "209368920": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209368915,
+        "lat": 37.330456,
+        "lon": -77.181863
+       },
+       {
+        "node": 209368925,
+        "lat": 37.330305,
+        "lon": -77.18187
+       }
+      ]
+     }
+    ]
+   },
+   "209368925": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209368920,
+        "lat": 37.330315,
+        "lon": -77.181871
+       },
+       {
+        "node": 3857572147,
+        "lat": 37.330033,
+        "lon": -77.181852
+       }
+      ]
+     }
+    ]
+   },
+   "209369403": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531855345,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223823,
+        "lat": 37.3409795,
+        "lon": -77.0755298
+       },
+       {
+        "node": 209248782,
+        "lat": 37.3411153,
+        "lon": -77.0750357
+       }
+      ]
+     }
+    ]
+   },
+   "209369406": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209248782,
+        "lat": 37.3411153,
+        "lon": -77.0750357
+       },
+       {
+        "node": 209369410,
+        "lat": 37.3413717,
+        "lon": -77.073955
+       }
+      ]
+     }
+    ]
+   },
+   "209369410": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369406,
+        "lat": 37.341229,
+        "lon": -77.0745438
+       },
+       {
+        "node": 209369413,
+        "lat": 37.3414627,
+        "lon": -77.0735823
+       }
+      ]
+     }
+    ]
+   },
+   "209369413": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369410,
+        "lat": 37.3413717,
+        "lon": -77.073955
+       },
+       {
+        "node": 209369414,
+        "lat": 37.341534,
+        "lon": -77.0732973
+       }
+      ]
+     }
+    ]
+   },
+   "209369414": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369413,
+        "lat": 37.3414627,
+        "lon": -77.0735823
+       },
+       {
+        "node": 209369417,
+        "lat": 37.341575,
+        "lon": -77.07316
+       }
+      ]
+     }
+    ]
+   },
+   "209369417": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369414,
+        "lat": 37.341534,
+        "lon": -77.0732973
+       },
+       {
+        "node": 209369418,
+        "lat": 37.341606,
+        "lon": -77.073083
+       }
+      ]
+     },
+     {
+      "id": 19936317,
+      "tags": {
+       "highway": "residential",
+       "name": "Watermelon Fields Road"
+      },
+      "arms": [
+       {
+        "node": 209382569,
+        "lat": 37.3414761,
+        "lon": -77.0730817
+       }
+      ]
+     }
+    ]
+   },
+   "209369418": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369417,
+        "lat": 37.341575,
+        "lon": -77.07316
+       },
+       {
+        "node": 209369421,
+        "lat": 37.341662,
+        "lon": -77.072978
+       }
+      ]
+     }
+    ]
+   },
+   "209369421": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369418,
+        "lat": 37.341606,
+        "lon": -77.073083
+       },
+       {
+        "node": 209369424,
+        "lat": 37.341736,
+        "lon": -77.072876
+       }
+      ]
+     }
+    ]
+   },
+   "209369424": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369421,
+        "lat": 37.341662,
+        "lon": -77.072978
+       },
+       {
+        "node": 209369426,
+        "lat": 37.341847,
+        "lon": -77.07275
+       }
+      ]
+     }
+    ]
+   },
+   "209369426": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369424,
+        "lat": 37.341736,
+        "lon": -77.072876
+       },
+       {
+        "node": 209369429,
+        "lat": 37.3419878,
+        "lon": -77.0726057
+       }
+      ]
+     },
+     {
+      "id": 562205101,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 5420051943,
+        "lat": 37.3419194,
+        "lon": -77.0728129
+       }
+      ]
+     }
+    ]
+   },
+   "209369429": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369426,
+        "lat": 37.341847,
+        "lon": -77.07275
+       },
+       {
+        "node": 209369433,
+        "lat": 37.342295,
+        "lon": -77.072326
+       }
+      ]
+     }
+    ]
+   },
+   "209369433": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369429,
+        "lat": 37.3419878,
+        "lon": -77.0726057
+       },
+       {
+        "node": 8073893290,
+        "lat": 37.3425564,
+        "lon": -77.0720933
+       }
+      ]
+     }
+    ]
+   },
+   "209371972": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19936025,
+      "tags": {
+       "highway": "residential",
+       "name": "Great Plantation Road"
+      },
+      "arms": [
+       {
+        "node": 209371969,
+        "lat": 37.330096,
+        "lon": -77.187067
+       },
+       {
+        "node": 209229965,
+        "lat": 37.3304255,
+        "lon": -77.1870193
+       }
+      ]
+     }
+    ]
+   },
+   "209375762": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1159760820,
+      "tags": {
+       "highway": "residential",
+       "name": "Kimages Road"
+      },
+      "arms": [
+       {
+        "node": 209375759,
+        "lat": 37.330479,
+        "lon": -77.19517
+       },
+       {
+        "node": 209366514,
+        "lat": 37.3325872,
+        "lon": -77.1947169
+       }
+      ]
+     }
+    ]
+   },
+   "215056423": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20288346,
+      "tags": {
+       "highway": "residential",
+       "name": "Camp Hill Road"
+      },
+      "arms": [
+       {
+        "node": 215056419,
+        "lat": 37.4284022,
+        "lon": -77.3097215
+       },
+       {
+        "node": 215056426,
+        "lat": 37.428628,
+        "lon": -77.309487
+       }
+      ]
+     }
+    ]
+   },
+   "215153946": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20293278,
+      "tags": {
+       "highway": "residential",
+       "name": "Turkey Island Road"
+      },
+      "arms": [
+       {
+        "node": 14106691394,
+        "lat": 37.4057337,
+        "lon": -77.2666715
+       },
+       {
+        "node": 215153950,
+        "lat": 37.4054716,
+        "lon": -77.2666954
+       }
+      ]
+     }
+    ]
+   },
+   "215164401": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20293850,
+      "tags": {
+       "access": "private",
+       "highway": "residential",
+       "name": "Curles Neck Road"
+      },
+      "arms": [
+       {
+        "node": 8188531889,
+        "lat": 37.4062283,
+        "lon": -77.2695935
+       },
+       {
+        "node": 215164404,
+        "lat": 37.4060689,
+        "lon": -77.2696099
+       }
+      ]
+     }
+    ]
+   },
+   "215164786": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1335783539,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 6456784167,
+        "lat": 37.4192269,
+        "lon": -77.2959962
+       },
+       {
+        "node": 215107830,
+        "lat": 37.4193026,
+        "lon": -77.2958519
+       }
+      ]
+     }
+    ]
+   },
+   "215223507": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20297890,
+      "tags": {
+       "highway": "residential",
+       "name": "Gregg Road"
+      },
+      "arms": [
+       {
+        "node": 215107403,
+        "lat": 37.4454306,
+        "lon": -77.3543345
+       },
+       {
+        "node": 13003393408,
+        "lat": 37.4456297,
+        "lon": -77.3542533
+       }
+      ]
+     }
+    ]
+   },
+   "215258718": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20300236,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Strath Road"
+      },
+      "arms": [
+       {
+        "node": 215258713,
+        "lat": 37.4447189,
+        "lon": -77.3514277
+       },
+       {
+        "node": 215107421,
+        "lat": 37.444279,
+        "lon": -77.351412,
+        "signal_m": 16
+       }
+      ]
+     }
+    ]
+   },
+   "215613188": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20313999,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 215613173,
+        "lat": 37.2367463,
+        "lon": -76.7803245
+       },
+       {
+        "node": 215613192,
+        "lat": 37.2348787,
+        "lon": -76.7850617
+       }
+      ]
+     }
+    ]
+   },
+   "215800506": {
+    "tags": {
+     "crossing": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 294874942,
+      "tags": {
+       "highway": "primary",
+       "name": "Jamestown Road"
+      },
+      "arms": [
+       {
+        "node": 11321650402,
+        "lat": 37.2285329,
+        "lon": -76.7818323
+       },
+       {
+        "node": 4894691734,
+        "lat": 37.2307132,
+        "lon": -76.779535
+       }
+      ]
+     }
+    ]
+   },
+   "2189116241": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 208639849,
+      "tags": {
+       "highway": "tertiary_link"
+      },
+      "arms": [
+       {
+        "node": 9363277031,
+        "lat": 37.4901733,
+        "lon": -77.4037199
+       },
+       {
+        "node": 2189116244,
+        "lat": 37.4901997,
+        "lon": -77.4036464
+       }
+      ]
+     }
+    ]
+   },
+   "2838812303": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 294874976,
+      "tags": {
+       "access": "yes",
+       "highway": "service",
+       "name": "Pear Street"
+      },
+      "arms": [
+       {
+        "node": 13070809848,
+        "lat": 37.526224,
+        "lon": -77.4206502
+       }
+      ]
+     },
+     {
+      "id": 633128635,
+      "tags": {
+       "access": "yes",
+       "highway": "service",
+       "name": "Pear Street"
+      },
+      "arms": [
+       {
+        "node": 3823155314,
+        "lat": 37.5261346,
+        "lon": -77.4208289
+       }
+      ]
+     }
+    ]
+   },
+   "2984957307": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20316886,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Jamestown Road Service Road"
+      },
+      "arms": [
+       {
+        "node": 215672933,
+        "lat": 37.2302907,
+        "lon": -76.7797117
+       },
+       {
+        "node": 215672929,
+        "lat": 37.229149,
+        "lon": -76.7808971
+       }
+      ]
+     }
+    ]
+   },
+   "2984957312": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20326851,
+      "tags": {
+       "highway": "residential",
+       "name": "4-H Club Road"
+      },
+      "arms": [
+       {
+        "node": 215800258,
+        "lat": 37.2315579,
+        "lon": -76.7831381
+       },
+       {
+        "node": 12090980739,
+        "lat": 37.2315817,
+        "lon": -76.7830244
+       }
+      ]
+     }
+    ]
+   },
+   "2984958497": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20324175,
+      "tags": {
+       "highway": "residential",
+       "name": "Two Rivers Road"
+      },
+      "arms": [
+       {
+        "node": 215781531,
+        "lat": 37.253468,
+        "lon": -76.828312
+       },
+       {
+        "node": 215751705,
+        "lat": 37.2542284,
+        "lon": -76.8283812
+       }
+      ]
+     }
+    ]
+   },
+   "2984958498": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20324172,
+      "tags": {
+       "highway": "residential",
+       "name": "Two Rivers Road"
+      },
+      "arms": [
+       {
+        "node": 215751702,
+        "lat": 37.2542062,
+        "lon": -76.8285601
+       },
+       {
+        "node": 215781445,
+        "lat": 37.253576,
+        "lon": -76.828516
+       }
+      ]
+     }
+    ]
+   },
+   "2984958549": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "yes",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 765587453,
+      "tags": {
+       "highway": "trunk",
+       "name": "John Tyler Highway"
+      },
+      "arms": [
+       {
+        "node": 215593690,
+        "lat": 37.261256,
+        "lon": -76.86111
+       },
+       {
+        "node": 215593273,
+        "lat": 37.2614352,
+        "lon": -76.8617112
+       }
+      ]
+     }
+    ]
+   },
+   "2984958552": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20313329,
+      "tags": {
+       "highway": "residential"
+      },
+      "arms": [
+       {
+        "node": 215593273,
+        "lat": 37.2614352,
+        "lon": -76.8617112
+       },
+       {
+        "node": 215593277,
+        "lat": 37.262446,
+        "lon": -76.861679
+       }
+      ]
+     }
+    ]
+   },
+   "3857568232": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19929024,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209229017,
+        "lat": 37.2678706,
+        "lon": -76.897804
+       },
+       {
+        "node": 209229018,
+        "lat": 37.268109,
+        "lon": -76.897647
+       }
+      ]
+     }
+    ]
+   },
+   "3857572060": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1133258813,
+      "tags": {
+       "highway": "residential",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223812,
+        "lat": 37.3406127,
+        "lon": -77.0770293
+       }
+      ]
+     }
+    ]
+   },
+   "3857572075": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929367,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209236405,
+        "lat": 37.332369,
+        "lon": -77.097689
+       },
+       {
+        "node": 11349047875,
+        "lat": 37.3325677,
+        "lon": -77.0982049
+       }
+      ]
+     }
+    ]
+   },
+   "3857572078": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19933843,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209316445,
+        "lat": 37.3322441,
+        "lon": -77.1008878
+       },
+       {
+        "node": 209316447,
+        "lat": 37.332074,
+        "lon": -77.100822
+       }
+      ]
+     }
+    ]
+   },
+   "3857572146": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209368909,
+        "lat": 37.331052,
+        "lon": -77.181767
+       },
+       {
+        "node": 209368912,
+        "lat": 37.330649,
+        "lon": -77.181829
+       }
+      ]
+     }
+    ]
+   },
+   "3857572147": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928831,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225678,
+        "lat": 37.329968,
+        "lon": -77.181674
+       }
+      ]
+     },
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209368925,
+        "lat": 37.330305,
+        "lon": -77.18187
+       }
+      ]
+     },
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225684,
+        "lat": 37.330055,
+        "lon": -77.18191
+       }
+      ]
+     }
+    ]
+   },
+   "3857572148": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 14293953569,
+        "lat": 37.3301329,
+        "lon": -77.1823313
+       },
+       {
+        "node": 209225696,
+        "lat": 37.330116,
+        "lon": -77.182605
+       }
+      ]
+     }
+    ]
+   },
+   "3857572149": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225696,
+        "lat": 37.330116,
+        "lon": -77.182605
+       }
+      ]
+     },
+     {
+      "id": 633128638,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 10151644519,
+        "lat": 37.3301102,
+        "lon": -77.183146
+       }
+      ]
+     }
+    ]
+   },
+   "5162164626": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1109647678,
+      "tags": {
+       "highway": "trunk",
+       "name": "John Tyler Memorial Highway"
+      },
+      "arms": [
+       {
+        "node": 209221988,
+        "lat": 37.3413799,
+        "lon": -77.0618072
+       },
+       {
+        "node": 209367283,
+        "lat": 37.3411111,
+        "lon": -77.0610819
+       }
+      ]
+     }
+    ]
+   },
+   "5242560019": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1420378563,
+      "tags": {
+       "highway": "primary",
+       "name": "South Laburnum Avenue"
+      },
+      "arms": [
+       {
+        "node": 215212696,
+        "lat": 37.467057,
+        "lon": -77.381079
+       },
+       {
+        "node": 215107229,
+        "lat": 37.4657073,
+        "lon": -77.3829907,
+        "signal_m": 15
+       }
+      ]
+     }
+    ]
+   },
+   "5242561192": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20273120,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7062465066,
+        "lat": 37.5074498,
+        "lon": -77.4131718
+       },
+       {
+        "node": 214789485,
+        "lat": 37.507715,
+        "lon": -77.4126021
+       }
+      ]
+     }
+    ]
+   },
+   "5242562878": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20291595,
+      "tags": {
+       "highway": "service",
+       "name": "Indian Trail",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 215104805,
+        "lat": 37.4962295,
+        "lon": -77.4051006
+       },
+       {
+        "node": 215120048,
+        "lat": 37.496205,
+        "lon": -77.4053411
+       }
+      ]
+     }
+    ]
+   },
+   "5242562956": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20298432,
+      "tags": {
+       "highway": "residential",
+       "name": "Cattle Drive"
+      },
+      "arms": [
+       {
+        "node": 215104818,
+        "lat": 37.493898,
+        "lon": -77.404619
+       },
+       {
+        "node": 215228408,
+        "lat": 37.493816,
+        "lon": -77.405275
+       }
+      ]
+     }
+    ]
+   },
+   "5242562992": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20289892,
+      "tags": {
+       "highway": "residential",
+       "name": "Tree Hill Lane"
+      },
+      "arms": [
+       {
+        "node": 215088666,
+        "lat": 37.491506,
+        "lon": -77.404106
+       },
+       {
+        "node": 215088670,
+        "lat": 37.491703,
+        "lon": -77.408048
+       }
+      ]
+     }
+    ]
+   },
+   "5242563071": {
+    "tags": {
+     "crossing": "traffic_signals",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 90276660,
+      "tags": {
+       "highway": "primary",
+       "name": "South Laburnum Avenue"
+      },
+      "arms": [
+       {
+        "node": 215107233,
+        "lat": 37.4656101,
+        "lon": -77.3828936,
+        "signal_m": 15
+       },
+       {
+        "node": 215213541,
+        "lat": 37.466965,
+        "lon": -77.380975
+       }
+      ]
+     }
+    ]
+   },
+   "5242567064": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 38003090,
+      "tags": {
+       "highway": "primary",
+       "name": "New Market Road"
+      },
+      "arms": [
+       {
+        "node": 215107010,
+        "lat": 37.4840325,
+        "lon": -77.395813
+       },
+       {
+        "node": 2564051060,
+        "lat": 37.4844044,
+        "lon": -77.3961875
+       }
+      ]
+     }
+    ]
+   },
+   "5242567682": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20281197,
+      "tags": {
+       "highway": "residential",
+       "name": "Chatsworth Road"
+      },
+      "arms": [
+       {
+        "node": 214952618,
+        "lat": 37.481289,
+        "lon": -77.393632
+       },
+       {
+        "node": 10555322654,
+        "lat": 37.4817154,
+        "lon": -77.3931839
+       }
+      ]
+     }
+    ]
+   },
+   "5242568417": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20293421,
+      "tags": {
+       "highway": "residential",
+       "name": "Freeless Street"
+      },
+      "arms": [
+       {
+        "node": 215156987,
+        "lat": 37.4800433,
+        "lon": -77.3925592
+       },
+       {
+        "node": 215156989,
+        "lat": 37.480668,
+        "lon": -77.39184
+       }
+      ]
+     }
+    ]
+   },
+   "5242568928": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20272573,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Messer Road"
+      },
+      "arms": [
+       {
+        "node": 214776825,
+        "lat": 37.468154,
+        "lon": -77.384941
+       },
+       {
+        "node": 214776827,
+        "lat": 37.4678888,
+        "lon": -77.3852681
+       }
+      ]
+     }
+    ]
+   },
+   "5242575212": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 367338272,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 3712736109,
+        "lat": 37.4607827,
+        "lon": -77.378329
+       },
+       {
+        "node": 5304046495,
+        "lat": 37.4609246,
+        "lon": -77.378134
+       }
+      ]
+     }
+    ]
+   },
+   "5242576455": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 654863982,
+      "tags": {
+       "highway": "residential",
+       "name": "Towhee Lane"
+      },
+      "arms": [
+       {
+        "node": 215107263,
+        "lat": 37.459158,
+        "lon": -77.376792
+       },
+       {
+        "node": 215125048,
+        "lat": 37.4593,
+        "lon": -77.376593
+       }
+      ]
+     }
+    ]
+   },
+   "5242576519": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20281414,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Willson Road"
+      },
+      "arms": [
+       {
+        "node": 214957585,
+        "lat": 37.4542398,
+        "lon": -77.3708488,
+        "signal_m": 10
+       },
+       {
+        "node": 214957582,
+        "lat": 37.45506,
+        "lon": -77.370327
+       }
+      ]
+     }
+    ]
+   },
+   "5800784984": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935292,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209347501,
+        "lat": 37.333066,
+        "lon": -77.126013
+       },
+       {
+        "node": 209347504,
+        "lat": 37.333678,
+        "lon": -77.126069
+       }
+      ]
+     }
+    ]
+   },
+   "5806034100": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20291988,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 7011604229,
+        "lat": 37.4346007,
+        "lon": -77.3288114
+       },
+       {
+        "node": 215127443,
+        "lat": 37.4351,
+        "lon": -77.328532
+       }
+      ]
+     }
+    ]
+   },
+   "5806034102": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20287289,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Turner Road"
+      },
+      "arms": [
+       {
+        "node": 13003286696,
+        "lat": 37.4298653,
+        "lon": -77.3129991
+       },
+       {
+        "node": 215044827,
+        "lat": 37.4297729,
+        "lon": -77.3130629
+       }
+      ]
+     }
+    ]
+   },
+   "5806034103": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20297407,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Doran Road"
+      },
+      "arms": [
+       {
+        "node": 215220155,
+        "lat": 37.453495,
+        "lon": -77.332081
+       },
+       {
+        "node": 215220158,
+        "lat": 37.452988,
+        "lon": -77.33245
+       }
+      ]
+     }
+    ]
+   },
+   "5806043055": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19931019,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209265786,
+        "lat": 37.30355,
+        "lon": -76.955077
+       },
+       {
+        "node": 209265787,
+        "lat": 37.303824,
+        "lon": -76.9550199
+       }
+      ]
+     }
+    ]
+   },
+   "5811624327": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19933891,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209317530,
+        "lat": 37.382053,
+        "lon": -77.241333
+       },
+       {
+        "node": 209317533,
+        "lat": 37.3819,
+        "lon": -77.241791
+       }
+      ]
+     }
+    ]
+   },
+   "5811624330": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19930725,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209258824,
+        "lat": 37.3790312,
+        "lon": -77.234573
+       },
+       {
+        "node": 209258829,
+        "lat": 37.378754,
+        "lon": -77.234779
+       }
+      ]
+     }
+    ]
+   },
+   "5811624332": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19929136,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209230968,
+        "lat": 37.3868283,
+        "lon": -77.2441483
+       },
+       {
+        "node": 209230969,
+        "lat": 37.386736,
+        "lon": -77.244386
+       }
+      ]
+     }
+    ]
+   },
+   "5811627127": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19934247,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209324398,
+        "lat": 37.333638,
+        "lon": -77.115022
+       },
+       {
+        "node": 209324399,
+        "lat": 37.3341276,
+        "lon": -77.1150597
+       }
+      ]
+     }
+    ]
+   },
+   "5811633838": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20294077,
+      "tags": {
+       "highway": "residential",
+       "name": "Rocky Hill Farm Drive"
+      },
+      "arms": [
+       {
+        "node": 215107642,
+        "lat": 37.4324804,
+        "lon": -77.324651
+       },
+       {
+        "node": 215168643,
+        "lat": 37.43282,
+        "lon": -77.32459
+       }
+      ]
+     }
+    ]
+   },
+   "5811633839": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20292154,
+      "tags": {
+       "highway": "residential",
+       "name": "New Market Heights Lane"
+      },
+      "arms": [
+       {
+        "node": 215107655,
+        "lat": 37.4308903,
+        "lon": -77.3165343
+       },
+       {
+        "node": 215130367,
+        "lat": 37.431885,
+        "lon": -77.316472
+       }
+      ]
+     }
+    ]
+   },
+   "5811634960": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929223,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209233120,
+        "lat": 37.3365793,
+        "lon": -77.1631816
+       },
+       {
+        "node": 209233122,
+        "lat": 37.336155,
+        "lon": -77.1633083
+       }
+      ]
+     }
+    ]
+   },
+   "5865705172": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20300050,
+      "tags": {
+       "highway": "residential",
+       "name": "Wood Mill Drive"
+      },
+      "arms": [
+       {
+        "node": 214926174,
+        "lat": 37.442517,
+        "lon": -77.346489
+       },
+       {
+        "node": 215255750,
+        "lat": 37.4426549,
+        "lon": -77.3464914
+       }
+      ]
+     }
+    ]
+   },
+   "6088695571": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1335783540,
+      "tags": {
+       "highway": "service",
+       "name": "Curles Neck Road"
+      },
+      "arms": [
+       {
+        "node": 6088695570,
+        "lat": 37.4110212,
+        "lon": -77.2861413
+       },
+       {
+        "node": 12356698210,
+        "lat": 37.410894,
+        "lon": -77.286247
+       }
+      ]
+     }
+    ]
+   },
+   "6088715128": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 648551554,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 215084411,
+        "lat": 37.4259703,
+        "lon": -77.3011462
+       },
+       {
+        "node": 6088715129,
+        "lat": 37.4256012,
+        "lon": -77.301292
+       }
+      ]
+     }
+    ]
+   },
+   "6088718671": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 648551583,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6088718670,
+        "lat": 37.4264202,
+        "lon": -77.3029762
+       },
+       {
+        "node": 6088718672,
+        "lat": 37.4262125,
+        "lon": -77.3028786
+       }
+      ]
+     }
+    ]
+   },
+   "6088722576": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 648551996,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6088722575,
+        "lat": 37.428106,
+        "lon": -77.309003
+       },
+       {
+        "node": 6088722577,
+        "lat": 37.4290696,
+        "lon": -77.3080255
+       }
+      ]
+     }
+    ]
+   },
+   "6370110769": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 655492802,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6141449193,
+        "lat": 37.4476707,
+        "lon": -77.35987
+       },
+       {
+        "node": 6141449194,
+        "lat": 37.4478488,
+        "lon": -77.3597591
+       }
+      ]
+     }
+    ]
+   },
+   "6370117653": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19932757,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209295933,
+        "lat": 37.36594,
+        "lon": -77.225972
+       },
+       {
+        "node": 209295937,
+        "lat": 37.3657935,
+        "lon": -77.2250677
+       }
+      ]
+     }
+    ]
+   },
+   "6370119184": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 653026112,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6120607815,
+        "lat": 37.3999153,
+        "lon": -77.257091
+       },
+       {
+        "node": 6120607816,
+        "lat": 37.3997727,
+        "lon": -77.2572744
+       }
+      ]
+     }
+    ]
+   },
+   "6370119540": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 653024450,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6120598937,
+        "lat": 37.4318132,
+        "lon": -77.3201858
+       },
+       {
+        "node": 6120598938,
+        "lat": 37.431618,
+        "lon": -77.3202284
+       }
+      ]
+     }
+    ]
+   },
+   "6370119541": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 653024448,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6120598915,
+        "lat": 37.4312135,
+        "lon": -77.318162
+       },
+       {
+        "node": 6120598916,
+        "lat": 37.4314192,
+        "lon": -77.3181124
+       }
+      ]
+     }
+    ]
+   },
+   "6370119685": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 653026111,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6120607812,
+        "lat": 37.4018163,
+        "lon": -77.2586256
+       },
+       {
+        "node": 6120607813,
+        "lat": 37.4015747,
+        "lon": -77.2588244
+       }
+      ]
+     }
+    ]
+   },
+   "6456751082": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 681381407,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6380870785,
+        "lat": 37.4277351,
+        "lon": -77.3080925
+       },
+       {
+        "node": 6380870786,
+        "lat": 37.4279482,
+        "lon": -77.3078336
+       }
+      ]
+     }
+    ]
+   },
+   "6456764293": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 648551694,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6088719534,
+        "lat": 37.4265717,
+        "lon": -77.3036278
+       },
+       {
+        "node": 6088719535,
+        "lat": 37.4248635,
+        "lon": -77.3039801
+       }
+      ]
+     }
+    ]
+   },
+   "6456764295": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 648551740,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6088720032,
+        "lat": 37.4266182,
+        "lon": -77.3038373
+       },
+       {
+        "node": 6088720033,
+        "lat": 37.4264301,
+        "lon": -77.3038362
+       }
+      ]
+     }
+    ]
+   },
+   "6456764305": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "ladder",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20290846,
+      "tags": {
+       "highway": "primary",
+       "name": "New Market Road"
+      },
+      "arms": [
+       {
+        "node": 6088720032,
+        "lat": 37.4266182,
+        "lon": -77.3038373
+       },
+       {
+        "node": 13003286684,
+        "lat": 37.4268744,
+        "lon": -77.304959
+       }
+      ]
+     }
+    ]
+   },
+   "6456764314": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 788842822,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7375130104,
+        "lat": 37.4270107,
+        "lon": -77.305563
+       },
+       {
+        "node": 7375130105,
+        "lat": 37.4273766,
+        "lon": -77.3054379
+       }
+      ]
+     }
+    ]
+   },
+   "6457492997": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 424824107,
+      "tags": {
+       "highway": "residential",
+       "name": "Kinvan Road"
+      },
+      "arms": [
+       {
+        "node": 214957925,
+        "lat": 37.4532,
+        "lon": -77.338355
+       }
+      ]
+     },
+     {
+      "id": 424824113,
+      "tags": {
+       "highway": "residential",
+       "name": "Kinvan Road"
+      },
+      "arms": [
+       {
+        "node": 214957921,
+        "lat": 37.4533098,
+        "lon": -77.3389586
+       }
+      ]
+     },
+     {
+      "id": 688586590,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6457492996,
+        "lat": 37.453356,
+        "lon": -77.3387726
+       }
+      ]
+     }
+    ]
+   },
+   "6486606891": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 208639828,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Osborne Turnpike"
+      },
+      "arms": [
+       {
+        "node": 9363277029,
+        "lat": 37.4904893,
+        "lon": -77.4039359
+       },
+       {
+        "node": 6486606888,
+        "lat": 37.4901508,
+        "lon": -77.4038674
+       }
+      ]
+     }
+    ]
+   },
+   "6486606925": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 691288430,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 6486606924,
+        "lat": 37.4643526,
+        "lon": -77.3817047
+       },
+       {
+        "node": 6486606926,
+        "lat": 37.464898,
+        "lon": -77.3808693
+       }
+      ]
+     }
+    ]
+   },
+   "6486606933": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 680040232,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6367352092,
+        "lat": 37.4549176,
+        "lon": -77.3722404
+       },
+       {
+        "node": 6367352093,
+        "lat": 37.4550547,
+        "lon": -77.3721411
+       }
+      ]
+     }
+    ]
+   },
+   "6486606934": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 764125998,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7138781414,
+        "lat": 37.4532291,
+        "lon": -77.3688773
+       },
+       {
+        "node": 7138781416,
+        "lat": 37.4533929,
+        "lon": -77.3687279
+       }
+      ]
+     }
+    ]
+   },
+   "6486606935": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 795488136,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7440210748,
+        "lat": 37.4528049,
+        "lon": -77.3682173
+       },
+       {
+        "node": 7440210749,
+        "lat": 37.453061,
+        "lon": -77.3679203
+       }
+      ]
+     }
+    ]
+   },
+   "6486606936": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 742884014,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6954313932,
+        "lat": 37.4520046,
+        "lon": -77.367038
+       },
+       {
+        "node": 6954313946,
+        "lat": 37.4521402,
+        "lon": -77.3668594
+       }
+      ]
+     }
+    ]
+   },
+   "6486606937": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 744836364,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6971013910,
+        "lat": 37.4485079,
+        "lon": -77.3614052
+       },
+       {
+        "node": 6971013911,
+        "lat": 37.4483488,
+        "lon": -77.3614989
+       }
+      ]
+     }
+    ]
+   },
+   "6486606952": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1024376571,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7011349434,
+        "lat": 37.4440083,
+        "lon": -77.3507167
+       },
+       {
+        "node": 9445927370,
+        "lat": 37.4441607,
+        "lon": -77.3506297
+       }
+      ]
+     }
+    ]
+   },
+   "6934241256": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 740644594,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6934241255,
+        "lat": 37.4474673,
+        "lon": -77.3593651
+       },
+       {
+        "node": 6934241257,
+        "lat": 37.4482989,
+        "lon": -77.3589319
+       }
+      ]
+     }
+    ]
+   },
+   "6948353916": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 742182426,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6948353915,
+        "lat": 37.4305281,
+        "lon": -77.3149593
+       },
+       {
+        "node": 6948353917,
+        "lat": 37.4307156,
+        "lon": -77.3148629
+       }
+      ]
+     }
+    ]
+   },
+   "6948353929": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 742182427,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6948353928,
+        "lat": 37.4306499,
+        "lon": -77.3153992
+       },
+       {
+        "node": 6948353930,
+        "lat": 37.4311529,
+        "lon": -77.3151877
+       }
+      ]
+     }
+    ]
+   },
+   "6968675801": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 744580115,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6968675800,
+        "lat": 37.4954317,
+        "lon": -77.4049461
+       },
+       {
+        "node": 6968675802,
+        "lat": 37.495436,
+        "lon": -77.4058127
+       }
+      ]
+     }
+    ]
+   },
+   "6970991869": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 744836363,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6970991868,
+        "lat": 37.4482201,
+        "lon": -77.3612141
+       },
+       {
+        "node": 6970991870,
+        "lat": 37.4483559,
+        "lon": -77.3611442
+       }
+      ]
+     }
+    ]
+   },
+   "6971013896": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 744836364,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6971013895,
+        "lat": 37.4484892,
+        "lon": -77.36178
+       },
+       {
+        "node": 6971013897,
+        "lat": 37.4486653,
+        "lon": -77.3616354
+       }
+      ]
+     }
+    ]
+   },
+   "7010579316": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749692206,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7010579315,
+        "lat": 37.3861183,
+        "lon": -77.2435407
+       },
+       {
+        "node": 8456774226,
+        "lat": 37.3859668,
+        "lon": -77.2437299
+       }
+      ]
+     }
+    ]
+   },
+   "7011057169": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749751676,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011057168,
+        "lat": 37.4481631,
+        "lon": -77.3610776
+       },
+       {
+        "node": 7011057170,
+        "lat": 37.4485887,
+        "lon": -77.360984
+       }
+      ]
+     }
+    ]
+   },
+   "7011057184": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749751677,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011057183,
+        "lat": 37.4475176,
+        "lon": -77.35949
+       },
+       {
+        "node": 7011059485,
+        "lat": 37.4481522,
+        "lon": -77.3591475
+       }
+      ]
+     }
+    ]
+   },
+   "7011059497": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749751679,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011059496,
+        "lat": 37.4463734,
+        "lon": -77.3566763
+       },
+       {
+        "node": 7011059498,
+        "lat": 37.4467062,
+        "lon": -77.3564556
+       }
+      ]
+     }
+    ]
+   },
+   "7011471000": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749805606,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011470999,
+        "lat": 37.4833817,
+        "lon": -77.3952287
+       },
+       {
+        "node": 7011471003,
+        "lat": 37.4835362,
+        "lon": -77.3949253
+       }
+      ]
+     }
+    ]
+   },
+   "7011471011": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 749805608,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011471010,
+        "lat": 37.4828333,
+        "lon": -77.3947961
+       },
+       {
+        "node": 7011471012,
+        "lat": 37.4829272,
+        "lon": -77.3946396
+       }
+      ]
+     }
+    ]
+   },
+   "7011540654": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 749811730,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7011540648,
+        "lat": 37.4316925,
+        "lon": -77.3206103
+       },
+       {
+        "node": 7011540649,
+        "lat": 37.431836,
+        "lon": -77.3205779
+       }
+      ]
+     }
+    ]
+   },
+   "7011604223": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20291988,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 7011604222,
+        "lat": 37.4357456,
+        "lon": -77.3295179
+       },
+       {
+        "node": 7011604224,
+        "lat": 37.4354667,
+        "lon": -77.329802
+       }
+      ]
+     }
+    ]
+   },
+   "7013589738": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 750041200,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 7013589737,
+        "lat": 37.4808685,
+        "lon": -77.3933068
+       },
+       {
+        "node": 7013589739,
+        "lat": 37.480969,
+        "lon": -77.3930462
+       }
+      ]
+     }
+    ]
+   },
+   "7013589749": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 681346055,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 6380535794,
+        "lat": 37.4739092,
+        "lon": -77.3897606
+       },
+       {
+        "node": 6380535795,
+        "lat": 37.4740106,
+        "lon": -77.3895015
+       }
+      ]
+     }
+    ]
+   },
+   "7013723756": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 750054682,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7013723754,
+        "lat": 37.495799,
+        "lon": -77.4058255
+       },
+       {
+        "node": 7013723755,
+        "lat": 37.4958322,
+        "lon": -77.4050278
+       }
+      ]
+     }
+    ]
+   },
+   "7013928416": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 750077974,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7013928415,
+        "lat": 37.4214035,
+        "lon": -77.2974525
+       },
+       {
+        "node": 7013928417,
+        "lat": 37.4213379,
+        "lon": -77.297601
+       }
+      ]
+     }
+    ]
+   },
+   "7016364594": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 750374327,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7016364589,
+        "lat": 37.4860169,
+        "lon": -77.3983379
+       },
+       {
+        "node": 7016364590,
+        "lat": 37.4859057,
+        "lon": -77.3984761
+       }
+      ]
+     }
+    ]
+   },
+   "7062378075": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "surface",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 756137094,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7062378073,
+        "lat": 37.5211568,
+        "lon": -77.4165663
+       },
+       {
+        "node": 7062378074,
+        "lat": 37.5210812,
+        "lon": -77.4167937
+       }
+      ]
+     }
+    ]
+   },
+   "7090896576": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 759179226,
+      "tags": {
+       "highway": "service",
+       "motor_vehicle": "no"
+      },
+      "arms": [
+       {
+        "node": 13472447972,
+        "lat": 37.5236701,
+        "lon": -77.4184794
+       }
+      ]
+     }
+    ]
+   },
+   "7090939808": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 759182730,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 214966298,
+        "lat": 37.4447699,
+        "lon": -77.352681
+       },
+       {
+        "node": 7090939809,
+        "lat": 37.4449541,
+        "lon": -77.3525438
+       }
+      ]
+     }
+    ]
+   },
+   "7120967663": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 762148015,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 7120967662,
+        "lat": 37.4467576,
+        "lon": -77.3576201
+       },
+       {
+        "node": 7120967664,
+        "lat": 37.4469846,
+        "lon": -77.3574657
+       }
+      ]
+     }
+    ]
+   },
+   "7121416589": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 762161148,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7121416588,
+        "lat": 37.4559281,
+        "lon": -77.3736955
+       },
+       {
+        "node": 7121416590,
+        "lat": 37.4560782,
+        "lon": -77.3734448
+       }
+      ]
+     }
+    ]
+   },
+   "7121416595": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 762161149,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7121416594,
+        "lat": 37.455737,
+        "lon": -77.3734787
+       },
+       {
+        "node": 7121416596,
+        "lat": 37.4559038,
+        "lon": -77.3733084
+       }
+      ]
+     }
+    ]
+   },
+   "7150705336": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 765635714,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7150705335,
+        "lat": 37.4231271,
+        "lon": -77.2987036
+       },
+       {
+        "node": 7150705337,
+        "lat": 37.4229757,
+        "lon": -77.2989744
+       }
+      ]
+     }
+    ]
+   },
+   "7233605296": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19928705,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209223819,
+        "lat": 37.340813,
+        "lon": -77.076193
+       },
+       {
+        "node": 209223821,
+        "lat": 37.340924,
+        "lon": -77.075741
+       }
+      ]
+     },
+     {
+      "id": 775340835,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7233605295,
+        "lat": 37.340792,
+        "lon": -77.076049
+       }
+      ]
+     }
+    ]
+   },
+   "7265700000": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1014997756,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 7265699999,
+        "lat": 37.4895894,
+        "lon": -77.4030593
+       },
+       {
+        "node": 9363277070,
+        "lat": 37.4894714,
+        "lon": -77.403291
+       }
+      ]
+     }
+    ]
+   },
+   "7298141026": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 781678739,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7298141025,
+        "lat": 37.4247399,
+        "lon": -77.2998992
+       },
+       {
+        "node": 7298141027,
+        "lat": 37.4248319,
+        "lon": -77.2997497
+       }
+      ]
+     }
+    ]
+   },
+   "7404267779": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 792011620,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7404267778,
+        "lat": 37.4870281,
+        "lon": -77.3997583
+       },
+       {
+        "node": 7404267780,
+        "lat": 37.486944,
+        "lon": -77.3999556
+       }
+      ]
+     }
+    ]
+   },
+   "7428223053": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 794220794,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7428223052,
+        "lat": 37.4620503,
+        "lon": -77.3795432
+       },
+       {
+        "node": 7428223054,
+        "lat": 37.4621161,
+        "lon": -77.3792911
+       }
+      ]
+     }
+    ]
+   },
+   "7432525918": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 794650004,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7432525917,
+        "lat": 37.3128141,
+        "lon": -76.9661912
+       },
+       {
+        "node": 7432525919,
+        "lat": 37.3130913,
+        "lon": -76.9658801
+       }
+      ]
+     }
+    ]
+   },
+   "7432525930": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 794650004,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7432525929,
+        "lat": 37.3144894,
+        "lon": -76.9668952
+       },
+       {
+        "node": 7432525931,
+        "lat": 37.3143658,
+        "lon": -76.967382
+       }
+      ]
+     }
+    ]
+   },
+   "7433516042": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 794754543,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7433516041,
+        "lat": 37.4420237,
+        "lon": -77.3452292
+       },
+       {
+        "node": 7433516043,
+        "lat": 37.4422967,
+        "lon": -77.3450391
+       }
+      ]
+     }
+    ]
+   },
+   "7433516049": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 794754543,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7433516048,
+        "lat": 37.4421367,
+        "lon": -77.3448961
+       },
+       {
+        "node": 7433516050,
+        "lat": 37.4419102,
+        "lon": -77.3450009
+       }
+      ]
+     }
+    ]
+   },
+   "7437709154": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 795215068,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7437709152,
+        "lat": 37.4023267,
+        "lon": -77.2590834
+       },
+       {
+        "node": 7437709153,
+        "lat": 37.4020658,
+        "lon": -77.259426
+       }
+      ]
+     }
+    ]
+   },
+   "7438069661": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 795246822,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7438069659,
+        "lat": 37.4431888,
+        "lon": -77.3479909
+       },
+       {
+        "node": 7438069660,
+        "lat": 37.4430494,
+        "lon": -77.3480478
+       }
+      ]
+     }
+    ]
+   },
+   "7440283431": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 795495568,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7440283430,
+        "lat": 37.3096558,
+        "lon": -76.9630536
+       },
+       {
+        "node": 7440283432,
+        "lat": 37.3099217,
+        "lon": -76.9626514
+       }
+      ]
+     }
+    ]
+   },
+   "7549001363": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 807259875,
+      "tags": {
+       "access": "customers",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 6936370095,
+        "lat": 37.4445637,
+        "lon": -77.3521551
+       },
+       {
+        "node": 7549001364,
+        "lat": 37.444821,
+        "lon": -77.3519914
+       }
+      ]
+     }
+    ]
+   },
+   "7652140074": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 819395577,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209365955,
+        "lat": 37.3873486,
+        "lon": -77.244391
+       },
+       {
+        "node": 7652140075,
+        "lat": 37.387303,
+        "lon": -77.2449411
+       }
+      ]
+     }
+    ]
+   },
+   "7652676613": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19936238,
+      "tags": {
+       "highway": "residential",
+       "name": "Shirley Plantation Road"
+      },
+      "arms": [
+       {
+        "node": 209366263,
+        "lat": 37.349475,
+        "lon": -77.230539
+       },
+       {
+        "node": 209379302,
+        "lat": 37.34951,
+        "lon": -77.23161
+       }
+      ]
+     }
+    ]
+   },
+   "7686299081": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 823302316,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 7686299078,
+        "lat": 37.2979326,
+        "lon": -76.9437964
+       },
+       {
+        "node": 7686299079,
+        "lat": 37.2981636,
+        "lon": -76.9435184
+       }
+      ]
+     }
+    ]
+   },
+   "7686310705": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 823299861,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7686310704,
+        "lat": 37.3264221,
+        "lon": -76.990901
+       },
+       {
+        "node": 14102009790,
+        "lat": 37.3265438,
+        "lon": -76.9909283
+       }
+      ]
+     }
+    ]
+   },
+   "7686310714": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 823299861,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 14102009789,
+        "lat": 37.326767,
+        "lon": -76.9913883
+       },
+       {
+        "node": 7686310715,
+        "lat": 37.3263886,
+        "lon": -76.9912019
+       }
+      ]
+     }
+    ]
+   },
+   "7912970687": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 847997100,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7912970686,
+        "lat": 37.3267193,
+        "lon": -76.9900414
+       },
+       {
+        "node": 7912970688,
+        "lat": 37.3265222,
+        "lon": -76.9899887
+       }
+      ]
+     }
+    ]
+   },
+   "7942049140": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 851502047,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7942049133,
+        "lat": 37.3251524,
+        "lon": -77.0018284
+       },
+       {
+        "node": 7942049135,
+        "lat": 37.3253336,
+        "lon": -77.0018367
+       }
+      ]
+     }
+    ]
+   },
+   "8073426174": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 866161905,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8073426169,
+        "lat": 37.4419016,
+        "lon": -77.3447803
+       },
+       {
+        "node": 8073426170,
+        "lat": 37.4419343,
+        "lon": -77.3447648
+       }
+      ]
+     }
+    ]
+   },
+   "8073893289": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 866212186,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8073893288,
+        "lat": 37.342464,
+        "lon": -77.0720094
+       }
+      ]
+     },
+     {
+      "id": 1066422654,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8073893290,
+        "lat": 37.3425564,
+        "lon": -77.0720933
+       }
+      ]
+     }
+    ]
+   },
+   "8073893290": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935971,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 209369433,
+        "lat": 37.342295,
+        "lon": -77.072326
+       }
+      ]
+     },
+     {
+      "id": 1066422654,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8073893289,
+        "lat": 37.3424931,
+        "lon": -77.0720284
+       }
+      ]
+     },
+     {
+      "id": 1066422656,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Courthouse Road"
+      },
+      "arms": [
+       {
+        "node": 5419979856,
+        "lat": 37.3427161,
+        "lon": -77.07195
+       }
+      ]
+     }
+    ]
+   },
+   "8074581208": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 866281808,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8074581207,
+        "lat": 37.4493451,
+        "lon": -77.3631381
+       },
+       {
+        "node": 8074581209,
+        "lat": 37.4495783,
+        "lon": -77.3628848
+       }
+      ]
+     }
+    ]
+   },
+   "8074581215": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 866281808,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8074581214,
+        "lat": 37.4494051,
+        "lon": -77.3626839
+       },
+       {
+        "node": 8074581216,
+        "lat": 37.4491839,
+        "lon": -77.362901
+       }
+      ]
+     }
+    ]
+   },
+   "8188531896": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 769894129,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7187297407,
+        "lat": 37.4042068,
+        "lon": -77.2616046
+       },
+       {
+        "node": 7187297408,
+        "lat": 37.4039716,
+        "lon": -77.2616424
+       }
+      ]
+     }
+    ]
+   },
+   "8317682908": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 894824655,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8317682906,
+        "lat": 37.3547494,
+        "lon": -77.2283041
+       },
+       {
+        "node": 8317682907,
+        "lat": 37.3550349,
+        "lon": -77.2288928
+       }
+      ]
+     }
+    ]
+   },
+   "8328981046": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 896013393,
+      "tags": {
+       "highway": "residential",
+       "name": "Adams Bridge Road"
+      },
+      "arms": [
+       {
+        "node": 209247998,
+        "lat": 37.3258859,
+        "lon": -76.9831676
+       },
+       {
+        "node": 209372292,
+        "lat": 37.326111,
+        "lon": -76.982998
+       }
+      ]
+     }
+    ]
+   },
+   "8445189117": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 909563369,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8445168407,
+        "lat": 37.3380107,
+        "lon": -77.17427
+       },
+       {
+        "node": 8445168408,
+        "lat": 37.3378023,
+        "lon": -77.1740816
+       }
+      ]
+     }
+    ]
+   },
+   "8445502411": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 909592293,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8445502410,
+        "lat": 37.3254801,
+        "lon": -76.9990546
+       },
+       {
+        "node": 8445502412,
+        "lat": 37.3256635,
+        "lon": -76.9990686
+       }
+      ]
+     }
+    ]
+   },
+   "8498726391": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 914905270,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 8498726390,
+        "lat": 37.427559,
+        "lon": -77.3076404
+       },
+       {
+        "node": 13003286689,
+        "lat": 37.4277016,
+        "lon": -77.3075207
+       }
+      ]
+     }
+    ]
+   },
+   "9347626541": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19935828,
+      "tags": {
+       "highway": "residential",
+       "name": "Old Ferry Road"
+      },
+      "arms": [
+       {
+        "node": 12997916901,
+        "lat": 37.3413322,
+        "lon": -77.2144417
+       },
+       {
+        "node": 209362430,
+        "lat": 37.3414616,
+        "lon": -77.214431
+       }
+      ]
+     }
+    ]
+   },
+   "9347626542": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 108493751,
+      "tags": {
+       "highway": "trunk",
+       "name": "Roxbury Road"
+      },
+      "arms": [
+       {
+        "node": 209366330,
+        "lat": 37.34302,
+        "lon": -77.221301,
+        "signal_m": 12
+       },
+       {
+        "node": 13000144705,
+        "lat": 37.3428884,
+        "lon": -77.2213651
+       }
+      ]
+     }
+    ]
+   },
+   "9363277103": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1014997759,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9363277085,
+        "lat": 37.4992419,
+        "lon": -77.406525
+       },
+       {
+        "node": 9363277086,
+        "lat": 37.4992239,
+        "lon": -77.4066215
+       }
+      ]
+     }
+    ]
+   },
+   "9445916162": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19936163,
+      "tags": {
+       "highway": "residential",
+       "name": "Farmers Rest Road"
+      },
+      "arms": [
+       {
+        "node": 209376383,
+        "lat": 37.322963,
+        "lon": -76.976122
+       },
+       {
+        "node": 209376385,
+        "lat": 37.323035,
+        "lon": -76.97604
+       }
+      ]
+     }
+    ]
+   },
+   "9445916165": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19936021,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Wilcox Neck Road"
+      },
+      "arms": [
+       {
+        "node": 209368015,
+        "lat": 37.291967,
+        "lon": -76.933852
+       },
+       {
+        "node": 209371136,
+        "lat": 37.292344,
+        "lon": -76.933832
+       }
+      ]
+     }
+    ]
+   },
+   "9445916167": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929375,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209236729,
+        "lat": 37.278914,
+        "lon": -76.913846
+       },
+       {
+        "node": 209236732,
+        "lat": 37.278867,
+        "lon": -76.914094
+       }
+      ]
+     }
+    ]
+   },
+   "9445948745": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 963497563,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8912390369,
+        "lat": 37.2669603,
+        "lon": -76.8964129
+       },
+       {
+        "node": 8912390370,
+        "lat": 37.2671188,
+        "lon": -76.8962847
+       }
+      ]
+     }
+    ]
+   },
+   "9792624522": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19936342,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Wilcox Wharf Road"
+      },
+      "arms": [
+       {
+        "node": 209383848,
+        "lat": 37.331826,
+        "lon": -77.10693
+       },
+       {
+        "node": 209366995,
+        "lat": 37.3319701,
+        "lon": -77.1069142
+       }
+      ]
+     }
+    ]
+   },
+   "9792624523": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929550,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209236320,
+        "lat": 37.3344885,
+        "lon": -77.0944817
+       },
+       {
+        "node": 12997880390,
+        "lat": 37.3344358,
+        "lon": -77.0942968
+       }
+      ]
+     }
+    ]
+   },
+   "9792624525": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19934287,
+      "tags": {
+       "highway": "residential"
+      },
+      "arms": [
+       {
+        "node": 209325096,
+        "lat": 37.3392008,
+        "lon": -77.0888538
+       },
+       {
+        "node": 209325098,
+        "lat": 37.339069,
+        "lon": -77.088769
+       }
+      ]
+     }
+    ]
+   },
+   "9792624528": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 562195636,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 11349047955,
+        "lat": 37.3426121,
+        "lon": -77.0717923
+       },
+       {
+        "node": 5419979856,
+        "lat": 37.3427161,
+        "lon": -77.07195
+       }
+      ]
+     }
+    ]
+   },
+   "9792624529": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19933897,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209317573,
+        "lat": 37.3416944,
+        "lon": -77.0626554
+       },
+       {
+        "node": 209317575,
+        "lat": 37.34144,
+        "lon": -77.062789
+       }
+      ]
+     }
+    ]
+   },
+   "9799627509": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929343,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209235723,
+        "lat": 37.334375,
+        "lon": -77.180065
+       },
+       {
+        "node": 209235726,
+        "lat": 37.334363,
+        "lon": -77.179984
+       }
+      ]
+     }
+    ]
+   },
+   "9799627510": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19935360,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209349291,
+        "lat": 37.335262,
+        "lon": -77.179781
+       },
+       {
+        "node": 209349293,
+        "lat": 37.33522,
+        "lon": -77.179617
+       }
+      ]
+     }
+    ]
+   },
+   "9799627511": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19933144,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209302090,
+        "lat": 37.3373196,
+        "lon": -77.177138
+       },
+       {
+        "node": 209302092,
+        "lat": 37.337129,
+        "lon": -77.177102
+       }
+      ]
+     }
+    ]
+   },
+   "9799627512": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19929402,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209237158,
+        "lat": 37.33743,
+        "lon": -77.175861
+       },
+       {
+        "node": 209237161,
+        "lat": 37.336761,
+        "lon": -77.175865
+       }
+      ]
+     }
+    ]
+   },
+   "9799627513": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19933880,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209317289,
+        "lat": 37.3370536,
+        "lon": -77.1673628
+       },
+       {
+        "node": 209317294,
+        "lat": 37.3372686,
+        "lon": -77.1672855
+       }
+      ]
+     }
+    ]
+   },
+   "9799627514": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19928967,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209228187,
+        "lat": 37.33555,
+        "lon": -77.162907
+       },
+       {
+        "node": 209228189,
+        "lat": 37.3364464,
+        "lon": -77.1627025
+       }
+      ]
+     }
+    ]
+   },
+   "9799627515": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19928917,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209227411,
+        "lat": 37.33464,
+        "lon": -77.159101
+       },
+       {
+        "node": 209227414,
+        "lat": 37.335432,
+        "lon": -77.1589498
+       }
+      ]
+     }
+    ]
+   },
+   "9799663017": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19933819,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209315755,
+        "lat": 37.3324423,
+        "lon": -77.1492701
+       },
+       {
+        "node": 209315758,
+        "lat": 37.3323848,
+        "lon": -77.1493036
+       }
+      ]
+     }
+    ]
+   },
+   "9799663018": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19931742,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209279617,
+        "lat": 37.33056,
+        "lon": -77.13964
+       },
+       {
+        "node": 209279621,
+        "lat": 37.328221,
+        "lon": -77.139738
+       }
+      ]
+     }
+    ]
+   },
+   "9815450022": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372704,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450020,
+        "lat": 37.4538942,
+        "lon": -77.3701672
+       },
+       {
+        "node": 9815450021,
+        "lat": 37.4544084,
+        "lon": -77.3698009
+       }
+      ]
+     }
+    ]
+   },
+   "9815450023": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372703,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815398615,
+        "lat": 37.4534972,
+        "lon": -77.3693674
+       },
+       {
+        "node": 9815398616,
+        "lat": 37.4537688,
+        "lon": -77.369142
+       }
+      ]
+     }
+    ]
+   },
+   "9815450033": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372705,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450031,
+        "lat": 37.4514778,
+        "lon": -77.3659971
+       },
+       {
+        "node": 9815450032,
+        "lat": 37.4513702,
+        "lon": -77.3661063
+       }
+      ]
+     }
+    ]
+   },
+   "9815450034": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372705,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450025,
+        "lat": 37.4516539,
+        "lon": -77.3663848
+       },
+       {
+        "node": 9815450026,
+        "lat": 37.451678,
+        "lon": -77.36631
+       }
+      ]
+     }
+    ]
+   },
+   "9815450041": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372707,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450038,
+        "lat": 37.4511187,
+        "lon": -77.3657371
+       },
+       {
+        "node": 9815450039,
+        "lat": 37.4512142,
+        "lon": -77.3655976
+       }
+      ]
+     }
+    ]
+   },
+   "9815450042": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372706,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450036,
+        "lat": 37.4509662,
+        "lon": -77.3654111
+       },
+       {
+        "node": 9815450037,
+        "lat": 37.4511152,
+        "lon": -77.3650181
+       }
+      ]
+     }
+    ]
+   },
+   "9815450074": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372714,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450072,
+        "lat": 37.4436135,
+        "lon": -77.3492299
+       },
+       {
+        "node": 9815450073,
+        "lat": 37.4434863,
+        "lon": -77.3492878
+       }
+      ]
+     }
+    ]
+   },
+   "9815450075": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1069372714,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 9815450061,
+        "lat": 37.4436005,
+        "lon": -77.3496066
+       },
+       {
+        "node": 9815450062,
+        "lat": 37.4437823,
+        "lon": -77.349488
+       }
+      ]
+     }
+    ]
+   },
+   "11146680899": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1202361282,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Sturgeon Point Road"
+      },
+      "arms": [
+       {
+        "node": 209224002,
+        "lat": 37.325604,
+        "lon": -76.997987
+       },
+       {
+        "node": 11146680900,
+        "lat": 37.3257006,
+        "lon": -76.9979391
+       }
+      ]
+     }
+    ]
+   },
+   "11146680903": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19933797,
+      "tags": {
+       "highway": "residential"
+      },
+      "arms": [
+       {
+        "node": 209315420,
+        "lat": 37.3267925,
+        "lon": -76.986785
+       },
+       {
+        "node": 209315424,
+        "lat": 37.327013,
+        "lon": -76.986824
+       }
+      ]
+     }
+    ]
+   },
+   "11146680904": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19932231,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209290743,
+        "lat": 37.3265487,
+        "lon": -76.9849793
+       },
+       {
+        "node": 209290748,
+        "lat": 37.326677,
+        "lon": -76.984881
+       }
+      ]
+     }
+    ]
+   },
+   "11348980844": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 12997916811,
+        "lat": 37.331685,
+        "lon": -77.1817801
+       },
+       {
+        "node": 209368909,
+        "lat": 37.331052,
+        "lon": -77.181767
+       }
+      ]
+     }
+    ]
+   },
+   "11771854737": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19933439,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 209309104,
+        "lat": 37.336295,
+        "lon": -77.2032362
+       },
+       {
+        "node": 2538164122,
+        "lat": 37.3365186,
+        "lon": -77.2031559
+       }
+      ]
+     }
+    ]
+   },
+   "11771854738": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19936256,
+      "tags": {
+       "highway": "residential",
+       "name": "Dogham Lane"
+      },
+      "arms": [
+       {
+        "node": 209380175,
+        "lat": 37.361178,
+        "lon": -77.226808
+       },
+       {
+        "node": 209366189,
+        "lat": 37.3611361,
+        "lon": -77.2264013
+       }
+      ]
+     }
+    ]
+   },
+   "12356698191": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 264781573,
+      "tags": {
+       "highway": "residential",
+       "name": "Sweeney Landing Road"
+      },
+      "arms": [
+       {
+        "node": 2704317383,
+        "lat": 37.4220378,
+        "lon": -77.2985615
+       },
+       {
+        "node": 12356698189,
+        "lat": 37.4222002,
+        "lon": -77.298162
+       }
+      ]
+     }
+    ]
+   },
+   "12465697387": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 767760306,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 7168366210,
+        "lat": 37.4533844,
+        "lon": -77.3393851
+       },
+       {
+        "node": 7168366211,
+        "lat": 37.4534995,
+        "lon": -77.339336
+       }
+      ]
+     }
+    ]
+   },
+   "12588627878": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1359946162,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 12588627877,
+        "lat": 37.4587437,
+        "lon": -77.376399
+       },
+       {
+        "node": 12588627879,
+        "lat": 37.4591404,
+        "lon": -77.3760804
+       }
+      ]
+     }
+    ]
+   },
+   "12636818505": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20313431,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 12636818504,
+        "lat": 37.2525832,
+        "lon": -76.8015077
+       },
+       {
+        "node": 215596673,
+        "lat": 37.2523433,
+        "lon": -76.8013691
+       }
+      ]
+     }
+    ]
+   },
+   "12636818508": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20327372,
+      "tags": {
+       "highway": "residential",
+       "name": "John Rolfe Lane"
+      },
+      "arms": [
+       {
+        "node": 215776107,
+        "lat": 37.2514634,
+        "lon": -76.8061897
+       },
+       {
+        "node": 12090980757,
+        "lat": 37.2520973,
+        "lon": -76.8058931
+       }
+      ]
+     }
+    ]
+   },
+   "12636818510": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 398442424,
+      "tags": {
+       "highway": "residential",
+       "name": "Heritage Landing Road"
+      },
+      "arms": [
+       {
+        "node": 215751860,
+        "lat": 37.253086,
+        "lon": -76.807776
+       },
+       {
+        "node": 215785896,
+        "lat": 37.252806,
+        "lon": -76.807978
+       }
+      ]
+     }
+    ]
+   },
+   "12636818512": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20313430,
+      "tags": {
+       "highway": "residential",
+       "name": "Heritage Landing Road"
+      },
+      "arms": [
+       {
+        "node": 215596652,
+        "lat": 37.2527144,
+        "lon": -76.8079355
+       },
+       {
+        "node": 12636818511,
+        "lat": 37.2528795,
+        "lon": -76.8077979
+       }
+      ]
+     }
+    ]
+   },
+   "12636818515": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20314591,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 215626121,
+        "lat": 37.25497,
+        "lon": -76.815554
+       },
+       {
+        "node": 215626124,
+        "lat": 37.2551708,
+        "lon": -76.8155611
+       }
+      ]
+     }
+    ]
+   },
+   "12636818519": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20329337,
+      "tags": {
+       "access": "private",
+       "highway": "residential",
+       "name": "Governor's Landing Road"
+      },
+      "arms": [
+       {
+        "node": 215892521,
+        "lat": 37.254709,
+        "lon": -76.817888
+       },
+       {
+        "node": 215751801,
+        "lat": 37.2550026,
+        "lon": -76.8178954
+       }
+      ]
+     }
+    ]
+   },
+   "12636818545": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20315861,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 215653011,
+        "lat": 37.255055,
+        "lon": -76.840773
+       },
+       {
+        "node": 12636818544,
+        "lat": 37.2551773,
+        "lon": -76.8406299
+       }
+      ]
+     }
+    ]
+   },
+   "12636936787": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 19935824,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "name": "Blue Crab Way"
+      },
+      "arms": [
+       {
+        "node": 209362291,
+        "lat": 37.2623922,
+        "lon": -76.8824301
+       },
+       {
+        "node": 209362299,
+        "lat": 37.2624974,
+        "lon": -76.8825009
+       }
+      ]
+     }
+    ]
+   },
+   "12636936797": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20318875,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 2984958573,
+        "lat": 37.264822,
+        "lon": -76.8708123
+       },
+       {
+        "node": 215710100,
+        "lat": 37.2650949,
+        "lon": -76.8708068
+       }
+      ]
+     }
+    ]
+   },
+   "12636983926": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 531855343,
+      "tags": {
+       "highway": "secondary",
+       "name": "Greensprings Road"
+      },
+      "arms": [
+       {
+        "node": 11085515874,
+        "lat": 37.2527297,
+        "lon": -76.8001528
+       },
+       {
+        "node": 12090986982,
+        "lat": 37.2531149,
+        "lon": -76.8003774
+       }
+      ]
+     }
+    ]
+   },
+   "12997880322": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "ladder",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1414491029,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12997880320,
+        "lat": 37.3415884,
+        "lon": -77.0623729
+       },
+       {
+        "node": 12997880323,
+        "lat": 37.3413918,
+        "lon": -77.0625309
+       }
+      ]
+     }
+    ]
+   },
+   "12997880329": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "ladder",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1414491030,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12997880327,
+        "lat": 37.3412862,
+        "lon": -77.0622192
+       },
+       {
+        "node": 12997880328,
+        "lat": 37.3414733,
+        "lon": -77.0620598
+       }
+      ]
+     }
+    ]
+   },
+   "12997916811": {
+    "tags": {
+     "highway": "stop"
+    },
+    "roads": [
+     {
+      "id": 19935964,
+      "tags": {
+       "highway": "residential",
+       "name": "State Route 640"
+      },
+      "arms": [
+       {
+        "node": 209366617,
+        "lat": 37.331827,
+        "lon": -77.181796
+       },
+       {
+        "node": 11348980844,
+        "lat": 37.33149,
+        "lon": -77.1817582
+       }
+      ]
+     }
+    ]
+   },
+   "12997916919": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "zebra",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1068671205,
+      "tags": {
+       "highway": "trunk_link"
+      },
+      "arms": [
+       {
+        "node": 9809925960,
+        "lat": 37.3428426,
+        "lon": -77.2212634
+       },
+       {
+        "node": 9809925961,
+        "lat": 37.3428601,
+        "lon": -77.2212269
+       }
+      ]
+     }
+    ]
+   },
+   "13000165692": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19933878,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 209317219,
+        "lat": 37.38294,
+        "lon": -77.241686
+       },
+       {
+        "node": 5811624331,
+        "lat": 37.3828571,
+        "lon": -77.2418912
+       }
+      ]
+     }
+    ]
+   },
+   "13000165761": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1550959527,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 14106691397,
+        "lat": 37.4004241,
+        "lon": -77.2577626
+       },
+       {
+        "node": 14106691398,
+        "lat": 37.4003222,
+        "lon": -77.2579103
+       }
+      ]
+     }
+    ]
+   },
+   "13070809862": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 1422285800,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 13070809843,
+        "lat": 37.5255745,
+        "lon": -77.4200798
+       },
+       {
+        "node": 13070809832,
+        "lat": 37.5254668,
+        "lon": -77.4203354
+       }
+      ]
+     }
+    ]
+   },
+   "13123751908": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1427560499,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 13123751910,
+        "lat": 37.3951778,
+        "lon": -77.2497963
+       },
+       {
+        "node": 13123749862,
+        "lat": 37.394968,
+        "lon": -77.2497864
+       }
+      ]
+     }
+    ]
+   },
+   "13807310878": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1510409092,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 13807310877,
+        "lat": 37.4863629,
+        "lon": -77.3988181
+       },
+       {
+        "node": 13807310879,
+        "lat": 37.4862596,
+        "lon": -77.3990467
+       }
+      ]
+     }
+    ]
+   },
+   "13807310887": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1510409092,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 13807310886,
+        "lat": 37.4861523,
+        "lon": -77.3988281
+       },
+       {
+        "node": 5304496315,
+        "lat": 37.4862087,
+        "lon": -77.3986031
+       }
+      ]
+     }
+    ]
+   },
+   "14293953569": {
+    "tags": {
+     "highway": "trailhead"
+    },
+    "roads": [
+     {
+      "id": 531825844,
+      "tags": {
+       "highway": "residential",
+       "name": "Herring Creek Road"
+      },
+      "arms": [
+       {
+        "node": 209225691,
+        "lat": 37.330133,
+        "lon": -77.182322
+       },
+       {
+        "node": 3857572148,
+        "lat": 37.330132,
+        "lon": -77.182464
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

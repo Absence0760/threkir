@@ -9975,5 +9975,341 @@
    "lon": -78.8204617,
    "ele": 112.8
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "208664102": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 463461881,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 208664101,
+        "lat": 37.628297,
+        "lon": -78.815882
+       }
+      ]
+     }
+    ]
+   },
+   "208664228": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 463461879,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Green Hill Pond Loop"
+      },
+      "arms": [
+       {
+        "node": 208664226,
+        "lat": 37.63081,
+        "lon": -78.81291
+       },
+       {
+        "node": 208664230,
+        "lat": 37.6309638,
+        "lon": -78.8125221
+       }
+      ]
+     }
+    ]
+   },
+   "208838964": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19910552,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Park Road"
+      },
+      "arms": [
+       {
+        "node": 208965979,
+        "lat": 37.623504,
+        "lon": -78.802332
+       },
+       {
+        "node": 208965982,
+        "lat": 37.623747,
+        "lon": -78.802921
+       }
+      ]
+     }
+    ]
+   },
+   "208880601": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 571163588,
+      "tags": {
+       "highway": "service",
+       "name": "White Tail Loop"
+      },
+      "arms": [
+       {
+        "node": 208880597,
+        "lat": 37.618809,
+        "lon": -78.814011
+       },
+       {
+        "node": 208880604,
+        "lat": 37.618793,
+        "lon": -78.814366
+       }
+      ]
+     }
+    ]
+   },
+   "208966084": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19910552,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Park Road"
+      },
+      "arms": [
+       {
+        "node": 208880103,
+        "lat": 37.6256121,
+        "lon": -78.8116848
+       },
+       {
+        "node": 208966089,
+        "lat": 37.6262881,
+        "lon": -78.8121575
+       }
+      ]
+     }
+    ]
+   },
+   "208966125": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19910552,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Park Road"
+      },
+      "arms": [
+       {
+        "node": 208966121,
+        "lat": 37.6288883,
+        "lon": -78.8108841
+       },
+       {
+        "node": 208966128,
+        "lat": 37.6292836,
+        "lon": -78.8104061
+       }
+      ]
+     }
+    ]
+   },
+   "2774477737": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 272514947,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Cabin Road"
+      },
+      "arms": [
+       {
+        "node": 2774477735,
+        "lat": 37.622486,
+        "lon": -78.8099125
+       },
+       {
+        "node": 2774477738,
+        "lat": 37.6226551,
+        "lon": -78.8107192
+       }
+      ]
+     }
+    ]
+   },
+   "2774477757": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 272514947,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Cabin Road"
+      },
+      "arms": [
+       {
+        "node": 2774477755,
+        "lat": 37.6218444,
+        "lon": -78.8143823
+       },
+       {
+        "node": 2774477759,
+        "lat": 37.6218533,
+        "lon": -78.8149424
+       }
+      ]
+     }
+    ]
+   },
+   "2774488507": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19904965,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Canoe Landing Road"
+      },
+      "arms": [
+       {
+        "node": 208880540,
+        "lat": 37.620404,
+        "lon": -78.809621
+       },
+       {
+        "node": 208880545,
+        "lat": 37.620204,
+        "lon": -78.81011
+       }
+      ]
+     }
+    ]
+   },
+   "2774488634": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19904965,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Canoe Landing Road"
+      },
+      "arms": [
+       {
+        "node": 208880503,
+        "lat": 37.621026,
+        "lon": -78.806491
+       },
+       {
+        "node": 208880507,
+        "lat": 37.620997,
+        "lon": -78.806583
+       }
+      ]
+     }
+    ]
+   },
+   "2774488655": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19910552,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Park Road"
+      },
+      "arms": [
+       {
+        "node": 208966031,
+        "lat": 37.623406,
+        "lon": -78.808324
+       },
+       {
+        "node": 208966032,
+        "lat": 37.623266,
+        "lon": -78.808902
+       }
+      ]
+     }
+    ]
+   },
+   "2774488682": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19904965,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Canoe Landing Road"
+      },
+      "arms": [
+       {
+        "node": 208880201,
+        "lat": 37.615626,
+        "lon": -78.815143
+       },
+       {
+        "node": 208880197,
+        "lat": 37.615543,
+        "lon": -78.8152121
+       }
+      ]
+     }
+    ]
+   },
+   "2774493044": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1111804059,
+      "tags": {
+       "highway": "service",
+       "name": "Campground Loop"
+      },
+      "arms": [
+       {
+        "node": 208880111,
+        "lat": 37.625489,
+        "lon": -78.812076
+       },
+       {
+        "node": 208880115,
+        "lat": 37.625469,
+        "lon": -78.812189
+       }
+      ]
+     }
+    ]
+   },
+   "5490072593": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 19910552,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Park Road"
+      },
+      "arms": [
+       {
+        "node": 208965927,
+        "lat": 37.623804,
+        "lon": -78.798453
+       },
+       {
+        "node": 208965931,
+        "lat": 37.623816,
+        "lon": -78.798628
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

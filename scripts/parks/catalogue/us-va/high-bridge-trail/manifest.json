@@ -72,6 +72,12 @@
             "of": 3
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 2846
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3333,
             "order": 2,
@@ -82,6 +88,12 @@
             "at_m": 5000,
             "order": 3,
             "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 7154
           },
           {
             "kind": "crossing",
@@ -154,6 +166,12 @@
             "name": "High Bridge Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 55
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3014,
             "order": 1,
@@ -166,6 +184,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 5683
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 5796
           },
@@ -174,6 +198,12 @@
             "at_m": 6028,
             "order": 2,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 6168
           },
           {
             "kind": "crossing",
@@ -198,16 +228,34 @@
             "of": 6
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 14869
+          },
+          {
             "kind": "checkpoint",
             "at_m": 15070,
             "order": 5,
             "of": 6
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 17910
+          },
+          {
             "kind": "checkpoint",
             "at_m": 18084,
             "order": 6,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 18671
           },
           {
             "kind": "finish",
@@ -299,6 +347,12 @@
             "name": "High Bridge Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Moran Road",
+            "at_m": 1711
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3246,
             "order": 1,
@@ -312,6 +366,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Rice's Depot Road",
+            "at_m": 7998
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 8441
           },
@@ -320,6 +380,18 @@
             "at_m": 9737,
             "order": 3,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Aspen Hill Road",
+            "at_m": 10046
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Paradise Road",
+            "at_m": 12066
           },
           {
             "kind": "checkpoint",
@@ -331,6 +403,12 @@
             "kind": "crossing",
             "crossing": "bridge",
             "at_m": 13143
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "River Road",
+            "at_m": 15489
           },
           {
             "kind": "checkpoint",
@@ -351,8 +429,20 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "North Main Street",
+            "at_m": 21116
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 21230
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Appomattox Street",
+            "at_m": 21601
           },
           {
             "kind": "crossing",
@@ -383,16 +473,46 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 30303
+          },
+          {
             "kind": "checkpoint",
             "at_m": 32458,
             "order": 10,
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 33343
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 34105
+          },
+          {
             "kind": "checkpoint",
             "at_m": 35703,
             "order": 11,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 36678
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 38552
           },
           {
             "kind": "checkpoint",
@@ -479,16 +599,40 @@
             "name": "High Bridge Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 1479
+          },
+          {
             "kind": "checkpoint",
             "at_m": 2500,
             "order": 1,
             "of": 10
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 3090
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 3708
+          },
+          {
             "kind": "checkpoint",
             "at_m": 5000,
             "order": 2,
             "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 6366
           },
           {
             "kind": "checkpoint",
@@ -503,10 +647,28 @@
             "of": 10
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 10186
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 12061
+          },
+          {
             "kind": "checkpoint",
             "at_m": 12500,
             "order": 5,
             "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 14634
           },
           {
             "kind": "checkpoint",
@@ -515,10 +677,22 @@
             "of": 10
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 15395
+          },
+          {
             "kind": "checkpoint",
             "at_m": 17500,
             "order": 7,
             "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 18436
           },
           {
             "kind": "checkpoint",
@@ -547,6 +721,60 @@
             "kind": "crossing",
             "crossing": "bridge",
             "at_m": 25285
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hardtimes Road",
+            "at_m": 31564
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Oliver Road",
+            "at_m": 34605
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 35366
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Prospect Road",
+            "at_m": 37939
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hidden Lake Road",
+            "at_m": 39814
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sulphur Spring Road",
+            "at_m": 43634
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harvey-Jones Lane",
+            "at_m": 46292
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Five Forks Road",
+            "at_m": 46910
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heights School Road",
+            "at_m": 48521
           },
           {
             "kind": "finish",

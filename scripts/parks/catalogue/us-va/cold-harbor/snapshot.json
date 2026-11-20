@@ -2756,5 +2756,2590 @@
    "lon": -77.2872504,
    "ele": 53.9
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "214491774": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491778,
+        "lat": 37.588147,
+        "lon": -77.287554
+       },
+       {
+        "node": 3267671143,
+        "lat": 37.5884084,
+        "lon": -77.2876498
+       }
+      ]
+     }
+    ]
+   },
+   "214491778": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491781,
+        "lat": 37.587693,
+        "lon": -77.287481
+       },
+       {
+        "node": 214491774,
+        "lat": 37.588261,
+        "lon": -77.287587
+       }
+      ]
+     }
+    ]
+   },
+   "214491781": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491786,
+        "lat": 37.5873499,
+        "lon": -77.2874303
+       },
+       {
+        "node": 214491778,
+        "lat": 37.588147,
+        "lon": -77.287554
+       }
+      ]
+     }
+    ]
+   },
+   "214491786": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491792,
+        "lat": 37.5870578,
+        "lon": -77.2873927
+       },
+       {
+        "node": 214491781,
+        "lat": 37.587693,
+        "lon": -77.287481
+       }
+      ]
+     }
+    ]
+   },
+   "214491792": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491796,
+        "lat": 37.5867652,
+        "lon": -77.2873424
+       },
+       {
+        "node": 214491786,
+        "lat": 37.5873499,
+        "lon": -77.2874303
+       }
+      ]
+     }
+    ]
+   },
+   "214491796": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491799,
+        "lat": 37.586496,
+        "lon": -77.287281
+       },
+       {
+        "node": 214491792,
+        "lat": 37.5870578,
+        "lon": -77.2873927
+       }
+      ]
+     }
+    ]
+   },
+   "214491799": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491803,
+        "lat": 37.5863761,
+        "lon": -77.287262
+       },
+       {
+        "node": 214491796,
+        "lat": 37.5867652,
+        "lon": -77.2873424
+       }
+      ]
+     }
+    ]
+   },
+   "214491803": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491805,
+        "lat": 37.58579,
+        "lon": -77.287199
+       },
+       {
+        "node": 214491799,
+        "lat": 37.586496,
+        "lon": -77.287281
+       }
+      ]
+     }
+    ]
+   },
+   "214491805": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671101,
+        "lat": 37.5856834,
+        "lon": -77.2871909
+       },
+       {
+        "node": 214491803,
+        "lat": 37.5863761,
+        "lon": -77.287262
+       }
+      ]
+     }
+    ]
+   },
+   "214491814": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20260277,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 4518022879,
+        "lat": 37.584798,
+        "lon": -77.2871484
+       }
+      ]
+     },
+     {
+      "id": 844342249,
+      "tags": {
+       "highway": "secondary",
+       "name": "Cold Harbor Road"
+      },
+      "arms": [
+       {
+        "node": 6816186717,
+        "lat": 37.5846217,
+        "lon": -77.2873281
+       },
+       {
+        "node": 6816153270,
+        "lat": 37.5848661,
+        "lon": -77.2869168
+       }
+      ]
+     }
+    ]
+   },
+   "214978552": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20260277,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 6816153269,
+        "lat": 37.5849954,
+        "lon": -77.2871254
+       },
+       {
+        "node": 3267671101,
+        "lat": 37.5856834,
+        "lon": -77.2871909
+       }
+      ]
+     }
+    ]
+   },
+   "215041871": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041875,
+        "lat": 37.588328,
+        "lon": -77.282031
+       }
+      ]
+     },
+     {
+      "id": 844342249,
+      "tags": {
+       "highway": "secondary",
+       "name": "Cold Harbor Road"
+      },
+      "arms": [
+       {
+        "node": 215051363,
+        "lat": 37.588116,
+        "lon": -77.282513
+       },
+       {
+        "node": 215051369,
+        "lat": 37.5883719,
+        "lon": -77.281717
+       }
+      ]
+     }
+    ]
+   },
+   "215041875": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041881,
+        "lat": 37.588437,
+        "lon": -77.282056
+       },
+       {
+        "node": 215041871,
+        "lat": 37.588274,
+        "lon": -77.282014
+       }
+      ]
+     }
+    ]
+   },
+   "215041881": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041885,
+        "lat": 37.588774,
+        "lon": -77.282088
+       },
+       {
+        "node": 215041875,
+        "lat": 37.588328,
+        "lon": -77.282031
+       }
+      ]
+     }
+    ]
+   },
+   "215041885": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041893,
+        "lat": 37.588999,
+        "lon": -77.28212
+       },
+       {
+        "node": 215041881,
+        "lat": 37.588437,
+        "lon": -77.282056
+       }
+      ]
+     }
+    ]
+   },
+   "215041893": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041897,
+        "lat": 37.589243,
+        "lon": -77.282167
+       },
+       {
+        "node": 215041885,
+        "lat": 37.588774,
+        "lon": -77.282088
+       }
+      ]
+     }
+    ]
+   },
+   "215041897": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041901,
+        "lat": 37.589341,
+        "lon": -77.2822
+       },
+       {
+        "node": 215041893,
+        "lat": 37.588999,
+        "lon": -77.28212
+       }
+      ]
+     }
+    ]
+   },
+   "215041901": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041906,
+        "lat": 37.589416,
+        "lon": -77.282239
+       },
+       {
+        "node": 215041897,
+        "lat": 37.589243,
+        "lon": -77.282167
+       }
+      ]
+     }
+    ]
+   },
+   "215041906": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041908,
+        "lat": 37.5900134,
+        "lon": -77.282656
+       },
+       {
+        "node": 215041901,
+        "lat": 37.589341,
+        "lon": -77.2822
+       }
+      ]
+     }
+    ]
+   },
+   "215041908": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 7758287097,
+        "lat": 37.5900511,
+        "lon": -77.2826791
+       },
+       {
+        "node": 215041906,
+        "lat": 37.589416,
+        "lon": -77.282239
+       }
+      ]
+     }
+    ]
+   },
+   "215041911": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041915,
+        "lat": 37.590216,
+        "lon": -77.28279
+       },
+       {
+        "node": 7758287097,
+        "lat": 37.5900511,
+        "lon": -77.2826791
+       }
+      ]
+     }
+    ]
+   },
+   "215041915": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041920,
+        "lat": 37.590334,
+        "lon": -77.28289
+       },
+       {
+        "node": 215041911,
+        "lat": 37.5901162,
+        "lon": -77.2827189
+       }
+      ]
+     }
+    ]
+   },
+   "215041920": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041925,
+        "lat": 37.590393,
+        "lon": -77.28296
+       },
+       {
+        "node": 215041915,
+        "lat": 37.590216,
+        "lon": -77.28279
+       }
+      ]
+     }
+    ]
+   },
+   "215041925": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041930,
+        "lat": 37.5904543,
+        "lon": -77.2830647
+       },
+       {
+        "node": 215041920,
+        "lat": 37.590334,
+        "lon": -77.28289
+       }
+      ]
+     }
+    ]
+   },
+   "215041930": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041938,
+        "lat": 37.5905036,
+        "lon": -77.2831713
+       },
+       {
+        "node": 215041925,
+        "lat": 37.590393,
+        "lon": -77.28296
+       }
+      ]
+     }
+    ]
+   },
+   "215041938": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041942,
+        "lat": 37.5905398,
+        "lon": -77.2832887
+       },
+       {
+        "node": 215041930,
+        "lat": 37.5904543,
+        "lon": -77.2830647
+       }
+      ]
+     }
+    ]
+   },
+   "215041942": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041946,
+        "lat": 37.590582,
+        "lon": -77.283467
+       },
+       {
+        "node": 215041938,
+        "lat": 37.5905036,
+        "lon": -77.2831713
+       }
+      ]
+     }
+    ]
+   },
+   "215041946": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041953,
+        "lat": 37.590598,
+        "lon": -77.283562
+       },
+       {
+        "node": 215041942,
+        "lat": 37.5905398,
+        "lon": -77.2832887
+       }
+      ]
+     }
+    ]
+   },
+   "215041953": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041958,
+        "lat": 37.590631,
+        "lon": -77.283838
+       },
+       {
+        "node": 215041946,
+        "lat": 37.590582,
+        "lon": -77.283467
+       }
+      ]
+     }
+    ]
+   },
+   "215041958": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041963,
+        "lat": 37.590693,
+        "lon": -77.284707
+       },
+       {
+        "node": 215041953,
+        "lat": 37.590598,
+        "lon": -77.283562
+       }
+      ]
+     }
+    ]
+   },
+   "215041963": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041968,
+        "lat": 37.590696,
+        "lon": -77.284814
+       },
+       {
+        "node": 215041958,
+        "lat": 37.590631,
+        "lon": -77.283838
+       }
+      ]
+     }
+    ]
+   },
+   "215041968": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041973,
+        "lat": 37.590708,
+        "lon": -77.284906
+       },
+       {
+        "node": 215041963,
+        "lat": 37.590693,
+        "lon": -77.284707
+       }
+      ]
+     }
+    ]
+   },
+   "215041973": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041977,
+        "lat": 37.590734,
+        "lon": -77.284993
+       },
+       {
+        "node": 215041968,
+        "lat": 37.590696,
+        "lon": -77.284814
+       }
+      ]
+     }
+    ]
+   },
+   "215041977": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041980,
+        "lat": 37.590773,
+        "lon": -77.285072
+       },
+       {
+        "node": 215041973,
+        "lat": 37.590708,
+        "lon": -77.284906
+       }
+      ]
+     }
+    ]
+   },
+   "215041980": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041984,
+        "lat": 37.590822,
+        "lon": -77.285141
+       },
+       {
+        "node": 215041977,
+        "lat": 37.590734,
+        "lon": -77.284993
+       }
+      ]
+     }
+    ]
+   },
+   "215041984": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041986,
+        "lat": 37.590881,
+        "lon": -77.285197
+       },
+       {
+        "node": 215041980,
+        "lat": 37.590773,
+        "lon": -77.285072
+       }
+      ]
+     }
+    ]
+   },
+   "215041986": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041990,
+        "lat": 37.59092,
+        "lon": -77.285224
+       },
+       {
+        "node": 215041984,
+        "lat": 37.590822,
+        "lon": -77.285141
+       }
+      ]
+     }
+    ]
+   },
+   "215041990": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041995,
+        "lat": 37.591239,
+        "lon": -77.285396
+       },
+       {
+        "node": 215041986,
+        "lat": 37.590881,
+        "lon": -77.285197
+       }
+      ]
+     }
+    ]
+   },
+   "215041995": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041999,
+        "lat": 37.591388,
+        "lon": -77.285494
+       },
+       {
+        "node": 215041990,
+        "lat": 37.59092,
+        "lon": -77.285224
+       }
+      ]
+     }
+    ]
+   },
+   "215041999": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042006,
+        "lat": 37.59147,
+        "lon": -77.285557
+       },
+       {
+        "node": 215041995,
+        "lat": 37.591239,
+        "lon": -77.285396
+       }
+      ]
+     }
+    ]
+   },
+   "215042006": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042010,
+        "lat": 37.591509,
+        "lon": -77.2856
+       },
+       {
+        "node": 215041999,
+        "lat": 37.591388,
+        "lon": -77.285494
+       }
+      ]
+     }
+    ]
+   },
+   "215042010": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042015,
+        "lat": 37.591546,
+        "lon": -77.285666
+       },
+       {
+        "node": 215042006,
+        "lat": 37.59147,
+        "lon": -77.285557
+       }
+      ]
+     }
+    ]
+   },
+   "215042015": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042022,
+        "lat": 37.591571,
+        "lon": -77.28574
+       },
+       {
+        "node": 215042010,
+        "lat": 37.591509,
+        "lon": -77.2856
+       }
+      ]
+     }
+    ]
+   },
+   "215042022": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042024,
+        "lat": 37.591593,
+        "lon": -77.285885
+       },
+       {
+        "node": 215042015,
+        "lat": 37.591546,
+        "lon": -77.285666
+       }
+      ]
+     }
+    ]
+   },
+   "215042024": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042029,
+        "lat": 37.591622,
+        "lon": -77.285982
+       },
+       {
+        "node": 215042022,
+        "lat": 37.591571,
+        "lon": -77.28574
+       }
+      ]
+     }
+    ]
+   },
+   "215042029": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042032,
+        "lat": 37.591655,
+        "lon": -77.286054
+       },
+       {
+        "node": 215042024,
+        "lat": 37.591593,
+        "lon": -77.285885
+       }
+      ]
+     }
+    ]
+   },
+   "215042032": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042036,
+        "lat": 37.591706,
+        "lon": -77.286134
+       },
+       {
+        "node": 215042029,
+        "lat": 37.591622,
+        "lon": -77.285982
+       }
+      ]
+     }
+    ]
+   },
+   "215042036": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042041,
+        "lat": 37.591768,
+        "lon": -77.286203
+       },
+       {
+        "node": 215042032,
+        "lat": 37.591655,
+        "lon": -77.286054
+       }
+      ]
+     }
+    ]
+   },
+   "215042041": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671486,
+        "lat": 37.5920004,
+        "lon": -77.2864018
+       },
+       {
+        "node": 215042036,
+        "lat": 37.591706,
+        "lon": -77.286134
+       }
+      ]
+     }
+    ]
+   },
+   "215042047": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671486,
+        "lat": 37.5920004,
+        "lon": -77.2864018
+       }
+      ]
+     },
+     {
+      "id": 20294773,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215182059,
+        "lat": 37.5922171,
+        "lon": -77.2865997
+       }
+      ]
+     }
+    ]
+   },
+   "215182100": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20294773,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215182094,
+        "lat": 37.593101,
+        "lon": -77.286872
+       }
+      ]
+     },
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671565,
+        "lat": 37.5932644,
+        "lon": -77.287046
+       }
+      ]
+     },
+     {
+      "id": 320263966,
+      "tags": {
+       "highway": "service",
+       "name": "General Smith Drive"
+      },
+      "arms": [
+       {
+        "node": 215182104,
+        "lat": 37.593306,
+        "lon": -77.287013
+       }
+      ]
+     }
+    ]
+   },
+   "3267671101": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20260277,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214978552,
+        "lat": 37.5852842,
+        "lon": -77.2871443
+       }
+      ]
+     },
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491805,
+        "lat": 37.58579,
+        "lon": -77.287199
+       }
+      ]
+     }
+    ]
+   },
+   "3267671143": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491774,
+        "lat": 37.588261,
+        "lon": -77.287587
+       },
+       {
+        "node": 3267671154,
+        "lat": 37.5885459,
+        "lon": -77.2877533
+       }
+      ]
+     }
+    ]
+   },
+   "3267671154": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671143,
+        "lat": 37.5884084,
+        "lon": -77.2876498
+       },
+       {
+        "node": 3267671160,
+        "lat": 37.5887124,
+        "lon": -77.2878797
+       }
+      ]
+     }
+    ]
+   },
+   "3267671160": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671154,
+        "lat": 37.5885459,
+        "lon": -77.2877533
+       },
+       {
+        "node": 3267671268,
+        "lat": 37.5888404,
+        "lon": -77.2879564
+       }
+      ]
+     }
+    ]
+   },
+   "3267671268": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671160,
+        "lat": 37.5887124,
+        "lon": -77.2878797
+       },
+       {
+        "node": 3267671276,
+        "lat": 37.5889226,
+        "lon": -77.2879735
+       }
+      ]
+     }
+    ]
+   },
+   "3267671276": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671268,
+        "lat": 37.5888404,
+        "lon": -77.2879564
+       },
+       {
+        "node": 3267671282,
+        "lat": 37.5889841,
+        "lon": -77.2879728
+       }
+      ]
+     }
+    ]
+   },
+   "3267671282": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671276,
+        "lat": 37.5889226,
+        "lon": -77.2879735
+       },
+       {
+        "node": 3267671323,
+        "lat": 37.5891565,
+        "lon": -77.2878967
+       }
+      ]
+     }
+    ]
+   },
+   "3267671323": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671282,
+        "lat": 37.5889841,
+        "lon": -77.2879728
+       },
+       {
+        "node": 3267671357,
+        "lat": 37.5893442,
+        "lon": -77.2878367
+       }
+      ]
+     }
+    ]
+   },
+   "3267671357": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671323,
+        "lat": 37.5891565,
+        "lon": -77.2878967
+       },
+       {
+        "node": 3267671365,
+        "lat": 37.5894976,
+        "lon": -77.2878166
+       }
+      ]
+     }
+    ]
+   },
+   "3267671365": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671357,
+        "lat": 37.5893442,
+        "lon": -77.2878367
+       },
+       {
+        "node": 3267671379,
+        "lat": 37.5897064,
+        "lon": -77.2878633
+       }
+      ]
+     }
+    ]
+   },
+   "3267671379": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671365,
+        "lat": 37.5894976,
+        "lon": -77.2878166
+       },
+       {
+        "node": 3267671389,
+        "lat": 37.5898676,
+        "lon": -77.2879634
+       }
+      ]
+     }
+    ]
+   },
+   "3267671389": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671379,
+        "lat": 37.5897064,
+        "lon": -77.2878633
+       },
+       {
+        "node": 3267671395,
+        "lat": 37.5899972,
+        "lon": -77.2880848
+       }
+      ]
+     }
+    ]
+   },
+   "3267671395": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671389,
+        "lat": 37.5898676,
+        "lon": -77.2879634
+       },
+       {
+        "node": 3267671400,
+        "lat": 37.5901018,
+        "lon": -77.2882617
+       }
+      ]
+     }
+    ]
+   },
+   "3267671400": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671395,
+        "lat": 37.5899972,
+        "lon": -77.2880848
+       },
+       {
+        "node": 3267671401,
+        "lat": 37.5901353,
+        "lon": -77.2883888
+       }
+      ]
+     }
+    ]
+   },
+   "3267671401": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671400,
+        "lat": 37.5901018,
+        "lon": -77.2882617
+       },
+       {
+        "node": 3267671403,
+        "lat": 37.5901488,
+        "lon": -77.2884892
+       }
+      ]
+     }
+    ]
+   },
+   "3267671403": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671401,
+        "lat": 37.5901353,
+        "lon": -77.2883888
+       },
+       {
+        "node": 3267671404,
+        "lat": 37.5901875,
+        "lon": -77.2888782
+       }
+      ]
+     }
+    ]
+   },
+   "3267671404": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671403,
+        "lat": 37.5901488,
+        "lon": -77.2884892
+       },
+       {
+        "node": 3267671406,
+        "lat": 37.5902166,
+        "lon": -77.2890109
+       }
+      ]
+     }
+    ]
+   },
+   "3267671406": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671404,
+        "lat": 37.5901875,
+        "lon": -77.2888782
+       },
+       {
+        "node": 3267671408,
+        "lat": 37.5902681,
+        "lon": -77.2890677
+       }
+      ]
+     }
+    ]
+   },
+   "3267671408": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671406,
+        "lat": 37.5902166,
+        "lon": -77.2890109
+       },
+       {
+        "node": 3267671411,
+        "lat": 37.5903467,
+        "lon": -77.2890925
+       }
+      ]
+     }
+    ]
+   },
+   "3267671411": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671408,
+        "lat": 37.5902681,
+        "lon": -77.2890677
+       },
+       {
+        "node": 3267671413,
+        "lat": 37.5905084,
+        "lon": -77.289038
+       }
+      ]
+     }
+    ]
+   },
+   "3267671413": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671411,
+        "lat": 37.5903467,
+        "lon": -77.2890925
+       },
+       {
+        "node": 3267671418,
+        "lat": 37.5906565,
+        "lon": -77.2889934
+       }
+      ]
+     }
+    ]
+   },
+   "3267671418": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671413,
+        "lat": 37.5905084,
+        "lon": -77.289038
+       },
+       {
+        "node": 3267671420,
+        "lat": 37.5907228,
+        "lon": -77.2889776
+       }
+      ]
+     }
+    ]
+   },
+   "3267671420": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671418,
+        "lat": 37.5906565,
+        "lon": -77.2889934
+       },
+       {
+        "node": 3267671422,
+        "lat": 37.5908576,
+        "lon": -77.2889576
+       }
+      ]
+     }
+    ]
+   },
+   "3267671422": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671420,
+        "lat": 37.5907228,
+        "lon": -77.2889776
+       },
+       {
+        "node": 3267671427,
+        "lat": 37.5910374,
+        "lon": -77.2889843
+       }
+      ]
+     }
+    ]
+   },
+   "3267671427": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671422,
+        "lat": 37.5908576,
+        "lon": -77.2889576
+       },
+       {
+        "node": 3267671433,
+        "lat": 37.5913044,
+        "lon": -77.2890677
+       }
+      ]
+     }
+    ]
+   },
+   "3267671433": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671427,
+        "lat": 37.5910374,
+        "lon": -77.2889843
+       },
+       {
+        "node": 3267671437,
+        "lat": 37.5914456,
+        "lon": -77.289149
+       }
+      ]
+     }
+    ]
+   },
+   "3267671437": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671433,
+        "lat": 37.5913044,
+        "lon": -77.2890677
+       },
+       {
+        "node": 3267671441,
+        "lat": 37.5915553,
+        "lon": -77.2892217
+       }
+      ]
+     }
+    ]
+   },
+   "3267671441": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671437,
+        "lat": 37.5914456,
+        "lon": -77.289149
+       },
+       {
+        "node": 3267671449,
+        "lat": 37.5917133,
+        "lon": -77.2893591
+       }
+      ]
+     }
+    ]
+   },
+   "3267671449": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671441,
+        "lat": 37.5915553,
+        "lon": -77.2892217
+       },
+       {
+        "node": 7460824435,
+        "lat": 37.591904,
+        "lon": -77.2895655
+       }
+      ]
+     }
+    ]
+   },
+   "3267671478": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 7460824436,
+        "lat": 37.5920731,
+        "lon": -77.2896092
+       },
+       {
+        "node": 7460824437,
+        "lat": 37.5921259,
+        "lon": -77.2895068
+       }
+      ]
+     }
+    ]
+   },
+   "3267671481": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 7460824435,
+        "lat": 37.591904,
+        "lon": -77.2895655
+       },
+       {
+        "node": 3267671488,
+        "lat": 37.5920316,
+        "lon": -77.2896282
+       }
+      ]
+     }
+    ]
+   },
+   "3267671486": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215042047,
+        "lat": 37.5920772,
+        "lon": -77.2864719
+       },
+       {
+        "node": 215042041,
+        "lat": 37.591768,
+        "lon": -77.286203
+       }
+      ]
+     }
+    ]
+   },
+   "3267671488": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671481,
+        "lat": 37.5919815,
+        "lon": -77.2896203
+       },
+       {
+        "node": 7460824436,
+        "lat": 37.5920731,
+        "lon": -77.2896092
+       }
+      ]
+     }
+    ]
+   },
+   "3267671495": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 7460824437,
+        "lat": 37.5921259,
+        "lon": -77.2895068
+       },
+       {
+        "node": 3267671498,
+        "lat": 37.5921251,
+        "lon": -77.2891511
+       }
+      ]
+     }
+    ]
+   },
+   "3267671498": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671495,
+        "lat": 37.5921242,
+        "lon": -77.2893759
+       },
+       {
+        "node": 3267671501,
+        "lat": 37.5921359,
+        "lon": -77.2890945
+       }
+      ]
+     }
+    ]
+   },
+   "3267671501": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671498,
+        "lat": 37.5921251,
+        "lon": -77.2891511
+       },
+       {
+        "node": 3267671516,
+        "lat": 37.592297,
+        "lon": -77.2886707
+       }
+      ]
+     }
+    ]
+   },
+   "3267671516": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671501,
+        "lat": 37.5921359,
+        "lon": -77.2890945
+       },
+       {
+        "node": 3267671531,
+        "lat": 37.5924661,
+        "lon": -77.2883337
+       }
+      ]
+     }
+    ]
+   },
+   "3267671531": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671516,
+        "lat": 37.592297,
+        "lon": -77.2886707
+       },
+       {
+        "node": 3267671537,
+        "lat": 37.5925745,
+        "lon": -77.2880168
+       }
+      ]
+     }
+    ]
+   },
+   "3267671537": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671531,
+        "lat": 37.5924661,
+        "lon": -77.2883337
+       },
+       {
+        "node": 3267671552,
+        "lat": 37.5927411,
+        "lon": -77.2877866
+       }
+      ]
+     }
+    ]
+   },
+   "3267671552": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671537,
+        "lat": 37.5925745,
+        "lon": -77.2880168
+       },
+       {
+        "node": 3267671558,
+        "lat": 37.592897,
+        "lon": -77.2876699
+       }
+      ]
+     }
+    ]
+   },
+   "3267671558": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671552,
+        "lat": 37.5927411,
+        "lon": -77.2877866
+       },
+       {
+        "node": 3267671561,
+        "lat": 37.5930684,
+        "lon": -77.2874957
+       }
+      ]
+     }
+    ]
+   },
+   "3267671561": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671558,
+        "lat": 37.592897,
+        "lon": -77.2876699
+       },
+       {
+        "node": 3267671563,
+        "lat": 37.5932142,
+        "lon": -77.2873463
+       }
+      ]
+     }
+    ]
+   },
+   "3267671563": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671561,
+        "lat": 37.5930684,
+        "lon": -77.2874957
+       },
+       {
+        "node": 10200112570,
+        "lat": 37.5932573,
+        "lon": -77.2872504
+       }
+      ]
+     }
+    ]
+   },
+   "3267671565": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671567,
+        "lat": 37.5932784,
+        "lon": -77.2871392
+       },
+       {
+        "node": 215182100,
+        "lat": 37.5932343,
+        "lon": -77.2869725
+       }
+      ]
+     }
+    ]
+   },
+   "3267671567": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 10200112570,
+        "lat": 37.5932573,
+        "lon": -77.2872504
+       },
+       {
+        "node": 3267671565,
+        "lat": 37.5932644,
+        "lon": -77.287046
+       }
+      ]
+     }
+    ]
+   },
+   "3267671608": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263966,
+      "tags": {
+       "highway": "service",
+       "name": "General Smith Drive"
+      },
+      "arms": [
+       {
+        "node": 215182134,
+        "lat": 37.594013,
+        "lon": -77.287339
+       },
+       {
+        "node": 215182137,
+        "lat": 37.59426,
+        "lon": -77.287584
+       }
+      ]
+     }
+    ]
+   },
+   "4518022879": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20260277,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 214491814,
+        "lat": 37.5847457,
+        "lon": -77.2871128
+       },
+       {
+        "node": 6816153269,
+        "lat": 37.5849954,
+        "lon": -77.2871254
+       }
+      ]
+     }
+    ]
+   },
+   "6816153269": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20260277,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 4518022879,
+        "lat": 37.584798,
+        "lon": -77.2871484
+       },
+       {
+        "node": 214978552,
+        "lat": 37.5852842,
+        "lon": -77.2871443
+       }
+      ]
+     },
+     {
+      "id": 727332037,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 6816153272,
+        "lat": 37.5849487,
+        "lon": -77.2870817
+       }
+      ]
+     }
+    ]
+   },
+   "7460824435": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671449,
+        "lat": 37.5917133,
+        "lon": -77.2893591
+       },
+       {
+        "node": 3267671481,
+        "lat": 37.5919815,
+        "lon": -77.2896203
+       }
+      ]
+     }
+    ]
+   },
+   "7460824436": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671488,
+        "lat": 37.5920316,
+        "lon": -77.2896282
+       },
+       {
+        "node": 3267671478,
+        "lat": 37.5921125,
+        "lon": -77.2895608
+       }
+      ]
+     }
+    ]
+   },
+   "7460824437": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671478,
+        "lat": 37.5921125,
+        "lon": -77.2895608
+       },
+       {
+        "node": 3267671495,
+        "lat": 37.5921242,
+        "lon": -77.2893759
+       }
+      ]
+     }
+    ]
+   },
+   "7758287097": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20286996,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 215041911,
+        "lat": 37.5901162,
+        "lon": -77.2827189
+       },
+       {
+        "node": 215041908,
+        "lat": 37.5900134,
+        "lon": -77.282656
+       }
+      ]
+     }
+    ]
+   },
+   "10200112570": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 320263962,
+      "tags": {
+       "highway": "service",
+       "name": "Anderson Wright Drive"
+      },
+      "arms": [
+       {
+        "node": 3267671563,
+        "lat": 37.5932142,
+        "lon": -77.2873463
+       },
+       {
+        "node": 3267671567,
+        "lat": 37.5932784,
+        "lon": -77.2871392
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

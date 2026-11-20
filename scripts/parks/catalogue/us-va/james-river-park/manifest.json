@@ -1183,6 +1183,12 @@
             "at_m": 4038
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Riverside Drive",
+            "at_m": 4038
+          },
+          {
             "kind": "climb",
             "gain_m": 16,
             "length_m": 370,
@@ -1829,6 +1835,12 @@
             "kind": "junction",
             "turn": "right",
             "name": "Buttermilk Heights Trail",
+            "at_m": 4214
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Riverside Drive",
             "at_m": 4214
           },
           {

@@ -2803,5 +2803,82 @@
    "lon": -77.5771067,
    "ele": 57.1
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "3242674461": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 428308616,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 209850147,
+        "lat": 37.451725,
+        "lon": -77.584273
+       },
+       {
+        "node": 209850148,
+        "lat": 37.451765,
+        "lon": -77.584412
+       }
+      ]
+     }
+    ]
+   },
+   "4274264319": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 317947710,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 3242849346,
+        "lat": 37.4487923,
+        "lon": -77.5799884
+       },
+       {
+        "node": 3242849345,
+        "lat": 37.4487847,
+        "lon": -77.5799099
+       }
+      ]
+     }
+    ]
+   },
+   "12358822692": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 307639378,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2911342398,
+        "lat": 37.4511434,
+        "lon": -77.5809589
+       },
+       {
+        "node": 3128372974,
+        "lat": 37.4510968,
+        "lon": -77.5808753
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

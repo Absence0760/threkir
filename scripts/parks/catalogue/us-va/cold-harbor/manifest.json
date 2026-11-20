@@ -76,6 +76,12 @@
             "at_m": 147
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Anderson Wright Drive",
+            "at_m": 154
+          },
+          {
             "kind": "junction",
             "turn": "straight",
             "name": "Anderson Wright Drive",
@@ -122,6 +128,12 @@
             "turn": "right",
             "name": "Extended Loop Trail",
             "at_m": 1694
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "General Smith Drive",
+            "at_m": 2419
           },
           {
             "kind": "checkpoint",
@@ -260,6 +272,12 @@
             "at_m": 301
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Anderson Wright Drive",
+            "at_m": 308
+          },
+          {
             "kind": "junction",
             "turn": "straight",
             "name": "Anderson Wright Drive",
@@ -306,6 +324,12 @@
             "turn": "right",
             "name": "Extended Loop Trail",
             "at_m": 1848
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "General Smith Drive",
+            "at_m": 2573
           },
           {
             "kind": "junction",

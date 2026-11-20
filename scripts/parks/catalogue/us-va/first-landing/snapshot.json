@@ -6153,5 +6153,416 @@
    "lon": -76.0259115,
    "ele": 0.6
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "221259538": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20638253,
+      "tags": {
+       "highway": "residential",
+       "name": "Sandalwood Road"
+      },
+      "arms": [
+       {
+        "node": 4698487276,
+        "lat": 36.9120523,
+        "lon": -76.0626483
+       },
+       {
+        "node": 4698487277,
+        "lat": 36.9122202,
+        "lon": -76.0627158
+       }
+      ]
+     }
+    ]
+   },
+   "221259557": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20639135,
+      "tags": {
+       "highway": "residential",
+       "name": "Beech Street"
+      },
+      "arms": [
+       {
+        "node": 221571281,
+        "lat": 36.908851,
+        "lon": -76.064402
+       },
+       {
+        "node": 221571297,
+        "lat": 36.912847,
+        "lon": -76.066009
+       }
+      ]
+     }
+    ]
+   },
+   "221267319": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20640264,
+      "tags": {
+       "highway": "residential",
+       "name": "Kendall Street"
+      },
+      "arms": [
+       {
+        "node": 221584985,
+        "lat": 36.914074,
+        "lon": -76.055858
+       }
+      ]
+     },
+     {
+      "id": 409388313,
+      "tags": {
+       "highway": "residential",
+       "name": "Kendall Street"
+      },
+      "arms": [
+       {
+        "node": 221584998,
+        "lat": 36.915598,
+        "lon": -76.056951
+       }
+      ]
+     }
+    ]
+   },
+   "221324525": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409553676,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 221518530,
+        "lat": 36.889821,
+        "lon": -75.992064
+       },
+       {
+        "node": 221518536,
+        "lat": 36.88985,
+        "lon": -75.992308
+       }
+      ]
+     },
+     {
+      "id": 1322978397,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12242044945,
+        "lat": 36.8901155,
+        "lon": -75.9919926
+       }
+      ]
+     }
+    ]
+   },
+   "221741961": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409388312,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Cypress Swamp Drive"
+      },
+      "arms": [
+       {
+        "node": 221284047,
+        "lat": 36.916622,
+        "lon": -76.0507
+       },
+       {
+        "node": 221741966,
+        "lat": 36.915968,
+        "lon": -76.050346
+       }
+      ]
+     }
+    ]
+   },
+   "221742066": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409388312,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Cypress Swamp Drive"
+      },
+      "arms": [
+       {
+        "node": 221742063,
+        "lat": 36.914569,
+        "lon": -76.045129
+       },
+       {
+        "node": 221742070,
+        "lat": 36.9150317,
+        "lon": -76.0442513
+       }
+      ]
+     }
+    ]
+   },
+   "3097579033": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409388312,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Cypress Swamp Drive"
+      },
+      "arms": [
+       {
+        "node": 221742018,
+        "lat": 36.914461,
+        "lon": -76.047333
+       },
+       {
+        "node": 221742021,
+        "lat": 36.91444,
+        "lon": -76.046847
+       }
+      ]
+     }
+    ]
+   },
+   "4114346993": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409551370,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 4114346992,
+        "lat": 36.9158997,
+        "lon": -76.0407689
+       },
+       {
+        "node": 4114346994,
+        "lat": 36.9159684,
+        "lon": -76.0407287
+       }
+      ]
+     }
+    ]
+   },
+   "4114347009": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409551370,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 4114347008,
+        "lat": 36.9162364,
+        "lon": -76.0418713
+       },
+       {
+        "node": 4114347010,
+        "lat": 36.9162064,
+        "lon": -76.0420188
+       }
+      ]
+     }
+    ]
+   },
+   "5319338182": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20664999,
+      "tags": {
+       "highway": "residential",
+       "name": "Bayberry Street"
+      },
+      "arms": [
+       {
+        "node": 221276033,
+        "lat": 36.9118732,
+        "lon": -76.0615814
+       },
+       {
+        "node": 5800865150,
+        "lat": 36.9137535,
+        "lon": -76.0623434
+       }
+      ]
+     }
+    ]
+   },
+   "5319338183": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20633123,
+      "tags": {
+       "highway": "residential",
+       "name": "Maple Street"
+      },
+      "arms": [
+       {
+        "node": 221492896,
+        "lat": 36.9095764,
+        "lon": -76.0627053
+       },
+       {
+        "node": 5800864694,
+        "lat": 36.9132833,
+        "lon": -76.0641644
+       }
+      ]
+     }
+    ]
+   },
+   "5800876747": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20638919,
+      "tags": {
+       "highway": "residential",
+       "name": "Oak Street"
+      },
+      "arms": [
+       {
+        "node": 221536991,
+        "lat": 36.908451,
+        "lon": -76.063263
+       },
+       {
+        "node": 5800864693,
+        "lat": 36.9130441,
+        "lon": -76.0650892
+       }
+      ]
+     }
+    ]
+   },
+   "5961118160": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20641784,
+      "tags": {
+       "highway": "residential",
+       "name": "Wake Forest Street"
+      },
+      "arms": [
+       {
+        "node": 221276042,
+        "lat": 36.912108,
+        "lon": -76.060655
+       },
+       {
+        "node": 5800865151,
+        "lat": 36.9139859,
+        "lon": -76.0614393
+       }
+      ]
+     }
+    ]
+   },
+   "8419228186": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 409551370,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 221742095,
+        "lat": 36.9156981,
+        "lon": -76.0420309
+       },
+       {
+        "node": 4114346786,
+        "lat": 36.9157625,
+        "lon": -76.0417586
+       }
+      ]
+     }
+    ]
+   },
+   "8446113925": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 409553676,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 221518661,
+        "lat": 36.888243,
+        "lon": -75.999626
+       },
+       {
+        "node": 221518664,
+        "lat": 36.888295,
+        "lon": -75.999857
+       }
+      ]
+     }
+    ]
+   },
+   "12047192237": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1300665096,
+      "tags": {
+       "access": "private",
+       "highway": "service",
+       "name": "Sheltered Woods Lane"
+      },
+      "arms": [
+       {
+        "node": 12047192236,
+        "lat": 36.9158847,
+        "lon": -76.0537148
+       },
+       {
+        "node": 12047192238,
+        "lat": 36.9149497,
+        "lon": -76.0530496
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

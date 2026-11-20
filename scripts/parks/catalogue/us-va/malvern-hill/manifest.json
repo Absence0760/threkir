@@ -87,6 +87,18 @@
             "at_m": 264
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willis Church Road",
+            "at_m": 408
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willis Church Road",
+            "at_m": 1217
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1250,
             "order": 1,
@@ -113,6 +125,12 @@
             "at_m": 2500,
             "order": 2,
             "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Carters Mill Road",
+            "at_m": 3376
           },
           {
             "kind": "checkpoint",
@@ -197,10 +215,22 @@
             "rotation": "clockwise"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Carters Mill Road",
+            "at_m": 184
+          },
+          {
             "kind": "junction",
             "turn": "right",
             "name": "Marlvern Hill-Carter's Farm Trail",
             "at_m": 363
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Carters Mill Road",
+            "at_m": 1296
           },
           {
             "kind": "checkpoint",
@@ -224,6 +254,18 @@
             "at_m": 2857,
             "order": 2,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willis Church Road",
+            "at_m": 2965
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willis Church Road",
+            "at_m": 3774
           },
           {
             "kind": "surface",
@@ -270,6 +312,12 @@
             "at_m": 8571,
             "order": 6,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Carters Mill Road",
+            "at_m": 9816
           },
           {
             "kind": "surface",

@@ -20100,5 +20100,812 @@
    "lon": -77.4748257,
    "ele": 30.4
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "898615294": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 76131176,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 898615290,
+        "lat": 37.5232945,
+        "lon": -77.4710174
+       },
+       {
+        "node": 898036777,
+        "lat": 37.523462,
+        "lon": -77.4706328
+       }
+      ]
+     }
+    ]
+   },
+   "904104408": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 76739338,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 904114441,
+        "lat": 37.5191256,
+        "lon": -77.473794
+       },
+       {
+        "node": 904104410,
+        "lat": 37.5191901,
+        "lon": -77.4741645
+       }
+      ]
+     }
+    ]
+   },
+   "1293402540": {
+    "tags": {
+     "crossing": "marked",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 114143966,
+      "tags": {
+       "highway": "service",
+       "motor_vehicle": "yes"
+      },
+      "arms": [
+       {
+        "node": 1293402379,
+        "lat": 37.5238241,
+        "lon": -77.4571604
+       },
+       {
+        "node": 1293402297,
+        "lat": 37.5237129,
+        "lon": -77.457324
+       }
+      ]
+     }
+    ]
+   },
+   "1630546749": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 267611776,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Pump House Drive"
+      },
+      "arms": [
+       {
+        "node": 5126286197,
+        "lat": 37.535718,
+        "lon": -77.4833026
+       }
+      ]
+     },
+     {
+      "id": 1215598273,
+      "tags": {
+       "highway": "unclassified",
+       "name": "Pump House Drive"
+      },
+      "arms": [
+       {
+        "node": 593310111,
+        "lat": 37.5357702,
+        "lon": -77.483561
+       }
+      ]
+     }
+    ]
+   },
+   "2173478501": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 76739338,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 2173478502,
+        "lat": 37.5190687,
+        "lon": -77.4735472
+       }
+      ]
+     }
+    ]
+   },
+   "2687462969": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 220592151,
+      "tags": {
+       "access": "yes",
+       "highway": "tertiary",
+       "motor_vehicle": "yes",
+       "name": "Brown's Island Way"
+      },
+      "arms": [
+       {
+        "node": 11214425546,
+        "lat": 37.5345884,
+        "lon": -77.4470178
+       },
+       {
+        "node": 2296955974,
+        "lat": 37.5347305,
+        "lon": -77.4470595
+       }
+      ]
+     },
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 10292600228,
+        "lat": 37.5346421,
+        "lon": -77.4471188
+       }
+      ]
+     }
+    ]
+   },
+   "2687462970": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12461722968,
+        "lat": 37.5346418,
+        "lon": -77.4471342
+       },
+       {
+        "node": 2687462971,
+        "lat": 37.5347202,
+        "lon": -77.4475983
+       }
+      ]
+     }
+    ]
+   },
+   "2687462971": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2687462970,
+        "lat": 37.5346413,
+        "lon": -77.4471675
+       },
+       {
+        "node": 2687462972,
+        "lat": 37.5347562,
+        "lon": -77.4478207
+       }
+      ]
+     }
+    ]
+   },
+   "2687462972": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2687462971,
+        "lat": 37.5347202,
+        "lon": -77.4475983
+       },
+       {
+        "node": 2687462974,
+        "lat": 37.5348121,
+        "lon": -77.4482969
+       }
+      ]
+     }
+    ]
+   },
+   "2687462974": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2687462972,
+        "lat": 37.5347562,
+        "lon": -77.4478207
+       },
+       {
+        "node": 4590239378,
+        "lat": 37.5348098,
+        "lon": -77.4483161
+       }
+      ]
+     }
+    ]
+   },
+   "2735697186": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 13150314167,
+        "lat": 37.5345669,
+        "lon": -77.4483213
+       }
+      ]
+     },
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 10968066391,
+        "lat": 37.5344468,
+        "lon": -77.4483241
+       },
+       {
+        "node": 2735697187,
+        "lat": 37.5345021,
+        "lon": -77.4482636
+       }
+      ]
+     }
+    ]
+   },
+   "2735697187": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2735697186,
+        "lat": 37.534483,
+        "lon": -77.4483226
+       },
+       {
+        "node": 2735697188,
+        "lat": 37.5345,
+        "lon": -77.4478854
+       }
+      ]
+     }
+    ]
+   },
+   "2735697188": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2735697187,
+        "lat": 37.5345021,
+        "lon": -77.4482636
+       },
+       {
+        "node": 2735697189,
+        "lat": 37.5344787,
+        "lon": -77.4477137
+       }
+      ]
+     }
+    ]
+   },
+   "2735697189": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2735697188,
+        "lat": 37.5345,
+        "lon": -77.4478854
+       },
+       {
+        "node": 2735697190,
+        "lat": 37.5344226,
+        "lon": -77.4476424
+       }
+      ]
+     }
+    ]
+   },
+   "2735697190": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2735697189,
+        "lat": 37.5344787,
+        "lon": -77.4477137
+       }
+      ]
+     },
+     {
+      "id": 1157112366,
+      "tags": {
+       "highway": "residential",
+       "name": "Tredegar Street"
+      },
+      "arms": [
+       {
+        "node": 49629784,
+        "lat": 37.534376,
+        "lon": -77.4479693
+       },
+       {
+        "node": 10292600232,
+        "lat": 37.5344963,
+        "lon": -77.4471245
+       }
+      ]
+     }
+    ]
+   },
+   "3070464853": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 503841834,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 4940945143,
+        "lat": 37.5353751,
+        "lon": -77.483044
+       }
+      ]
+     }
+    ]
+   },
+   "4590239376": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12461722967,
+        "lat": 37.534711,
+        "lon": -77.4483191
+       },
+       {
+        "node": 13150314167,
+        "lat": 37.5345669,
+        "lon": -77.4483213
+       }
+      ]
+     },
+     {
+      "id": 463800193,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 4590239373,
+        "lat": 37.5345962,
+        "lon": -77.4477151
+       }
+      ]
+     }
+    ]
+   },
+   "4590239377": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 4590239378,
+        "lat": 37.5348098,
+        "lon": -77.4483161
+       },
+       {
+        "node": 12461722967,
+        "lat": 37.534711,
+        "lon": -77.4483191
+       }
+      ]
+     }
+    ]
+   },
+   "4590239378": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2687462974,
+        "lat": 37.5348121,
+        "lon": -77.4482969
+       },
+       {
+        "node": 4590239377,
+        "lat": 37.5347903,
+        "lon": -77.4483179
+       }
+      ]
+     }
+    ]
+   },
+   "8265669953": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 889083971,
+      "tags": {
+       "access": "private",
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 8265669954,
+        "lat": 37.5261643,
+        "lon": -77.4536181
+       }
+      ]
+     }
+    ]
+   },
+   "9665749391": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1051814766,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 9665749392,
+        "lat": 37.5504926,
+        "lon": -77.5202139
+       },
+       {
+        "node": 9665749390,
+        "lat": 37.5505417,
+        "lon": -77.5205254
+       }
+      ]
+     }
+    ]
+   },
+   "9665749411": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1051814766,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 9665749398,
+        "lat": 37.5509457,
+        "lon": -77.52006
+       },
+       {
+        "node": 9665749397,
+        "lat": 37.5508299,
+        "lon": -77.5199027
+       }
+      ]
+     },
+     {
+      "id": 1051814770,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 9665749390,
+        "lat": 37.5505417,
+        "lon": -77.5205254
+       }
+      ]
+     }
+    ]
+   },
+   "10292600228": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2687462969,
+        "lat": 37.5346436,
+        "lon": -77.447034
+       },
+       {
+        "node": 12461722968,
+        "lat": 37.5346418,
+        "lon": -77.4471342
+       }
+      ]
+     }
+    ]
+   },
+   "10968066391": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 11097486523,
+        "lat": 37.5343982,
+        "lon": -77.4483262
+       },
+       {
+        "node": 2735697186,
+        "lat": 37.534483,
+        "lon": -77.4483226
+       }
+      ]
+     }
+    ]
+   },
+   "11097486523": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 268210782,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 10968066391,
+        "lat": 37.5344468,
+        "lon": -77.4483241
+       }
+      ]
+     },
+     {
+      "id": 1349712527,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 2735697185,
+        "lat": 37.5343525,
+        "lon": -77.4483281
+       }
+      ]
+     }
+    ]
+   },
+   "12461722967": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 4590239377,
+        "lat": 37.5347903,
+        "lon": -77.4483179
+       },
+       {
+        "node": 4590239376,
+        "lat": 37.5346643,
+        "lon": -77.4483198
+       }
+      ]
+     }
+    ]
+   },
+   "12461722968": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 10292600228,
+        "lat": 37.5346421,
+        "lon": -77.4471188
+       },
+       {
+        "node": 2687462970,
+        "lat": 37.5346413,
+        "lon": -77.4471675
+       }
+      ]
+     }
+    ]
+   },
+   "13150314167": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 263127147,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 4590239376,
+        "lat": 37.5346643,
+        "lon": -77.4483198
+       },
+       {
+        "node": 2735697186,
+        "lat": 37.534483,
+        "lon": -77.4483226
+       }
+      ]
+     }
+    ]
+   },
+   "13623086809": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 1051814766,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 9665749393,
+        "lat": 37.5505767,
+        "lon": -77.5200228
+       },
+       {
+        "node": 9665749392,
+        "lat": 37.5504926,
+        "lon": -77.5202139
+       }
+      ]
+     }
+    ]
+   },
+   "14119406240": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 294874987,
+      "tags": {
+       "highway": "tertiary",
+       "name": "Riverside Drive"
+      },
+      "arms": [
+       {
+        "node": 900117167,
+        "lat": 37.52312,
+        "lon": -77.4708129
+       },
+       {
+        "node": 9735622199,
+        "lat": 37.5231606,
+        "lon": -77.4710059
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

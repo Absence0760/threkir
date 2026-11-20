@@ -1294,5 +1294,150 @@
    "lon": -77.2543251,
    "ele": 36.6
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "214888896": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "crossing:markings": "lines",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20277998,
+      "tags": {
+       "highway": "secondary",
+       "name": "Willis Church Road"
+      },
+      "arms": [
+       {
+        "node": 12349936606,
+        "lat": 37.4183714,
+        "lon": -77.2470166
+       },
+       {
+        "node": 214888899,
+        "lat": 37.418774,
+        "lon": -77.246313
+       }
+      ]
+     }
+    ]
+   },
+   "3218531261": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20277998,
+      "tags": {
+       "highway": "secondary",
+       "name": "Willis Church Road"
+      },
+      "arms": [
+       {
+        "node": 214888835,
+        "lat": 37.413007,
+        "lon": -77.248936
+       },
+       {
+        "node": 214888839,
+        "lat": 37.413432,
+        "lon": -77.24895
+       }
+      ]
+     }
+    ]
+   },
+   "12349936604": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20283462,
+      "tags": {
+       "highway": "residential",
+       "name": "Carters Mill Road"
+      },
+      "arms": [
+       {
+        "node": 12349936603,
+        "lat": 37.420184,
+        "lon": -77.251286
+       },
+       {
+        "node": 214993477,
+        "lat": 37.420279,
+        "lon": -77.251353
+       }
+      ]
+     }
+    ]
+   },
+   "12349936608": {
+    "tags": {
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 280027566,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 12349936606,
+        "lat": 37.4183714,
+        "lon": -77.2470166
+       },
+       {
+        "node": 5340823117,
+        "lat": 37.4181771,
+        "lon": -77.2468281
+       }
+      ]
+     }
+    ]
+   },
+   "12352362221": {
+    "tags": {
+     "crossing": "unmarked",
+     "crossing:markings": "no",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 20283462,
+      "tags": {
+       "highway": "residential",
+       "name": "Carters Mill Road"
+      },
+      "arms": [
+       {
+        "node": 214993546,
+        "lat": 37.427514,
+        "lon": -77.254333
+       },
+       {
+        "node": 214993548,
+        "lat": 37.428415,
+        "lon": -77.254225
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

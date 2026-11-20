@@ -81,6 +81,12 @@
             "of": 3
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 2963
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3750,
             "order": 3,
@@ -178,6 +184,12 @@
             "name": "Washington & Old Dominion Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Isaac Newton Square",
+            "at_m": 885
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1250,
             "order": 1,
@@ -189,16 +201,46 @@
             "at_m": 1251
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Michael Faraday Court",
+            "at_m": 1570
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunset Hills Road",
+            "at_m": 2082
+          },
+          {
             "kind": "checkpoint",
             "at_m": 2500,
             "order": 2,
             "of": 7
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunrise Valley Drive",
+            "at_m": 2863
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3750,
             "order": 3,
             "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Buckthorn Lane",
+            "at_m": 3973
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hunter Mill Road",
+            "at_m": 4667
           },
           {
             "kind": "checkpoint",
@@ -233,6 +275,25 @@
             "at_m": 8750,
             "order": 7,
             "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ayr Hill Avenue Northeast",
+            "at_m": 9370
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Church Street Northeast",
+            "at_m": 9563
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Maple Avenue East",
+            "signal": true,
+            "at_m": 9713
           },
           {
             "kind": "finish",
@@ -332,6 +393,30 @@
             "name": "Washington & Old Dominion Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 136
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 513
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 790
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 1279
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1406,
             "order": 1,
@@ -343,10 +428,35 @@
             "at_m": 1409
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 1595
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 2143
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 2611
+          },
+          {
             "kind": "checkpoint",
             "at_m": 2813,
             "order": 2,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 3870
           },
           {
             "kind": "checkpoint",
@@ -365,6 +475,12 @@
             "at_m": 7032,
             "order": 5,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 7199
           },
           {
             "kind": "crossing",
@@ -400,6 +516,12 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 12219
+          },
+          {
             "kind": "checkpoint",
             "at_m": 12658,
             "order": 9,
@@ -415,6 +537,12 @@
             "kind": "crossing",
             "crossing": "bridge",
             "at_m": 14408
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 15313
           },
           {
             "kind": "checkpoint",
@@ -462,10 +590,28 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 18704
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 18866
+          },
+          {
             "kind": "checkpoint",
             "at_m": 19691,
             "order": 14,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 20554
           },
           {
             "kind": "finish",
@@ -621,10 +767,39 @@
             "name": "Washington & Old Dominion Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple",
+            "at_m": 847
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple Avenue",
+            "at_m": 1080
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1455,
             "order": 1,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hirst Road",
+            "at_m": 1664
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 1920
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Berlin Turnpike",
+            "at_m": 2095
           },
           {
             "kind": "checkpoint",
@@ -633,10 +808,22 @@
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ivandale Road",
+            "at_m": 3976
+          },
+          {
             "kind": "checkpoint",
             "at_m": 4365,
             "order": 3,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hamilton Station Road",
+            "at_m": 5608
           },
           {
             "kind": "checkpoint",
@@ -645,16 +832,39 @@
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Meadowlark Drive",
+            "at_m": 6798
+          },
+          {
             "kind": "checkpoint",
             "at_m": 7275,
             "order": 5,
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 8484
+          },
+          {
             "kind": "checkpoint",
             "at_m": 8730,
             "order": 6,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 9405
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 9588
           },
           {
             "kind": "crossing",
@@ -666,6 +876,12 @@
             "at_m": 10185,
             "order": 7,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road",
+            "at_m": 10349
           },
           {
             "kind": "checkpoint",
@@ -691,6 +907,24 @@
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 15036
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 15413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 15690
+          },
+          {
             "kind": "checkpoint",
             "at_m": 16005,
             "order": 11,
@@ -698,14 +932,45 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 16179
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 16309
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 16495
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 17043
           },
           {
             "kind": "checkpoint",
             "at_m": 17460,
             "order": 12,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 17511
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 18770
           },
           {
             "kind": "checkpoint",
@@ -724,6 +989,12 @@
             "at_m": 21825,
             "order": 15,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 22099
           },
           {
             "kind": "crossing",
@@ -759,6 +1030,12 @@
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 27119
+          },
+          {
             "kind": "checkpoint",
             "at_m": 27645,
             "order": 19,
@@ -774,6 +1051,12 @@
             "kind": "crossing",
             "crossing": "bridge",
             "at_m": 29308
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 30213
           },
           {
             "kind": "checkpoint",
@@ -821,16 +1104,40 @@
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 33604
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 33766
+          },
+          {
             "kind": "checkpoint",
             "at_m": 34920,
             "order": 24,
             "of": 28
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 35454
+          },
+          {
             "kind": "checkpoint",
             "at_m": 36375,
             "order": 25,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Crestview Drive",
+            "at_m": 37742
           },
           {
             "kind": "checkpoint",
@@ -845,14 +1152,46 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Ferndale Avenue",
+            "at_m": 38455
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Grace Street",
+            "at_m": 38828
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 39059
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Station Street",
+            "at_m": 39284
           },
           {
             "kind": "checkpoint",
             "at_m": 39285,
             "order": 27,
             "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Elden Street",
+            "signal": true,
+            "at_m": 39381
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Van Buren Street",
+            "signal": true,
+            "at_m": 39766
           },
           {
             "kind": "checkpoint",
@@ -1049,10 +1388,39 @@
             "name": "Washington & Old Dominion Trail"
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple",
+            "at_m": 847
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple Avenue",
+            "at_m": 1080
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1471,
             "order": 1,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hirst Road",
+            "at_m": 1664
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 1920
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Berlin Turnpike",
+            "at_m": 2095
           },
           {
             "kind": "checkpoint",
@@ -1061,10 +1429,22 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ivandale Road",
+            "at_m": 3976
+          },
+          {
             "kind": "checkpoint",
             "at_m": 4412,
             "order": 3,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hamilton Station Road",
+            "at_m": 5608
           },
           {
             "kind": "checkpoint",
@@ -1073,16 +1453,39 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Meadowlark Drive",
+            "at_m": 6798
+          },
+          {
             "kind": "checkpoint",
             "at_m": 7353,
             "order": 5,
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 8484
+          },
+          {
             "kind": "checkpoint",
             "at_m": 8824,
             "order": 6,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 9405
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 9588
           },
           {
             "kind": "crossing",
@@ -1094,6 +1497,12 @@
             "at_m": 10294,
             "order": 7,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road",
+            "at_m": 10349
           },
           {
             "kind": "checkpoint",
@@ -1119,6 +1528,24 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 15036
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 15413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 15690
+          },
+          {
             "kind": "checkpoint",
             "at_m": 16176,
             "order": 11,
@@ -1126,14 +1553,45 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 16179
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 16309
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 16495
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 17043
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 17511
           },
           {
             "kind": "checkpoint",
             "at_m": 17647,
             "order": 12,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 18770
           },
           {
             "kind": "checkpoint",
@@ -1152,6 +1610,12 @@
             "at_m": 22059,
             "order": 15,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 22099
           },
           {
             "kind": "crossing",
@@ -1187,6 +1651,12 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 27119
+          },
+          {
             "kind": "checkpoint",
             "at_m": 27941,
             "order": 19,
@@ -1202,6 +1672,12 @@
             "at_m": 29412,
             "order": 20,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 30213
           },
           {
             "kind": "checkpoint",
@@ -1243,6 +1719,18 @@
             "at_m": 32977
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 33604
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 33766
+          },
+          {
             "kind": "checkpoint",
             "at_m": 33824,
             "order": 23,
@@ -1255,10 +1743,22 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 35454
+          },
+          {
             "kind": "checkpoint",
             "at_m": 36765,
             "order": 25,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Crestview Drive",
+            "at_m": 37742
           },
           {
             "kind": "crossing",
@@ -1273,14 +1773,46 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Ferndale Avenue",
+            "at_m": 38455
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Grace Street",
+            "at_m": 38828
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 39059
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Station Street",
+            "at_m": 39284
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Elden Street",
+            "signal": true,
+            "at_m": 39381
           },
           {
             "kind": "checkpoint",
             "at_m": 39706,
             "order": 27,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Van Buren Street",
+            "signal": true,
+            "at_m": 39766
           },
           {
             "kind": "crossing",
@@ -1310,6 +1842,18 @@
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Reston Avenue",
+            "at_m": 42872
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Isaac Newton Square",
+            "at_m": 43985
+          },
+          {
             "kind": "checkpoint",
             "at_m": 44118,
             "order": 30,
@@ -1321,16 +1865,46 @@
             "at_m": 44351
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Michael Faraday Court",
+            "at_m": 44670
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunset Hills Road",
+            "at_m": 45181
+          },
+          {
             "kind": "checkpoint",
             "at_m": 45588,
             "order": 31,
             "of": 33
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunrise Valley Drive",
+            "at_m": 45963
+          },
+          {
             "kind": "checkpoint",
             "at_m": 47059,
             "order": 32,
             "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Buckthorn Lane",
+            "at_m": 47073
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hunter Mill Road",
+            "at_m": 47767
           },
           {
             "kind": "crossing",

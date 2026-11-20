@@ -2492,5 +2492,195 @@
    "lon": -77.5873965,
    "ele": 51.4
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "214800330": {
+    "tags": {
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 354922970,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 214800327,
+        "lat": 37.627781,
+        "lon": -77.589146
+       },
+       {
+        "node": 214800336,
+        "lat": 37.627689,
+        "lon": -77.588988
+       }
+      ]
+     }
+    ]
+   },
+   "214800395": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 354922970,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 214800393,
+        "lat": 37.625285,
+        "lon": -77.587519
+       },
+       {
+        "node": 214800398,
+        "lat": 37.625088,
+        "lon": -77.587587
+       }
+      ]
+     }
+    ]
+   },
+   "3128258209": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 20273612,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 3128258208,
+        "lat": 37.6272071,
+        "lon": -77.5916282
+       },
+       {
+        "node": 704057657,
+        "lat": 37.627239,
+        "lon": -77.5915014
+       }
+      ]
+     }
+    ]
+   },
+   "3198187157": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 313784044,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 3198187156,
+        "lat": 37.6237444,
+        "lon": -77.5886956
+       },
+       {
+        "node": 3198187158,
+        "lat": 37.6238452,
+        "lon": -77.5886638
+       }
+      ]
+     },
+     {
+      "id": 313784045,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 3198187168,
+        "lat": 37.6237919,
+        "lon": -77.5887616
+       }
+      ]
+     }
+    ]
+   },
+   "3605720492": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 354922953,
+      "tags": {
+       "highway": "service",
+       "service": "driveway"
+      },
+      "arms": [
+       {
+        "node": 3605720485,
+        "lat": 37.6262689,
+        "lon": -77.5895368
+       },
+       {
+        "node": 3605720496,
+        "lat": 37.6266062,
+        "lon": -77.5897359
+       }
+      ]
+     }
+    ]
+   },
+   "6106866638": {
+    "tags": {
+     "crossing": "uncontrolled",
+     "highway": "crossing"
+    },
+    "roads": [
+     {
+      "id": 354922970,
+      "tags": {
+       "highway": "service"
+      },
+      "arms": [
+       {
+        "node": 214800447,
+        "lat": 37.62449,
+        "lon": -77.588651
+       },
+       {
+        "node": 3198187167,
+        "lat": 37.6244875,
+        "lon": -77.5888446
+       }
+      ]
+     }
+    ]
+   },
+   "7905736982": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 313784044,
+      "tags": {
+       "highway": "service",
+       "service": "parking_aisle"
+      },
+      "arms": [
+       {
+        "node": 3198187148,
+        "lat": 37.6238887,
+        "lon": -77.5891949
+       },
+       {
+        "node": 3198187149,
+        "lat": 37.623661,
+        "lon": -77.5893446
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

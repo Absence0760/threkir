@@ -3371,5 +3371,35 @@
    "lon": -77.5245406,
    "ele": 56.7
   }
+ },
+ "road_crossings": {
+  "fetched_at": "2026-11-20",
+  "source": "OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0",
+  "nodes": {
+   "3082535764": {
+    "tags": {},
+    "roads": [
+     {
+      "id": 307640414,
+      "tags": {
+       "highway": "service",
+       "motor_vehicle": "yes"
+      },
+      "arms": [
+       {
+        "node": 7628483588,
+        "lat": 37.5181764,
+        "lon": -77.5276177
+       },
+       {
+        "node": 3082537624,
+        "lat": 37.5182064,
+        "lon": -77.5276723
+       }
+      ]
+     }
+    ]
+   }
+  }
  }
 }

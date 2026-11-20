@@ -110,6 +110,7 @@ Deno.test('a full pass times the run with the matcher and records it for the byt
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: NEAR_SEGMENTS,
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(track()) },
     // The course has a checkpoint 900 m east of the line: the run misses it.
@@ -162,6 +163,7 @@ Deno.test('a segment with lines is timed by its crossings, off-track fixes exclu
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: { data: [gated], error: null },
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(points) },
   });
@@ -187,6 +189,51 @@ Deno.test('a failed checkpoint read scores nothing and fails the pass', async ()
   }
   assert(threw, 'a checkpoint read failure must throw (500, retried), never score without the rule');
   assert(!fake.calls.some((c) => c.name === 'record_segment_match'), 'nothing may be written');
+});
+
+Deno.test('every pass replaces the run\'s park course attempts after its efforts, and a failed write retries', async () => {
+  const ok = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  assertEquals((await scoreRun(ok.client, RUN)).outcome, 'recorded');
+  const att = ok.calls.find((c) => c.name === 'record_park_course_attempts')!.args;
+  // Circle-matched candidates have no start box, so the run set out on none:
+  // the write still goes, empty, so an attempt the run no longer has is gone.
+  assertEquals(att, { p_run_id: RUN, p_track_version: 'v1', p_matcher_version: 4, p_attempts: [] });
+
+  const failing = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: null, error: { code: '23514' } },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  let threw = false;
+  try {
+    await scoreRun(failing.client, RUN);
+  } catch {
+    threw = true;
+  }
+  assert(threw, 'a failed attempt write must throw (500, retried)');
+
+  const stale = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: NEAR_SEGMENTS,
+      record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'stale', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  assertEquals((await scoreRun(stale.client, RUN)).outcome, 'stale');
 });
 
 Deno.test('outcomes that leave nothing to score are final, and stale bytes retry', async () => {
@@ -287,6 +334,7 @@ Deno.test('the checkpoint read is chunked at the in-filter bound', async () => {
       segment_match_run_source: SOURCE,
       global_segments_in_bbox: { data: many, error: null },
       record_segment_match: { data: 'recorded', error: null },
+      record_park_course_attempts: { data: 'recorded', error: null },
     },
     objects: { [TRACK_URL]: await gzip(track()) },
   });

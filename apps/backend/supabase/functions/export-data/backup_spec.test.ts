@@ -69,8 +69,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// course_alerts. Organiser disputes (migration 20271202000003) added
 	// both legs of organiser_dispute_actions. Direct-message reactions and
 	// photos (migrations 20271213121602 + 20271213121604) added
-	// direct_message_reactions + direct_message_images.
-	assertEquals(specs.length, 89, `expected 89 specs, got ${specs.length}`);
+	// direct_message_reactions + direct_message_images. Park course attempts
+	// (migration 20280106001446) added park_course_attempts.
+	assertEquals(specs.length, 90, `expected 90 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -265,6 +266,7 @@ Deno.test('achievements / challenges / recaps exported owner-scoped (GDPR Art 20
 		'challenge_badges.json',
 		'public_recaps.json',
 		'global_segment_efforts.json',
+		'park_course_attempts.json',
 	]) {
 		const spec = specs.find((s) => s.entry === entry);
 		assertExists(spec);

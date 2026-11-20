@@ -2,8 +2,9 @@
 // Every Fitness tab at the worst case the issue #1374 rules name: a 320 dp
 // phone, 2x text and Android's 3-button navigation bar. Each tab body is a
 // HubTabBody, so the hub draws the one app bar (the strip) and the one FAB;
-// this walks every tab, fails on an overflow, and checks the hub's FAB sits
-// clear of the nav bar wherever a tab has a primary action.
+// this walks every tab, fails on an overflow, checks the hub's FAB sits
+// clear of the nav bar wherever a tab has a primary action, and that the
+// hub's ⋮ shows on the title row only for a tab with a menu.
 import 'dart:io';
 
 import 'package:core_models/core_models.dart';
@@ -99,14 +100,20 @@ void main() {
   }
 
   // The tabs with a primary action, by the label of the FAB the hub shows.
-  // History defers to the shell's centre Log button; Races keeps "Add a
-  // race" in its overflow; Plans is signed-out here. Routes' Explore views
-  // have no primary action; they are walked as their own entries below.
+  // History defers to the shell's centre Log button; Runs and Races keep
+  // their occasional adds in the hub's ⋮; Plans is signed-out here. Routes'
+  // Explore views have no primary action; they are walked as their own
+  // entries below.
   const fabs = {
-    'Runs': 'Add past run',
     'Routes': 'Import',
     'Gym': 'Log workout',
     'Nutrition': 'Log food',
+  };
+
+  // The tabs whose menu the hub's ⋮ opens, by an entry in it.
+  const menus = {
+    'Runs': 'Add past run',
+    'Races & courses': 'Add a race',
   };
 
   testWidgets('every tab fits 320 dp at 2x, with no app bar of its own and '
@@ -153,6 +160,24 @@ void main() {
         expect(tester.getRect(fab).right, lessThanOrEqualTo(_phone.width));
       } else {
         expect(fab, findsNothing, reason: '$label has no primary action');
+      }
+      final menu = find.byKey(const Key('hub-menu'));
+      if (menus[label] case final entry?) {
+        expect(menu, findsOneWidget, reason: '$label\'s menu is the hub\'s ⋮');
+        expect(tester.getRect(menu).bottom,
+            lessThanOrEqualTo(tester.getRect(find.byType(TabBar)).top + 0.5),
+            reason: '$label\'s ⋮ sits on the title row, above the strip');
+        await tester.tap(menu);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(entry), findsOneWidget, reason: '$label\'s menu');
+        expect(tester.takeException(), isNull,
+            reason: '$label\'s menu overflowed');
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      } else {
+        expect(menu, findsNothing, reason: '$label has no menu');
       }
     }
   });

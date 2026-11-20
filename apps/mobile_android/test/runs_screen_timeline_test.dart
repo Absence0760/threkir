@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/adaptive_width.dart';
+import '../lib/fab_clearance.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -226,7 +227,8 @@ void main() {
     }
   });
 
-  testWidgets('add FAB follows the active chip: All picker, then per-modality',
+  testWidgets('add follows the active chip: All picker, a run in the ⋮, then '
+      'per-modality FABs',
       (tester) async {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await pump(tester,
@@ -249,11 +251,15 @@ void main() {
     await tester.tapAt(const Offset(20, 20));
     await tester.pumpAndSettle();
 
-    // Runs chip → the manual Add-run FAB.
+    // Runs chip → no FAB: adding a past run waits in the ⋮.
     await tester.tap(find.text('Runs'));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: fab, matching: find.text(l10n.historyAddPastRun)),
-        findsOneWidget);
+    expect(fab, findsNothing);
+    await tester.tap(find.byKey(const Key('hub-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.historyAddPastRun), findsOneWidget);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
 
     // Lifts chip → adds a lift straight away.
     await tester.tap(find.text('Lifts'));
@@ -268,14 +274,30 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('run-only history keeps the plain Add-run FAB', (tester) async {
+  testWidgets('the timeline ends past the Log FAB that floats over it',
+      (tester) async {
+    await pump(tester,
+        runs: [runRow('r1')],
+        lifts: [liftRow('l1', 'Leg day')],
+        meals: [mealRow('m1', 'Rice bowl')]);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    final list = find.descendant(
+        of: find.byType(ActivityTimelineList),
+        matching: find.byType(ListView));
+    final context = tester.element(list);
+    expect(
+        tester.widget<ListView>(list).padding!.resolve(TextDirection.ltr).bottom,
+        fabScrollClearance(context));
+  });
+
+  testWidgets('run-only history adds a past run from the ⋮, not a FAB',
+      (tester) async {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await pump(tester, runs: [runRow('r1')], withGym: false);
-    expect(
-        find.descendant(
-            of: find.byType(FloatingActionButton),
-            matching: find.text(l10n.historyAddPastRun)),
-        findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    await tester.tap(find.byKey(const Key('hub-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.historyAddPastRun), findsOneWidget);
   });
 
   testWidgets('no chips when gym store is absent (run-only history)',

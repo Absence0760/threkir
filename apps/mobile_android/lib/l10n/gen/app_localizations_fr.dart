@@ -2973,9 +2973,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyAddRun => 'Ajouter une course';
 
   @override
-  String get historyAddRunTooltip => 'Ajouter une course manuellement';
-
-  @override
   String get historyAddPastRun => 'Ajouter une course passée';
 
   @override

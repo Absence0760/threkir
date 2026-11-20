@@ -782,7 +782,6 @@
   "historyDeleteTooltip": "Löschen",
   "historyCancelTooltip": "Abbrechen",
   "historyAddRun": "Lauf hinzufügen",
-  "historyAddRunTooltip": "Lauf manuell hinzufügen",
   "historyAddPastRun": "Vergangenen Lauf hinzufügen",
   "historyEmptyBodyRunPrimary": "Tippe auf {button}, um einen aufzuzeichnen, oder füge einen bereits absolvierten hinzu",
   "historyLogTooltip": "Lauf, Training oder Mahlzeit erfassen",

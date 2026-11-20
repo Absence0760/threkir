@@ -564,13 +564,17 @@ void main() {
   // opening the same run / lift / meal picker. Now each modality tab carries
   // one FAB and the cross-modal History tab defers to the shell.
   testWidgets('every modality tab puts its add in the same place; History '
-      'defers to the shell', (tester) async {
+      'defers to the shell, and Runs keeps its past-run add in the ⋮',
+      (tester) async {
     await pump(tester, runs: [runRow('r1')]);
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.byIcon(Icons.add), findsNothing);
+    expect(find.byKey(const Key('hub-menu')), findsNothing);
 
     await openTab(tester, 'Runs');
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing,
+        reason: 'the centre button records; a past run is occasional');
+    expect(find.byKey(const Key('hub-menu')), findsOneWidget);
 
     await openTab(tester, 'Gym');
     expect(find.byType(FloatingActionButton), findsOneWidget);

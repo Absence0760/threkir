@@ -782,7 +782,6 @@
   "historyDeleteTooltip": "削除",
   "historyCancelTooltip": "キャンセル",
   "historyAddRun": "ランを追加",
-  "historyAddRunTooltip": "手動でランを追加",
   "historyAddPastRun": "過去のランを追加",
   "historyEmptyBodyRunPrimary": "「{button}」をタップして記録するか、すでに終えたランを追加しましょう",
   "historyLogTooltip": "ラン・筋トレ・食事を記録",

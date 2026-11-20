@@ -2963,9 +2963,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyAddRun => 'Añadir carrera';
 
   @override
-  String get historyAddRunTooltip => 'Añadir una carrera manualmente';
-
-  @override
   String get historyAddPastRun => 'Añadir carrera pasada';
 
   @override

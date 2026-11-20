@@ -2927,9 +2927,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddRun => 'Add run';
 
   @override
-  String get historyAddRunTooltip => 'Add a run manually';
-
-  @override
   String get historyAddPastRun => 'Add past run';
 
   @override

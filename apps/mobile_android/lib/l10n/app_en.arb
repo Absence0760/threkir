@@ -3797,13 +3797,9 @@
   "@historyAddRun": {
     "description": "Label on the floating action button that opens the manual add-run form"
   },
-  "historyAddRunTooltip": "Add a run manually",
-  "@historyAddRunTooltip": {
-    "description": "Tooltip on the add-run floating action button"
-  },
   "historyAddPastRun": "Add past run",
   "@historyAddPastRun": {
-    "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
+    "description": "Label of the Runs list's manual-entry menu item and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
   },
   "historyEmptyBodyRunPrimary": "Tap {button} to record one, or add one you have already finished",
   "@historyEmptyBodyRunPrimary": {

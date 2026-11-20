@@ -2806,9 +2806,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyAddRun => 'ランを追加';
 
   @override
-  String get historyAddRunTooltip => '手動でランを追加';
-
-  @override
   String get historyAddPastRun => '過去のランを追加';
 
   @override

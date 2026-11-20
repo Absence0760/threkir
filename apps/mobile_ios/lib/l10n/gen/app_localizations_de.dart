@@ -2967,9 +2967,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historyAddRun => 'Lauf hinzufügen';
 
   @override
-  String get historyAddRunTooltip => 'Lauf manuell hinzufügen';
-
-  @override
   String get historyAddPastRun => 'Vergangenen Lauf hinzufügen';
 
   @override

@@ -2970,9 +2970,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get historyAddRun => 'Adicionar corrida';
 
   @override
-  String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
-
-  @override
   String get historyAddPastRun => 'Adicionar corrida anterior';
 
   @override
@@ -27268,9 +27265,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyAddRun => 'Adicionar corrida';
-
-  @override
-  String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
 
   @override
   String get historyAddPastRun => 'Adicionar corrida anterior';

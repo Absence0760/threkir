@@ -196,13 +196,24 @@ test('a join wider than 10 m fails the park', () => {
 	assert.deepEqual(gateParkJoins([{ nodes: [1, 2], gapM: 15 }]).map((f) => f.detail), ['join 1-2 spans 15.0 m, over 10 m']);
 });
 
-test('the release is live only when nothing fails, and a staged reason always parses', () => {
+test('the release: live when all pass, live with held courses when some fail, staged when none pass or the park fails', () => {
 	assert.deepEqual(releaseFromGate([], [{ slug: 'a', failures: [] }]), { status: 'live' });
-	const staged = releaseFromGate([], [
+	const partial = releaseFromGate([], [
 		{ slug: 'a', failures: [] },
 		{ slug: 'b', failures: [{ check: 'parking', detail: 'x' }, { check: 'parking', detail: 'y' }, { check: 'laps', detail: 'z' }] },
 	]);
-	assert.deepEqual(staged, { status: 'staged', reason: 'Go-live gate failed: b: parking, laps. Details in the manifest gate_failures.' });
+	assert.deepEqual(partial, {
+		status: 'live',
+		held: [{ course: 'b', reason: 'Go-live gate failed: parking, laps. Details in the manifest gate_failures.' }],
+	});
+	assert.deepEqual(parseRelease(partial, 'p'), partial);
+	const none = releaseFromGate([], [
+		{ slug: 'a', failures: [{ check: 'source_data', detail: 'x' }] },
+		{ slug: 'b', failures: [{ check: 'parking', detail: 'y' }] },
+	]);
+	assert.deepEqual(none, { status: 'staged', reason: 'Go-live gate failed: a: source_data; b: parking. Details in the manifest gate_failures.' });
+	const parkWide = releaseFromGate([{ check: 'join_gap', detail: 'j' }], [{ slug: 'a', failures: [] }]);
+	assert.equal(parkWide.status, 'staged', 'a park-wide failure holds every course');
 	const many = releaseFromGate(
 		[{ check: 'join_gap', detail: 'j' }],
 		Array.from({ length: 40 }, (_, i) => ({ slug: `a-very-long-course-slug-${i}`, failures: [{ check: 'major_road_crossing', detail: 'x' }] })),

@@ -44,7 +44,7 @@ scripts/parks/
 
 ### The go-live gate
 
-No person walks a course before it opens (decisions § 2600). The build holds every course to the machine checks in `lib/golive_gate.mjs` and writes the park's `release` into `manifest.json` from the result: `{ "status": "live" }` when every course passes every check, otherwise `{ "status": "staged", "reason": "Go-live gate failed: <course>: <checks>; ..." }`. Each course's manifest entry lists its `gate_failures` (check and detail), and `gate.park_failures` holds the park-wide ones. `park.json` carries no `release`; the build refuses one that does. Real runs check the course after it opens (the attempts sweep, `docs/features/park_courses.md` § Reports and closures).
+No person walks a course before it opens (decisions § 2600). The build holds every course to the machine checks in `lib/golive_gate.mjs` and writes the park's `release` into `manifest.json` from the result, per course (decisions § 2602): `{ "status": "live" }` when every course passes every check; `{ "status": "live", "held": [{ "course": "...", "reason": "..." }] }` when some fail, so the sync loads the rest and holds those out (never created, and never closed if already loaded: reported `held_live`); `{ "status": "staged", "reason": "Go-live gate failed: <course>: <checks>; ..." }` when none pass or a park-wide check fails. Each course's manifest entry lists its `gate_failures` (check and detail), and `gate.park_failures` holds the park-wide ones. `park.json` carries no `release`; the build refuses one that does. Real runs check the course after it opens (the attempts sweep, `docs/features/park_courses.md` § Reports and closures).
 
 | Check | A course fails when |
 |---|---|
@@ -220,7 +220,10 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
   is validated like the rest and never loaded: each of its courses is a
   `staged` row in the step summary and the dry run, and the summary's note
   names the park and its reason. `load.mjs` refuses one too. Staging does not
-  close a park that is already loaded. A park unstages by passing the gate:
+  close a park that is already loaded. A held course of a live park is left
+  out of the load and named in the payload's `held`, so the load neither
+  creates nor closes it; the summary reports it `held_live` when it is
+  already loaded and open, else `staged`. A park or course unstages by passing the gate:
   fix what its `gate_failures` name (reroute, move an end, refetch the
   snapshot), rebuild, commit `park.json` with the outputs, preview with a
   `dry_run` dispatch (its courses move from `staged` to `created`), and

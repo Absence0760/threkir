@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 import { cataloguePayload, loadSql } from './lib/catalogue_payload.mjs';
 import { parseRelease } from './lib/catalogue_release.mjs';
+import { loadablePayload } from './lib/catalogue_sync.mjs';
 
 const USAGE =
 	'usage: node scripts/parks/load.mjs <catalogue/park dir> --club-id <uuid> --author-id <uuid> [--enqueue-backfill]';
@@ -74,10 +75,12 @@ export function readRelease(dir) {
  */
 export function parkLoadSql(dir, opts) {
 	const release = readRelease(dir);
-	const payload = readPayload(dir);
+	const full = readPayload(dir);
 	if (release.status === 'staged') {
-		throw new Error(`${payload.park.slug} is staged and does not load until every course passes the go-live gate (decisions § 2600). Reason: ${release.reason}`);
+		throw new Error(`${full.park.slug} is staged and does not load until a course passes the go-live gate (decisions § 2600). Reason: ${release.reason}`);
 	}
+	// Held courses stay out, and the load never closes one already loaded (§ 2602).
+	const payload = loadablePayload(full, release);
 	return { payload, sql: loadSql(payload, opts) };
 }
 

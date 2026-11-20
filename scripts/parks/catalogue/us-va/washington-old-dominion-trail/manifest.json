@@ -11,8 +11,29 @@
     "osm_boundary": "relation/1991154"
   },
   "release": {
-    "status": "staged",
-    "reason": "Go-live gate failed: wod-reston-to-vienna-10k: major_road_crossing; wod-leesburg-to-sterling-half: major_road_crossing; wod-purcellville-to-reston-marathon: major_road_crossing; wod-purcellville-to-clarks-crossing-50k: major_road_crossing; wod-purcellville-to-clarks-crossing-100k: major_road_crossing. Details in the manifest gate_failures."
+    "status": "live",
+    "held": [
+      {
+        "course": "wod-reston-to-vienna-10k",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "wod-leesburg-to-sterling-half",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "wod-purcellville-to-reston-marathon",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "wod-purcellville-to-clarks-crossing-50k",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "wod-purcellville-to-clarks-crossing-100k",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      }
+    ]
   },
   "gate": {
     "version": 1,

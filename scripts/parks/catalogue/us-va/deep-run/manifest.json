@@ -11,8 +11,13 @@
     "osm_boundary": "relation/11623997"
   },
   "release": {
-    "status": "staged",
-    "reason": "Go-live gate failed: deep-run-park-5k: backtrack. Details in the manifest gate_failures."
+    "status": "live",
+    "held": [
+      {
+        "course": "deep-run-park-5k",
+        "reason": "Go-live gate failed: backtrack. Details in the manifest gate_failures."
+      }
+    ]
   },
   "gate": {
     "version": 1,

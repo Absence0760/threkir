@@ -130,17 +130,28 @@ test('the gate puts a park live when every course passes, and the build reads no
 	assert.throws(() => build(/** @type {any} */ ({ ...spec(), release: { status: 'live' } })), /declares a release, but the go-live gate derives it/);
 });
 
+test('a course that fails is held while its passing sibling loads; missing data still holds a course', () => {
+	// The point-to-point keeps its ends; the out-and-back's start has no course_ends entry.
+	const extra = { road_crossings: { nodes: {} }, course_ends: { ends: [{ ...lot(0.06), lat: 0 }, { ...lot(0.015034), lat: 0 }] } };
+	const manifest = build(spec(), { extra })('manifest.json');
+	assert.equal(manifest.release.status, 'live');
+	assert.deepEqual(manifest.release.held.map((/** @type {any} */ h) => h.course), ['oab']);
+	assert.match(manifest.release.held[0].reason, /^Go-live gate failed: source_data\./);
+	assert.deepEqual(manifest.race_courses[0].gate_failures, []);
+});
+
 test('missing gate data stages the park, never publishes it', () => {
 	const manifest = build(spec(), { extra: {} })('manifest.json');
 	assert.equal(manifest.release.status, 'staged');
 	assert.match(manifest.release.reason, /^Go-live gate failed: p2p: source_data; oab: source_data\./);
 });
 
-test('a bare cycleway with no foot confirmation stages the park on foot_access', () => {
+test('a bare cycleway with no foot confirmation holds the course that walks it on foot_access', () => {
 	const s = spec();
 	delete s.trail_review.foot_confirmed;
 	const manifest = build(s)('manifest.json');
-	assert.equal(manifest.release.status, 'staged');
+	assert.equal(manifest.release.status, 'live', 'the out-and-back stays on way 30 and passes');
+	assert.deepEqual(manifest.release.held.map((/** @type {any} */ h) => h.course), ['p2p']);
 	assert.deepEqual(manifest.race_courses[0].gate_failures, [
 		{ check: 'foot_access', detail: 'way 31 is closed to people on foot (highway=cycleway)' },
 	]);

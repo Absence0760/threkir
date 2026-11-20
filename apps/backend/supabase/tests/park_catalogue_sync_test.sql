@@ -6,11 +6,13 @@
 -- checkpoints), never for a metadata-only change; a course the manifest drops
 -- is closed, not deleted, keeps its efforts, is reported once, and reopens
 -- when the manifest names it again; an operator's closure is never touched;
--- an author outside the club is still refused.
+-- an author outside the club is still refused. A course the go-live gate
+-- holds out (the payload's `held`, decisions § 2602) is never closed by its
+-- absence, and a held course that was never loaded is never created.
 
 begin;
 
-select plan(29);
+select plan(33);
 
 -- ── Fixture ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -71,7 +73,12 @@ union all
 select 'checkpoint_c', jsonb_set(j, '{courses,2,checkpoints}', '[{"lat": 10.0245, "lng": 20.0045}]')
   from manifests where k = 'base'
 union all
-select 'drop_c', j #- '{courses,2}' from manifests where k = 'base';
+select 'drop_c', j #- '{courses,2}' from manifests where k = 'base'
+union all
+select 'hold_c', jsonb_set(j #- '{courses,2}', '{held}', '["pcs-c"]') from manifests where k = 'base'
+union all
+select 'hold_new', jsonb_set(jsonb_set(j, '{courses,2,checkpoints}', '[{"lat": 10.0245, "lng": 20.0045}]'), '{held}', '["pcs-new"]')
+  from manifests where k = 'base';
 grant select on manifests to service_role;
 
 create temp table loads (n int, course_slug text, park_course_id uuid, global_segment_id uuid, route_id uuid,
@@ -243,6 +250,38 @@ select is(
      from loads where n = 6 and course_slug = 'pcs-c'),
   array['pcs-c:updated:true'],
   'a new checkpoint changes what the matcher scores: updated, with a backfill');
+
+-- ── 6b. Held by the go-live gate (§ 2602) ──
+-- A loaded course the gate now fails is left out of the payload's courses and
+-- named in held: the load must neither close nor touch it.
+savepoint held;
+insert into versions values (60, pg_temp.row_versions());
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+select pg_temp.load(60, 'hold_c');
+select pg_temp.load(61, 'hold_new');
+reset role;
+set local "request.jwt.claims" = '{}';
+
+select is(
+  (select array_agg(course_slug || ':' || action order by course_slug) from loads where n = 60),
+  array['pcs-a:unchanged', 'pcs-b:unchanged'],
+  'a held course is not reported closed');
+select is(
+  (select array[pc.status, coalesce(pc.status_note, '<null>')] from park_courses pc where pc.id =
+     (select park_course_id from loads where n = 1 and course_slug = 'pcs-c')),
+  array['open', '<null>'],
+  'a loaded course the gate holds out stays open');
+select is(
+  (select array_agg(x order by x) from unnest(pg_temp.row_versions()) x where x like '%pcs-c%'),
+  (select array_agg(x order by x) from unnest((select v from versions where n = 60)) x where x like '%pcs-c%'),
+  'and none of the held course''s rows is written');
+select is(
+  (select count(*) from park_courses pc join parks p on p.id = pc.park_id
+    where p.slug = 'pcs-test-park' and pc.slug = 'pcs-new'),
+  0::bigint,
+  'a held course that was never loaded is never created');
+release savepoint held;
 
 -- ── 7. Removed ──
 set local role service_role;

@@ -1,7 +1,9 @@
-// The go-live gate (decisions § 2600): whether a built park may load into
-// production, decided by machine checks alone. Nobody walks a course before it
-// opens; a park whose every course passes every check is `live`, and one with
-// any failure is `staged` with the failing checks as its reason. Real runs
+// The go-live gate (decisions § 2600, § 2602): whether a built park and each
+// of its courses may load into production, decided by machine checks alone.
+// Nobody walks a course before it opens. A course that passes every check
+// loads; one that fails is held out (never created, and never closed if it is
+// already loaded); a park none of whose courses pass, or that fails a
+// park-wide check, is `staged` with the failing checks as its reason. Real runs
 // check the course after it opens (the attempts sweep, park_courses.md
 // § Reports and closures).
 //
@@ -297,8 +299,10 @@ export function gateParkJoins(joins) {
 }
 
 /**
- * The park's release from its gate results: live when nothing failed, else
- * staged with a reason naming each failing course and check, within the
+ * The park's release from its gate results (decisions § 2602): `live` when
+ * every course passes; `live` with `held` courses when some pass, so the sync
+ * loads the passing ones and holds the rest out; `staged` when none pass or a
+ * park-wide check fails. A reason lists each failing check once, within the
  * release's 500 characters.
  *
  * @param {GateFailure[]} parkFailures
@@ -308,17 +312,36 @@ export function gateParkJoins(joins) {
 export function releaseFromGate(parkFailures, courses) {
 	const failing = courses.filter((c) => c.failures.length > 0);
 	if (parkFailures.length === 0 && failing.length === 0) return { status: 'live' };
+	const checksOf = (/** @type {GateFailure[]} */ f) => [...new Set(f.map((x) => x.check))].join(', ');
+	if (parkFailures.length === 0 && failing.length < courses.length) {
+		return {
+			status: 'live',
+			held: failing.map((c) => ({
+				course: c.slug,
+				reason: fit(`Go-live gate failed: ${checksOf(c.failures)}`, [], '. Details in the manifest gate_failures.'),
+			})),
+		};
+	}
 	const parts = [
-		...(parkFailures.length > 0 ? [`park: ${[...new Set(parkFailures.map((f) => f.check))].join(', ')}`] : []),
-		...failing.map((c) => `${c.slug}: ${[...new Set(c.failures.map((f) => f.check))].join(', ')}`),
+		...(parkFailures.length > 0 ? [`park: ${checksOf(parkFailures)}`] : []),
+		...failing.map((c) => `${c.slug}: ${checksOf(c.failures)}`),
 	];
-	const head = 'Go-live gate failed: ';
-	const tail = '. Details in the manifest gate_failures.';
+	return { status: 'staged', reason: fit('Go-live gate failed: ', parts, '. Details in the manifest gate_failures.') };
+}
+
+/**
+ * `head` and as many `parts` as fit, then "and N more", then `tail`, within
+ * a release reason's 500 characters.
+ *
+ * @param {string} head
+ * @param {string[]} parts
+ * @param {string} tail
+ */
+function fit(head, parts, tail) {
 	let kept = parts.length;
-	const reason = () =>
-		`${head}${parts.slice(0, kept).join('; ')}${kept < parts.length ? `; and ${parts.length - kept} more` : ''}${tail}`;
-	while (kept > 1 && reason().length > MAX_STAGED_REASON_LENGTH) kept--;
-	return { status: 'staged', reason: reason().slice(0, MAX_STAGED_REASON_LENGTH) };
+	const text = () => `${head}${parts.slice(0, kept).join('; ')}${kept < parts.length ? `; and ${parts.length - kept} more` : ''}${tail}`;
+	while (kept > 1 && text().length > MAX_STAGED_REASON_LENGTH) kept--;
+	return text().slice(0, MAX_STAGED_REASON_LENGTH);
 }
 
 /**

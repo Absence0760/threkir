@@ -11,8 +11,25 @@
     "osm_boundary": "relation/20029796"
   },
   "release": {
-    "status": "staged",
-    "reason": "Go-live gate failed: river-road-to-prospect-half: major_road_crossing; orchard-road-to-elam-marathon: major_road_crossing; pamplin-50mi: major_road_crossing; pamplin-100k: major_road_crossing. Details in the manifest gate_failures."
+    "status": "live",
+    "held": [
+      {
+        "course": "river-road-to-prospect-half",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "orchard-road-to-elam-marathon",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "pamplin-50mi",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      },
+      {
+        "course": "pamplin-100k",
+        "reason": "Go-live gate failed: major_road_crossing. Details in the manifest gate_failures."
+      }
+    ]
   },
   "gate": {
     "version": 1,

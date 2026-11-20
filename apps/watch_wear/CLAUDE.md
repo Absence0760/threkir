@@ -582,8 +582,8 @@ each buzzes (the workout's step and completion buzzes) and speaks through
 `title3` above the clock, in ambient too. Stop settles the timer first, so a
 recording that ends in the finish box (or 5 m short) finishes there. The rule
 is the server matcher's (`LiveCourseTimerTest` replays
-`fixtures/park_course_runs.json` and must match its efforts to the
-millisecond); the board's time is still the server's. The phone writes
+`fixtures/park_course_runs.json` and `SegmentsGateCasesTest` every box case of
+`fixtures/segments_gate_cases.json`, both to the matcher's millisecond); the board's time is still the server's. The phone writes
 `/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
 `WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
 path and keys held by `DataLayerContractTest`): the courses the runner opened

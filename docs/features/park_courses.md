@@ -10,7 +10,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 |---|---|
 | `parks` + `park_courses` tables, RLS, grants | Shipped (migration `20271115002383`) |
 | Checkpoint rule in the catalogue matcher (`segments` parity pair) | Shipped, web + Dart |
-| Live course timing on the Apple Watch (#1446): "Timing started" on leaving the start box, "Finished! 8:42:10" on entering the finish box, each with a buzz (every lap buzzes; the line kept on screen and on the summary is the fastest lap, the one the board keeps: "Finished! Best 21:42" once there are two), by the box rule streamed on the watch's own line fixes (`CourseBoxTiming.swift`, a one-way port of `_scoreByGates`, held to `segments_gate_cases.json` and `park_course_runs.json` to the millisecond) (decisions § 2598, § 2599) | Built and simulator-tested on watchOS; the phone sends the `park_course` push on Navigate this course (row below). No device run |
+| Live course timing on the Apple Watch (#1446): "Timing started" on leaving the start box, "Finished! 8:42:10" on entering the finish box, each with a buzz (every lap buzzes; the line kept on screen and on the summary is the fastest lap, the one the board keeps: "Finished! Best 21:42" once there are two), by the box rule streamed on the watch's own line fixes (`CourseBoxTiming.swift`, a one-way port of `_scoreByGates`, held to `segments_gate_cases.json` and `park_course_runs.json` to the millisecond) (decisions § 2598, § 2599) | Built and simulator-tested on watchOS; the phone sends the `park_course` push on Run this course (row below). No device run |
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
@@ -26,7 +26,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, nine point-to-point and out-and-back courses up to 50 miles, decisions § 2581) is staged by the go-live gate (every course crosses a trunk road, or a primary road with no signal, at grade; the Shiplock marathon and the Jamestown marathon also have no public car park within 800 m of an end). High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; six linear race courses, 10K to 100K) loads its 10K and 50K and holds the other four (§ 2602). Whether a park loads is the gate's call (decisions § 2600). See *Loading courses* |
 | Live course timing on the Wear OS watch: "Timing started" / "Finished! 8:42:10" with a buzz (each lap announced with its own time; the screen and the summary keep the fastest, "Finished! Best 21:42", what the board keeps), fed every stored line fix at its stored `ts`, by the matcher's box rule ported to Kotlin (`LiveCourseTimer.kt`, the `live_course_timer` pair, held to `fixtures/park_course_runs.json`; issue #1446, decisions § 2595) (decisions § 2595, § 2599) | Built and unit-tested; the phone writes the `/park_courses` Data Layer item (row below), not yet run on a device |
-| The phone puts courses on the watches (#1446): Navigate this course sends the course to the wrist. Wear OS gets the courses the runner navigated, newest first, up to 8, as `/park_courses` (`watch_park_courses.dart` + `WearParkCoursesBridge.kt`, held to `fixtures/wear_park_courses_payload.json`), restated at startup and emptied on sign-out; the Apple Watch gets the one being navigated as its armed route plus the `park_course` push (`AppleWatchRouteBridge.armParkCourse`, claim (7c) of `check_watch_ios_source.mjs`), and every other arm clears it. Public catalogue geometry only | Built and unit-tested on both phones, no paired device run |
+| The phone puts courses on the watches (#1446): Run this course sends the course to the wrist. Wear OS gets the courses the runner navigated, newest first, up to 8, as `/park_courses` (`watch_park_courses.dart` + `WearParkCoursesBridge.kt`, held to `fixtures/wear_park_courses_payload.json`), restated at startup and emptied on sign-out; the Apple Watch gets the one being navigated as its armed route plus the `park_course` push (`AppleWatchRouteBridge.armParkCourse`, claim (7c) of `check_watch_ios_source.mjs`), and every other arm clears it. Public catalogue geometry only | Built and unit-tested on both phones, no paired device run |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -659,10 +659,13 @@ they already return to the screen the runner came from.
   the reader zooms without flickering mid-move. The key lists the start and finish (below), the
   checkpoints, the turn-around, the kilometre or mile badges and the ▶
   direction arrows. An elevation profile, linked to the map, shows when every
-  point has a height. The credit is one line (below). "Navigate this course"
-  is the filled primary action, "Download GPX" the outline one (primary when
-  there is no route). There is one filled action: Navigate this course when
-  the course has a route, with "Get directions to the start" as an outline
+  point has a height. The credit is one line (below). On the phone the
+  filled primary action is "Run this course", which loads the course into the
+  recorder ready to start and does not start it (decisions § 2604); on the web,
+  which records no runs, it is "See the route", opening the course's route
+  page. "Download GPX" is the outline one (primary when there is no route).
+  There is one filled action: Run this course / See the route when the course
+  has a route, with "Get directions to the start" as an outline
   button above it; with no route, "Get directions to the start" is the filled
   one and the GPX an outline (decisions § 2582). A stored `road` surface
   reads "Paved" in the facts, never "Road" (`parks.surfacePaved`; the stored
@@ -862,7 +865,7 @@ changes and climbs on the way, the checkpoints and the laps.
 - **Not while closed.** A closed course shows no guide anywhere: not on the
   course page or the share page (web or mobile), not in the share page's
   JSON-LD, and not in its meta description (which already says "Currently
-  closed."). The guide goes with Navigate and the GPX, all three gated by one
+  closed."). The guide goes with Run this course / See the route and the GPX, all three gated by one
   predicate, `courseOffersWayfinding` (web `parks/park_courses.ts`, mobile
   `park_courses.dart`).
 
@@ -871,8 +874,8 @@ changes and climbs on the way, the checkpoints and the laps.
 The surfaces say *course* and *time trial*, never *race*, *compete* or
 *register*. Every course page carries the stay-on-trail notice and the
 geometry attribution (`osm` credits OpenStreetMap contributors, `nps` the
-National Park Service). A closed course shows a banner and hides "Navigate
-this course", the GPX and the route guide; its times and boards stay, and a run over it while it is closed
+National Park Service). A closed course shows a banner and hides "Run this
+course" (web: "See the route"), the GPX and the route guide; its times and boards stay, and a run over it while it is closed
 is not timed (see *Matching*).
 
 These follow the owner-approved permit conditions (memo
@@ -966,7 +969,7 @@ closure, and an admin cannot reopen a catalogue closure (it would be closed
 again on the next release; put the course back in the manifest instead).
 
 **Reporting.** Every course page has "Report a problem with this course" with
-its notices, away from Navigate (web: under `ParkCourseNotices`; mobile: at the
+its notices, away from Run this course / See the route (web: under `ParkCourseNotices`; mobile: at the
 foot of `ParkCourseScreen`). It works signed out, so park staff need no
 account. The reporter picks a reason (`course_hazard`, `course_closure`,
 `course_off_trail`, `land_manager_request`, `rights_holder_request` or

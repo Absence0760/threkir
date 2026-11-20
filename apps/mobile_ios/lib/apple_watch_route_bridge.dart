@@ -238,7 +238,7 @@ class AppleWatchRouteBridge {
   }
 
   /// Queue [listing] as the wrist's armed route and the course it times:
-  /// what "Navigate this course" does on an iPhone with a paired watch.
+  /// what "Run this course" does on an iPhone with a paired watch.
   /// The route is the course line itself (the segment polyline, thinned to
   /// [kMaxAppleWatchRoutePoints]). Never throws: nobody is waiting on it,
   /// so a course the wrist cannot time, no paired watch or a refused push is

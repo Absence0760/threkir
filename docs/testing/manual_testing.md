@@ -388,8 +388,8 @@ See [park_courses.md](../features/park_courses.md) (the box rule, "Why no time",
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Live start and finish (phone) | On a park course page tap "Navigate this course", start a run, leave the green start box going forward, run the course, enter the red finish box | "Timing started" with a short buzz on leaving the start box; "Finished! <time>" with a stronger buzz on entering the finish box; the time matches the board after upload. Voice cues follow the voice setting. |
-| Nearby course, no navigation (phone) | Start a run at a course's start box without tapping Navigate, then leave the box going forward | "Timing started: <course>" once; nothing if offline, and the run records normally either way. |
+| Live start and finish (phone) | On a park course page tap "Run this course" (it opens the recorder with the course loaded and does not start), tap Start, leave the green start box going forward, run the course, enter the red finish box | "Timing started" with a short buzz on leaving the start box; "Finished! <time>" with a stronger buzz on entering the finish box; the time matches the board after upload. Voice cues follow the voice setting. |
+| Nearby course, no navigation (phone) | Start a run at a course's start box without tapping Run this course, then leave the box going forward | "Timing started: <course>" once; nothing if offline, and the run records normally either way. |
 | Off the course (phone) | During a timed course, walk more than 35 m off the line | One "You're off the course. Head back to checkpoint N." with a banner and a buzz; it clears once back within 25 m and doesn't repeat on GPS jitter. |
 | Checkpoints on the live map (phone) | Run a timed course past each checkpoint | Each checkpoint is a grey number until passed, then ticked; a screen reader says "Checkpoint 3, passed". |
 | Stop short (phone) | Start a timed course and stop before the finish | Stopping is never blocked; the summary says "This won't count as a course time. Your run is still saved." and the run saves. |

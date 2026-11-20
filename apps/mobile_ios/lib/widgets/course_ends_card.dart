@@ -25,7 +25,7 @@ class CourseEndsCard extends StatelessWidget {
   final String? instruction;
 
   /// Whether "Get directions to the start" is the screen's one filled action:
-  /// not when the screen has Navigate this course.
+  /// not when the screen has Run this course.
   final bool primary;
 
   const CourseEndsCard({

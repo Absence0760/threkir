@@ -296,10 +296,10 @@ let modelPromise: Promise<GlbModel> | null = null;
 /// The GLB is fetched once per page, on the first dialog that wants him, and
 /// never in the page's own first paint.
 function loadModel(): Promise<GlbModel> {
-	// Imported here rather than at the top so the URL module, which only Vite
-	// can resolve, stays out of this file's unit tests.
-	modelPromise ??= import('#lib/assets/grisnir/grisnir-trot.glb?url')
-		.then(({ default: url }) => fetch(url))
+	// `new URL(…, import.meta.url)` rather than an import: Vite rewrites it to
+	// the hashed asset in place, so no module (and no chunk of its own) carries
+	// the URL, and this file's unit tests never try to load a .glb.
+	modelPromise ??= fetch(new URL('../../../assets/grisnir/grisnir-trot.glb', import.meta.url).href)
 		.then((r) => {
 			if (!r.ok) throw new Error(`grisnir glb: HTTP ${r.status}`);
 			return r.arrayBuffer();

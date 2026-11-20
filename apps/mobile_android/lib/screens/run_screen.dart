@@ -7149,7 +7149,7 @@ class RunTopBanners extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.wrong_location,
-                      color: semantic.onDanger, size: 22),
+                      color: semantic.onDanger, size: 20),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(

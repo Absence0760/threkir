@@ -255,6 +255,7 @@ class AppleWatchRouteBridge {
       final points = shaped.points;
       if (points == null) return false;
       if (!await isAvailable()) return false;
+      // single-flight: a method-channel push to the watch, not a route.
       await push(
         id: listing.course.routeId ?? listing.course.id,
         name: listing.segment.name,

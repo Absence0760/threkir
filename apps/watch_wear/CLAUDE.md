@@ -84,6 +84,9 @@ apps/watch_wear/
             │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo, the finish line re-armed after an undo and a restart
             │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
             │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course, the kept server clock offset (24 h) and an undone finish (decisions § 2450)
+            │   ├── CourseGates.kt           # box half of the `course_gates` pair, one-way port: `gateBoxParts`, `gateTimingEdges`, `linesChain` (fixtures/course_gates_cases.json)
+            │   ├── LiveCourseTimer.kt       # live park-course timer (#1446, decisions § 2595): the matcher's box rule streamed fix by fix, `CourseEvent.Started` / `Finished`, `settle` on Stop; held to fixtures/park_course_runs.json
+            │   ├── ParkCourseBridge.kt      # Wearable Data Layer listener for the park courses the phone puts on the watch (`/park_courses`, fail-closed; fixtures/wear_park_courses_payload.json)
             │   ├── LineCalibration.kt       # debug builds only: the #1304 line-calibration capture + scoring + CSV, Kotlin half of the phone's `line_calibration.dart` (decisions § 2453)
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
             │   ├── ui/LineCalibrationScreen.kt # debug builds only: the line-calibration screen, opened from the pre-run list behind `BuildConfig.DEBUG`
@@ -560,6 +563,24 @@ Updates: `RunRecordingService` calls `ActiveRunComplicationService.requestUpdate
 
 What the UI exposes during a recording, for quick reference when reading
 `ui/RunWatchApp.kt`:
+
+**Live park course timing (#1446, decisions § 2595).** A course the phone put
+on the watch (`ParkCourseBridge`, `/park_courses`) is a row at the top of the
+route picker captioned "Course · 5.0 km". Picking it makes `start()` build a
+`LiveCourseTimer` (`courseTimerFor`), fed every fresh fix by the race feed's
+rule (`raceFixOfferable`, `raceFixDeviceMs`) in its own catch. Leaving the
+start box forward says "Timing started", entering the finish box having passed
+every checkpoint in order within the length guard says "Finished! 8:42:10":
+each buzzes (the workout's step and completion buzzes) and speaks through
+`RunRecordingService.courseCue`, and the running screen shows the last one in
+`title3` above the clock, in ambient too. Stop settles the timer first, so a
+recording that ends in the finish box (or 5 m short) finishes there. The rule
+is the server matcher's (`LiveCourseTimerTest` replays
+`fixtures/park_course_runs.json` and must match its efforts to the
+millisecond); the board's time is still the server's. Nothing reaches a runner
+until the phone writes `/park_courses` (contract
+`fixtures/wear_park_courses_payload.json`). Wiring pinned by
+`ParkCourseWiringTest`.
 
 **Post-run Discard is a two-press confirm, like the recovery prompt's.**
 `PostRunScreen`'s bottom-end `×` renders only on the `!synced` branch, and

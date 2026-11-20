@@ -4,7 +4,8 @@ import 'package:core_models/core_models.dart' show GlobalSegmentRow, Waypoint;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChartPalette;
+import 'package:ui_kit/ui_kit.dart'
+    show AppMotion, AppSemanticColors, ChartPalette;
 
 import '../course_gates.dart';
 import '../course_jump.dart';
@@ -525,7 +526,8 @@ class ParkCourseMapState extends State<ParkCourseMap>
     }
     final from = _map.camera;
     final to = fit.fit(from);
-    final curve = CurvedAnimation(parent: _move, curve: Curves.easeInOut);
+    final curve =
+        CurvedAnimation(parent: _move, curve: AppMotion.curveEmphasised);
     void step() {
       final t = curve.value;
       _map.move(

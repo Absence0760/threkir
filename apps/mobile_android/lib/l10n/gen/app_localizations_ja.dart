@@ -21985,6 +21985,26 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String parkGuideCrossRoad(String at) {
+    return '$at：道路を渡ります。車に注意してください。';
+  }
+
+  @override
+  String parkGuideCrossRoadNamed(String at, String name) {
+    return '$at：道路（$name）を渡ります。車に注意してください。';
+  }
+
+  @override
+  String parkGuideCrossRoadSignal(String at) {
+    return '$at：信号で道路を渡ります。';
+  }
+
+  @override
+  String parkGuideCrossRoadNamedSignal(String at, String name) {
+    return '$at：信号で道路（$name）を渡ります。';
+  }
+
+  @override
   String parkGuideSurfacePaved(String at) {
     return '$at：ここから舗装路。';
   }

@@ -477,6 +477,89 @@
    ]
   },
   {
+   "name": "roads crossed at grade: named or not, at a traffic light or not",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Washington and Old Dominion Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 820,
+      "crossing": "road",
+      "name": "Hunter Mill Road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 2400,
+      "crossing": "road",
+      "name": "  Sunset Hills Road "
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3100,
+      "crossing": "road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3500,
+      "crossing": "road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3900,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 5000
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startNamed",
+     "name": "Washington and Old Dominion Trail"
+    },
+    {
+     "key": "crossRoadNamedSignal",
+     "at": 820,
+     "name": "Hunter Mill Road"
+    },
+    {
+     "key": "crossRoadNamed",
+     "at": 2400,
+     "name": "Sunset Hills Road"
+    },
+    {
+     "key": "crossRoadSignal",
+     "at": 3100
+    },
+    {
+     "key": "crossRoad",
+     "at": 3500
+    },
+    {
+     "key": "bridge",
+     "at": 3900
+    },
+    {
+     "key": "finish",
+     "at": 5000
+    }
+   ]
+  },
+  {
    "name": "a road step with no length",
    "guide": {
     "version": 1,
@@ -518,6 +601,106 @@
      {
       "kind": "finish",
       "at_m": 900
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a bridge crossing with a name",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "bridge",
+      "name": "Mill Bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a ford crossing with a signal",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "ford",
+      "signal": true
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road crossing whose signal is not true",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "road",
+      "signal": false
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road crossing with a blank name",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "road",
+      "name": " "
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
      }
     ]
    },
@@ -2207,6 +2390,87 @@
      "from": 5000,
      "to": 8000,
      "lines": [
+      {
+       "key": "finish",
+       "at": 8000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a linear course: road stretches and road crossings read in the full view, not the summary",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Washington and Old Dominion Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 820,
+      "crossing": "road",
+      "name": "Hunter Mill Road",
+      "signal": true
+     },
+     {
+      "kind": "road",
+      "at_m": 4000,
+      "length_m": 120,
+      "name": "Park Road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 6100,
+      "crossing": "road"
+     },
+     {
+      "kind": "finish",
+      "at_m": 8000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Washington and Old Dominion Trail"
+    },
+    {
+     "key": "finish",
+     "at": 8000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "crossRoadNamedSignal",
+       "at": 820,
+       "name": "Hunter Mill Road"
+      },
+      {
+       "key": "roadNamed",
+       "at": 4000,
+       "name": "Park Road",
+       "length": 120
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 8000,
+     "lines": [
+      {
+       "key": "crossRoad",
+       "at": 6100
+      },
       {
        "key": "finish",
        "at": 8000

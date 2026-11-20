@@ -30258,6 +30258,48 @@
       }
     }
   },
+  "parkGuideCrossRoad": "{at}: cross the road. Watch for cars.",
+  "@parkGuideCrossRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoad): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadNamed": "{at}: cross {name}. Watch for cars.",
+  "@parkGuideCrossRoadNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadNamed): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadSignal": "{at}: cross the road at the traffic light.",
+  "@parkGuideCrossRoadSignal": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadSignal): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadNamedSignal": "{at}: cross {name} at the traffic light.",
+  "@parkGuideCrossRoadNamedSignal": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadNamedSignal): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "parkGuideSurfacePaved": "{at}: paved from here.",
   "@parkGuideSurfacePaved": {
     "description": "Park course route guide (#1344, web parks.guide.surfacePaved).",

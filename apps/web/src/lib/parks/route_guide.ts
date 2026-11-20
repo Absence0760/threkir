@@ -9,7 +9,7 @@
  * (docs/architecture/parity_pairs.md). Both read the case table in
  * `fixtures/route_guide_cases.json`, so which template a step takes, and with
  * which values, changes there or nowhere. The vocabularies mirror the CHECK
- * `private.park_course_route_guide_ok` (migration 20271212001344) and the
+ * `private.park_course_route_guide_ok` (migration 20280105001344) and the
  * generator `scripts/parks/lib/route_guide.mjs`.
  */
 
@@ -18,7 +18,7 @@ export const GUIDE_WAYS = ['fire_road', 'road', 'path'] as const;
 export const GUIDE_ROTATIONS = ['clockwise', 'counterclockwise'] as const;
 export const GUIDE_SIDES = ['left', 'right'] as const;
 export const GUIDE_SURFACES = ['paved', 'gravel', 'dirt', 'unpaved', 'boardwalk'] as const;
-export const GUIDE_CROSSINGS = ['bridge', 'ford'] as const;
+export const GUIDE_CROSSINGS = ['bridge', 'ford', 'road'] as const;
 
 type Turn = (typeof GUIDE_TURNS)[number];
 type Way = (typeof GUIDE_WAYS)[number];
@@ -38,7 +38,9 @@ export type RouteGuideStep =
 	| { kind: 'lap'; at_m: number; lap: number; of: number }
 	| ({ kind: 'junction'; at_m: number; turn: Turn } & GuideTarget)
 	| { kind: 'road'; at_m: number; length_m: number; name?: string }
-	| { kind: 'crossing'; at_m: number; crossing: (typeof GUIDE_CROSSINGS)[number] }
+	| { kind: 'crossing'; at_m: number; crossing: 'bridge' | 'ford' }
+	/** A motor road crossed at grade; not the `road` kind, which is a stretch run along one. */
+	| { kind: 'crossing'; at_m: number; crossing: 'road'; name?: string; signal?: true }
 	| { kind: 'surface'; at_m: number; surface: (typeof GUIDE_SURFACES)[number] }
 	| { kind: 'climb'; at_m: number; gain_m: number; length_m: number }
 	| { kind: 'checkpoint'; at_m: number; order: number; of: number }
@@ -98,8 +100,21 @@ function readStep(raw: unknown): RouteGuideStep | null {
 			if (!('name' in s)) return { kind: 'road', at_m, length_m: s.length_m };
 			return isLabel(s.name) ? { kind: 'road', at_m, length_m: s.length_m, name: s.name.trim() } : null;
 		}
-		case 'crossing':
-			return oneOf(GUIDE_CROSSINGS, s.crossing) ? { kind: 'crossing', at_m, crossing: s.crossing } : null;
+		case 'crossing': {
+			if (!oneOf(GUIDE_CROSSINGS, s.crossing)) return null;
+			if (s.crossing !== 'road') {
+				return 'name' in s || 'signal' in s ? null : { kind: 'crossing', at_m, crossing: s.crossing };
+			}
+			if ('signal' in s && s.signal !== true) return null;
+			if ('name' in s && !isLabel(s.name)) return null;
+			return {
+				kind: 'crossing',
+				at_m,
+				crossing: 'road',
+				...(isLabel(s.name) ? { name: s.name.trim() } : {}),
+				...(s.signal === true ? { signal: true as const } : {}),
+			};
+		}
 		case 'surface':
 			return oneOf(GUIDE_SURFACES, s.surface) ? { kind: 'surface', at_m, surface: s.surface } : null;
 		case 'climb':
@@ -173,6 +188,10 @@ export const GUIDE_LINE_KEYS = [
 	'roadNamed',
 	'bridge',
 	'ford',
+	'crossRoad',
+	'crossRoadNamed',
+	'crossRoadSignal',
+	'crossRoadNamedSignal',
 	'surfacePaved',
 	'surfaceGravel',
 	'surfaceDirt',
@@ -212,6 +231,20 @@ const SURFACE_KEY: Record<(typeof GUIDE_SURFACES)[number], GuideLineKey> = {
 	boardwalk: 'surfaceBoardwalk',
 };
 
+/** The line for a crossing: the bridge or ford, or the road by name, at its signal when it has one. */
+function crossingLine(s: Extract<RouteGuideStep, { kind: 'crossing' }>): GuideLine {
+	if (s.crossing !== 'road') return { key: s.crossing, at: s.at_m };
+	const key = `crossRoad${s.name !== undefined ? 'Named' : ''}${s.signal ? 'Signal' : ''}` as GuideLineKey;
+	return s.name !== undefined ? { key, at: s.at_m, name: s.name } : { key, at: s.at_m };
+}
+
+/** The line for a stretch of road between two pieces of trail. */
+function roadLine(s: Extract<RouteGuideStep, { kind: 'road' }>): GuideLine {
+	return s.name !== undefined
+		? { key: 'roadNamed', at: s.at_m, name: s.name, length: s.length_m }
+		: { key: 'road', at: s.at_m, length: s.length_m };
+}
+
 /**
  * The lines a guide reads as, in order. The start, the direction and (when
  * the course has checkpoints) the stay-on-course note come first; every
@@ -240,14 +273,10 @@ export function routeGuideLines(guide: RouteGuide): GuideLine[] {
 				);
 				break;
 			case 'road':
-				rest.push(
-					s.name !== undefined
-						? { key: 'roadNamed', at: s.at_m, name: s.name, length: s.length_m }
-						: { key: 'road', at: s.at_m, length: s.length_m },
-				);
+				rest.push(roadLine(s));
 				break;
 			case 'crossing':
-				rest.push({ key: s.crossing, at: s.at_m });
+				rest.push(crossingLine(s));
 				break;
 			case 'surface':
 				rest.push({ key: SURFACE_KEY[s.surface], at: s.at_m });
@@ -333,8 +362,11 @@ export function routeGuideView(guide: RouteGuide): { summary: GuideLine[]; secti
 				body.push({ at: s.at_m, line });
 				break;
 			}
+			case 'road':
+				body.push({ at: s.at_m, line: roadLine(s) });
+				break;
 			case 'crossing':
-				body.push({ at: s.at_m, line: { key: s.crossing, at: s.at_m } });
+				body.push({ at: s.at_m, line: crossingLine(s) });
 				break;
 			case 'surface':
 				body.push({ at: s.at_m, line: { key: SURFACE_KEY[s.surface], at: s.at_m } });
@@ -435,6 +467,10 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	roadNamed: "{at}: follow the road, {name}, for {length}. Watch for cars.",
 	bridge: "{at}: cross the bridge.",
 	ford: "{at}: cross the ford. There is no bridge, so expect water.",
+	crossRoad: "{at}: cross the road. Watch for cars.",
+	crossRoadNamed: "{at}: cross {name}. Watch for cars.",
+	crossRoadSignal: "{at}: cross the road at the traffic light.",
+	crossRoadNamedSignal: "{at}: cross {name} at the traffic light.",
 	surfacePaved: "{at}: paved from here.",
 	surfaceGravel: "{at}: gravel from here.",
 	surfaceDirt: "{at}: dirt trail from here.",

@@ -23629,6 +23629,26 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String parkGuideCrossRoad(String at) {
+    return '$at: atravesse a estrada. Atenção aos carros.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamed(String at, String name) {
+    return '$at: atravesse a estrada $name. Atenção aos carros.';
+  }
+
+  @override
+  String parkGuideCrossRoadSignal(String at) {
+    return '$at: atravesse a estrada no semáforo.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamedSignal(String at, String name) {
+    return '$at: atravesse a estrada $name no semáforo.';
+  }
+
+  @override
   String parkGuideSurfacePaved(String at) {
     return '$at: piso asfaltado a partir daqui.';
   }
@@ -47919,6 +47939,26 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String parkGuideFord(String at) {
     return '$at: atravesse o vau. Não há ponte, então espere água.';
+  }
+
+  @override
+  String parkGuideCrossRoad(String at) {
+    return '$at: atravesse a estrada. Cuidado com os carros.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamed(String at, String name) {
+    return '$at: atravesse a estrada $name. Cuidado com os carros.';
+  }
+
+  @override
+  String parkGuideCrossRoadSignal(String at) {
+    return '$at: atravesse a estrada no semáforo.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamedSignal(String at, String name) {
+    return '$at: atravesse a estrada $name no semáforo.';
   }
 
   @override

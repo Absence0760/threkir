@@ -99,6 +99,20 @@ void main() {
     expect(text.last, '2.0 km: finish.');
   });
 
+  test(
+      'a road crossing reads as one plain sentence, at the traffic light '
+      'when it has one', () {
+    final c = _cases.firstWhere(
+        (x) => (x['name'] as String).startsWith('roads crossed at grade'));
+    final guide = parseRouteGuide(c['guide'])!;
+    expect(routeGuideText(guide, _english).sublist(1, 5), [
+      '0.8 km: cross Hunter Mill Road at the traffic light.',
+      '2.4 km: cross Sunset Hills Road. Watch for cars.',
+      '3.1 km: cross the road at the traffic light.',
+      '3.5 km: cross the road. Watch for cars.',
+    ]);
+  });
+
   test('guideEn is the English catalogue, entry for entry', () {
     for (final e in guideEn.entries) {
       expect(e.value, _arb[_arbKey(e.key)], reason: e.key);

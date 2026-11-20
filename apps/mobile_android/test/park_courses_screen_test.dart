@@ -1319,6 +1319,59 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets(
+        'the full guide names each road the course crosses, at the traffic '
+        'light when it has one, and each stretch along a road', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'name': 'Rail Trail'},
+                  {
+                    'kind': 'crossing',
+                    'at_m': 820,
+                    'crossing': 'road',
+                    'name': 'Hunter Mill Road',
+                    'signal': true,
+                  },
+                  {
+                    'kind': 'road',
+                    'at_m': 1500,
+                    'length_m': 120,
+                    'name': 'Park Road',
+                  },
+                  {'kind': 'crossing', 'at_m': 2400, 'crossing': 'road'},
+                  {'kind': 'finish', 'at_m': 3000},
+                ],
+              },
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final guide = find.byKey(const Key('park-course-guide'));
+      Finder inGuide(String text) =>
+          find.descendant(of: guide, matching: find.textContaining(text));
+      expect(inGuide('cross Hunter Mill Road'), findsNothing,
+          reason: 'folded away until asked for');
+      final all = find.text('Show all steps');
+      await tester.ensureVisible(all);
+      await tester.tap(all);
+      await _settle(tester);
+      expect(inGuide('cross Hunter Mill Road at the traffic light.'),
+          findsOneWidget);
+      expect(inGuide('follow the road, Park Road,'), findsOneWidget);
+      expect(inGuide('cross the road. Watch for cars.'), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets('a guide checked on the ground says when, not the draft note', (
       tester,
     ) async {

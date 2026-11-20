@@ -23603,6 +23603,26 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String parkGuideCrossRoad(String at) {
+    return '$at: cruza la carretera. Cuidado con los coches.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamed(String at, String name) {
+    return '$at: cruza la carretera $name. Cuidado con los coches.';
+  }
+
+  @override
+  String parkGuideCrossRoadSignal(String at) {
+    return '$at: cruza la carretera en el semáforo.';
+  }
+
+  @override
+  String parkGuideCrossRoadNamedSignal(String at, String name) {
+    return '$at: cruza la carretera $name en el semáforo.';
+  }
+
+  @override
   String parkGuideSurfacePaved(String at) {
     return '$at: asfaltado desde aquí.';
   }

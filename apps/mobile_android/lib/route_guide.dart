@@ -8,7 +8,7 @@
 /// (docs/architecture/parity_pairs.md). Both read the case table in
 /// `fixtures/route_guide_cases.json`, so which template a step takes, and with
 /// which values, changes there or nowhere. The vocabularies mirror the CHECK
-/// `private.park_course_route_guide_ok` (migration 20271212001344) and the
+/// `private.park_course_route_guide_ok` (migration 20280105001344) and the
 /// generator `scripts/parks/lib/route_guide.mjs`.
 library;
 
@@ -27,10 +27,13 @@ const List<String> kGuideSurfaces = [
   'unpaved',
   'boardwalk',
 ];
-const List<String> kGuideCrossings = ['bridge', 'ford'];
+/// What a crossing crosses: `road` is a motor road crossed at grade, not the
+/// `road` step kind, which is a stretch run along one.
+const List<String> kGuideCrossings = ['bridge', 'ford', 'road'];
 
 /// One step of a guide. [kind] decides which of the other fields are set:
-/// `start` and `junction` carry exactly one of [name] / [way].
+/// `start` and `junction` carry exactly one of [name] / [way]; a `road`
+/// crossing may carry [name] and [signal].
 class RouteGuideStep {
   final String kind;
   final int atM;
@@ -41,6 +44,7 @@ class RouteGuideStep {
   final String? keepOn;
   final String? landmark;
   final String? crossing;
+  final bool? signal;
   final String? surface;
   final int? gainM;
   final int? lengthM;
@@ -58,6 +62,7 @@ class RouteGuideStep {
     this.keepOn,
     this.landmark,
     this.crossing,
+    this.signal,
     this.surface,
     this.gainM,
     this.lengthM,
@@ -170,9 +175,22 @@ RouteGuideStep? _readStep(Object? raw) {
           : RouteGuideStep(kind: 'road', atM: atM, lengthM: length, name: name);
     case 'crossing':
       final crossing = _oneOf(kGuideCrossings, s['crossing']);
-      return crossing == null
-          ? null
-          : RouteGuideStep(kind: 'crossing', atM: atM, crossing: crossing);
+      if (crossing == null) return null;
+      if (crossing != 'road') {
+        return s.containsKey('name') || s.containsKey('signal')
+            ? null
+            : RouteGuideStep(kind: 'crossing', atM: atM, crossing: crossing);
+      }
+      if (s.containsKey('signal') && s['signal'] != true) return null;
+      final name = _label(s['name']);
+      if (s.containsKey('name') && name == null) return null;
+      return RouteGuideStep(
+        kind: 'crossing',
+        atM: atM,
+        crossing: 'road',
+        name: name,
+        signal: s['signal'] == true ? true : null,
+      );
     case 'surface':
       final surface = _oneOf(kGuideSurfaces, s['surface']);
       return surface == null
@@ -256,6 +274,10 @@ const List<String> kGuideLineKeys = [
   'roadNamed',
   'bridge',
   'ford',
+  'crossRoad',
+  'crossRoadNamed',
+  'crossRoadSignal',
+  'crossRoadNamedSignal',
   'surfacePaved',
   'surfaceGravel',
   'surfaceDirt',
@@ -318,6 +340,20 @@ const Map<String, String> _surfaceKey = {
   'boardwalk': 'surfaceBoardwalk',
 };
 
+/// The line for a crossing: the bridge or ford, or the road by name, at its
+/// signal when it has one.
+GuideLine _crossingLine(RouteGuideStep s) {
+  if (s.crossing != 'road') return GuideLine(s.crossing!, at: s.atM);
+  final key =
+      'crossRoad${s.name != null ? 'Named' : ''}${s.signal == true ? 'Signal' : ''}';
+  return GuideLine(key, at: s.atM, name: s.name);
+}
+
+/// The line for a stretch of road between two pieces of trail.
+GuideLine _roadLine(RouteGuideStep s) => s.name != null
+    ? GuideLine('roadNamed', at: s.atM, name: s.name, length: s.lengthM)
+    : GuideLine('road', at: s.atM, length: s.lengthM);
+
 /// The lines a guide reads as, in order. The start, the direction and (when
 /// the course has checkpoints) the stay-on-course note come first; every
 /// other step follows at its distance.
@@ -342,11 +378,9 @@ List<GuideLine> routeGuideLines(RouteGuide guide) {
             ? GuideLine('${s.turn}Named', at: s.atM, name: s.name)
             : GuideLine('${s.turn}${_waySuffix[s.way]}', at: s.atM));
       case 'road':
-        rest.add(s.name != null
-            ? GuideLine('roadNamed', at: s.atM, name: s.name, length: s.lengthM)
-            : GuideLine('road', at: s.atM, length: s.lengthM));
+        rest.add(_roadLine(s));
       case 'crossing':
-        rest.add(GuideLine(s.crossing!, at: s.atM));
+        rest.add(_crossingLine(s));
       case 'surface':
         rest.add(GuideLine(_surfaceKey[s.surface]!, at: s.atM));
       case 'climb':
@@ -438,8 +472,10 @@ const int kGuideSectionM = 5000;
         }
         trail = key;
         body.add((at: s.atM, line: line));
+      case 'road':
+        body.add((at: s.atM, line: _roadLine(s)));
       case 'crossing':
-        body.add((at: s.atM, line: GuideLine(s.crossing!, at: s.atM)));
+        body.add((at: s.atM, line: _crossingLine(s)));
       case 'surface':
         body.add(
             (at: s.atM, line: GuideLine(_surfaceKey[s.surface]!, at: s.atM)));
@@ -565,6 +601,10 @@ const Map<String, String> guideEn = {
   'roadNamed': '{at}: follow the road, {name}, for {length}. Watch for cars.',
   'bridge': '{at}: cross the bridge.',
   'ford': '{at}: cross the ford. There is no bridge, so expect water.',
+  'crossRoad': '{at}: cross the road. Watch for cars.',
+  'crossRoadNamed': '{at}: cross {name}. Watch for cars.',
+  'crossRoadSignal': '{at}: cross the road at the traffic light.',
+  'crossRoadNamedSignal': '{at}: cross {name} at the traffic light.',
   'surfacePaved': '{at}: paved from here.',
   'surfaceGravel': '{at}: gravel from here.',
   'surfaceDirt': '{at}: dirt trail from here.',
@@ -642,6 +682,11 @@ String guideLineMessage(
     'roadNamed' => l10n.parkGuideRoadNamed(s('at'), s('name'), s('length')),
     'bridge' => l10n.parkGuideBridge(s('at')),
     'ford' => l10n.parkGuideFord(s('at')),
+    'crossRoad' => l10n.parkGuideCrossRoad(s('at')),
+    'crossRoadNamed' => l10n.parkGuideCrossRoadNamed(s('at'), s('name')),
+    'crossRoadSignal' => l10n.parkGuideCrossRoadSignal(s('at')),
+    'crossRoadNamedSignal' =>
+      l10n.parkGuideCrossRoadNamedSignal(s('at'), s('name')),
     'surfacePaved' => l10n.parkGuideSurfacePaved(s('at')),
     'surfaceGravel' => l10n.parkGuideSurfaceGravel(s('at')),
     'surfaceDirt' => l10n.parkGuideSurfaceDirt(s('at')),

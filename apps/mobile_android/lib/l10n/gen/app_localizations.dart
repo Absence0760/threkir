@@ -36753,6 +36753,30 @@ abstract class AppLocalizations {
   /// **'{at}: cross the ford. There is no bridge, so expect water.'**
   String parkGuideFord(String at);
 
+  /// Park course route guide (#1344, web parks.guide.crossRoad): a motor road crossed at grade.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the road. Watch for cars.'**
+  String parkGuideCrossRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.crossRoadNamed): a motor road crossed at grade.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross {name}. Watch for cars.'**
+  String parkGuideCrossRoadNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.crossRoadSignal): a motor road crossed at grade.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the road at the traffic light.'**
+  String parkGuideCrossRoadSignal(String at);
+
+  /// Park course route guide (#1344, web parks.guide.crossRoadNamedSignal): a motor road crossed at grade.
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross {name} at the traffic light.'**
+  String parkGuideCrossRoadNamedSignal(String at, String name);
+
   /// Park course route guide (#1344, web parks.guide.surfacePaved).
   ///
   /// In en, this message translates to:

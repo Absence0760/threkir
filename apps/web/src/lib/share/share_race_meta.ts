@@ -82,7 +82,7 @@ export function buildShareRaceHead(input: ShareRaceMetaInput): ShareRaceHead {
 		title: buildRaceShareTitle(race),
 		description: buildRaceShareDescription(race),
 		canonical: buildRaceShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildRaceJsonLd(race, { id, base: siteUrl }),
 	};
 }

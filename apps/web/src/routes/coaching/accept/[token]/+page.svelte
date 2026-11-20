@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import { onMount } from 'svelte';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { page } from '$app/state';
@@ -59,7 +60,7 @@
 <div class="invite-page">
 	<header class="invite-header">
 		<a href="/" class="logo">
-			<img src="/logo-mark.svg" alt="" class="logo-mark" />
+			<img src={BRAND_URLS.logoMark} alt="" class="logo-mark" />
 			<span>Threkir</span>
 		</a>
 	</header>

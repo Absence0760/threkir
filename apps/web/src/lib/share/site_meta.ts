@@ -32,7 +32,7 @@ export function buildOrganizationJsonLd(base: string | null | undefined): string
 		'@type': 'Organization',
 		name: SITE_NAME,
 		url: `${b}/`,
-		logo: `${b}/icon-512.png`,
+		logo: `${b}/icon-512.png?v=2af38642dc`,
 		description: SITE_DESCRIPTION,
 	};
 	return serialiseJsonLd(graph);

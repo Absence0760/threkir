@@ -1,5 +1,5 @@
 /// Where Grisnir may appear, decided once so every surface asks the same
-/// questions (apps/web/static/brand/grisnir/README.md): the runner's universal
+/// questions (apps/web/src/lib/assets/grisnir/README.md): the runner's universal
 /// `show_mascot` (on unless literally `false`), never an error or failure
 /// state, and at most one milestone moment per run.
 ///

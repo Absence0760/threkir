@@ -1,5 +1,5 @@
 /// A reader for the one GLB the course preview draws, Grisnir's trot
-/// (`static/brand/grisnir/grisnir-trot.glb`, written by
+/// (`src/lib/assets/grisnir/grisnir-trot.glb`, written by
 /// `scripts/brand/export_grisnir_gltf.py`). It reads standard glTF 2.0: one
 /// skinned mesh, its skin and node tree, and LINEAR / STEP animation
 /// samplers, with `KHR_mesh_quantization`'s integer attributes dequantized to

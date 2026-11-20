@@ -218,7 +218,7 @@ Triggered by **publishing a GitHub Release** whose tag is `web@*` (a bare `web@*
 5. `npm run check --workspace=apps/web`.
 6. `npm run build --workspace=apps/web` → produces `apps/web/build/` (static).
 7. Build the coach Lambda zip — bundle `src/routes/api/coach/+server.ts` into a single `index.mjs` Node 24 handler, zip it.
-8. `aws s3 sync apps/web/build/ s3://<bucket>/ --delete` — sync the static build.
+8. `aws s3 sync apps/web/build/ s3://<bucket>/ --delete` in two passes — `_app/immutable/*` (content-hashed names) with `public,max-age=31536000,immutable`, everything else with `public,max-age=60,must-revalidate` ([decisions § 2006](../../docs/architecture/decisions.md)). An image the app renders is either a Vite import under `_app/immutable/` or a fixed-path `static/` file named with `?v=<content hash>`, so a changed file always reaches a browser that cached the old one ([decisions § 2603](../../docs/architecture/decisions.md), [conventions § Web static assets](../../docs/architecture/conventions.md)).
 9. `aws lambda update-function-code --function-name web-coach-prod --zip-file fileb://coach.zip` — update the Lambda.
 10. `aws cloudfront create-invalidation --distribution-id <id> --paths "/*"` — invalidate the cache.
 11. Attach the build zip to a GitHub Release for rollback.

@@ -1,5 +1,5 @@
 /// Grisnir, the Threkir goat, as the phone draws him. The images are renders
-/// of his Blender model (apps/web/static/brand/grisnir/README.md); he never
+/// of his Blender model (apps/web/src/lib/assets/grisnir/README.md); he never
 /// appears in an error, sync, payment or lost-GPS state.
 library;
 

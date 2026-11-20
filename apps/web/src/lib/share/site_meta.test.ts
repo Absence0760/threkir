@@ -14,20 +14,20 @@ test('buildOrganizationJsonLd — Organization node with absolute url + logo', (
 	assert.equal(parsed['@type'], 'Organization');
 	assert.equal(parsed.name, 'Threkir');
 	assert.equal(parsed.url, 'https://threkir.com/');
-	assert.equal(parsed.logo, 'https://threkir.com/icon-512.png');
+	assert.match(parsed.logo, /^https:\/\/threkir\.com\/icon-512\.png\?v=[0-9a-f]{10}$/);
 	assert.equal(parsed.description, SITE_DESCRIPTION);
 });
 
 test('buildOrganizationJsonLd — trailing slash on base is normalised (single slash)', () => {
 	const parsed = JSON.parse(buildOrganizationJsonLd('https://threkir.com/'));
 	assert.equal(parsed.url, 'https://threkir.com/');
-	assert.equal(parsed.logo, 'https://threkir.com/icon-512.png');
+	assert.match(parsed.logo, /^https:\/\/threkir\.com\/icon-512\.png\?v=[0-9a-f]{10}$/);
 });
 
 test('buildOrganizationJsonLd — null base yields root-relative urls', () => {
 	const parsed = JSON.parse(buildOrganizationJsonLd(null));
 	assert.equal(parsed.url, '/');
-	assert.equal(parsed.logo, '/icon-512.png');
+	assert.match(parsed.logo, /^\/icon-512\.png\?v=[0-9a-f]{10}$/);
 });
 
 test('buildOrganizationJsonLd — carries no sameAs (omitted until real profiles exist)', () => {

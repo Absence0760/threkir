@@ -333,7 +333,7 @@ viewport owns the right), bottom-right on the challenge card (its kicker owns
 the top-right, and the attribution lines are clipped short of him). resvg loads
 no files, so the badge PNG travels inline as a data URI from
 `lib/share/grisnir_badge_data.ts`, generated from
-`static/brand/grisnir/grisnir-badge-256.png` (36 KB, 48 KB of base64 per card).
+`src/lib/assets/grisnir/grisnir-badge-256.png` (36 KB, 48 KB of base64 per card).
 He is drawn 150 px tall on the 1200 px card, about 45 px where a feed shows it
 360 px wide. An unfurl is a link preview rendered with no session, so the
 owner's `show_mascot` does not reach it, as it never reached the wordmark.

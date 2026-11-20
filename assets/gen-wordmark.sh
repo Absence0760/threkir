@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #
 # Regenerate the web wordmarks (apps/web/static/wordmark.svg, dark text, and
-# wordmark-light.svg, white text) with the name OUTLINED as a path.
+# apps/web/src/lib/assets/brand/wordmark-light.svg, white text) with the name
+# OUTLINED as a path. The light one is the one the app renders, so it is
+# Vite-imported and named by its hash; the dark one is not rendered by the app
+# and keeps its public path (decisions § 2603).
 #
 # They used to draw "Threkir" as live <text> in font-family system-ui, so the
 # name rendered in whatever font the viewing device had: this workstation's
@@ -21,7 +24,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-OUT_DIR="$REPO_ROOT/apps/web/static"
+STATIC_DIR="$REPO_ROOT/apps/web/static"
+BRAND_DIR="$REPO_ROOT/apps/web/src/lib/assets/brand"
 
 command -v inkscape >/dev/null 2>&1 || { echo "error: 'inkscape' not on PATH" >&2; exit 1; }
 WORK="$(mktemp -d)"
@@ -40,10 +44,10 @@ SVG
 inkscape "$WORK/text.svg" --export-text-to-path --export-plain-svg --export-filename="$WORK/outlined.svg" >/dev/null 2>&1
 BBOX="$(inkscape "$WORK/outlined.svg" --query-id=name --query-x --query-width 2>/dev/null | tr '\n' ' ')"
 
-python3 - "$WORK/outlined.svg" "$OUT_DIR" $BBOX <<'PY'
+python3 - "$WORK/outlined.svg" "$STATIC_DIR" "$BRAND_DIR" $BBOX <<'PY'
 import math, re, sys
 
-outlined, out_dir, x, width = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])
+outlined, static_dir, brand_dir, x, width = sys.argv[1], sys.argv[2], sys.argv[3], float(sys.argv[4]), float(sys.argv[5])
 d = ' '.join(re.findall(r'\sd="([^"]+)"', open(outlined).read()))
 if not d:
     sys.exit('error: inkscape produced no outline')
@@ -69,9 +73,11 @@ TEMPLATE = '''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="256" v
   <path fill="{ink}" d="{d}"/>
 </svg>
 '''
-for name, grad, ink in [('wordmark.svg', 'tkWordmarkGrad', '#1A1722'),
-                        ('wordmark-light.svg', 'tkWordmarkGradLight', '#ffffff')]:
+for out_dir, name, grad, ink in [(static_dir, 'wordmark.svg', 'tkWordmarkGrad', '#1A1722'),
+                                 (brand_dir, 'wordmark-light.svg', 'tkWordmarkGradLight', '#ffffff')]:
     with open(f'{out_dir}/{name}', 'w') as f:
         f.write(TEMPLATE.format(w=canvas, grad=grad, ink=ink, d=d))
     print(f'wrote {out_dir}/{name} ({canvas}x256)')
 PY
+
+node "$REPO_ROOT/scripts/gen_static_asset_versions.mjs"

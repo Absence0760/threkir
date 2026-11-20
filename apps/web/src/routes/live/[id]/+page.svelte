@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import { onMount, onDestroy } from 'svelte';
 	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -1087,7 +1088,7 @@
 <div class="live-page">
 	<header class="live-header">
 		<a href="/" class="live-logo">
-			<img src="/logo-mark.svg" alt="" class="live-logo-mark" />
+			<img src={BRAND_URLS.logoMark} alt="" class="live-logo-mark" />
 			Threkir
 		</a>
 		<div

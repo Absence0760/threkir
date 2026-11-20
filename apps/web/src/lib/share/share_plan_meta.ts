@@ -122,7 +122,7 @@ export function buildSharePlanHead(input: SharePlanMetaInput): SharePlanHead {
 		title: buildPlanShareTitle(plan),
 		description: buildPlanShareDescription(plan),
 		canonical: buildPlanShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildPlanJsonLd(plan, { id, base: siteUrl }),
 	};
 }

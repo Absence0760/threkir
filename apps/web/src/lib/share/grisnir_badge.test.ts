@@ -8,7 +8,7 @@ import { Resvg } from '@resvg/resvg-js';
 import { GRISNIR_BADGE_HEIGHT, GRISNIR_BADGE_PNG_BASE64, GRISNIR_BADGE_WIDTH } from './grisnir_badge_data';
 import { OG_GRISNIR_HEIGHT, grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
-const PNG = fileURLToPath(new URL('../../../static/brand/grisnir/grisnir-head-256.png', import.meta.url));
+const PNG = fileURLToPath(new URL('../assets/grisnir/grisnir-head-256.png', import.meta.url));
 
 test('the inlined badge is byte for byte the rendered head crop', () => {
 	const png = readFileSync(PNG);

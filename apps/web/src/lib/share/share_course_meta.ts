@@ -119,7 +119,7 @@ export function buildShareCourseHead(input: ShareCourseMetaInput): ShareCourseHe
 		title: buildCourseShareTitle(course),
 		description: buildCourseShareDescription(course),
 		canonical: buildCourseShareCanonical(siteUrl, key),
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildCourseJsonLd(course, { key, base: siteUrl }),
 	};
 }

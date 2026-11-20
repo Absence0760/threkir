@@ -35,7 +35,7 @@
 		title,
 		description,
 		canonical,
-		image = '/og-default.png',
+		image = '/og-default.png?v=8d3a97552b',
 		ogType = 'website',
 		jsonLd,
 	}: Props = $props();

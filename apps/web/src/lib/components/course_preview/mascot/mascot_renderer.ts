@@ -21,7 +21,6 @@ import {
 	SHADOW_BELOW,
 } from './palette.ts';
 
-export const MASCOT_GLB_URL = '/brand/grisnir/grisnir-trot.glb';
 /// The marker's box in CSS px. The ground point under his hooves is its
 /// centre, so the box sits centred on the course position like the dot did.
 export const MASCOT_BOX_CSS_PX = 96;
@@ -297,7 +296,10 @@ let modelPromise: Promise<GlbModel> | null = null;
 /// The GLB is fetched once per page, on the first dialog that wants him, and
 /// never in the page's own first paint.
 function loadModel(): Promise<GlbModel> {
-	modelPromise ??= fetch(MASCOT_GLB_URL)
+	// `new URL(…, import.meta.url)` rather than an import: Vite rewrites it to
+	// the hashed asset in place, so no module (and no chunk of its own) carries
+	// the URL, and this file's unit tests never try to load a .glb.
+	modelPromise ??= fetch(new URL('../../../assets/grisnir/grisnir-trot.glb', import.meta.url).href)
 		.then((r) => {
 			if (!r.ok) throw new Error(`grisnir glb: HTTP ${r.status}`);
 			return r.arrayBuffer();

@@ -3,18 +3,18 @@
 	// are back by morning). A still: nothing here moves, so there is nothing
 	// for prefers-reduced-motion to stop. Decorative, so the art is hidden from
 	// assistive tech and the line carries the moment. Never shown in an error,
-	// sync, payment or lost-GPS state (apps/web/static/brand/grisnir/README.md).
+	// sync, payment or lost-GPS state (apps/web/src/lib/assets/grisnir/README.md).
+	// WebP only, as GrisnirArt: the browser baseline decodes it everywhere.
+	import rest192 from '#lib/assets/grisnir/grisnir-rest-192.webp?no-inline';
+	import rest384 from '#lib/assets/grisnir/grisnir-rest-384.webp?no-inline';
 	import { m } from '#lib/i18n/store.svelte.ts';
-
-	const ART = '/brand/grisnir/grisnir-rest';
 </script>
 
 <div class="rest-grisnir" data-testid="rest-day-grisnir">
 	<picture>
-		<source type="image/webp" srcset="{ART}-192.webp 184w, {ART}-384.webp 362w" sizes="7.5rem" />
 		<img
-			src="{ART}-192.png"
-			srcset="{ART}-192.png 184w, {ART}-384.png 362w"
+			src={rest192}
+			srcset="{rest192} 184w, {rest384} 362w"
 			sizes="7.5rem"
 			width="184"
 			height="162"

@@ -119,7 +119,7 @@ export function buildShareEventHead(input: ShareEventMetaInput): ShareEventHead 
 		description: buildEventShareDescription(event),
 		canonical: buildEventShareCanonical(siteUrl, id),
 		// Events have no dedicated OG renderer yet — use the branded card.
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildEventJsonLd(event, { id, base: siteUrl }),
 	};
 }

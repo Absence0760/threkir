@@ -83,7 +83,7 @@ export function buildShareClubHead(input: ShareClubMetaInput): ShareClubHead {
 		title: buildClubShareTitle(club),
 		description: buildClubShareDescription(club),
 		canonical: buildClubShareCanonical(siteUrl, slug),
-		ogImageUrl: club?.avatar_url || `${base}/og-default.png`,
+		ogImageUrl: club?.avatar_url || `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildClubJsonLd(club, { slug, base: siteUrl }),
 	};
 }

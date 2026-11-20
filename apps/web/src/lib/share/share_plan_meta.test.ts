@@ -76,5 +76,5 @@ test('the rendered head escapes a hostile plan name', () => {
 	);
 	assert.ok(!tags.includes('<script>alert(1)'), 'the name must be escaped');
 	assert.match(tags, /<link rel="canonical" href="https:\/\/threkir.com\/share\/plan\//);
-	assert.match(tags, /og:image" content="https:\/\/threkir.com\/og-default.png"/);
+	assert.match(tags, /og:image" content="https:\/\/threkir\.com\/og-default\.png\?v=[0-9a-f]{10}"/);
 });

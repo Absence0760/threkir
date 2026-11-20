@@ -87,6 +87,7 @@
     "gen:types:check": "pnpm -C apps/backend gen:types:check",
     "gen:dart": "dart run scripts/gen_dart_models.dart",
 		"gen:icon-font": "node scripts/gen_web_icon_font.mjs",
+		"gen:static-asset-versions": "node scripts/gen_static_asset_versions.mjs",
 		"gen:exercise-fold-table": "node scripts/gen_exercise_fold_table.mjs",
 		"gen:help-guides": "node scripts/gen_help_guides.mjs",
 		"gen:edge-segment-matcher": "node scripts/gen_edge_segment_matcher.mjs",

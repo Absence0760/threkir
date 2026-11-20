@@ -56,7 +56,7 @@
 	const pageTitle = $derived(buildGuideTitle(data.guide.title));
 	const pageDesc = $derived(buildGuideDescription(data.guide.description));
 	const canonicalUrl = $derived(buildLearnCanonical(data.siteUrl, `/learn/${data.guide.slug}`));
-	const ogImage = $derived(data.guide.heroImage || '/og-default.png');
+	const ogImage = $derived(data.guide.heroImage || '/og-default.png?v=8d3a97552b');
 	const jsonLd = $derived(
 		buildGuideJsonLd({
 			title: data.guide.title,

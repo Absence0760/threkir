@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import { browser } from '$app/env';
 	import TrackPreview from '#lib/components/TrackPreview.svelte';
 	import MapBackdrop from './MapBackdrop.svelte';
@@ -299,7 +300,7 @@
 
 		<div class="app">
 			<nav class="rail">
-				<img class="rail-logo" src="/logo-mark.svg" alt="" width="28" height="28" />
+				<img class="rail-logo" src={BRAND_URLS.logoMark} alt="" width="28" height="28" />
 				{#each RAIL as icon, i (icon)}
 					<span class="rail-item" class:rail-item--on={i === 0}><span class="material-symbols">{icon}</span></span>
 				{/each}

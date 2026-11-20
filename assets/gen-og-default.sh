@@ -23,3 +23,5 @@ source "$SCRIPT_DIR/fonts/manrope-fontconfig.sh"
 inkscape "$SVG" -w 1200 -h 630 -o "$OUT" >/dev/null 2>&1
 magick "$OUT" -strip +dither -colors 256 -define png:compression-level=9 "PNG8:$OUT"
 echo "wrote $OUT (1200x630)"
+# A fixed public path, named with a ?v= of its content (decisions § 2603).
+node "$REPO_ROOT/scripts/gen_static_asset_versions.mjs"

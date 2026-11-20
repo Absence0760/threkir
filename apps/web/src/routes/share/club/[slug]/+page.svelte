@@ -16,7 +16,7 @@
 	let description = $derived(buildClubShareDescription(data.club));
 	let canonicalUrl = $derived(buildClubShareCanonical(data.siteUrl, data.slug));
 	let jsonLd = $derived(buildClubJsonLd(data.club, { slug: data.slug, base: data.siteUrl }));
-	let ogImage = $derived(data.club?.avatar_url || '/og-default.png');
+	let ogImage = $derived(data.club?.avatar_url || '/og-default.png?v=8d3a97552b');
 
 	let hasClub = $derived(!!data.club);
 	let appHref = $derived(`/clubs/${data.slug}`);

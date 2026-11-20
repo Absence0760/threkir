@@ -77,7 +77,7 @@ export function buildShareProfileHead(input: ShareProfileMetaInput): ShareProfil
 	// Prefer the runner's avatar as the OG image when present (a personal
 	// face-card unfurls better than the generic brand card); fall back to
 	// the branded 1200x630 card otherwise.
-	const ogImageUrl = profile?.avatar_url || `${base}/og-default.png`;
+	const ogImageUrl = profile?.avatar_url || `${base}/og-default.png?v=8d3a97552b`;
 	return {
 		title: buildProfileShareTitle(profile),
 		description: buildProfileShareDescription(profile),

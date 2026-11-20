@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Monochrome Threkir mark for the watch-face complication. The glyph is the
-  launcher icon's white thorn mark from apps/web/static/logo-mark.svg, lifted
+  launcher icon's white thorn mark from apps/web/src/lib/assets/brand/logo-mark.svg, lifted
   out of its 1024 px canvas (the SVG draws it at translate(-54.5 -50) in a
   local 100-unit space) and recentred in a 100-unit viewport. Watch faces
   tint a MonochromaticImage themselves, so the fill colour only matters as

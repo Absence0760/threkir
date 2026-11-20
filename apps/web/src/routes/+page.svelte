@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
+	import terrainHero960 from '#lib/assets/marketing/terrain-hero-960.webp?no-inline';
+	import terrainHero1600 from '#lib/assets/marketing/terrain-hero-1600.webp?no-inline';
+	import terrainHero2400 from '#lib/assets/marketing/terrain-hero-2400.webp?no-inline';
 	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -111,11 +115,11 @@
 		<picture class="terrain" aria-hidden="true">
 			<source
 				type="image/webp"
-				srcset="/marketing/terrain-hero-960.webp 960w, /marketing/terrain-hero-1600.webp 1600w, /marketing/terrain-hero-2400.webp 2400w"
+				srcset="{terrainHero960} 960w, {terrainHero1600} 1600w, {terrainHero2400} 2400w"
 				sizes="100vw"
 			/>
 			<img
-				src="/marketing/terrain-hero-1600.webp"
+				src={terrainHero1600}
 				alt=""
 				width="2400"
 				height="860"
@@ -175,7 +179,7 @@
 					<span class="source source--{i + 1}" data-pop>{name}</span>
 				{/each}
 				<span class="sync-core" data-pop>
-					<img src="/logo-mark.svg" alt="" width="44" height="44" />
+					<img src={BRAND_URLS.logoMark} alt="" width="44" height="44" />
 				</span>
 			</div>
 		</article>
@@ -403,7 +407,7 @@
 	.topo {
 		position: absolute;
 		inset: -10%;
-		mask-image: url('/marketing/topo.svg');
+		mask-image: url('../lib/assets/marketing/topo.svg');
 		mask-size: 75rem 50rem;
 		mask-repeat: repeat;
 		pointer-events: none;

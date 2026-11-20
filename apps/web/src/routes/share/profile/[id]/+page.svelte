@@ -21,7 +21,7 @@
 	let description = $derived(buildProfileShareDescription(data.profile));
 	let canonicalUrl = $derived(buildProfileShareCanonical(data.siteUrl, data.id));
 	let jsonLd = $derived(buildProfileJsonLd(data.profile, { id: data.id, base: data.siteUrl }));
-	let ogImage = $derived(data.profile?.avatar_url || '/og-default.png');
+	let ogImage = $derived(data.profile?.avatar_url || '/og-default.png?v=8d3a97552b');
 
 	let hasProfile = $derived(!!data.profile);
 	let name = $derived(profileDisplayName(data.profile));

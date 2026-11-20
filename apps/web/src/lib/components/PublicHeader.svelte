@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
@@ -29,7 +30,7 @@
 
 <nav class="landing-nav" class:landing-nav--scrolled={scrolled} use:trackScroll>
 	<a href="/" class="landing-logo" aria-label="Threkir">
-		<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark" />
+		<img src={BRAND_URLS.wordmarkLight} alt="Threkir" class="landing-wordmark" />
 	</a>
 	<!-- Apps + Features were in-page anchors to sections one scroll away on a
 	     four-section page, and they were already hidden below 768px -- the

@@ -40,6 +40,7 @@ import {
 import { videoMapViewport, videoOverviewPadding, type VideoMapViewport } from './video_viewport.ts';
 import { headingWindowM, mascotHeadingDeg, screenYawDeg, videoTrotPhase } from './mascot/mascot_motion.ts';
 import { loadMascot, MASCOT_BOX_CSS_PX, type MascotRenderer } from './mascot/mascot_renderer.ts';
+import { BRAND_URLS } from '#lib/assets/brand.ts';
 
 const FLIGHT_ZOOM = 14;
 const SETTLE_TIMEOUT_MS = 4000;
@@ -404,7 +405,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 		const m = map;
 		const mascotCanvas = document.createElement('canvas');
 		const [mark, loadedMascot] = await Promise.all([
-			loadImage('/logo-mark.svg'),
+			loadImage(BRAND_URLS.logoMark),
 			input.showMascot ? loadMascot(mascotCanvas, { preserveDrawingBuffer: true }) : Promise.resolve(null),
 			waitForLoad(m, signal),
 		]);

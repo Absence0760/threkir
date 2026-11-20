@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Render Grisnir's app exports from the mascot's Blender model and write them
-# where the apps read them (apps/web/static/brand/grisnir/README.md lists each
+# where the apps read them (apps/web/src/lib/assets/grisnir/README.md lists each
 # file and where it is used).
 #
 #   bash scripts/brand/render_mascot.sh ~/github/social/brand/threkir/mascot/grisnir.blend
@@ -24,7 +24,7 @@ export TMPDIR=$WORK
 
 heavy blender -b "$BLEND" --python "$ROOT/scripts/brand/render_mascot.py" -- --out "$RAW"
 
-WEB=$ROOT/apps/web/static/brand/grisnir
+WEB=$ROOT/apps/web/src/lib/assets/grisnir
 mkdir -p "$WEB"
 export_png() {
   magick "$RAW/$1.png" -trim +repage -bordercolor none -border 2 -strip \

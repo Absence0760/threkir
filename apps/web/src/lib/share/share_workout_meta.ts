@@ -159,7 +159,7 @@ export function buildShareWorkoutHead(input: ShareWorkoutMetaInput): ShareWorkou
 		title: buildWorkoutShareTitle(workout, displayName),
 		description: buildWorkoutShareDescription(workout, displayName),
 		canonical: buildWorkoutShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildWorkoutJsonLd(workout, { id, base: siteUrl, displayName }),
 	};
 }

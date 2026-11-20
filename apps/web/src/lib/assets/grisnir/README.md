@@ -32,6 +32,9 @@ Sizes are the trimmed files; the render is square at the size in the name.
 | `grisnir-wait-192.png` / `.webp` | 184 × 150 | 19,865 / 13,346 | Standing beside a trail sign, looking at you | Web empty runs, routes and feed states (`EmptyState`'s `mascot` prop) and the onboarding panel, 1x |
 | `grisnir-wait-384.png` / `.webp` | 362 × 294 | 52,603 / 33,422 | Same | Web, 2x; copied to the phones for the same empty states and the first onboarding page |
 
+Where a still has a WebP twin, the web renders only the WebP (every browser in
+the web baseline decodes it); the PNG is what the phones copy.
+
 The trail sign in the waiting pose is built by `render_mascot.py` from the
 model's own hoof and tag materials and ink; the `.blend` is not edited.
 

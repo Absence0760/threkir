@@ -575,7 +575,7 @@ test.describe('/runs', () => {
 		await expect(page.locator('.run-card').first()).toBeVisible();
 
 		// ── Create ──
-		await page.getByRole('button', { name: '+ Add run' }).click();
+		await page.getByRole('button', { name: 'Add run' }).click();
 
 		// RunEditor: started_at is pre-filled to "now"; activity defaults
 		// to 'run'; we set distance + duration explicitly so the row

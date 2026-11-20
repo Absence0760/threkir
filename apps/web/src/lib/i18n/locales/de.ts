@@ -1806,7 +1806,7 @@ export const messages = {
 	"runs.viewList": "Liste",
 	"runs.viewGrid": "Raster",
 	"runs.select": "Auswählen",
-	"runs.addRunShort": "+ Lauf hinzufügen",
+	"runs.addRunShort": "Lauf hinzufügen",
 	"runs.openRangePicker": "Zeitraumauswahl öffnen",
 	"runs.rangeFrom": "Ab {date}",
 	"runs.rangeUntil": "Bis {date}",

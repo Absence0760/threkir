@@ -223,7 +223,7 @@ test.describe('onboarding → first run → dashboard journey', () => {
 
 				// A just-onboarded user may have an empty list, so don't wait
 				// for an existing card — go straight for the Add-run button.
-				await page.getByRole('button', { name: '+ Add run' }).click();
+				await page.getByRole('button', { name: 'Add run' }).click();
 
 				// RunEditor: started_at prefills to NOW (nowLocalIso) — leave
 				// it so the row lands in the current calendar week, which is

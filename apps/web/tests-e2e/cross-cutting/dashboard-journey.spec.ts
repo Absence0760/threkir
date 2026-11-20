@@ -112,7 +112,7 @@ test.describe('dashboard end-to-end journey', () => {
 		await test.step('add a 10 km run via /runs', async () => {
 			await page.goto('/runs');
 			await switchRunsToAllTime(page);
-			await page.getByRole('button', { name: '+ Add run' }).click();
+			await page.getByRole('button', { name: 'Add run' }).click();
 
 			// RunEditor: started_at default is now; activity defaults
 			// to 'run'; fill distance + duration explicitly. 10 km

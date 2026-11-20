@@ -719,7 +719,10 @@
 	<RunSurfaceTabs active="runs">
 		{#snippet actions()}
 			{#if !selecting}
-				<button class="add-btn" type="button" onclick={() => (showRunModal = true)}>{m('runs.addRunShort')}</button>
+				<button class="btn btn-primary" type="button" onclick={() => (showRunModal = true)} data-testid="runs-add">
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('runs.addRunShort')}
+				</button>
 			{/if}
 		{/snippet}
 	</RunSurfaceTabs>
@@ -1588,22 +1591,6 @@
 	.link-btn:hover {
 		color: var(--color-primary-hover);
 	}
-	.add-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-sm) var(--space-lg);
-		background: var(--color-primary);
-		color: var(--color-surface);
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 600;
-		text-decoration: none;
-		border: none;
-		cursor: pointer;
-		transition: background var(--transition-fast);
-	}
-	.add-btn:hover { background: var(--color-primary-hover); }
 
 	/* Select-mode renders the card as <button> instead of <a>. Visuals
 	   match the link version; the checkbox overlays the corner so the

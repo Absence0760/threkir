@@ -1819,7 +1819,7 @@ export const en = {
 	"runs.viewList": "List",
 	"runs.viewGrid": "Grid",
 	"runs.select": "Select",
-	"runs.addRunShort": "+ Add run",
+	"runs.addRunShort": "Add run",
 	"runs.openRangePicker": "Open date range picker",
 	"runs.rangeFrom": "From {date}",
 	"runs.rangeUntil": "Until {date}",

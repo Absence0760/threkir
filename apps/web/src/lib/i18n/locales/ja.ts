@@ -1801,7 +1801,7 @@ export const messages = {
 	"runs.viewList": "リスト",
 	"runs.viewGrid": "グリッド",
 	"runs.select": "選択",
-	"runs.addRunShort": "+ ランを追加",
+	"runs.addRunShort": "ランを追加",
 	"runs.openRangePicker": "期間ピッカーを開く",
 	"runs.rangeFrom": "{date}から",
 	"runs.rangeUntil": "{date}まで",

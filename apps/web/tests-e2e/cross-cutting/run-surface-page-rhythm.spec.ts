@@ -89,8 +89,8 @@ test.describe('run-surface pages share one page rhythm', () => {
 	// same height on every tab. /segments has no primary action of its own.
 	test('the title and the primary action sit at the same height on every tab', async ({ page }) => {
 		const ACTIONS: Record<string, string> = {
-			'/runs': 'button.add-btn',
-			'/plans': 'button.add-btn',
+			'/runs': '[data-testid="runs-add"]',
+			'/plans': '[data-testid="plans-new"]',
 			'/races': '[data-testid="race-submit"]',
 			'/routes': '[data-testid="routes-new"]'
 		};

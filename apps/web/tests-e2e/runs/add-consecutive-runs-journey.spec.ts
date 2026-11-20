@@ -40,7 +40,7 @@ test.describe('runs — add two runs back to back', () => {
 		const secondStart = browserDatetimeLocal(Date.now() - 1 * 3600 * 1000);
 
 		const addRun = async (notes: string, startedAt: string, km: string, min: string) => {
-			await page.getByRole('button', { name: '+ Add run' }).click();
+			await page.getByRole('button', { name: 'Add run' }).click();
 			const notesField = page.locator('textarea');
 			await expect(notesField).toBeVisible({ timeout: 5_000 });
 			// A fresh form every time — nothing carried over from the last save.

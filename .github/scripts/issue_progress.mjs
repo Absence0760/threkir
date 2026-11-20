@@ -228,11 +228,29 @@ async function stillInFlight(call, issue, pr) {
 	return open.some((p) => p.number !== pr && parseIssuesSection(p.body).parts.some((x) => x.issue === issue));
 }
 
+/**
+ * A PR or issue number from the event file, checked before it goes into an
+ * API path: a positive whole number, or the run stops.
+ *
+ * @param {unknown} v
+ * @param {string} what
+ * @returns {number}
+ */
+export function positiveId(v, what) {
+	if (typeof v !== 'number' || !Number.isSafeInteger(v) || v < 1) {
+		throw new Error(`${what} must be a positive whole number, got ${JSON.stringify(v)}`);
+	}
+	return v;
+}
+
 /** @param {Record<string, any>} event */
 export async function run(event, { token = process.env.GITHUB_TOKEN ?? '', repo = process.env.GITHUB_REPOSITORY ?? '' } = {}) {
-	const pr = event.pull_request;
-	if (!pr) return;
-	const { parts } = parseIssuesSection(pr.body);
+	const raw = event.pull_request;
+	if (!raw) return;
+	if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`GITHUB_REPOSITORY must be owner/name, got ${JSON.stringify(repo)}`);
+	const pr = { number: positiveId(raw.number, 'pull_request.number'), body: raw.body, merged: raw.merged === true };
+	const parsed = parseIssuesSection(pr.body);
+	const parts = parsed.parts.map((x) => ({ issue: positiveId(x.issue, 'issue number'), items: x.items }));
 	if (parts.length === 0) return;
 	const call = api(token, repo);
 

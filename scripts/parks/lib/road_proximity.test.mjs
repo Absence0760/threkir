@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { REVIEW_WITHIN_M, bearingDeg, distanceToLineM, endReport, nearestRoad, offsetPoint } from './road_proximity.mjs';
+import { REVIEW_WITHIN_M, bearingDeg, distanceToLineM, endReport, nearestRoad, offsetPoint, osmBbox } from './road_proximity.mjs';
 
 const M = 1 / 111_195; // ~degrees of latitude per metre
 
@@ -58,4 +58,13 @@ test('a start is measured behind it, where runners wait', () => {
 	const r = endReport(trail, 'start', roads);
 	assert.equal(r.review, true);
 	assert.ok(r.runout.lat < 0, 'the runout point is south of the start');
+});
+
+test('osmBbox boxes a real point at OSM precision and refuses anything else', () => {
+	assert.equal(osmBbox({ lat: 37.5, lng: -77.25 }, 0.0008), '-77.2508000,37.4992000,-77.2492000,37.5008000');
+	assert.equal(osmBbox({ lat: 37.123456789, lng: -77.987654321 }, 0), '-77.9876543,37.1234568,-77.9876543,37.1234568');
+	for (const bad of [{ lat: 91, lng: 0 }, { lat: 0, lng: -181 }, { lat: Number.NaN, lng: 0 }, { lat: '37', lng: 0 }, null]) {
+		assert.throws(() => osmBbox(/** @type {any} */ (bad), 0.0008), /must be a number/);
+	}
+	assert.throws(() => osmBbox({ lat: 0, lng: 0 }, 5), /halfDeg/);
 });

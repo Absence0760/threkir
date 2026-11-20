@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LABEL, commentBody, parseIssuesSection, run, stripHtmlComments, tickItems } from './issue_progress.mjs';
+import { LABEL, commentBody, parseIssuesSection, positiveId, run, stripHtmlComments, tickItems } from './issue_progress.mjs';
 
 const BODY = `## Summary
 
@@ -167,4 +167,22 @@ test('stripHtmlComments drops every comment, overlapping or unclosed, and leaves
 
 test('parseIssuesSection ignores a reference hidden in an unclosed comment', () => {
 	assert.deepEqual(parseIssuesSection('## Issues\nPart of #3\n<!-- Part of #4'), { fixes: [], parts: [{ issue: 3, items: [] }] });
+});
+
+test('positiveId takes a positive whole number and refuses anything else', () => {
+	assert.equal(positiveId(34, 'x'), 34);
+	for (const bad of [0, -1, 1.5, Number.NaN, '34', null, undefined, 2 ** 60]) {
+		assert.throws(() => positiveId(bad, 'issue number'), /issue number must be a positive whole number/);
+	}
+});
+
+test('run refuses a PR number or repository that is not well formed, before calling GitHub', async () => {
+	const gh = stubGitHub({});
+	try {
+		await assert.rejects(run({ action: 'opened', pull_request: { number: '7', body: prBody } }, opts), /pull_request\.number/);
+		await assert.rejects(run({ action: 'opened', pull_request: { number: 7, body: prBody } }, { token: 't', repo: 'o/r/../x' }), /GITHUB_REPOSITORY/);
+	} finally {
+		gh.restore();
+	}
+	assert.equal(gh.calls.length, 0);
 });

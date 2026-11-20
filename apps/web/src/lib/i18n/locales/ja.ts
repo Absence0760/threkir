@@ -5696,7 +5696,7 @@ export const messages = {
 	"settingsLayout.sectionPreferences": "環境設定",
 	"settingsLayout.tabDisplay": "単位と表示",
 	"settingsLayout.tabRecording": "記録と音声",
-	"settingsLayout.tabTraining": "トレーニング",
+	"settingsLayout.tabTraining": "練習の設定",
 	"settingsLayout.tabBody": "身体データ",
 	"settingsLayout.tabPrivacy": "プライバシーと共有",
 	"settingsLayout.tabNotifications": "通知",

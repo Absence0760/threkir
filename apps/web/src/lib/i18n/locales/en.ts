@@ -5716,7 +5716,7 @@ export const en = {
 	"settingsLayout.sectionPreferences": "Preferences",
 	"settingsLayout.tabDisplay": "Units & display",
 	"settingsLayout.tabRecording": "Recording & voice",
-	"settingsLayout.tabTraining": "Training",
+	"settingsLayout.tabTraining": "Training preferences",
 	"settingsLayout.tabBody": "Body metrics",
 	"settingsLayout.tabPrivacy": "Privacy & sharing",
 	"settingsLayout.tabNotifications": "Notifications",

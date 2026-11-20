@@ -117,6 +117,13 @@ const FIXTURES: Array<[flagged: boolean, a: string, b: string]> = [
 	// where a scanning reader is.
 	[false, 'Einstellungen', 'Voreinstellungen'],
 	[false, 'Runs', 'Run heatmap'],
+	// The run surface is "Training", so the Settings tab of training
+	// preferences cannot also be bare "Training". Japanese has no space to
+	// end the first word, so its tab says 練習 rather than adding 設定.
+	[true, 'Training', 'Training'],
+	[false, 'Training', 'Training preferences'],
+	[true, 'トレーニング', 'トレーニング設定'],
+	[false, 'トレーニング', '練習の設定'],
 	[false, 'Gear', 'Gym'],
 	[false, 'Dashboard', 'History'],
 	// Spared: an empty side cannot collide (a missing key is the parity test's

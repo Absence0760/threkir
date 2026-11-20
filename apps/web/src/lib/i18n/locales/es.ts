@@ -5701,7 +5701,7 @@ export const messages = {
 	"settingsLayout.sectionPreferences": "Preferencias",
 	"settingsLayout.tabDisplay": "Unidades y visualización",
 	"settingsLayout.tabRecording": "Registro y voz",
-	"settingsLayout.tabTraining": "Entrenamiento",
+	"settingsLayout.tabTraining": "Preferencias de entrenamiento",
 	"settingsLayout.tabBody": "Datos corporales",
 	"settingsLayout.tabPrivacy": "Privacidad y uso compartido",
 	"settingsLayout.tabNotifications": "Notificaciones",

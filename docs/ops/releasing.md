@@ -81,11 +81,18 @@ the approval is now the last human step before App Review
 # what triggers the deploy. Don't edit pubspec.yaml / build.gradle.kts
 # manually — the workflow reads the version from the tag name.
 git checkout main && git pull
-gh release create mobile_android@1.2.3 --title "Android 1.2.3" --generate-notes
+gh release create mobile_android@1.2.3 --title "Android 1.2.3" --generate-notes --notes "## What's New
+
+- Training plans can follow one another.
+"
 ```
 
-**An iOS Release needs a `## What's New` section in its body.** It is the note
-App Store users read, so the owner writes it; the generated notes below it are a
+**An Android or iOS Release needs a `## What's New` section in its body.**
+On Android it becomes the en-US Play
+release notes, at most 500 characters; `release-android.yml` fails in its first
+minute without it (see *What the Android promotion does* below: the same run
+also sends the build to production at 1%, not only to Internal). On iOS it is
+the note App Store users read, so the owner writes it; the generated notes below it are a
 developer changelog and are never used in its place. `release-ios.yml` fails in
 its first minute, before the build, when the section is missing, empty (an HTML
 comment alone counts as empty) or over App Store Connect's 4000 characters.
@@ -118,7 +125,10 @@ the workflow only fires on `release: [published]`.
 `on: release` fires for every published Release in the repo, so each
 `release-*.yml` job is guarded to its own `<app>@` tag prefix; publishing
 a `web@*` Release runs only `release-web` (the other eight jobs evaluate
-their `if:` to false and are skipped). The artifact-building workflows
+their `if:` to false and are skipped). So every Release starts a run of
+every `release-*.yml` on the same commit; to find the one that deploys, match
+the run's title to the Release title (`gh run list --workflow release-web.yml
+--json displayTitle`), not the commit. The artifact-building workflows
 (android, iOS, Wear, web) then attach their build output **back onto that
 same Release** for rollback; the deploy-only workflows (backend, worker,
 osrm, graph-cycle) don't write anything back — the Release is purely

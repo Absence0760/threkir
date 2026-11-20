@@ -45,6 +45,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Cold Harbor, 5 km and 10 km (2 laps)** (Richmond National Battlefield Park, NPS `rich`; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/cold-harbor/`, joining the three trail pieces along the tour road (`trail_review.road_connectors`, a `road` step in the guide) | **Staged**: waits on the owner's ground check and the NPS permit question. See *Pre-deploy checklist* |
 | **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 | **Poor Farm Park, 5 km and 10 km (2 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
+| **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -1250,6 +1251,26 @@ These gate going live, not the code:
       on each of three laps of a figure-eight, which fails the curation rule.
       The issue's 8 km no-repeat loop needs 14 junction joins; revisit once
       those are checked.
+- [ ] **First Landing State Park (staged, issue #1433).** Before its
+      `release` goes `live`: the owner walks all four courses against the
+      DCR trail guide and the trail signs (the line is OSM's; DCR's maps are
+      reference only until DCR confirms its terms in writing). The 5K
+      (4,853 m loop: Bald Cypress, Osmanthus) and the 10K (9,919 m loop: adds
+      Cape Henry, Kingfisher, Long Creek, Fox Run, High Dune) start on the
+      Bald Cypress Trail about 100 m and 120 m from the Trail Center. The half
+      (one 20,695 m lap) and the marathon (two laps) add White Hill Lake and
+      the Osprey Trail, running the Long Creek Trail between White Hill Lake
+      and the Osprey Trail out and back (798 m each way, 4 % of the lap), and
+      start on the Cape Henry Trail about 150 m and 300 m west of the Trail
+      Center, clear of the Trail Center's service road (the half's line is
+      71 m from it). The Cape Henry Trail is shared with bikes; every other
+      trail used is hiking only. Walk the route guides and set
+      `ground_checked_at`, and confirm with DCR whether a standing timed
+      course needs a special use permit. No linear course on the Cape Henry
+      Trail: the whole trail is about 10 km, so a half out and back would run
+      it end to end, with its ends at roads (the streets west of the park and
+      64th Street), and the
+      loops are the better run.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

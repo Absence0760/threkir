@@ -83,4 +83,15 @@ class ParkCourseWiringTest {
         assertTrue("shown in the ambient branch and the live one", Regex("courseCueText\\(courseCue\\)").findAll(ui).count() >= 2)
         assertTrue(body(vm, "private fun observeParkCourses(").contains("parkCourseBridge.current()"))
     }
+
+    @Test
+    fun `the running screen and the summary say the best lap once there are two, from the cue`() {
+        val text = body(ui, "private fun courseCueText(")
+        assertTrue(text.contains("if (cue.laps > 1) R.string.course_finished_best else R.string.course_finished"))
+        val call = ui.indexOf("Stage.PostRun -> PostRunScreen(")
+        assertTrue(call >= 0)
+        assertTrue("the summary gets the cue", ui.substring(call, ui.indexOf("Stage.RoutePicker", call)).contains("courseCue = state.courseCue"))
+        val post = body(ui, "internal fun PostRunScreen(")
+        assertTrue("a finished course on the summary", post.contains("if (courseCue?.finishedS != null)"))
+    }
 }

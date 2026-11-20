@@ -116,6 +116,7 @@
     <string name="race_start_crossed">Línea de salida cruzada, cronometrando</string>
     <string name="course_timing_started">Cronómetro en marcha</string>
     <string name="course_finished">¡En meta! %1$s</string>
+    <string name="course_finished_best">¡En meta! Mejor %1$s</string>
     <string name="route_course_caption">Recorrido · %1$s</string>
     <string name="race_finish_recorded">Llegada registrada</string>
     <string name="race_undo_resume">¿No has terminado? Reanudar</string>

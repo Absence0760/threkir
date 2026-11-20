@@ -578,8 +578,11 @@ circle left the wrist silent while the board timed the run. Leaving the
 start box forward says "Timing started", entering the finish box having passed
 every checkpoint in order within the length guard says "Finished! 8:42:10":
 each buzzes (the workout's step and completion buzzes) and speaks through
-`RunRecordingService.courseCue`, and the running screen shows the last one in
-`title3` above the clock, in ambient too. Stop settles the timer first, so a
+`RunRecordingService.courseCue`, every lap with its own time. The running
+screen shows the cue in `title3` above the clock, in ambient too, and the
+post-run summary shows a finished one: once a lap finishes it stays on the
+FASTEST lap's time, the one the board keeps ("Finished! Best 21:42" from the
+second lap, `course_finished_best`), and a later start does not hide it. Stop settles the timer first, so a
 recording that ends in the finish box (or 5 m short) finishes there. The rule
 is the server matcher's (`LiveCourseTimerTest` replays
 `fixtures/park_course_runs.json` and `SegmentsGateCasesTest` every box case of

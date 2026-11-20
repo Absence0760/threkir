@@ -109,6 +109,7 @@
     <string name="race_start_crossed">スタートラインを通過。計測を開始します</string>
     <string name="course_timing_started">計測開始</string>
     <string name="course_finished">ゴール！%1$s</string>
+    <string name="course_finished_best">ゴール！ベスト %1$s</string>
     <string name="route_course_caption">コース · %1$s</string>
     <string name="race_finish_recorded">ゴールを記録しました</string>
     <string name="race_undo_resume">ゴールしていない？再開</string>

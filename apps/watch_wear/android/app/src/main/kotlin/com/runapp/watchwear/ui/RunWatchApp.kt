@@ -365,6 +365,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     onSignIn = vm::openSignIn,
                     onStartNext = vm::startNextRun,
                     onDiscard = vm::discard,
+                    courseCue = state.courseCue,
                 )
                 Stage.RoutePicker -> RoutePickerScreen(
                     routes = state.courses.map { it.asRoute() } + state.routes,
@@ -2239,7 +2240,10 @@ private fun RoutePickerScreen(
 private fun courseCueText(cue: com.runapp.watchwear.CourseCueView): String =
     when (val s = cue.finishedS) {
         null -> stringResource(R.string.course_timing_started)
-        else -> stringResource(R.string.course_finished, com.runapp.watchwear.formatCourseTime(s))
+        else -> stringResource(
+            if (cue.laps > 1) R.string.course_finished_best else R.string.course_finished,
+            com.runapp.watchwear.formatCourseTime(s),
+        )
     }
 
 /// The race line on the running screen: the gun clock while the race is
@@ -2386,6 +2390,9 @@ internal fun PostRunScreen(
     onSignIn: () -> Unit,
     onStartNext: () -> Unit,
     onDiscard: () -> Unit,
+    /// The park course's cue at the Stop: a finished course shows the time
+    /// the board will keep.
+    courseCue: com.runapp.watchwear.CourseCueView? = null,
 ) {
     // Same edge-anchored Box pattern as PreRun + Running. The recorded
     // track fills the watch face as a background; headline stats hug
@@ -2439,6 +2446,13 @@ internal fun PostRunScreen(
                         } else {
                             stringResource(R.string.race_result_dnf)
                         },
+                        style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                        color = MaterialTheme.colors.primary,
+                    )
+                }
+                if (courseCue?.finishedS != null) {
+                    Text(
+                        courseCueText(courseCue),
                         style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
                         color = MaterialTheme.colors.primary,
                     )

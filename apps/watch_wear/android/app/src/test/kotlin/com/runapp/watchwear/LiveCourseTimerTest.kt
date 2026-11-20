@@ -265,14 +265,38 @@ class LiveCourseTimerTest {
     }
 
     @Test
-    fun `the screen says the last thing the timer did`() {
+    fun `the screen says timing started, then keeps the best finished lap, the one the board keeps`() {
         assertNull(courseCueAfter(null, emptyList()))
         val started = courseCueAfter(null, listOf(CourseEvent.Started(0.0)))
         assertEquals(CourseCueView(finishedS = null), started)
-        val done = courseCueAfter(started, listOf(CourseEvent.Finished(0.0, 965_000.0)))
-        assertEquals(CourseCueView(finishedS = 965.0), done)
+        val done = courseCueAfter(started, listOf(CourseEvent.Finished(0.0, 1_301_600.0)))
+        assertEquals(CourseCueView(finishedS = 1301.6, laps = 1), done)
         assertEquals("a quiet fix keeps the cue", done, courseCueAfter(done, emptyList()))
-        assertEquals(started, courseCueAfter(done, listOf(CourseEvent.Started(1.0))))
+        assertEquals("a later start keeps the finish", done, courseCueAfter(done, listOf(CourseEvent.Started(1.0))))
+        val slower = courseCueAfter(done, listOf(CourseEvent.Finished(1_400_000.0, 2_800_000.0)))
+        assertEquals("a slower second lap keeps the first lap's time", CourseCueView(finishedS = 1301.6, laps = 2), slower)
+        val faster = courseCueAfter(slower, listOf(CourseEvent.Finished(2_800_000.0, 4_000_000.0)))
+        assertEquals(CourseCueView(finishedS = 1200.0, laps = 3), faster)
+        assertEquals("21:42", formatCourseTime(done!!.finishedS!!))
+    }
+
+    @Test
+    fun `three laps on Beaver Lake leave the screen on the fastest lap, the matcher's effort`() {
+        val c = cases.first { it["key"]!!.jsonPrimitive.content == "beaver_three_laps" }
+        val beaver = courses.first { it["slug"]!!.jsonPrimitive.content == "beaver-lake-trail" }
+        val timer = LiveCourseTimer(spec(beaver))
+        var cue: CourseCueView? = null
+        val said = mutableListOf<Double>()
+        for (f in decode(c["track"]!!.jsonObject)) {
+            val events = timer.offer(f.lat, f.lng, f.tMs)
+            said += events.filterIsInstance<CourseEvent.Finished>().map { it.elapsedS }
+            cue = courseCueAfter(cue, events)
+        }
+        timer.settle()?.let { said += it.elapsedS; cue = courseCueAfter(cue, listOf(it)) }
+        assertEquals("each lap is announced with its own time", timer.finished.map { it.elapsedS }, said)
+        assertEquals(3, cue!!.laps)
+        assertEquals(timer.best!!.elapsedS, cue!!.finishedS!!, 0.0)
+        assertTrue("the last lap is not the fastest here", said.last() != cue!!.finishedS)
     }
 
     @Test

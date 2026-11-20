@@ -116,6 +116,7 @@
     <string name="race_start_crossed">Startlinie überquert, Zeitmessung läuft</string>
     <string name="course_timing_started">Zeitmessung läuft</string>
     <string name="course_finished">Im Ziel! %1$s</string>
+    <string name="course_finished_best">Im Ziel! Bestzeit %1$s</string>
     <string name="route_course_caption">Strecke · %1$s</string>
     <string name="race_finish_recorded">Zieleinlauf erfasst</string>
     <string name="race_undo_resume">Nicht im Ziel? Fortsetzen</string>

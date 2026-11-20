@@ -295,11 +295,11 @@ class RouteMiniMapWiringTest {
         // of SupabaseClient for unit-testability).
         val src = File("src/main/kotlin/com/runapp/watchwear/SupabaseUrlBuilders.kt").readText()
         assertTrue(
-            "FETCH_ROUTES_STARRED_QUERY must filter is_starred=eq.true with limit=30",
+            "fetchRoutesStarredQuery must filter is_starred=eq.true with limit=30",
             Regex("""is_starred=eq\.true[^"]*limit=30""").containsMatchIn(src),
         )
         assertTrue(
-            "FETCH_ROUTES_FALLBACK_QUERY must omit is_starred and cap at limit=10",
+            "fetchRoutesFallbackQuery must omit is_starred and cap at limit=10",
             Regex("""order=updated_at\.desc&limit=10""").containsMatchIn(src),
         )
     }

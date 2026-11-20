@@ -157,7 +157,6 @@ select is(
   false, 'the flag is seeded off');
 
 create temp table pcac_off as select * from private.close_park_courses_failing_runs();
--- refusal: the flag is off, so the sweep returns no course though course 1 qualifies (the dry run below lists it)
 select is((select count(*)::int from pcac_off), 0, 'with the flag off the sweep returns nothing');
 select is((select status from park_courses where id = pg_temp.c(1)), 'open',
   'with the flag off the sweep closes nothing');

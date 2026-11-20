@@ -276,6 +276,12 @@ tasks.withType<Test>().configureEach {
             // GateCrossingTest: the gate_crossing case table web and the
             // phone read too.
             root.resolve("fixtures/gate_crossing_cases.json"),
+            // LiveCourseTimerTest, CourseGatesTest, ParkCourseBridgeTest: the
+            // matcher's park course runs, the course_gates case table and the
+            // /park_courses payload contract.
+            root.resolve("fixtures/park_course_runs.json"),
+            root.resolve("fixtures/course_gates_cases.json"),
+            root.resolve("fixtures/wear_park_courses_payload.json"),
         )
             .withPathSensitivity(PathSensitivity.NAME_ONLY)
             .withPropertyName("guardedCrossTreeFiles")

@@ -3,7 +3,8 @@
  "reference": "docs/architecture/parity_pairs.md (course_gates, TS<->Dart); issue #1305; decisions § 1856 (this file's schema convention), § 2390 (course start and finish lines)",
  "readers": [
   "apps/web/src/lib/races/course_gates.test.ts",
-  "apps/mobile_android/test/course_gates_test.dart"
+  "apps/mobile_android/test/course_gates_test.dart",
+  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/CourseGatesTest.kt"
  ],
  "schema": {
   "general": [

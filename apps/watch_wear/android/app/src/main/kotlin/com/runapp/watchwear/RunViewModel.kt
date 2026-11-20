@@ -290,6 +290,12 @@ data class UiState(
     val followWorkout: Boolean = true,
     /// The live step, while a run follows a workout.
     val workoutView: com.runapp.watchwear.workout.WorkoutView? = null,
+    /// Park courses the phone put on the watch (`/park_courses`), listed
+    /// first in the route picker; picking one times the run on it live.
+    val courses: List<ParkCourse> = emptyList(),
+    /// What the running screen says about the course being timed: "Timing
+    /// started" or "Finished!" with the time. Null on any other run.
+    val courseCue: CourseCueView? = null,
     /// Live step count for the current run from the pedometer. Null
     /// when the device has no step sensor or no samples have arrived.
     val steps: Int? = null,
@@ -429,6 +435,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionBridge = SessionBridge(application)
     private val routeStore = LocalRouteStore(application)
     private val routesBridge = RoutesBridge(application)
+    private val parkCourseBridge = ParkCourseBridge(application)
     private val workoutBridge = WorkoutBridge(application)
     private val checkpoints = CheckpointStore(application)
     private val networkWatcher = NetworkWatcher(application)
@@ -566,6 +573,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private var raceFilingJob: Job? = null
     /// The last fix offered to the detector, by its GPS time: a dedupe key.
     private var lastRaceFixKey: Long = Long.MIN_VALUE
+
+    /// The park course this recording is timed on (#1446), and the last fix
+    /// it was offered. Null on any other run, and on a course it cannot time.
+    private var courseTimer: LiveCourseTimer? = null
+    private var lastCourseFixKey: Long = Long.MIN_VALUE
+    private var lastAppliedCoursesPushMs: Long = 0L
     private var raceStopDecision: RaceStopDecision? = null
     /// The device-clock instant the runner stopped racing (Stop or pause on
     /// a bound race), while the paused screen's choice is open. A Finish is
@@ -590,6 +603,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         checkRecovery()
         loadCachedRoutes()
         observeRoutesBridge()
+        observeParkCourses()
         observeWorkoutBridge()
     }
 
@@ -716,6 +730,95 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /// The park courses the phone put on the watch: the persisted item on a
+    /// cold launch, then every delivery. An older delivery never rolls them
+    /// back; an unreadable one is dropped by the bridge, never read as none.
+    private fun observeParkCourses() {
+        launchGuarded {
+            try {
+                parkCourseBridge.current()?.let(::applyParkCourses)
+            } catch (e: Throwable) {
+                Log.w(TAG, "park courses not read; the picker shows saved routes", e)
+            }
+        }
+        launchGuarded {
+            parkCourseBridge.events
+                .catch { e -> Log.w(TAG, "park courses stream failed", e) }
+                .collect { push ->
+                    try {
+                        applyParkCourses(push)
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "park courses event failed", e)
+                    }
+                }
+        }
+    }
+
+    private fun applyParkCourses(push: ParkCoursesPush) {
+        if (!shouldApplyParkCoursesPush(lastAppliedCoursesPushMs, push.updatedAtMs)) return
+        lastAppliedCoursesPushMs = push.updatedAtMs
+        val selected = _state.value.selectedRoute
+        // A course the phone took off the watch is no longer offered; a
+        // recording already timing it keeps its own timer.
+        val stillOffered = selected?.courseId == null || push.courses.any { it.id == selected.courseId }
+        _state.value = _state.value.copy(
+            courses = push.courses,
+            selectedRoute = if (stillOffered) selected else null,
+        )
+    }
+
+    /// One fix to the course timer, by the race feed's rule: only while
+    /// recording, once per fix, on the device clock. A start or finish buzzes
+    /// and speaks through the recording service and shows on the running
+    /// screen. L4: the caller catches, so the run records on.
+    private fun advanceCourseTimer(m: RecordingRepository.Metrics) {
+        val timer = courseTimer ?: return
+        val p = m.latestPoint ?: return
+        val offerable = raceFixOfferable(
+            recording = m.stage == RecordingRepository.Stage.Recording,
+            decided = false,
+            fixKey = p.epochMs,
+            lastFixKey = lastCourseFixKey,
+        )
+        if (!offerable) return
+        lastCourseFixKey = p.epochMs
+        val atMs = raceFixDeviceMs(
+            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+            nowWallMs = System.currentTimeMillis(),
+            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+        )
+        publishCourseEvents(timer.offer(p.lat, p.lng, atMs.toDouble()))
+    }
+
+    /// The runner pressed Stop: a recording that ends in the finish box, or
+    /// just short of it, finishes there (the matcher's slack). Cued before
+    /// the service stops, while it can still buzz.
+    private fun settleCourseTimer() {
+        try {
+            val done = courseTimer?.settle() ?: return
+            publishCourseEvents(listOf(done))
+        } catch (e: Throwable) {
+            Log.w(TAG, "course timer not settled; the run stops as usual", e)
+        }
+    }
+
+    private fun publishCourseEvents(events: List<CourseEvent>) {
+        if (events.isEmpty()) return
+        _state.value = _state.value.copy(courseCue = courseCueAfter(_state.value.courseCue, events))
+        for (e in events) {
+            try {
+                when (e) {
+                    is CourseEvent.Started ->
+                        RunRecordingService.courseCue(getApplication(), RunRecordingService.RACE_CUE_START, null)
+                    is CourseEvent.Finished ->
+                        RunRecordingService.courseCue(getApplication(), RunRecordingService.RACE_CUE_FINISH, e.elapsedS)
+                }
+            } catch (ex: Throwable) {
+                Log.w(TAG, "course cue not sent; timing carries on", ex)
+            }
+        }
+    }
+
     private fun observeRecording() {
         recordingObserverJob = launchGuarded {
             RecordingRepository.metrics.collect { m ->
@@ -751,6 +854,11 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                             handleRaceTimer(m)
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
+                        }
+                        try {
+                            advanceCourseTimer(m)
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "course timing failed; the run records on", e)
                         }
                         // Debug builds only: the line-calibration capture
                         // (#1304 § 6) takes fixes by the race feed's own rule.
@@ -1924,7 +2032,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             raceRun = null,
             raceToStartM = null,
             workoutView = null,
+            courseCue = null,
         )
+        courseTimer = courseTimerFor(route, _state.value.courses)
+        lastCourseFixKey = Long.MIN_VALUE
         RunRecordingService.start(
             context = getApplication(),
             runId = runId,
@@ -2064,9 +2175,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         )
         launchGuarded {
             // Bump LRU so the next picker open puts this route at
-            // the top regardless of `updated_at` on the server.
+            // the top regardless of `updated_at` on the server. A course row
+            // keeps the phone's order.
             try {
-                routeStore.pushRecent(route.id)
+                if (route.courseId == null) routeStore.pushRecent(route.id)
             } catch (e: Throwable) {
                 Log.w(TAG, "route LRU not updated", e)
             }
@@ -2113,7 +2225,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 RunRecordingService.pause(getApplication())
             }
             RaceStopAction.FINISH_RACE -> race?.let { finishRaceNow(it) }
-            RaceStopAction.STOP -> RunRecordingService.stop(getApplication())
+            RaceStopAction.STOP -> {
+                settleCourseTimer()
+                RunRecordingService.stop(getApplication())
+            }
         }
     }
 
@@ -2166,6 +2281,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceStoppedAtMs = null
         raceEndedAfterStop = false
         lastRaceFixKey = Long.MIN_VALUE
+        courseTimer = null
+        lastCourseFixKey = Long.MIN_VALUE
         raceTimer.endRecording()
         raceTimerRunId = null
         forgetUndoneFinish()

@@ -1,0 +1,1422 @@
+{
+ "spec": "wear_park_courses v1",
+ "reference": "docs/architecture/decisions.md § 2595; docs/architecture/parity_pairs.md (live_course_timer); issue #1446",
+ "readers": [
+  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/ParkCourseBridgeTest.kt"
+ ],
+ "writer": "none yet: the phone side (apps/mobile_android) writes /park_courses in a later change and is held to `cases` here",
+ "schema": {
+  "path": "the Wearable Data Layer path, /park_courses",
+  "dataMap": "{payload_version: int, courses_json: string (a JSON array of courses), updated_at_ms: long}. A payload_version other than 1, or a courses_json that is not a JSON array, is dropped whole and never read as no courses",
+  "course": "{id, route_id (string or null), name, distance_m (the catalogue segment's stored length, 0 < d <= 1000000), laps (1..1000 or null), start_gate and end_gate ({lat, lng, bearing_deg, half_width_m 5..100}, the segment's start and end lines), checkpoints ([{lat, lng}], at most 50, in order), waypoints ([{lat, lng}], the course route line, 2..1000 points)}",
+  "cases": "{name, courses_json, expected}: expected is the ids the watch keeps, in order. `repeat_course` {course, count}, when present, appends count copies of course to courses_json, the i-th with id course.id + i",
+  "rejected_courses": "{name, course}: a course the watch refuses whole. `repeat` {field, point, count}, when present, fills that array with count copies of point before reading",
+  "dropped_payloads": "{name, payload_version, courses_json}: a delivery the watch ignores (null, never an empty list)"
+ },
+ "cases": [
+  {
+   "name": "two readable courses, in the phone's order",
+   "courses_json": [
+    {
+     "id": "8d3b2a10-0000-4000-8000-000000000001",
+     "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+     "name": "Beaver Lake Trail",
+     "distance_m": 3595,
+     "laps": 1,
+     "start_gate": {
+      "lat": 37.386024,
+      "lng": -77.584133,
+      "bearing_deg": 153.1484956563911,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.386024,
+      "lng": -77.584133,
+      "bearing_deg": 191.48459767326835,
+      "half_width_m": 15
+     },
+     "checkpoints": [
+      {
+       "lat": 37.384171,
+       "lng": -77.585807
+      },
+      {
+       "lat": 37.382147,
+       "lng": -77.590548
+      },
+      {
+       "lat": 37.380315,
+       "lng": -77.590315
+      },
+      {
+       "lat": 37.383646,
+       "lng": -77.590446
+      }
+     ],
+     "waypoints": [
+      {
+       "lat": 37.386024,
+       "lng": -77.584133
+      },
+      {
+       "lat": 37.384171,
+       "lng": -77.585807
+      },
+      {
+       "lat": 37.382147,
+       "lng": -77.590548
+      },
+      {
+       "lat": 37.386024,
+       "lng": -77.584133
+      }
+     ]
+    },
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    "8d3b2a10-0000-4000-8000-000000000001",
+    "course-minimal"
+   ]
+  },
+  {
+   "name": "an empty list is the phone saying none: it clears the rows",
+   "courses_json": [],
+   "expected": []
+  },
+  {
+   "name": "a refused course is left out, the rest kept",
+   "courses_json": [
+    {
+     "id": "8d3b2a10-0000-4000-8000-000000000001",
+     "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+     "name": "Beaver Lake Trail",
+     "distance_m": 3595,
+     "laps": 1,
+     "start_gate": {
+      "lat": 37.386024,
+      "lng": -77.584133,
+      "bearing_deg": 153.1484956563911,
+      "half_width_m": 15
+     },
+     "end_gate": null,
+     "checkpoints": [
+      {
+       "lat": 37.384171,
+       "lng": -77.585807
+      },
+      {
+       "lat": 37.382147,
+       "lng": -77.590548
+      },
+      {
+       "lat": 37.380315,
+       "lng": -77.590315
+      },
+      {
+       "lat": 37.383646,
+       "lng": -77.590446
+      }
+     ],
+     "waypoints": [
+      {
+       "lat": 37.386024,
+       "lng": -77.584133
+      },
+      {
+       "lat": 37.384171,
+       "lng": -77.585807
+      },
+      {
+       "lat": 37.382147,
+       "lng": -77.590548
+      },
+      {
+       "lat": 37.386024,
+       "lng": -77.584133
+      }
+     ]
+    },
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    "course-minimal"
+   ]
+  },
+  {
+   "name": "a repeated id keeps the first",
+   "courses_json": [
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    },
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Again",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    "course-minimal"
+   ]
+  },
+  {
+   "name": "more than 20 courses keeps the first 20",
+   "courses_json": [],
+   "expected": [
+    "c0",
+    "c1",
+    "c2",
+    "c3",
+    "c4",
+    "c5",
+    "c6",
+    "c7",
+    "c8",
+    "c9",
+    "c10",
+    "c11",
+    "c12",
+    "c13",
+    "c14",
+    "c15",
+    "c16",
+    "c17",
+    "c18",
+    "c19"
+   ],
+   "repeat_course": {
+    "course": {
+     "id": "c",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    },
+    "count": 22,
+    "id_suffix": "index"
+   }
+  }
+ ],
+ "rejected_courses": [
+  {
+   "name": "no start line: the course cannot be timed by its boxes",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "no end line",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": null,
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a zero length",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 0,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a length past 1000 km",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 1000001,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a length sent as a string",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": "3595",
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a line narrower than the 5 m the CHECK allows",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 4
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a line wider than 100 m",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 101
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a line with no bearing",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.0,
+     "lng": -77.0,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a latitude at the pole",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 90,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unreadable checkpoint",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.0
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "more than 50 checkpoints",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   },
+   "repeat": {
+    "field": "checkpoints",
+    "point": {
+     "lat": 37.0,
+     "lng": -77.0
+    },
+    "count": 51
+   }
+  },
+  {
+   "name": "no checkpoints array",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a one-point route line",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.0,
+      "lng": -77.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "more than 1000 route points",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": []
+   },
+   "repeat": {
+    "field": "waypoints",
+    "point": {
+     "lat": 37.0,
+     "lng": -77.0
+    },
+    "count": 1001
+   }
+  },
+  {
+   "name": "a blank name",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "  ",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "no id",
+   "course": {
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "laps of zero",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": "8d3b2a10-0000-4000-8000-0000000000aa",
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 0,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  },
+  {
+   "name": "a route id that is not a string",
+   "course": {
+    "id": "8d3b2a10-0000-4000-8000-000000000001",
+    "route_id": 42,
+    "name": "Beaver Lake Trail",
+    "distance_m": 3595,
+    "laps": 1,
+    "start_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 153.1484956563911,
+     "half_width_m": 15
+    },
+    "end_gate": {
+     "lat": 37.386024,
+     "lng": -77.584133,
+     "bearing_deg": 191.48459767326835,
+     "half_width_m": 15
+    },
+    "checkpoints": [
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.380315,
+      "lng": -77.590315
+     },
+     {
+      "lat": 37.383646,
+      "lng": -77.590446
+     }
+    ],
+    "waypoints": [
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     },
+     {
+      "lat": 37.384171,
+      "lng": -77.585807
+     },
+     {
+      "lat": 37.382147,
+      "lng": -77.590548
+     },
+     {
+      "lat": 37.386024,
+      "lng": -77.584133
+     }
+    ]
+   }
+  }
+ ],
+ "dropped_payloads": [
+  {
+   "name": "another payload version",
+   "payload_version": 2,
+   "courses_json": [
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "no payload version",
+   "payload_version": null,
+   "courses_json": [
+    {
+     "id": "course-minimal",
+     "route_id": null,
+     "name": "Out and back",
+     "distance_m": 5000,
+     "laps": null,
+     "start_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 0,
+      "half_width_m": 15
+     },
+     "end_gate": {
+      "lat": 37.0,
+      "lng": -77.0,
+      "bearing_deg": 180,
+      "half_width_m": 15
+     },
+     "checkpoints": [],
+     "waypoints": [
+      {
+       "lat": 37.0,
+       "lng": -77.0
+      },
+      {
+       "lat": 37.0225,
+       "lng": -77.0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a course list that is an object",
+   "payload_version": 1,
+   "courses_json": {
+    "courses": [
+     {
+      "id": "course-minimal",
+      "route_id": null,
+      "name": "Out and back",
+      "distance_m": 5000,
+      "laps": null,
+      "start_gate": {
+       "lat": 37.0,
+       "lng": -77.0,
+       "bearing_deg": 0,
+       "half_width_m": 15
+      },
+      "end_gate": {
+       "lat": 37.0,
+       "lng": -77.0,
+       "bearing_deg": 180,
+       "half_width_m": 15
+      },
+      "checkpoints": [],
+      "waypoints": [
+       {
+        "lat": 37.0,
+        "lng": -77.0
+       },
+       {
+        "lat": 37.0225,
+        "lng": -77.0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "text that is not JSON",
+   "payload_version": 1,
+   "courses_json": "not json"
+  }
+ ]
+}

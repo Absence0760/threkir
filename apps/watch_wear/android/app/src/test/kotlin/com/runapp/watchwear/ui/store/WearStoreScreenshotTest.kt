@@ -175,6 +175,7 @@ class WearStoreScreenshotTest {
             raceRun = null,
             raceToStartM = null,
             workoutView = workoutView,
+            courseCue = null,
             onPause = {},
             onResume = {},
             onLap = {},

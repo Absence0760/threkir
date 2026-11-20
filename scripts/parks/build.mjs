@@ -33,6 +33,7 @@ import {
 	RACE_COURSE_SHAPES,
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	footAccessWarnings,
 	assertRoadConnectors,
 	assertTrailReview,
 	curatedGates,
@@ -66,9 +67,11 @@ const SIMPLIFY_EPSILON_M = 1;
 
 /**
  * @param {string} dir
+ * @param {{ warn?: (message: string) => void }} [options] where a warning that
+ *   does not stop the build goes (a way that may be bike-only); stderr by default
  * @returns {Map<string, string>} output path -> contents
  */
-export function buildPark(dir) {
+export function buildPark(dir, { warn = (message) => console.warn(`WARN ${message}`) } = {}) {
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
 	assertNoThirdPartyMarks(spec, path.join(dir, 'park.json'));
 	const release = parseRelease(spec.release, path.join(dir, 'park.json'));
@@ -100,7 +103,7 @@ export function buildPark(dir) {
 			start: course.start_node,
 			direction: course.direction,
 		});
-		footAccessOrThrow(course.slug, sequence, ways, spec.trail_review);
+		footAccessOrThrow(course.slug, sequence, ways, spec.trail_review, warn);
 		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
 		roadConnectorsOrThrow(course.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
@@ -197,7 +200,7 @@ export function buildPark(dir) {
 			throw new Error(`${race.slug}: course_shape ${race.course_shape} is not one of ${RACE_COURSE_SHAPES.join(', ')}`);
 		}
 		if (race.course_shape !== 'loop') {
-			const built = buildLinearRace(spec, snapshot, race, ways, targetM);
+			const built = buildLinearRace(spec, snapshot, race, ways, targetM, warn);
 			outputs.set(path.join(dir, `${race.slug}.geojson`), built.geojson);
 			raceCourses.push(built.entry);
 			continue;
@@ -205,7 +208,7 @@ export function buildPark(dir) {
 		const leadIn = traceVia({ ways, nodes: snapshot.nodes, via: race.lead_in_via });
 		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
 		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
-		footAccessOrThrow(race.slug, sequence, ways, spec.trail_review);
+		footAccessOrThrow(race.slug, sequence, ways, spec.trail_review, warn);
 		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
 		roadConnectorsOrThrow(race.slug, sequence, snapshot.nodes, ways, spec.trail_review);
 		const full = toPoints(sequence, snapshot.nodes);
@@ -320,8 +323,9 @@ export function buildPark(dir) {
  * @param {any} race
  * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
  * @param {number} targetM
+ * @param {(message: string) => void} warn
  */
-function buildLinearRace(spec, snapshot, race, ways, targetM) {
+function buildLinearRace(spec, snapshot, race, ways, targetM, warn) {
 	const fail = (/** @type {unknown} */ err) => new Error(`${race.slug}: ${/** @type {Error} */ (err).message}`);
 	if (race.laps != null) throw new Error(`${race.slug}: a ${race.course_shape} course has no laps`);
 	if (!Number.isInteger(race.checkpoint_count) || race.checkpoint_count < 1) {
@@ -349,7 +353,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
 			throw fail(err);
 		}
 	}
-	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
+	footAccessOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review, warn);
 	const fords = trailReviewOrThrow(race.slug, cut.sequence, cut.ways, spec.trail_review);
 	roadConnectorsOrThrow(race.slug, cut.sequence, cut.nodes, cut.ways, spec.trail_review);
 	const raw = toPoints(cut.sequence, cut.nodes);
@@ -447,13 +451,15 @@ function buildLinearRace(spec, snapshot, race, ways, targetM) {
  * @param {number[]} sequence
  * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
  * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
+ * @param {(message: string) => void} warn
  */
-function footAccessOrThrow(slug, sequence, ways, review) {
+function footAccessOrThrow(slug, sequence, ways, review, warn) {
 	try {
 		assertFootAccess(sequence, ways, review?.foot_confirmed);
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}
+	for (const message of footAccessWarnings(sequence, ways, review?.foot_confirmed)) warn(`${slug}: ${message}`);
 }
 
 /**

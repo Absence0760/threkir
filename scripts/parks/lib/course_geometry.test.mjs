@@ -18,6 +18,8 @@ import {
 	distanceDeviation,
 	elevationGainM,
 	footAccessRefusal,
+	footAccessWarning,
+	footAccessWarnings,
 	haversineM,
 	lapCourse,
 	assertViaEndsAtTrailEnd,
@@ -416,6 +418,34 @@ test('footAccessRefusal refuses a cycleway without foot access', () => {
 test('footAccessRefusal refuses mountain-bike-only trails', () => {
 	assert.equal(footAccessRefusal({ highway: 'path', bicycle: 'designated', foot: 'no' }), 'foot=no, bicycle=designated');
 	assert.equal(footAccessRefusal({ highway: 'path', mtb: 'designated' }), 'mtb=designated');
+});
+
+test('footAccessWarning flags a bike-designated way with no explicit foot access', () => {
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated' }), 'bicycle=designated with no foot tag');
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'permissive' }), 'bicycle=designated with foot=permissive');
+	assert.equal(footAccessWarning({ highway: 'path', foot: 'discouraged' }), 'foot=discouraged');
+});
+
+test('footAccessWarning is silent where foot is explicit, or where the way is refused anyway', () => {
+	assert.equal(footAccessWarning({ highway: 'path' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'designated' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'yes' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'no' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', mtb: 'designated', bicycle: 'designated' }), null);
+	assert.equal(footAccessWarning({ highway: 'cycleway', bicycle: 'designated' }), null);
+});
+
+test('footAccessWarnings names only walked ways, and foot_confirmed settles one', () => {
+	/** @type {import('./course_geometry.mjs').SnapshotWay[]} */
+	const ways = [
+		{ id: 20, nodes: [1, 2], tags: { highway: 'path', bicycle: 'designated' } },
+		{ id: 21, nodes: [2, 3], tags: { highway: 'path' } },
+		{ id: 22, nodes: [3, 4], tags: { highway: 'path', bicycle: 'designated' } },
+	];
+	const warnings = footAccessWarnings([1, 2, 3], ways);
+	assert.equal(warnings.length, 1);
+	assert.match(warnings[0], /^way 20 \(bicycle=designated with no foot tag\) may be bike-only/);
+	assert.deepEqual(footAccessWarnings([1, 2, 3], ways, { 20: 'open to walkers per the park map' }), []);
 });
 
 test('assertFootAccess names the refused way and its tags', () => {

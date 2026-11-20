@@ -189,6 +189,50 @@ export function footAccessRefusal(tags) {
 }
 
 /**
+ * Why a way open to people on foot by OSM's default may still be closed to
+ * them on the ground, or null when nothing says so. `bicycle=designated` with
+ * no foot tag is how OSM maps both a shared-use path and a mountain-bike-only
+ * trail: York River State Park's John Blair Trail and Bobcat Run are bike-only
+ * by the park's own map and tagged exactly this way. `foot=discouraged` is
+ * legal but advised against. Neither refuses (OSM does not forbid foot), so
+ * the build warns and a person checks the land manager's map. A way the
+ * refusal already names gets no warning.
+ *
+ * @param {Record<string, string>} tags
+ * @returns {string | null}
+ */
+export function footAccessWarning(tags) {
+	if (footAccessRefusal(tags) !== null) return null;
+	if (tags.foot === 'yes' || tags.foot === 'designated') return null;
+	/** @type {string[]} */
+	const reasons = [];
+	if (tags.bicycle === 'designated') reasons.push(tags.foot ? `bicycle=designated with foot=${tags.foot}` : 'bicycle=designated with no foot tag');
+	else if (tags.foot === 'discouraged') reasons.push('foot=discouraged');
+	return reasons.length > 0 ? reasons.join(', ') : null;
+}
+
+/**
+ * The warnings for a traced course: one line per walked way that
+ * `footAccessWarning` flags, unless the park's `trail_review.foot_confirmed`
+ * records the land manager's word that the way is open on foot.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ * @param {Record<string, string>} [footConfirmed]
+ * @returns {string[]}
+ */
+export function footAccessWarnings(sequence, ways, footConfirmed = {}) {
+	return walkedWays(sequence, ways)
+		.filter((way) => !(String(way.id) in footConfirmed))
+		.flatMap((way) => {
+			const reason = footAccessWarning(way.tags ?? {});
+			return reason === null
+				? []
+				: [`way ${way.id} (${reason}) may be bike-only; check the land manager's trail map, and record its word in trail_review.foot_confirmed`];
+		});
+}
+
+/**
  * The listed ways a traced sequence actually walks, by id. A listed way the
  * trace never uses (a pruned spur, an alternative the via pins avoid) is not
  * among them.

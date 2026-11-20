@@ -66,13 +66,14 @@ function spec() {
  * Build `s` in a throwaway park directory and return a reader over the outputs.
  *
  * @param {ReturnType<typeof spec>} s
+ * @param {{ snapshotWays?: Record<string, any>, warn?: (message: string) => void }} [options]
  */
-function build(s) {
+function build(s, { snapshotWays = ways, warn = (/** @type {string} */ _m) => {} } = {}) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-park-'));
 	try {
 		fs.writeFileSync(path.join(dir, 'park.json'), JSON.stringify(s));
-		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways, nodes }));
-		const out = buildPark(dir);
+		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: snapshotWays, nodes }));
+		const out = buildPark(dir, { warn });
 		return (/** @type {string} */ file) => JSON.parse(/** @type {string} */ (out.get(path.join(dir, file))));
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
@@ -119,6 +120,24 @@ test('the build refuses a bare cycleway with no foot confirmation', () => {
 	const s = spec();
 	delete s.trail_review.foot_confirmed;
 	assert.throws(() => build(s), /p2p: the course runs on way\(s\) not open to people on foot: way 31 \(highway=cycleway\)/);
+});
+
+test('the build warns, and still builds, on a bike-designated path with no foot tag', () => {
+	// York River State Park's bike-only trails are tagged exactly this way.
+	const bikeWays = { ...ways, 30: { ...ways[30], tags: { highway: 'path', bicycle: 'designated', name: 'Bike Trail' } } };
+	/** @type {string[]} */
+	const warnings = [];
+	const read = build(spec(), { snapshotWays: bikeWays, warn: (m) => warnings.push(m) });
+	assert.equal(read('manifest.json').race_courses.length, 2);
+	assert.equal(warnings.length, 2, 'once per course that walks it');
+	assert.match(warnings[0], /^p2p: way 30 \(bicycle=designated with no foot tag\) may be bike-only; check the land manager's trail map/);
+	assert.match(warnings[1], /^oab: way 30 /);
+
+	const confirmed = spec();
+	/** @type {Record<string, string>} */ (confirmed.trail_review.foot_confirmed)[30] = 'open to walkers per the park trail map';
+	warnings.length = 0;
+	build(confirmed, { snapshotWays: bikeWays, warn: (m) => warnings.push(m) });
+	assert.deepEqual(warnings, [], 'the land manager\'s word in foot_confirmed settles it');
 });
 
 test('a course anchored at the trail end can finish short of it, and the guard still reads the real end', () => {

@@ -991,6 +991,10 @@ A linear race course on a rail trail (the Virginia Capital Trail's, decisions
 `out_and_back`, with one line at the start and its checkpoints on the way out
 only, the last on the turn (the way back passes the same places, so a second
 set would overlap the first). Neither has `laps`.
+The race distances run from `5k` to the ultra distances `50k`, `50mi`
+(80,467.2 m) and `100k` (decisions § 2593); a 50 mile or 100K course is
+expected to be a linear one on a long rail trail. The database stores only
+the metres, so a new distance needs no migration.
 
 On a local stack, `bin/seed-demo.sh` runs the same load over every committed park, staged ones too, as a local copy of the official club it creates (owned by `runner@test.com`); `scripts/parks/local_load.mjs` prints that SQL (decisions § 2590).
 

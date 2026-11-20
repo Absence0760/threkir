@@ -690,6 +690,9 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		AAD3DF: [1, 'cartographic'], DCDCDC: [1, 'cartographic'],
 		FFFFFF: [3, 'cartographic'], '1E1B4B': [1, 'cartographic'],
 		'172554': [1, 'cartographic'],
+		// MAP_CONTROL_INK: our own icon inside a MapLibre control group, which
+		// is white on every basemap and theme, so it takes the stock glyphs' ink.
+		'333333': [1, 'cartographic'],
 		F08A5D: [1, 'cartographic'], A33D1A: [1, 'cartographic'],
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
 		'22C55E': [1, 'cartographic'], '15803D': [2, 'cartographic'],

@@ -21,7 +21,9 @@ import { clearUserSettingKey, deleteRoute, setUserSetting } from '../fixtures/si
  */
 
 const AWS_TERRAIN_HOST = 'elevation-tiles-prod.s3.amazonaws.com';
-const GLB_PATH = '/brand/grisnir/grisnir-trot.glb';
+// Vite names the model by its content hash (`grisnir-trot.<hash>.glb` under
+// `_app/immutable/assets/`), so match the stem rather than one fixed path.
+const isGlbPath = (pathname: string) => /\/grisnir-trot(\.[\w-]+)?\.glb$/.test(pathname);
 
 const COURSE = [
 	{ lat: 39.72, lng: -105.0, ele: 1600 },
@@ -79,7 +81,7 @@ async function browserHasWebgl2(page: Page): Promise<boolean> {
 function glbRequested(page: Page): () => number {
 	let n = 0;
 	page.on('request', (r) => {
-		if (new URL(r.url()).pathname === GLB_PATH) n++;
+		if (isGlbPath(new URL(r.url()).pathname)) n++;
 	});
 	return () => n;
 }
@@ -203,7 +205,7 @@ test('a GLB that fails to load keeps the dot and says nothing to the runner', as
 		const webgl2 = await browserHasWebgl2(page);
 		await mockRoute(
 			page,
-			(url) => url.pathname === GLB_PATH,
+			(url) => isGlbPath(url.pathname),
 			(route) => route.fulfill({ status: 404 }),
 			webgl2 ? {} : { neverFires: 'without WebGL2 the dialog is flat and never wants him' },
 		);
@@ -213,7 +215,7 @@ test('a GLB that fails to load keeps the dot and says nothing to the runner', as
 			(url) => url.hostname === AWS_TERRAIN_HOST,
 			(route) => route.fulfill({ status: 404 }),
 		);
-		const glbFailed = page.waitForResponse((r) => new URL(r.url()).pathname === GLB_PATH);
+		const glbFailed = page.waitForResponse((r) => isGlbPath(new URL(r.url()).pathname));
 		await page.getByTestId('course-preview-open').click();
 		const dialog = page.getByTestId('course-preview-3d');
 		await glbFailed;

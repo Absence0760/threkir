@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { GlbError, parseGlb } from './glb.ts';
 import { MASCOT_PARTS, HORN_PART } from './palette.ts';
 
-const GLB = fileURLToPath(new URL('../../../../../static/brand/grisnir/grisnir-trot.glb', import.meta.url));
+const GLB = fileURLToPath(new URL('../../../assets/grisnir/grisnir-trot.glb', import.meta.url));
 const EXPORT_SCRIPT = fileURLToPath(new URL('../../../../../../../scripts/brand/export_grisnir_gltf.py', import.meta.url));
 /// The preview fetches him on the first open; past this the file needs a
 /// fresh look at the simplification ratio, not a bigger number here.

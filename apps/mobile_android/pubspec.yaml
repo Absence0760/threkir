@@ -176,5 +176,5 @@ flutter:
     - assets/help/
     - assets/help/illustrations/
     # Grisnir, rendered from the mascot model by scripts/brand/render_mascot.sh
-    # (apps/web/static/brand/grisnir/README.md). Never hand-edit.
+    # (apps/web/src/lib/assets/grisnir/README.md). Never hand-edit.
     - assets/brand/grisnir/

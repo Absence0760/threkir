@@ -1,4 +1,5 @@
 <script lang="ts">
+	import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
 	import { localStore } from '#lib/core/browser_storage.ts';
 	import '../app.css';
 	import { onMount } from 'svelte';
@@ -635,7 +636,7 @@
 		<nav class="sidebar" class:collapsed={sidebarCollapsed}>
 			<div class="sidebar-head">
 				<a href="/dashboard" class="logo" aria-label="Threkir">
-					<img src="/logo-mark.svg" alt="" class="logo-mark" />
+					<img src={logoMarkUrl} alt="" class="logo-mark" />
 					<span class="logo-text">Threkir</span>
 				</a>
 				<div class="sidebar-head-actions">

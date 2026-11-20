@@ -1,4 +1,7 @@
 <script lang="ts">
+	import wordmarkLightUrl from '#lib/assets/brand/wordmark-light.svg?no-inline';
+	import terrainPanel800 from '#lib/assets/marketing/terrain-panel-800.webp?no-inline';
+	import terrainPanel1200 from '#lib/assets/marketing/terrain-panel-1200.webp?no-inline';
 	import type { Snippet } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { countUp } from '#lib/motion/actions.ts';
@@ -41,7 +44,7 @@
 		     home, and a hidden subtree left it focusable but nameless (axe
 		     aria-hidden-focus; WCAG 4.1.2 + 2.4.3). -->
 		<a href="/" class="panel-logo">
-			<img src="/wordmark-light.svg" alt="Threkir" />
+			<img src={wordmarkLightUrl} alt="Threkir" />
 		</a>
 
 		{#if panel}
@@ -57,11 +60,11 @@
 			<picture class="panel-terrain">
 				<source
 					type="image/webp"
-					srcset="/marketing/terrain-panel-800.webp 800w, /marketing/terrain-panel-1200.webp 1200w"
+					srcset="{terrainPanel800} 800w, {terrainPanel1200} 1200w"
 					sizes="(min-width: 56rem) 50vw, 100vw"
 				/>
 				<img
-					src="/marketing/terrain-panel-800.webp"
+					src={terrainPanel800}
 					alt=""
 					width="1200"
 					height="1500"
@@ -136,7 +139,7 @@
 		z-index: -1;
 		inset: 0;
 		background: rgba(255, 255, 255, 0.07);
-		mask-image: url('/marketing/topo.svg');
+		mask-image: url('../../assets/marketing/topo.svg');
 		mask-size: 60rem 40rem;
 		mask-position: 30% 10%;
 	}
@@ -261,7 +264,7 @@
 			position: absolute;
 			inset: 0;
 			background: color-mix(in srgb, var(--color-text) 4%, transparent);
-			mask-image: url('/marketing/topo.svg');
+			mask-image: url('../../assets/marketing/topo.svg');
 			mask-size: 70rem 46.7rem;
 			pointer-events: none;
 		}

@@ -6,7 +6,7 @@ import { join, relative, resolve } from 'node:path';
 import { emptyStateShowsMascot } from './mascot.ts';
 
 // Grisnir waits only in the "nothing yet" states that name him, never in an
-// error or failure state (#1364, apps/web/static/brand/grisnir/README.md).
+// error or failure state (#1364, apps/web/src/lib/assets/grisnir/README.md).
 
 const SRC = resolve(new URL('.', import.meta.url).pathname, '../..');
 

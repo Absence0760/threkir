@@ -89,6 +89,6 @@ export const SHARE_STICKER_INKS = {
 	},
 } as const;
 
-/// The Threkir mark's tile gradient, the stops of apps/web/static/logo-mark.svg,
+/// The Threkir mark's tile gradient, the stops of apps/web/src/lib/assets/brand/logo-mark.svg,
 /// painted from its geometry so a capture never waits on an image decode.
 export const THREKIR_MARK_GRADIENT = [OG_CARD_LIGHT.brand, '#A8426A', '#5B4B8A'] as const;

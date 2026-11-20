@@ -81,7 +81,7 @@ class RunShareInkSpec {
 }
 
 /// The Threkir mark — the gradient tile and its white glyph — painted from the
-/// geometry of `apps/web/static/logo-mark.svg` (glyph, gradient) with the
+/// geometry of `apps/web/src/lib/assets/brand/logo-mark.svg` (glyph, gradient) with the
 /// rounded tile `wordmark.svg` draws, so no share image depends on an asset
 /// load finishing before the capture.
 class ThrekirMarkPainter extends CustomPainter {

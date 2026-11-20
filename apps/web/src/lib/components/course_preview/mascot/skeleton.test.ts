@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseGlb, type GlbChannel } from './glb.ts';
 import { cycleTime, fromTrs, identity, invert, jointMatrices, multiply, sampleChannel, skinVertex } from './skeleton.ts';
 
-const GLB = fileURLToPath(new URL('../../../../../static/brand/grisnir/grisnir-trot.glb', import.meta.url));
+const GLB = fileURLToPath(new URL('../../../assets/grisnir/grisnir-trot.glb', import.meta.url));
 const b = readFileSync(GLB);
 const model = parseGlb(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
 

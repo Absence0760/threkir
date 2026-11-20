@@ -1,4 +1,5 @@
 <script lang="ts">
+	import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -76,7 +77,7 @@
 <div class="invite-page">
 	<header class="invite-header">
 		<a href="/" class="logo">
-			<img src="/logo-mark.svg" alt="" class="logo-mark" />
+			<img src={logoMarkUrl} alt="" class="logo-mark" />
 			<span>Threkir</span>
 		</a>
 	</header>

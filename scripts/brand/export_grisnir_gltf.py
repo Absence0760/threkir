@@ -8,7 +8,7 @@ script writes. The .blend is never edited: everything below happens in the
 loaded copy and is thrown away when Blender quits.
 
 Options:
-    --out FILE     the optimised GLB (default apps/web/static/brand/grisnir/grisnir-trot.glb)
+    --out FILE     the optimised GLB (default apps/web/src/lib/assets/grisnir/grisnir-trot.glb)
     --raw FILE     the unoptimised export gltfpack reads (default ~/.cache/grisnir-gltf/raw.glb)
     --simplify R   gltfpack triangle ratio (default 0.3)
 
@@ -39,7 +39,7 @@ def opt(name, default):
 
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-OUT = os.path.abspath(os.path.expanduser(opt("--out", os.path.join(REPO, "apps/web/static/brand/grisnir/grisnir-trot.glb"))))
+OUT = os.path.abspath(os.path.expanduser(opt("--out", os.path.join(REPO, "apps/web/src/lib/assets/grisnir/grisnir-trot.glb"))))
 RAW = os.path.abspath(os.path.expanduser(opt("--raw", "~/.cache/grisnir-gltf/raw.glb")))
 SIMPLIFY = float(opt("--simplify", "0.3"))
 

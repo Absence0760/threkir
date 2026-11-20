@@ -1,4 +1,6 @@
 <script lang="ts">
+	import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
+	import grisnirBadgeUrl from '#lib/assets/grisnir/grisnir-badge-256.png?no-inline';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -3059,7 +3061,7 @@
 	<div class="share-card-inner">
 		{#if shareCardMark}
 			<div class="share-card-eyebrow">
-				<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+				<img src={logoMarkUrl} alt="" class="share-card-mark" />
 				Threkir
 			</div>
 		{/if}
@@ -3115,7 +3117,7 @@
 				 runner's show_mascot setting drops him on every card. -->
 			{#if shareCardMark && showMascot}
 				<img
-					src="/brand/grisnir/grisnir-badge-256.png"
+					src={grisnirBadgeUrl}
 					alt=""
 					class="share-card-grisnir"
 					data-testid="share-card-grisnir"

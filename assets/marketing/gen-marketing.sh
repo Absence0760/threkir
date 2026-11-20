@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Regenerate the public pages' art into apps/web/static/marketing/.
+# Regenerate the public pages' art into apps/web/src/lib/assets/marketing/.
 #
 #   terrain-hero-{960,1600,2400}.webp   landing hero, behind the product shot
 #   terrain-panel-{800,1200}.webp       sign-up / sign-in brand panel
@@ -20,7 +20,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-DEST="$ROOT/apps/web/static/marketing"
+DEST="$ROOT/apps/web/src/lib/assets/marketing"
 OUT="$HERE/out"
 
 for tool in blender magick python3; do

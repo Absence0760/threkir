@@ -24,6 +24,14 @@ const VIOLET = '#5B4B8A';
 function readWeb(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
 }
+// The two the app renders itself are Vite-imported from src/lib/assets/brand;
+// the other two keep a fixed public path in static/ (decisions § 2600).
+const BRAND_SVGS: string[][] = [
+	['src', 'lib', 'assets', 'brand', 'logo-mark.svg'],
+	['src', 'lib', 'assets', 'brand', 'wordmark-light.svg'],
+	['static', 'wordmark.svg'],
+	['static', 'bimi-logo.svg'],
+];
 function readRepo(...parts: string[]): string {
 	return readFileSync(resolve('..', '..', ...parts), 'utf-8');
 }
@@ -50,10 +58,10 @@ test('app.html meta theme-color matches the manifest theme_color', () => {
 });
 
 test('web logo-mark + wordmark SVGs reuse the same gradient stops', () => {
-	for (const file of ['logo-mark.svg', 'wordmark.svg', 'wordmark-light.svg', 'bimi-logo.svg']) {
-		const svg = readWeb('static', file);
-		assert.match(svg, new RegExp(`stop-color="${CORAL}"`), `${file} must start coral`);
-		assert.match(svg, new RegExp(`stop-color="${VIOLET}"`), `${file} must end violet`);
+	for (const file of BRAND_SVGS) {
+		const svg = readWeb(...file);
+		assert.match(svg, new RegExp(`stop-color="${CORAL}"`), `${file.join('/')} must start coral`);
+		assert.match(svg, new RegExp(`stop-color="${VIOLET}"`), `${file.join('/')} must end violet`);
 	}
 });
 
@@ -62,12 +70,12 @@ test('the brand SVGs draw their words as outlines, never as live text', () => {
 	// face the viewing device has. The wordmark drew "Threkir" in system-ui:
 	// Noto Sans fitted its canvas, CI's DejaVu Sans overran it and clipped the
 	// name to "Threki" (run 35134263272). assets/gen-wordmark.sh outlines it.
-	for (const file of ['logo-mark.svg', 'wordmark.svg', 'wordmark-light.svg', 'bimi-logo.svg']) {
-		const svg = readWeb('static', file);
+	for (const file of BRAND_SVGS) {
+		const svg = readWeb(...file);
 		assert.doesNotMatch(
 			svg,
 			/<text[\s>]/,
-			`${file} draws live <text>; outline it (assets/gen-wordmark.sh for the wordmarks)`,
+			`${file.join('/')} draws live <text>; outline it (assets/gen-wordmark.sh for the wordmarks)`,
 		);
 	}
 });

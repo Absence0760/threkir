@@ -222,6 +222,7 @@ import { readRankRows } from '../segments/effort_rank';
 import { trackExtent, type TrackExtent } from '../segments/track_extent';
 import {
 	courseAttribution,
+	parkCourseAttemptFromRow,
 	parseCourseCheckpoints,
 	regionSlug,
 	type CourseCheckpoint,
@@ -229,7 +230,7 @@ import {
 	type RunParkCourseTime,
 } from '../parks/park_courses';
 import type { GpxAttribution } from '../routes/route_gpx';
-import type { RecapPeriodKind } from '../types';
+import type { ParkCourseAttempt, RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
 import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
 import { namesAnExercise } from '../gym/gym_prs';
@@ -839,6 +840,21 @@ export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCou
 		month: r.month,
 		month_rank: r.month_rank ?? null,
 	}));
+}
+
+/// Why one of the caller's own runs got no time on each park course it set out
+/// on (`get_run_park_course_attempts`, issue #1446), for run detail's "no time"
+/// cards beside the course chips. Owner-only: another runner's run reads
+/// nothing. A row this build cannot read whole is left out; throws on a failed
+/// read, as `fetchRunParkCourseTimes` does, so the caller can leave the section
+/// out and log.
+export async function fetchParkCourseAttempts(runId: string): Promise<ParkCourseAttempt[]> {
+	const { data, error } = await supabase.rpc('get_run_park_course_attempts', { p_run_id: runId }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((r) => {
+		const a = parkCourseAttemptFromRow(r);
+		return a ? [a] : [];
+	});
 }
 
 /// Publish (or re-publish) a recap as a public, OG-unfurlable snapshot and

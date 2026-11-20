@@ -10,6 +10,7 @@
 
 import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.ts';
 import { haversineMetres } from '../geo/haversine.ts';
+import type { ParkCourseAttempt, ParkCourseAttemptOutcome } from '../types.ts';
 import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'usfs', 'usfws', 'other'] as const;
@@ -361,6 +362,57 @@ export function recapParkSummary(rows: readonly RecapParkRow[]): RecapParkSummar
 		.map((p) => ({ parkId: p.parkId, name: p.name, regionCode: p.regionCode, courseCount: p.courses.size }))
 		.sort((a, b) => b.courseCount - a.courseCount || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 	return { courseCount: courses.size, parkCount: byPark.size, parks };
+}
+
+const PARK_COURSE_ATTEMPT_OUTCOMES: readonly ParkCourseAttemptOutcome[] = [
+	'stopped_short',
+	'skipped_checkpoint',
+	'off_course',
+	'wrong_direction',
+];
+
+/** One `get_run_park_course_attempts` row as PostgREST hands it over. */
+export interface ParkCourseAttemptRow {
+	park_course_id: string;
+	course_name: string;
+	park_name: string;
+	region_code: string;
+	park_slug: string;
+	course_slug: string;
+	outcome: string;
+	progress_m: number;
+	course_m: number;
+	missed_checkpoint: number | null;
+	checkpoint_count: number;
+}
+
+/**
+ * A "no time" card's data (issue #1446), or null for a row this build cannot
+ * read whole: an outcome it does not know leaves the card out rather than
+ * showing a guess. Mirrors `ParkCourseAttempt.fromRow` in core_models.
+ */
+export function parkCourseAttemptFromRow(r: ParkCourseAttemptRow): ParkCourseAttempt | null {
+	const outcome = PARK_COURSE_ATTEMPT_OUTCOMES.find((o) => o === r.outcome);
+	if (!outcome) return null;
+	const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+	const progressM = n(r.progress_m);
+	const courseM = n(r.course_m);
+	const checkpointCount = n(r.checkpoint_count);
+	if (progressM === null || courseM === null || checkpointCount === null) return null;
+	if (r.missed_checkpoint != null && n(r.missed_checkpoint) === null) return null;
+	return {
+		parkCourseId: r.park_course_id,
+		courseName: r.course_name,
+		parkName: r.park_name,
+		region: r.region_code,
+		parkSlug: r.park_slug,
+		courseSlug: r.course_slug,
+		outcome,
+		progressM,
+		courseM,
+		missedCheckpoint: r.missed_checkpoint ?? null,
+		checkpointCount,
+	};
 }
 
 /** A park course time on one run, as `run_park_course_times` returns it. */

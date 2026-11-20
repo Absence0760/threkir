@@ -766,6 +766,7 @@ export const PAIRS = [
 		tableColumn: 'park_course_attempts.outcome',
 		clients: [
 			{ file: TS_TYPES, decl: 'ParkCourseAttemptOutcome', shape: 'union' },
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_COURSE_ATTEMPT_OUTCOMES', shape: 'strings' },
 			{ file: 'packages/core_models/lib/src/park_course_attempt.dart', decl: 'ParkCourseAttemptOutcome', shape: 'enum' },
 		],
 	},

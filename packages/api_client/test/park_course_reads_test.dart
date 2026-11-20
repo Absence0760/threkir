@@ -32,4 +32,9 @@ void main() {
     final api = ApiClient.withClient(signedOut);
     await expectLater(api.fetchRunParkCourseTimes('run-1'), throwsA(anything));
   });
+
+  test('fetchParkCourseAttempts throws on a failed read', () async {
+    final api = ApiClient.withClient(signedOut);
+    await expectLater(api.fetchParkCourseAttempts('run-1'), throwsA(anything));
+  });
 }

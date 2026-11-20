@@ -2650,3 +2650,20 @@ test('a sentence the data layer throws for the reader is an AppError, not Englis
 		'these are no longer thrown: take them out of the known list',
 	);
 });
+
+test('fetchParkCourseAttempts reads the owner-only RPC, throws on a failed read and drops rows it cannot read', () => {
+	// Reason: the run-detail "no time" cards (issue #1446) read only through
+	// get_run_park_course_attempts, whose owner predicate and the table's
+	// owner-only policy are what keep where someone ran private. A direct
+	// table read would lean on RLS alone; a swallowed error would show an
+	// empty section as "no attempts" when the read failed.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchParkCourseAttempts');
+	assert.ok(start >= 0, 'Could not locate fetchParkCourseAttempts — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(body, /supabase\.rpc\('get_run_park_course_attempts', \{ p_run_id: runId \}, \{ get: true \}\)/);
+	assert.match(body, /if \(error\) throw dbError\(error\);/);
+	assert.match(body, /parkCourseAttemptFromRow\(r\)/);
+	assert.doesNotMatch(body, /\.from\(/, 'the cards read through the RPC, never the table');
+});

@@ -577,9 +577,12 @@ each buzzes (the workout's step and completion buzzes) and speaks through
 recording that ends in the finish box (or 5 m short) finishes there. The rule
 is the server matcher's (`LiveCourseTimerTest` replays
 `fixtures/park_course_runs.json` and must match its efforts to the
-millisecond); the board's time is still the server's. Nothing reaches a runner
-until the phone writes `/park_courses` (contract
-`fixtures/wear_park_courses_payload.json`). Wiring pinned by
+millisecond); the board's time is still the server's. The phone writes
+`/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
+`WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
+path and keys held by `DataLayerContractTest`): the courses the runner opened
+Navigate this course on, newest first, up to 8 and under ~90 KB, restated at
+phone startup and emptied on sign-out. Wiring pinned by
 `ParkCourseWiringTest`.
 
 **Post-run Discard is a two-press confirm, like the recovery prompt's.**

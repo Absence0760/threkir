@@ -362,7 +362,7 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
   let tailIdx = -1;
   let tailMs = NaN;
   let tailGap = { fromIdx: -1, fromMs: NaN, gapS: 0 };
-  let prevEntryS = NaN;
+  let prevEntry = { s: NaN, u: NaN };
   const pick = (endCoveredM, endIdx, endMs2, gap) => {
     pending = pending.filter((s) => endCoveredM - s.crossing.coveredM <= maxCovered);
     let picked = null;
@@ -402,14 +402,14 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
       tailIdx = -1;
     }
     const entered = endCrossing !== null && endCrossing.direction === "forward" ? endCrossing : gapS > GATE_REJECT_GAP_S && gapS <= GLOBAL_SEGMENT_FINISH_MAX_GAP_S ? enteredAcrossGap(
-      prevEntryS,
+      prevEntry,
       inFinish,
       entry.halfWidthM,
       { tMs: prevMs, coveredM: index.cum[prevIdx] },
       fix,
       pending[pending.length - 1]
     ) : null;
-    prevEntryS = inFinish.s;
+    prevEntry = inFinish;
     let closedBy = null;
     if (entered !== null) {
       const chosen = pick(entered.coveredM, i, entered.tMs, gap);
@@ -443,19 +443,20 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
     matched_by: "gate"
   };
 }
-function enteredAcrossGap(prevS, cur, halfWidthM, prev, fix, since) {
-  if (since === void 0 || !(prevS < 0) || cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
-  const paceS = (prev.tMs - since.crossing.tMs) / 1e3;
-  const paceM = prev.coveredM - since.crossing.coveredM;
+function enteredAcrossGap(prev, cur, halfWidthM, prevFix, fix, since) {
+  if (since === void 0 || !(prev.s < 0 || Math.abs(prev.u) > halfWidthM)) return null;
+  if (cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
+  const paceS = (prevFix.tMs - since.crossing.tMs) / 1e3;
+  const paceM = prevFix.coveredM - since.crossing.coveredM;
   if (!(paceS > 0) || !(paceM > 0)) return null;
   const backS = cur.s / (paceM / paceS);
-  const tMs = Math.max(prev.tMs, fix.tMs - backS * 1e3);
-  const f = (tMs - prev.tMs) / (fix.tMs - prev.tMs);
+  const tMs = Math.max(prevFix.tMs, fix.tMs - backS * 1e3);
+  const f = (tMs - prevFix.tMs) / (fix.tMs - prevFix.tMs);
   return {
     direction: "forward",
     fraction: f,
     tMs,
-    coveredM: Math.max(prev.coveredM, fix.coveredM - cur.s),
+    coveredM: Math.max(prevFix.coveredM, fix.coveredM - cur.s),
     offsetM: cur.u,
     gapped: true
   };

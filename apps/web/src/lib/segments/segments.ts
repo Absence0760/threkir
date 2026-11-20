@@ -414,7 +414,7 @@ function scoreByGates(
 	let tailIdx = -1;
 	let tailMs = NaN;
 	let tailGap: FixGap = { fromIdx: -1, fromMs: NaN, gapS: 0 };
-	let prevEntryS = NaN;
+	let prevEntry = { s: NaN, u: NaN };
 
 	const pick = (endCoveredM: number, endIdx: number, endMs: number, gap: FixGap): PendingStart | null => {
 		pending = pending.filter((s) => endCoveredM - s.crossing.coveredM <= maxCovered);
@@ -466,7 +466,7 @@ function scoreByGates(
 				? endCrossing
 				: gapS > GATE_REJECT_GAP_S && gapS <= GLOBAL_SEGMENT_FINISH_MAX_GAP_S
 					? enteredAcrossGap(
-							prevEntryS,
+							prevEntry,
 							inFinish,
 							entry.halfWidthM,
 							{ tMs: prevMs, coveredM: index.cum[prevIdx] },
@@ -474,7 +474,7 @@ function scoreByGates(
 							pending[pending.length - 1],
 						)
 					: null;
-		prevEntryS = inFinish.s;
+		prevEntry = inFinish;
 
 		let closedBy: GateCrossing | null = null;
 		if (entered !== null) {
@@ -524,32 +524,34 @@ function scoreByGates(
 
 /**
  * The finish edge entered across a gap the line rule refuses: the fix before
- * it short of the edge, the fix after it in the finish box's lane at or past
+ * it short of the edge or outside the box's lane (a course can pass level with
+ * its finish, off to one side, before it turns in), the fix after it in the finish box's lane at or past
  * the edge. The path inside the gap is unknown, and the straight line across
  * it cuts the bend before a finish, so the entry is timed back from the fix
  * after the gap at the runner's average pace since `since` (the latest
  * pending start), within the gap.
  */
 function enteredAcrossGap(
-	prevS: number,
+	prev: { s: number; u: number },
 	cur: { s: number; u: number },
 	halfWidthM: number,
-	prev: { tMs: number; coveredM: number },
+	prevFix: { tMs: number; coveredM: number },
 	fix: { tMs: number; coveredM: number },
 	since: PendingStart | undefined,
 ): GateCrossing | null {
-	if (since === undefined || !(prevS < 0) || cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
-	const paceS = (prev.tMs - since.crossing.tMs) / 1000;
-	const paceM = prev.coveredM - since.crossing.coveredM;
+	if (since === undefined || !(prev.s < 0 || Math.abs(prev.u) > halfWidthM)) return null;
+	if (cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
+	const paceS = (prevFix.tMs - since.crossing.tMs) / 1000;
+	const paceM = prevFix.coveredM - since.crossing.coveredM;
 	if (!(paceS > 0) || !(paceM > 0)) return null;
 	const backS = cur.s / (paceM / paceS);
-	const tMs = Math.max(prev.tMs, fix.tMs - backS * 1000);
-	const f = (tMs - prev.tMs) / (fix.tMs - prev.tMs);
+	const tMs = Math.max(prevFix.tMs, fix.tMs - backS * 1000);
+	const f = (tMs - prevFix.tMs) / (fix.tMs - prevFix.tMs);
 	return {
 		direction: 'forward',
 		fraction: f,
 		tMs,
-		coveredM: Math.max(prev.coveredM, fix.coveredM - cur.s),
+		coveredM: Math.max(prevFix.coveredM, fix.coveredM - cur.s),
 		offsetM: cur.u,
 		gapped: true,
 	};

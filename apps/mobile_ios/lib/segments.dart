@@ -372,7 +372,7 @@ GlobalSegmentEffortResult? _scoreByGates(
   var tailIdx = -1;
   var tailMs = double.nan;
   var tailGap = const _FixGap(-1, double.nan, 0);
-  var prevEntryS = double.nan;
+  GateProjection prevEntry = (s: double.nan, u: double.nan);
 
   _PendingStart? pick(
       double endCoveredM, int endIdx, double endMs, _FixGap gap) {
@@ -440,7 +440,7 @@ GlobalSegmentEffortResult? _scoreByGates(
     } else if (gap.gapS > kGateRejectGapS &&
         gap.gapS <= kGlobalSegmentFinishMaxGapS) {
       entered = _enteredAcrossGap(
-        prevEntryS,
+        prevEntry,
         inFinish,
         entry.halfWidthM,
         prevMs,
@@ -451,7 +451,7 @@ GlobalSegmentEffortResult? _scoreByGates(
     } else {
       entered = null;
     }
-    prevEntryS = inFinish.s;
+    prevEntry = inFinish;
 
     GateCrossing? closedBy;
     if (entered != null) {
@@ -514,14 +514,16 @@ GlobalSegmentEffortResult? _scoreByGates(
 }
 
 /// The finish edge entered across a gap the line rule refuses: the fix
-/// before it short of the edge, the fix after it in the finish box's lane at
-/// or past the edge. The path inside the gap is unknown, and the straight
+/// before it short of the edge or outside the box's lane (a course can pass
+/// level with its finish, off to one side, before it turns in), the fix
+/// after it in the finish box's lane at or past the edge. The path inside
+/// the gap is unknown, and the straight
 /// line across it cuts the bend before a finish, so the entry is timed back
 /// from the fix after the gap at the runner's average pace since [since]
 /// (the latest pending start), within the gap. Mirrors `enteredAcrossGap` in
 /// `apps/web/src/lib/segments/segments.ts`.
 GateCrossing? _enteredAcrossGap(
-  double prevS,
+  GateProjection prev,
   GateProjection cur,
   double halfWidthM,
   double prevMs,
@@ -530,7 +532,7 @@ GateCrossing? _enteredAcrossGap(
   _PendingStart? since,
 ) {
   if (since == null ||
-      !(prevS < 0) ||
+      !(prev.s < 0 || prev.u.abs() > halfWidthM) ||
       cur.s < 0 ||
       cur.u.abs() > halfWidthM) {
     return null;

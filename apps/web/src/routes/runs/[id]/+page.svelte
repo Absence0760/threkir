@@ -40,6 +40,7 @@
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
 	import RunParkCourseChips from '#lib/components/RunParkCourseChips.svelte';
+	import RunParkCourseAttempts from '#lib/components/RunParkCourseAttempts.svelte';
 	import RunRaceRetime from '#lib/components/RunRaceRetime.svelte';
 	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
@@ -72,6 +73,7 @@
 		fetchRuns,
 		fetchRunDistanceBadge,
 		fetchRunParkCourseTimes,
+		fetchParkCourseAttempts,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
 	} from '#lib/core/data.ts';
@@ -84,7 +86,7 @@
 	import { movingTimeSeconds, computeRealSplits, splitAxisTotalMetres } from '#lib/runs/run_stats.ts';
 	import { computeRunStreaks } from '#lib/runs/streaks.ts';
 	import { pickShareCourse, shareCoursePlaces } from '#lib/parks/park_courses.ts';
-	import type { AchievementTier } from '#lib/types.ts';
+	import type { AchievementTier, ParkCourseAttempt } from '#lib/types.ts';
 	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
 	import { runAltitude } from '#lib/runs/run_altitude.ts';
@@ -1008,6 +1010,33 @@
 	let shareStreakDays = $state(0);
 	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
 	let parkCourseRefresh = $state(0);
+
+	/// L4: the cards saying why a park course got no time are additive to run
+	/// detail, so a failed read leaves them out and logs, and nothing else.
+	/// Owner-only, like the chips beside them (RLS answers no one else).
+	let parkCourseAttempts = $state<ParkCourseAttempt[]>([]);
+	const parkCourseAttemptsRunId = $derived(run && auth.user?.id === run.user_id ? run.id : null);
+	let parkCourseAttemptsSeq = 0;
+	async function loadParkCourseAttempts(runId: string) {
+		const seq = ++parkCourseAttemptsSeq;
+		try {
+			const next = await fetchParkCourseAttempts(runId);
+			if (seq === parkCourseAttemptsSeq) parkCourseAttempts = next;
+		} catch (e) {
+			console.warn('run park course attempts read failed', e);
+			if (seq === parkCourseAttemptsSeq) parkCourseAttempts = [];
+		}
+	}
+	$effect(() => {
+		void parkCourseRefresh;
+		const runId = parkCourseAttemptsRunId;
+		if (runId) {
+			void loadParkCourseAttempts(runId);
+		} else {
+			parkCourseAttemptsSeq++;
+			parkCourseAttempts = [];
+		}
+	});
 	let shareCourse = $state<{
 		name: string;
 		park: string;
@@ -2432,6 +2461,7 @@
 		/>
 
 		<RunParkCourseChips runId={run.id} runOwnerId={run.user_id} refresh={parkCourseRefresh} />
+		<RunParkCourseAttempts attempts={parkCourseAttempts} />
 
 		<RunRaceRetime
 			runId={run.id}

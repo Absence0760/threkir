@@ -19,6 +19,10 @@
 	import { fold } from '#lib/segments/catalogue_browse.ts';
 	import type { ClubWithMeta } from '#lib/types.ts';
 
+	// The Create club button sits on the /social title row (the page's one
+	// primary action for this tab), so the page opens the modal through this.
+	let { createOpen = $bindable(false) }: { createOpen?: boolean } = $props();
+
 	let subtab = $state<'browse' | 'mine'>('mine');
 	let loading = $state(true);
 	let search = $state('');
@@ -29,8 +33,8 @@
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 
-	// My clubs' own search: a name filter over the clubs already loaded, so
-	// the tab is never a row holding only Create club (issue #1374).
+	// My clubs' own search: a name filter over the clubs already loaded
+	// (issue #1374).
 	let mineSearch = $state('');
 	let mineShown = $derived.by(() => {
 		const q = fold(mineSearch.trim());
@@ -95,10 +99,9 @@
 		searchTimer = setTimeout(loadBrowse, 250);
 	}
 
-	let showClubModal = $state(false);
 
 	function handleClubCreated(club: { slug: string }) {
-		showClubModal = false;
+		createOpen = false;
 		goto(`/clubs/${club.slug}`);
 	}
 
@@ -123,13 +126,6 @@
 		clearLabel={m('socialClubs.clearSearchAriaLabel')}
 		testid="clubs-mine-search"
 	/>
-{/snippet}
-
-{#snippet createClubAction()}
-	<button class="btn btn-primary btn-sm create-club" type="button" onclick={() => (showClubModal = true)}>
-		<span class="material-symbols" aria-hidden="true">add</span>
-		{m('socialClubs.createClub')}
-	</button>
 {/snippet}
 
 {#snippet missingClubActions(query: string)}
@@ -210,7 +206,7 @@
 		</button>
 	</div>
 
-	<FilterBar idPrefix="clubs" search={subtab === 'browse' ? clubsSearch : mineSearchField} trailing={createClubAction} />
+	<FilterBar idPrefix="clubs" search={subtab === 'browse' ? clubsSearch : mineSearchField} />
 
 	{#if loading}
 		<div class="grid" aria-hidden="true">
@@ -283,7 +279,7 @@
 						<span class="material-symbols" aria-hidden="true">search</span>
 						{m('socialClubs.findAClub')}
 					</button>
-					<button class="btn btn-outline" type="button" onclick={() => (showClubModal = true)}>
+					<button class="btn btn-outline" type="button" onclick={() => (createOpen = true)}>
 						<span class="material-symbols" aria-hidden="true">add</span>
 						{m('socialClubs.createOneInstead')}
 					</button>
@@ -331,11 +327,11 @@
 </div>
 
 <Modal
-	open={showClubModal}
+	open={createOpen}
 	title={m('socialClubs.createAClub')}
-	onclose={() => (showClubModal = false)}
+	onclose={() => (createOpen = false)}
 >
-	<ClubEditor oncreated={handleClubCreated} oncancel={() => (showClubModal = false)} />
+	<ClubEditor oncreated={handleClubCreated} oncancel={() => (createOpen = false)} />
 </Modal>
 
 <style>
@@ -374,12 +370,6 @@
 		color: var(--color-primary);
 		border-bottom-color: var(--color-primary);
 	}
-	.create-club {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-xs);
-	}
-	.create-club .material-symbols { font-size: 1.05rem; }
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));

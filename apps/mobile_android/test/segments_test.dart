@@ -872,6 +872,35 @@ void main() {
     });
 
     test(
+        'attempt: an out-and-back with mirrored checkpoints: timed out and '
+        'back, stopped_short at the turn, never wrong_direction', () {
+      final oab = GlobalSegmentGeometry(
+        points: [at(0), at(500), at(0)],
+        distanceM: 1000,
+        checkpoints: [at(250), at(500), at(250)],
+        startGate: gateAt(0),
+        endGate: Gate(
+            lat: toLat(0), lng: toLng(0), bearingDeg: 270, halfWidthM: 15),
+      );
+      final full = walk([
+        [-20, 0],
+        [500, 0],
+        [-20, 0]
+      ]);
+      expect(computeGlobalSegmentEffort(full, oab), isNotNull);
+      expect(diagnoseGlobalSegmentAttempt(full, oab), isNull);
+      final a = diagnoseGlobalSegmentAttempt(
+          walk([
+            [-20, 0],
+            [500, 0]
+          ]),
+          oab)!;
+      expect(a.outcome, ParkCourseAttemptOutcome.stoppedShort);
+      expect((a.progressM - 500).abs() <= 2, isTrue,
+          reason: 'progress ${a.progressM}');
+    });
+
+    test(
         'attempt: a dropout mid-course and then stopping at 600 m is still '
         'stopped_short', () {
       final track = dropout(

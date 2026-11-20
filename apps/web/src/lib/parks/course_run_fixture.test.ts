@@ -11,8 +11,8 @@ import { FIXTURE, SQL_TEST, buildOutputs } from '../../../../../scripts/gen_park
 import {
 	NOISE_SIGMA_M,
 	caseDefs,
+	fixtureCourses,
 	hopM,
-	loadCourses,
 	simulate,
 	type CaseDef,
 	type LatLng,
@@ -22,7 +22,7 @@ import {
 
 const ROOT = resolve(import.meta.dirname, '../../../../..');
 const read = (path: string) => readFileSync(resolve(ROOT, path), 'utf8');
-const courses = loadCourses(read);
+const courses = fixtureCourses(read);
 const defs = caseDefs(courses);
 const runs = new Map<string, SimulatedRun>(defs.map((d) => [d.key, simulate(d.plan)]));
 
@@ -50,6 +50,27 @@ test('the committed fixture and the generated block of park_course_boards_test.s
 	const next = await buildOutputs();
 	assert.equal(readFileSync(FIXTURE, 'utf8'), next.fixture, 'fixtures/park_course_runs.json is stale: run `pnpm gen:park-course-runs`');
 	assert.equal(readFileSync(SQL_TEST, 'utf8'), next.sql, 'park_course_boards_test.sql is stale: run `pnpm gen:park-course-runs`');
+	assert.equal(next.geojson.length, 2);
+	for (const [path, text] of next.geojson) {
+		assert.equal(readFileSync(path, 'utf8'), text, `${path} is stale: run \`pnpm gen:park-course-runs\``);
+	}
+});
+
+test('the synthetic courses stay clear of the park: no catalogue course comes within 2 km of them', () => {
+	const synthetic = courses.filter((c) => c.synthetic);
+	assert.deepEqual(synthetic.map((c) => c.slug), ['synthetic-out-and-back', 'synthetic-point-to-point']);
+	const catalogue = courses.filter((c) => !c.synthetic);
+	for (const s of synthetic) {
+		for (const c of catalogue) {
+			const near = Math.min(...s.line.flatMap((p) => c.line.filter((_, i) => i % 5 === 0).map((q) => hopM(p, q))));
+			assert.ok(near > 2000, `${s.slug} comes ${near.toFixed(0)} m from ${c.slug}`);
+		}
+	}
+	const [oab, p2p] = synthetic;
+	assert.ok(hopM(oab.line[0], oab.line[oab.line.length - 1]) < 0.5, 'the out-and-back finishes where it starts');
+	assert.ok(hopM(p2p.line[0], p2p.line[p2p.line.length - 1]) > 100, 'the point to point does not');
+	const near = Math.min(...oab.line.flatMap((p) => p2p.line.map((q) => hopM(p, q))));
+	assert.ok(near > 1000, `the two are ${near.toFixed(0)} m apart`);
 });
 
 test('a plan and its seed make the same run every time, and another seed another run', () => {
@@ -149,6 +170,19 @@ test('each refusal case is what its name says', () => {
 	for (let i = from + 1; i < short.truth.length; i++) onCourse += hopM(short.truth[i - 1], short.truth[i]);
 	assert.ok(Math.abs(onCourse - (beaver.lineM - 150)) < 15, `stops ${(beaver.lineM - onCourse).toFixed(0)} m short of the finish`);
 	assert.ok([cp1, cp2, cp3].every((p) => minTo(short, p) < 5), 'after every checkpoint');
+
+	const turn = run('oab_stopped_at_turn');
+	const oab = course('synthetic-out-and-back');
+	assert.ok(minTo(turn, oab.checkpoints[1]) < 5, 'the stop at the turn reaches the turn checkpoint');
+	const early = run('oab_turned_early');
+	assert.ok(minTo(early, oab.checkpoints[1]) >= 45, `the early turn comes ${minTo(early, oab.checkpoints[1]).toFixed(0)} m from the turn`);
+	assert.ok(minTo(early, oab.checkpoints[0]) < 5 && minTo(early, oab.checkpoints[2]) < 5, 'and runs through the other two');
+
+	const drop = run('p2p_dropout_at_finish');
+	const gaps = drop.fixes.slice(1).map((f, i) => f.t - drop.fixes[i].t);
+	assert.equal(gaps.filter((g) => g > 1).length, 1, 'one gap');
+	const longest = Math.max(...gaps);
+	assert.ok(longest > 240 && longest <= 300, `the dropout lasts ${longest} s`);
 
 	const near = run('beaver_nearby');
 	assert.ok(minTo(near, beaver.gates.start) >= 45, 'never within reach of the start line');

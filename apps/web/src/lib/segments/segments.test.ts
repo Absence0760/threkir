@@ -983,6 +983,23 @@ test('linesChain: a loop finishing on its start line, facing within 90 degrees o
 		assert.equal(a.outcome, 'gps_gap');
 	});
 
+	test('attempt: an out-and-back with mirrored checkpoints: timed out and back, stopped_short at the turn, never wrong_direction', () => {
+		const oab: GlobalSegmentGeometry = {
+			points: [at(0), at(500), at(0)],
+			distance_m: 1000,
+			checkpoints: [at(250), at(500), at(250)],
+			startGate: { ...at(0), bearingDeg: 90, halfWidthM: 15 },
+			endGate: { ...at(0), bearingDeg: 270, halfWidthM: 15 },
+		};
+		const full = walk([[-20, 0], [500, 0], [-20, 0]]);
+		assert.ok(computeGlobalSegmentEffort(full, oab), 'out and back is timed');
+		assert.equal(diagnoseGlobalSegmentAttempt(full, oab), null);
+		const a = diagnoseGlobalSegmentAttempt(walk([[-20, 0], [500, 0]]), oab);
+		assert.ok(a);
+		assert.equal(a.outcome, 'stopped_short');
+		assert.ok(Math.abs(a.progressM - 500) <= 2, `progress ${a.progressM}`);
+	});
+
 	test('attempt: a dropout mid-course and then stopping at 600 m is still stopped_short', () => {
 		const track = dropout(walk([[-20, 0], [300, 0]]), walk([[500, 0], [600, 0]]), 200);
 		const a = diagnoseGlobalSegmentAttempt(track, straight);

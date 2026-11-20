@@ -1,7 +1,8 @@
 /// The segment-match scoring pass over the real Pocahontas courses (issue
 /// #1342 step 5c). Every synthetic run in fixtures/park_course_runs.json goes
 /// through `scoreRun` as the job worker's call would: the stored gzipped
-/// track, the six courses as `global_segments_in_bbox` rows carrying their
+/// track, the eight courses (six Pocahontas, an out-and-back and a point to
+/// point) as `global_segments_in_bbox` rows carrying their
 /// lines, their checkpoints from `park_courses`. What reaches
 /// `record_segment_match` must be exactly what the web matcher recorded for
 /// that run, which is also what park_course_boards_test.sql writes and reads

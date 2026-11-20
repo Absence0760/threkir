@@ -3,14 +3,21 @@
 // 5c):
 //
 //   fixtures/park_course_runs.json
-//       synthetic runs over the six Pocahontas courses and what the matcher
-//       gives each, from apps/web/src/lib/parks/course_run_fixture.ts. Read by
-//       the web, Dart and Edge Function tests.
+//       synthetic runs over the six Pocahontas courses, and over two synthetic
+//       courses of the shapes the park lacks (an out-and-back and a point to
+//       point), and what the matcher gives each, from
+//       apps/web/src/lib/parks/course_run_fixture.ts. Read by the web, Dart,
+//       Edge Function and watch tests.
+//   fixtures/park_course_runs/<slug>.geojson
+//       the synthetic courses' lines, read as each catalogue course's
+//       committed GeoJSON is.
 //   apps/backend/supabase/tests/park_course_boards_test.sql (one block)
 //       the Pocahontas catalogue payload exactly as the release sync hands it
 //       to private.load_park_catalogue (scripts/parks/lib/catalogue_payload.mjs),
-//       the lines the fixture times each course by, and the matcher's efforts
-//       per run, between the GENERATED markers. The rest of the file is
+//       the lines the fixture times each catalogue course by, and the
+//       matcher's efforts per run on them, between the GENERATED markers. The
+//       synthetic courses and their runs are left out: the catalogue has no
+//       such course. The rest of the file is
 //       written by hand.
 //
 // The generator module is TypeScript that imports the web matcher, so it is
@@ -21,7 +28,7 @@
 //   node scripts/gen_park_course_runs.mjs           rewrite both
 //   node scripts/gen_park_course_runs.mjs --check   exit 1 if either is stale
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,13 +53,21 @@ export function readRepo(path) {
  * @typedef {{ time_seconds: number, started_offset_ms: number, matched_by: string }} Effort
  * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number, source: string }} Line
  * @typedef {{
- *   courses: { slug: string, start_gate: Line, end_gate: Line }[],
+ *   courses: { slug: string, start_gate: Line, end_gate: Line, synthetic: boolean }[],
  *   cases: { key: string, course: string, matched: Record<string, Effort>,
  *            extent: { min_lat: number, min_lng: number, max_lat: number, max_lng: number } }[],
  * }} Fixture
  */
 
-/** @returns {Promise<{ buildCourseRunFixture(read: (p: string) => string): Fixture, formatFixture(v: unknown): string }>} */
+/**
+ * @typedef {{ slug: string, geojson: string, synthetic: boolean }} GenCourse
+ * @returns {Promise<{
+ *   buildCourseRunFixture(read: (p: string) => string): Fixture,
+ *   formatFixture(v: unknown): string,
+ *   fixtureCourses(read: (p: string) => string): GenCourse[],
+ *   syntheticGeojson(c: GenCourse): string,
+ * }>}
+ */
 async function loadGenerator() {
 	const require = createRequire(join(REPO_ROOT, 'apps', 'web', 'package.json'));
 	/** @type {{ build(o: Record<string, unknown>): Promise<{ outputFiles: { text: string }[] }> }} */
@@ -105,13 +120,14 @@ export function renderSqlBlock(fixture, payload) {
 		courses.map((c) => JSON.stringify(c)).join(',\n'),
 		']}',
 	].join('\n');
-	const gateRows = fixture.courses.map((c) => {
+	const synthetic = new Set(fixture.courses.filter((c) => c.synthetic).map((c) => c.slug));
+	const gateRows = fixture.courses.filter((c) => !c.synthetic).map((c) => {
 		const s = c.start_gate;
 		const e = c.end_gate;
 		return `  (${[sqlText(c.slug), sqlNum(s.lat), sqlNum(s.lng), sqlNum(s.bearing_deg), sqlNum(s.half_width_m), sqlText(s.source), sqlNum(e.lat), sqlNum(e.lng), sqlNum(e.bearing_deg), sqlNum(e.half_width_m), sqlText(e.source)].join(', ')})`;
 	});
-	const runRows = fixture.cases.map((c) => {
-		const efforts = Object.entries(c.matched).map(([slug, e]) => ({
+	const runRows = fixture.cases.filter((c) => !synthetic.has(c.course)).map((c) => {
+		const efforts = Object.entries(c.matched).filter(([slug]) => !synthetic.has(slug)).map(([slug, e]) => ({
 			slug,
 			time_seconds: e.time_seconds,
 			started_offset_ms: e.started_offset_ms,
@@ -154,13 +170,17 @@ export function spliceBlock(sql, block) {
 	return sql.slice(0, from) + block + sql.slice(to + END.length);
 }
 
-/** @returns {Promise<{ fixture: string, sql: string }>} both files' full contents */
+/** @returns {Promise<{ fixture: string, sql: string, geojson: [string, string][] }>} every output's full contents, the GeoJSON as [absolute path, text] */
 export async function buildOutputs() {
 	const gen = await loadGenerator();
 	const fixture = gen.buildCourseRunFixture(readRepo);
 	return {
 		fixture: `${gen.formatFixture(fixture)}\n`,
 		sql: spliceBlock(readFileSync(SQL_TEST, 'utf8'), renderSqlBlock(fixture, pocahontasPayload())),
+		geojson: gen
+			.fixtureCourses(readRepo)
+			.filter((c) => c.synthetic)
+			.map((c) => /** @type {[string, string]} */ ([join(REPO_ROOT, c.geojson), gen.syntheticGeojson(c)])),
 	};
 }
 
@@ -169,6 +189,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const stale = [
 		[FIXTURE, next.fixture],
 		[SQL_TEST, next.sql],
+		...next.geojson,
 	].filter(([path, text]) => {
 		try {
 			return readFileSync(path, 'utf8') !== text;
@@ -179,12 +200,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	if (process.argv.includes('--check')) {
 		if (stale.length > 0) {
 			for (const [path] of stale) console.error(`${path} is stale.`);
-			console.error('Run: pnpm gen:park-course-runs (node scripts/gen_park_course_runs.mjs) and commit both files.');
+			console.error('Run: pnpm gen:park-course-runs (node scripts/gen_park_course_runs.mjs) and commit every file it writes.');
 			process.exit(1);
 		}
 		console.log('park course runs are current');
 	} else {
 		for (const [path, text] of stale) {
+			mkdirSync(dirname(path), { recursive: true });
 			writeFileSync(path, text);
 			console.log(`wrote ${path}`);
 		}

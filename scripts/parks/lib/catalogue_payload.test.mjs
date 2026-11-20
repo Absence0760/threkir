@@ -400,11 +400,13 @@ test('a linear race course keeps its shape, carries no laps, and says how it run
 test('every race distance has its words, and the ultra distances load at their exact length', () => {
 	assert.deepEqual(Object.keys(RACE_DISTANCE_WORDS), Object.keys(RACE_DISTANCES_M));
 	const DEG_PER_M = 0.001 / 111.19508;
-	for (const [key, metres, words] of [
+	/** @type {Array<[string, number, string]>} */
+	const ultras = [
 		['50mi', 80467.2, '50 miles (80.5 km)'],
 		['100k', 100000, '100 km'],
-	]) {
-		const half = /** @type {number} */ (metres) / 2;
+	];
+	for (const [key, metres, words] of ultras) {
+		const half = metres / 2;
 		const line = [[0, 0], [half * DEG_PER_M, 0], [0, 0]];
 		const race = {
 			slug: `line-${key}`,
@@ -423,7 +425,7 @@ test('every race distance has its words, and the ultra distances load at their e
 		assert.equal(course.official_distance_m, metres, key);
 		assert.equal(course.description, `Measures exactly ${words}: out along the trail to the turnaround and back to the start.`);
 		assert.throws(
-			() => cataloguePayload(manifest({ race_courses: [{ ...race, distance_m: /** @type {number} */ (metres) - 1 }] }), files),
+			() => cataloguePayload(manifest({ race_courses: [{ ...race, distance_m: metres - 1 }] }), files),
 			/not the .* distance/,
 		);
 	}

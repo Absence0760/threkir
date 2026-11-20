@@ -325,7 +325,8 @@ export const GUIDE_SECTION_M = 5000;
  *   after the first), and the finish.
  * - `sections`: every step but the start and direction, grouped by lap (the
  *   laps after the first read "Repeat the loop" rather than the same steps
- *   again) or, with no laps, by GUIDE_SECTION_M; the finish ends the last.
+ *   again, followed by only what differs from lap 1 on that lap, such as the
+ *   turn off the loop on the last one) or, with no laps, by GUIDE_SECTION_M; the finish ends the last.
  *
  * Neither lists checkpoints: the map marks them.
  */
@@ -392,7 +393,11 @@ export function routeGuideView(guide: RouteGuide): { summary: GuideLine[]; secti
 		sections.push({ lap: 1, from: 0, to: lapAt, lines: body.filter((b) => b.at < lapAt).map((b) => b.line) });
 		for (const l of lapSteps) {
 			const next = lapSteps.find((x) => x.lap === l.lap + 1);
-			sections.push({ lap: l.lap, from: l.at_m, to: next ? next.at_m : finish.at_m, lines: [{ key: 'repeatLoop' }] });
+			const to = next ? next.at_m : finish.at_m;
+			// The generator writes a later lap only where it differs from lap 1, so
+			// whatever body steps it holds are what "Repeat the loop" would hide.
+			const differs = body.filter((b) => b.at >= l.at_m && (b.at < to || !next)).map((b) => b.line);
+			sections.push({ lap: l.lap, from: l.at_m, to, lines: [{ key: 'repeatLoop' }, ...differs] });
 		}
 	} else {
 		for (let from = 0; from < Math.max(finish.at_m, 1); from += GUIDE_SECTION_M) {

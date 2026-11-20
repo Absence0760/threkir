@@ -2016,7 +2016,7 @@
  ],
  "views": [
   {
-   "name": "a two-lap course: the summary keeps the first lap's real trail changes and where lap 2 starts, the full view's second lap reads Repeat the loop",
+   "name": "a two-lap course: the summary keeps the first lap's real trail changes and where lap 2 starts, the full view's second lap reads Repeat the loop, then the one turn lap 1 does not have",
    "guide": {
     "version": 1,
     "lang": "en",
@@ -2170,6 +2170,10 @@
      "lines": [
       {
        "key": "repeatLoop"
+      },
+      {
+       "key": "leftRoad",
+       "at": 1000
       },
       {
        "key": "finish",
@@ -2573,7 +2577,7 @@
    ]
   },
   {
-   "name": "a lapped course counts the first lap's road crossings once a lap, and a later one once",
+   "name": "a lapped course counts the first lap's road crossings once a lap, and a later one once, which its lap lists after Repeat the loop",
    "guide": {
     "version": 1,
     "lang": "en",
@@ -2670,8 +2674,155 @@
        "key": "repeatLoop"
       },
       {
+       "key": "crossRoadNamed",
+       "at": 1900,
+       "name": "Elm Street"
+      },
+      {
        "key": "finish",
        "at": 2000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a three-lap course: a lap like the first reads only Repeat the loop, the last lists its turn off the loop after it",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 3
+     },
+     {
+      "kind": "lap",
+      "at_m": 2000,
+      "lap": 3,
+      "of": 3
+     },
+     {
+      "kind": "junction",
+      "at_m": 2800,
+      "turn": "right",
+      "name": "Finish Spur"
+     },
+     {
+      "kind": "surface",
+      "at_m": 2850,
+      "surface": "paved"
+     },
+     {
+      "kind": "finish",
+      "at_m": 2950
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "laps",
+     "total": 3
+    },
+    {
+     "key": "leftNamed",
+     "at": 300,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 3
+    },
+    {
+     "key": "lap",
+     "at": 2000,
+     "n": 3,
+     "total": 3
+    },
+    {
+     "key": "finish",
+     "at": 2950
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 300,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "bridge",
+       "at": 600
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      }
+     ]
+    },
+    {
+     "lap": 3,
+     "from": 2000,
+     "to": 2950,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "rightNamed",
+       "at": 2800,
+       "name": "Finish Spur"
+      },
+      {
+       "key": "surfacePaved",
+       "at": 2850
+      },
+      {
+       "key": "finish",
+       "at": 2950
       }
      ]
     }

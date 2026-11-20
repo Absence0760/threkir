@@ -749,7 +749,9 @@ changes and climbs on the way, the checkpoints and the laps.
   the first) and the finish. Everything else sits under
   "Show all steps", collapsed: bridges, fords, road crossings, road stretches,
   surfaces and climbs grouped by
-  lap (a lap after the first reads "Repeat the loop.") or, with no laps, by
+  lap (a lap after the first reads "Repeat the loop.", then only the steps
+  that differ from lap 1 on it, such as the turn off the loop on the last lap,
+  so nothing a runner needs is hidden) or, with no laps, by
   5 km stretch with a distance heading. Neither view lists checkpoints; the
   map marks them. The GPX `<desc>` and the share page's search text keep
   every line (`routeGuideLines`). The Swift Creek 50K's 68 steps read as 23

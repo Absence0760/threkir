@@ -432,7 +432,8 @@ const int kGuideSectionM = 5000;
 ///   box after the first), and the finish.
 /// - `sections`: every step but the start and direction, grouped by lap (the
 ///   laps after the first read "Repeat the loop" rather than the same steps
-///   again) or, with no laps, by [kGuideSectionM]; the finish ends the last.
+///   again, followed by only what differs from lap 1 on that lap, such as the
+///   turn off the loop on the last one) or, with no laps, by [kGuideSectionM]; the finish ends the last.
 ///
 /// Neither lists checkpoints: the map marks them.
 ({List<GuideLine> summary, List<GuideSection> sections}) routeGuideView(
@@ -510,11 +511,18 @@ const int kGuideSectionM = 5000;
     ));
     for (final l in lapSteps) {
       final next = lapSteps.where((x) => x.lap == l.lap! + 1).firstOrNull;
+      final to = next?.atM ?? finish.atM;
+      // The generator writes a later lap only where it differs from lap 1, so
+      // whatever body steps it holds are what "Repeat the loop" would hide.
       sections.add(GuideSection(
         lap: l.lap,
         from: l.atM,
-        to: next?.atM ?? finish.atM,
-        lines: [const GuideLine('repeatLoop')],
+        to: to,
+        lines: [
+          const GuideLine('repeatLoop'),
+          for (final b in body)
+            if (b.at >= l.atM && (b.at < to || next == null)) b.line,
+        ],
       ));
     }
   } else {

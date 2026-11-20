@@ -583,7 +583,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const Key('park-group-permit')),
-          matching: find.textContaining('The park may require a permit'),
+          matching: find.textContaining('may need a permit from the park'),
         ),
         findsOneWidget,
       );
@@ -1187,8 +1187,8 @@ void main() {
                 of: find.byKey(const Key('park-course-group-permit')),
                 matching: find.byType(Text)))
             .data,
-        'Running a course on your own is fine. Bringing a group or holding '
-        'an event? The park may require a permit, so check with the park first.',
+        'Park rules apply. A group run or an event here may need a permit '
+        'from the park, so check with the park first.',
       );
       expect(find.byKey(const Key('park-course-hours')), findsNothing,
           reason: 'the long-course notice already says it');

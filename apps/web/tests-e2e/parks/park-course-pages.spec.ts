@@ -223,7 +223,7 @@ test.describe('park course pages', () => {
 		);
 		await expect(cards.getByTestId('park-course-record')).toHaveCount(0);
 		await expect(page.getByTestId('park-not-affiliated')).toBeVisible();
-		await expect(page.getByTestId('park-group-permit')).toContainText('The park may require a permit');
+		await expect(page.getByTestId('park-group-permit')).toContainText('may need a permit from the park');
 	});
 
 	test('the course page: map key, one credit line, one primary action, and an inviting empty board', async ({
@@ -270,7 +270,7 @@ test.describe('park course pages', () => {
 		await expect(notices.locator('li')).toHaveText([
 			"Follow the course line on the map and pass every checkpoint in order, or your time won't count.",
 			'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.',
-			'Running a course on your own is fine. Bringing a group or holding an event? The park may require a permit, so check with the park first.',
+			'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.',
 			'Finish before the park closes.',
 		]);
 		await expect(notices.getByTestId('park-course-open-trail')).toHaveText(
@@ -424,7 +424,7 @@ test.describe('park course share page', () => {
 		await expect(page.getByTestId('share-course-safety')).toBeVisible();
 		await expect(page.getByTestId('share-course-times')).toBeVisible();
 		await expect(page.getByTestId('share-course-group-permit')).toHaveText(
-			'Running a course on your own is fine. Bringing a group or holding an event? The park may require a permit, so check with the park first.',
+			'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.',
 		);
 		await expect(page.getByTestId('share-course-shared-use')).toHaveCount(0);
 	});

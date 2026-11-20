@@ -22864,7 +22864,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'Courir un parcours seul ne pose aucun problème. Vous venez en groupe ou organisez un événement ? Le parc peut exiger une autorisation, renseignez-vous auprès du parc avant de venir.';
+      'Les règles du parc s\'appliquent. Une sortie en groupe ou un événement ici peut nécessiter une autorisation du parc. Renseignez-vous auprès de lui avant de venir.';
 
   @override
   String get parksAttributionOsm =>

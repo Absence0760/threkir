@@ -8042,7 +8042,7 @@ export const messages = {
 	"parks.notAffiliated": "Threkir veröffentlicht diese Strecken. Sie werden nicht vom Park oder seiner Verwaltungsbehörde organisiert, gesponsert oder empfohlen. Es gelten die Regeln, Öffnungszeiten, Gebühren und Sperrungen des Parks.",
 	"parks.timesNotEventResults": "Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse eines Events, das auf ihnen stattfindet.",
 	"parks.sharedUseSaturdayMorningGroup": "Organisierte Gruppen nutzen diese Wege samstagmorgens. Lass ihnen den Vortritt und vermeide es, mitten durch sie hindurch auf Zeit zu laufen.",
-	"parks.groupPermitNotice": "Allein eine Strecke zu laufen ist kein Problem. Kommst du mit einer Gruppe oder veranstaltest du ein Event? Der Park verlangt dafür vielleicht eine Genehmigung, also frag vorher beim Park nach.",
+	"parks.groupPermitNotice": "Es gelten die Regeln des Parks. Für einen Gruppenlauf oder ein Event hier brauchst du vielleicht eine Genehmigung des Parks, also frag vorher beim Park nach.",
 	"parks.attributionOsm": "Streckenverlauf © OpenStreetMap-Mitwirkende",
 	"parks.attributionNps": "Streckenverlauf aus Wegdaten des National Park Service",
 	"parks.attributionAgency": "Streckenverlauf aus den Wegdaten des Parks",

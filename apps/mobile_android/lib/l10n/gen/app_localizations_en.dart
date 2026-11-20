@@ -22574,7 +22574,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'Running a course on your own is fine. Bringing a group or holding an event? The park may require a permit, so check with the park first.';
+      'Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.';
 
   @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';

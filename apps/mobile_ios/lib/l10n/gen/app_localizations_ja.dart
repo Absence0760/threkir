@@ -21237,7 +21237,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'ひとりでコースを走るのは問題ありません。グループで走る場合やイベントを開く場合は、公園の許可が必要なことがあります。事前に公園に確認してください。';
+      '公園の規則に従ってください。ここでのグループランやイベントには、公園の許可が必要な場合があります。事前に公園に確認してください。';
 
   @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';

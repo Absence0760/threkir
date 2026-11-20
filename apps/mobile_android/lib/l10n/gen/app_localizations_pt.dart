@@ -22826,7 +22826,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'Correr um percurso sozinho não tem problema. Vem em grupo ou vai organizar um evento? O parque pode exigir uma autorização, por isso informe-se junto do parque antes de ir.';
+      'Aplicam-se as regras do parque. Correr em grupo ou fazer um evento aqui pode exigir uma autorização do parque, por isso informe-se junto do parque antes de ir.';
 
   @override
   String get parksAttributionOsm =>
@@ -47236,7 +47236,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksGroupPermitNotice =>
-      'Correr um percurso sozinho não tem problema. Vai com um grupo ou vai organizar um evento? O parque pode exigir uma autorização, então consulte o parque antes de ir.';
+      'Valem as regras do parque. Correr em grupo ou fazer um evento aqui pode exigir uma autorização do parque, então consulte o parque antes de ir.';
 
   @override
   String get parksAttributionOsm =>

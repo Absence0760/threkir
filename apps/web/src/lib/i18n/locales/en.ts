@@ -8071,7 +8071,7 @@ export const en = {
 	"parks.notAffiliated": "Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.",
 	"parks.timesNotEventResults": "Times here are Threkir times on these paths. They are not results of any event held on them.",
 	"parks.sharedUseSaturdayMorningGroup": "Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.",
-	"parks.groupPermitNotice": "Running a course on your own is fine. Bringing a group or holding an event? The park may require a permit, so check with the park first.",
+	"parks.groupPermitNotice": "Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.",
 	"parks.attributionOsm": "Course line © OpenStreetMap contributors",
 	"parks.attributionNps": "Course line from National Park Service trail data",
 	"parks.attributionAgency": "Course line from the park's own trail data",

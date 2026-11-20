@@ -29139,9 +29139,9 @@
   "@parksSharedUseSaturdayMorningGroup": {
     "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
   },
-  "parksGroupPermitNotice": "Running a course on your own is fine. Bringing a group or holding an event? The park may require a permit, so check with the park first.",
+  "parksGroupPermitNotice": "Park rules apply. A group run or an event here may need a permit from the park, so check with the park first.",
   "@parksGroupPermitNotice": {
-    "description": "Park course notice, on every course and park page: running a course alone is fine, but a group run or an organised event may need a permit from the park, so check with the park first. Never says race; web key parks.groupPermitNotice."
+    "description": "Park course notice, on every course and park page: park rules apply, and a group run or an organised event may need a permit from the park, so check with the park first. Must not promise anything about any park's rules for solo runners. Never says race; web key parks.groupPermitNotice."
   },
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {

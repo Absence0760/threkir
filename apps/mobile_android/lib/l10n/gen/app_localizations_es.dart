@@ -22800,7 +22800,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'Correr un recorrido por tu cuenta no tiene problema. ¿Vienes con un grupo u organizas un evento? Puede que el parque exija un permiso, así que consúltalo antes con el parque.';
+      'Se aplican las normas del parque. Correr en grupo u organizar un evento aquí puede requerir un permiso del parque, así que consúltalo antes con el parque.';
 
   @override
   String get parksAttributionOsm =>

@@ -22808,7 +22808,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksGroupPermitNotice =>
-      'Allein eine Strecke zu laufen ist kein Problem. Kommst du mit einer Gruppe oder veranstaltest du ein Event? Der Park verlangt dafür vielleicht eine Genehmigung, also frag vorher beim Park nach.';
+      'Es gelten die Regeln des Parks. Für einen Gruppenlauf oder ein Event hier brauchst du vielleicht eine Genehmigung des Parks, also frag vorher beim Park nach.';
 
   @override
   String get parksAttributionOsm =>

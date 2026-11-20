@@ -8,7 +8,8 @@ Phase 3 of the park courses plan ([#1313](https://github.com/jaredhoward-dev/thr
 scripts/parks/
   lib/course_geometry.mjs        pure geometry: trace, measure, simplify, checkpoints
   lib/route_guide.mjs            pure: the course's route guide steps, and their validator
-  fetch_snapshot.mjs             network step: OSM ways + USGS elevations -> snapshot.json
+  lib/road_crossings.mjs         pure: where a course crosses a motor road at grade
+  fetch_snapshot.mjs             network step: OSM ways + USGS elevations + road crossings -> snapshot.json
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
   lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
   lib/catalogue_sync.mjs         pure: every park + the publisher -> the release sync's SQL
@@ -79,16 +80,63 @@ Per course in `park.json`:
   park. While it is null, every surface says the guide is drafted from map
   data and not yet checked on the ground.
 
+### Road crossings
+
+A `crossing` step of `road` tells a runner where the course crosses a motor
+road at grade: `{ "kind": "crossing", "crossing": "road", "name": "Hunter Mill Road", "signal": true, "at_m": 820 }`,
+read as "0.8 km: cross Hunter Mill Road at the traffic light." (or "cross the
+road. Watch for cars." when OSM gives no name and no signal). It is not the
+`road` step kind, which is a stretch the course runs along a road.
+
+The course ways alone cannot show a crossing, because the road through a
+shared node is not in them, so the snapshot carries `road_crossings`: for
+each course node a motor road passes through, the road's tags and its two
+neighbouring nodes, and how far along each a traffic signal sits. A full
+`fetch_snapshot.mjs` run fetches it (one Overpass query per park). For a park
+whose snapshot is already committed, fetch it alone, which leaves the ways,
+nodes and elevations exactly as they are, so no course line moves:
+
+```
+node scripts/parks/fetch_snapshot.mjs --road-crossings-only scripts/parks/catalogue/<region>/<park>
+node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>
+```
+
+A snapshot without `road_crossings` builds as it did before, with no road
+crossings. The rule (`lib/road_crossings.mjs`):
+
+- A road counts when its `highway` is a motor road (`MOTOR_ROADS` in
+  `lib/road_proximity.mjs`, `_link` included) that cars use (not `access=no` /
+  `motor_vehicle=no`). A `service` road counts only when it has a name and is
+  not a driveway, parking aisle, drive-through, alley or emergency access: an
+  unnamed driveway is nothing a runner can look for, and naming every one would
+  bury the roads that matter.
+- It must be at grade: a road tagged `bridge` or `tunnel` does not count, and
+  neither does a node where the course is on a bridge or in a tunnel on both
+  sides.
+- The course must cross it: the road's arms lie on both sides of the course's
+  path through the node. A road that ends at the trail, or one the course turns
+  onto, off or along (a `road_connectors` stretch), is no crossing.
+- `signal` is set when OSM puts a traffic signal on the crossing node
+  (`crossing=traffic_signals`, `crossing:signals=yes` or
+  `highway=traffic_signals`) or on the road within 15 m of it
+  (`ROAD_SIGNAL_NEAR_M`, a signal mapped on the junction beside the crosswalk).
+  Marked and unmarked crossings read the same.
+- Crossings within 40 m along the course (`ROAD_CROSSING_MERGE_M`) are one
+  when they share a name or one has none: the two carriageways of a divided
+  road, or a road and the unnamed turn lane beside it.
+
 Checking a guide (an owner step, done at the park):
 
 1. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>` and
    read the course's `route_guide.steps` in `manifest.json`, or open the
    course page on a preview deploy.
 2. Walk or run the course with the steps in hand. At each junction check the
-   turn and the trail name against the signs; check each bridge, ford and
-   surface change, and that each climb is where it says.
+   turn and the trail name against the signs; check each bridge, ford, road
+   crossing (its name and whether it has a traffic light) and surface change,
+   and that each climb is where it says.
 3. If a step is wrong, the cause is the data: fix the OSM way (name, `surface`,
-   `bridge`, `ford`) upstream and re-run `fetch_snapshot.mjs`, or change the
+   `bridge`, `ford`) or crossing node (`crossing=traffic_signals`) upstream and
+   re-run `fetch_snapshot.mjs` (`--road-crossings-only` for a road crossing), or change the
    course's ways in `park.json`. Never edit `manifest.json` by hand; `--check`
    would fail it.
 4. When every step matches, set `ground_checked_at` to the date you walked it

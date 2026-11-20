@@ -681,8 +681,8 @@ they already return to the screen the runner came from.
 
 Issue #1344, [decisions § 2448](../architecture/decisions.md). Each course has
 a short guide a newcomer can follow: where to park, which way round, and every
-turn in order by trail name, with the bridges, fords, surface changes and
-climbs on the way, the checkpoints and the laps.
+turn in order by trail name, with the bridges, fords, roads to cross, surface
+changes and climbs on the way, the checkpoints and the laps.
 
 - **Structured, not prose.** `park_courses.route_guide` is
   `{ version: 1, lang, getting_there?, steps }`. A step is one of `start`
@@ -691,7 +691,9 @@ climbs on the way, the checkpoints and the laps.
   `of`), `junction` (`turn`: `left` / `right` / `straight`, and `name` or
   `way`: `fire_road` / `road` / `path`), `road` (`length_m`, optional
   `name`: a stretch of road the course follows between two pieces of trail,
-  since migration `20280102001430`), `crossing` (`bridge` / `ford`),
+  since migration `20280102001430`), `crossing` (`bridge` / `ford`, or
+  `road` with an optional `name` and `signal: true`: a motor road crossed at
+  grade, since migration `20280105001344`),
   `surface` (`paved` / `gravel` / `dirt` / `unpaved` / `boardwalk`), `climb`
   (`gain_m`, `length_m`), `checkpoint` (`order`, `of`) and `finish`, each with
   its whole-metre `at_m` along the course. The CHECK
@@ -714,7 +716,13 @@ climbs on the way, the checkpoints and the laps.
   step across a near-miss junction is read as the trail either side and adds
   none), a junction
   between unnamed ways only where the snapshot shows a branch and the course
-  turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
+  turns, crossings from `bridge` / `ford` tags, a road crossing for each motor
+  road the course crosses at grade (from the snapshot's `road_crossings`, which
+  `fetch_snapshot.mjs --road-crossings-only` adds without moving a course;
+  named service roads only, no bridges or tunnels, the carriageways of one road
+  merged; the rule is in
+  [scripts/parks/README.md § Road crossings](../../scripts/parks/README.md#road-crossings)),
+  surfaces from `surface` tags
   (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
   checkpoints where the build placed them, and the rotation of the loop. A
   lapped race writes lap 1 in full and then only its lap markers, checkpoints
@@ -737,7 +745,8 @@ climbs on the way, the checkpoints and the laps.
   on the same trail is left out), where each later lap starts ("25.0 km:
   start lap 2 of 2 and repeat the loop.", so nobody stops at the box after
   the first) and the finish. Everything else sits under
-  "Show all steps", collapsed: bridges, fords, surfaces and climbs grouped by
+  "Show all steps", collapsed: bridges, fords, road crossings, road stretches,
+  surfaces and climbs grouped by
   lap (a lap after the first reads "Repeat the loop.") or, with no laps, by
   5 km stretch with a distance heading. Neither view lists checkpoints; the
   map marks them. The GPX `<desc>` and the share page's search text keep
@@ -1455,7 +1464,10 @@ These gate going live, not the code:
   `GUIDE_EN` against the English catalogue); pgTAP
   `park_course_route_guide_test.sql` (the shape predicate, the CHECKs, the load
   writing the guide and its date with no backfill, each refusal) and
-  `park_course_route_guide_road_test.sql` (the road step, #1430); road
+  `park_course_route_guide_road_test.sql` (the road step, #1430) and
+  `park_course_route_guide_road_crossing_test.sql` (the road crossing);
+  `node --test scripts/parks/lib/road_crossings.test.mjs` (the crossing rule,
+  signals, the Overpass parser); road
   connectors in `course_geometry.test.mjs` (the trail review, the 250 m cap);
   Playwright
   `tests-e2e/parks/park-course-route-guide.spec.ts` (the list and the draft

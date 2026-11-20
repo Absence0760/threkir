@@ -12,8 +12,23 @@
     "osm_boundary": "relation/3554290"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses at Brawner Farm against the NPS trail map and the blazes (most of each lap is on the yellow-blazed bridle loop shared with horses), and confirms with the park whether an organised run needs a special use permit (NPS lists $100 with three weeks' review)."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -127,7 +142,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "manassas-10k",
@@ -284,7 +300,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

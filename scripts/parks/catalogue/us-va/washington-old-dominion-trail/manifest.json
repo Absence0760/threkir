@@ -12,7 +12,23 @@
   },
   "release": {
     "status": "staged",
-    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs, public access at the end lots (the Purcellville and Leesburg school lots are weekend-only in term), and NOVA Parks' event rules (permit for 25 or more, the gathering regulation voted on 2026-11-19)."
+    "reason": "Go-live gate failed: wod-reston-to-vienna-10k: major_road_crossing; wod-leesburg-to-sterling-half: major_road_crossing; wod-purcellville-to-reston-marathon: major_road_crossing; wod-purcellville-to-clarks-crossing-50k: major_road_crossing; wod-purcellville-to-clarks-crossing-100k: major_road_crossing. Details in the manifest gate_failures."
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -120,7 +136,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "wod-reston-to-vienna-10k",
@@ -301,7 +318,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Hunter Mill Road (primary) at grade with no traffic signal"
+        }
+      ]
     },
     {
       "slug": "wod-leesburg-to-sterling-half",
@@ -619,7 +642,17 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South King Street (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South Sterling Boulevard (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "wod-purcellville-to-reston-marathon",
@@ -1220,7 +1253,25 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed motorway road (motorway) at grade 4 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Berlin Turnpike (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South King Street (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South Sterling Boulevard (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "wod-purcellville-to-clarks-crossing-50k",
@@ -1928,7 +1979,29 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed motorway road (motorway) at grade 4 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Berlin Turnpike (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South King Street (primary) at grade with no traffic signal"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South Sterling Boulevard (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Hunter Mill Road (primary) at grade with no traffic signal"
+        }
+      ]
     },
     {
       "slug": "wod-purcellville-to-clarks-crossing-100k",
@@ -2970,7 +3043,29 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses an unnamed motorway road (motorway) at grade 8 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Berlin Turnpike (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South King Street (primary) at grade with no traffic signal 2 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses South Sterling Boulevard (primary) at grade with no traffic signal 4 times"
+        },
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses Hunter Mill Road (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     }
   ]
 }

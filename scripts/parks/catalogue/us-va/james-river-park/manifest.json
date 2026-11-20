@@ -10,8 +10,23 @@
     "website_url": "https://jamesriverpark.org/trails/"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks every course against the trail signs: Forest Hill (schematic map, short OSM connectors), Pony Pasture (unnamed paths matched to the map by eye), and one lap of the big loop, checking the Boulevard Bridge sidewalk is open on foot, the 13 m across the Tredegar Street lot, the 22nd Street bridge stairs and the Buttermilk Heights creek ford (#1430)."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -176,7 +191,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "forest-hill-park-10k",
@@ -400,7 +416,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "pony-pasture-5k",
@@ -678,7 +695,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "pony-pasture-10k",
@@ -1008,7 +1026,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "james-river-park-half",
@@ -1635,7 +1654,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "james-river-park-marathon",
@@ -2367,7 +2387,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

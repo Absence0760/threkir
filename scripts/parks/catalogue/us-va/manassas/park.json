@@ -11,10 +11,6 @@
     "website_url": "https://www.nps.gov/mana/planyourvisit/hiking.htm",
     "osm_boundary": "relation/3554290"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses at Brawner Farm against the NPS trail map and the blazes (most of each lap is on the yellow-blazed bridle loop shared with horses), and confirms with the park whether an organised run needs a special use permit (NPS lists $100 with three weeks' review)."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

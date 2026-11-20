@@ -1,13 +1,14 @@
-// Whether a park may load into production (decisions § 2460). Every park's
-// `park.json` declares a `release`, which the build copies into its
-// `manifest.json`:
+// Whether a park may load into production (decisions § 2460, § 2600). The
+// build derives every park's `release` from the go-live gate
+// (`golive_gate.mjs`) and writes it into its `manifest.json`; `park.json`
+// carries none:
 //
 //   { "status": "live" }                         the release sync loads it
 //   { "status": "staged", "reason": "..." }      built, validated, never loaded
 //
-// There is no default. A park without a release, or with one this module does
-// not recognise, fails the build and the sync rather than loading, so a typo
-// can never publish a park that was meant to wait.
+// There is no default. A manifest without a release, or with one this module
+// does not recognise, fails the sync rather than loading, so a hand edit can
+// never publish a park the gate did not pass.
 
 export const RELEASE_STATUSES = ['live', 'staged'];
 export const MAX_STAGED_REASON_LENGTH = 500;

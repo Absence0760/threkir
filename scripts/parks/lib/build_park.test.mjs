@@ -45,7 +45,6 @@ function spec() {
 			timezone: 'America/New_York',
 			website_url: 'https://example.org/trail',
 		},
-		release: { status: 'staged', reason: 'test' },
 		trail_review: {
 			checked_at: '2026-11-19',
 			source_urls: ['https://example.org/map.pdf'],
@@ -62,17 +61,25 @@ function spec() {
 	};
 }
 
+// What the go-live gate reads besides the ways: no road crossings, and a car
+// park beside each course end (the trail's two ends and its 1.5 km mark).
+const lot = (/** @type {number} */ lng) => ({ lat: 0.0005, lng, parking: [{ id: 'way/9', lat: 0.001, lng, m: 56, tags: { amenity: 'parking' } }], roads: [] });
+const surroundings = {
+	road_crossings: { nodes: {} },
+	course_ends: { ends: [{ ...lot(0), lat: 0 }, { ...lot(0.06), lat: 0 }, { ...lot(0.015034), lat: 0 }] },
+};
+
 /**
  * Build `s` in a throwaway park directory and return a reader over the outputs.
  *
  * @param {ReturnType<typeof spec>} s
- * @param {{ snapshotWays?: Record<string, any>, warn?: (message: string) => void }} [options]
+ * @param {{ snapshotWays?: Record<string, any>, warn?: (message: string) => void, extra?: Record<string, unknown> }} [options]
  */
-function build(s, { snapshotWays = ways, warn = (/** @type {string} */ _m) => {} } = {}) {
+function build(s, { snapshotWays = ways, warn = (/** @type {string} */ _m) => {}, extra = surroundings } = {}) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-park-'));
 	try {
 		fs.writeFileSync(path.join(dir, 'park.json'), JSON.stringify(s));
-		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: snapshotWays, nodes }));
+		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: snapshotWays, nodes, ...extra }));
 		const out = buildPark(dir, { warn });
 		return (/** @type {string} */ file) => JSON.parse(/** @type {string} */ (out.get(path.join(dir, file))));
 	} finally {
@@ -116,10 +123,27 @@ test('the built manifest loads with each shape and no laps', () => {
 	);
 });
 
-test('the build refuses a bare cycleway with no foot confirmation', () => {
+test('the gate puts a park live when every course passes, and the build reads no release from park.json', () => {
+	const manifest = build(spec())('manifest.json');
+	assert.deepEqual(manifest.release, { status: 'live' });
+	assert.deepEqual(manifest.race_courses.map((/** @type {any} */ c) => c.gate_failures), [[], []]);
+	assert.throws(() => build(/** @type {any} */ ({ ...spec(), release: { status: 'live' } })), /declares a release, but the go-live gate derives it/);
+});
+
+test('missing gate data stages the park, never publishes it', () => {
+	const manifest = build(spec(), { extra: {} })('manifest.json');
+	assert.equal(manifest.release.status, 'staged');
+	assert.match(manifest.release.reason, /^Go-live gate failed: p2p: source_data; oab: source_data\./);
+});
+
+test('a bare cycleway with no foot confirmation stages the park on foot_access', () => {
 	const s = spec();
 	delete s.trail_review.foot_confirmed;
-	assert.throws(() => build(s), /p2p: the course runs on way\(s\) not open to people on foot: way 31 \(highway=cycleway\)/);
+	const manifest = build(s)('manifest.json');
+	assert.equal(manifest.release.status, 'staged');
+	assert.deepEqual(manifest.race_courses[0].gate_failures, [
+		{ check: 'foot_access', detail: 'way 31 is closed to people on foot (highway=cycleway)' },
+	]);
 });
 
 test('the build warns, and still builds, on a bike-designated path with no foot tag', () => {
@@ -174,7 +198,7 @@ function gappedBuild(gapM, /** @type {Array<{ nodes: number[], reason: string }>
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-park-'));
 	try {
 		fs.writeFileSync(path.join(dir, 'park.json'), JSON.stringify(s));
-		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: gapped, nodes: gappedNodes }));
+		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: gapped, nodes: gappedNodes, ...surroundings }));
 		const out = buildPark(dir);
 		return (/** @type {string} */ file) => JSON.parse(/** @type {string} */ (out.get(path.join(dir, file))));
 	} finally {
@@ -194,11 +218,10 @@ test('a trail_review join closes a near-miss junction, is reported with its gap,
 	);
 });
 
-test('the build refuses a join over the cap, naming its gap', () => {
-	assert.throws(
-		() => gappedBuild(15, [{ nodes: [31, 100], reason: 'near-miss junction in OSM' }]),
-		/join 31-100 spans 15\.0 m, over the 10 m a join may close/,
-	);
+test('a join over the cap stages the park, naming its gap', () => {
+	const manifest = gappedBuild(15, [{ nodes: [31, 100], reason: 'near-miss junction in OSM' }])('manifest.json');
+	assert.deepEqual(manifest.gate.park_failures, [{ check: 'join_gap', detail: 'join 31-100 spans 15.0 m, over 10 m' }]);
+	assert.match(manifest.release.reason, /^Go-live gate failed: park: join_gap/);
 });
 
 test('every committed park rebuilds byte for byte from its spec and snapshot', () => {

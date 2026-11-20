@@ -12,8 +12,23 @@
     "osm_boundary": "relation/9991347"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks both courses at Cold Harbor against the NPS trail map, including the four stretches on the tour road (Anderson Wright Drive) that join the trail pieces, and confirms with the park whether an organised run needs a special use permit."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-19",
@@ -201,7 +216,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "cold-harbor-10k",
@@ -433,7 +449,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

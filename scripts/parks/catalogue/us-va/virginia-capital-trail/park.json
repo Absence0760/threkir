@@ -10,10 +10,6 @@
     "website_url": "https://www.virginiacapitaltrail.org",
     "osm_boundary": "relation/8010285"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Owner checks open (#1432): the road stretches on Herring Creek Road and Courthouse Road, mile 0 at Jamestown, and event permits."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

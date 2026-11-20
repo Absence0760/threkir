@@ -11,8 +11,23 @@
     "osm_boundary": "relation/13957312"
   },
   "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks the four courses at James River State Park against the trail signs. The unblazed connectors (Taylor Trail's dashed section, the Cabell-Running Creek Connector, the Branch Trail Connector, the Running Creek link from the Discovery Area) are drawn about 100 m off the OSM lines on DCR's map, so confirm each on the ground. Also confirm with DCR that a standing time-trial course needs no Special Use Permit, and note the trails are shared with horses and bikes."
+    "status": "live"
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -163,7 +178,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "james-river-state-park-10k",
@@ -374,7 +390,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "james-river-state-park-half",
@@ -659,7 +676,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "james-river-state-park-marathon",
@@ -1016,7 +1034,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     }
   ]
 }

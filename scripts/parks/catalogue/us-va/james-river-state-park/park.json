@@ -10,10 +10,6 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/james-river",
     "osm_boundary": "relation/13957312"
   },
-  "release": {
-    "status": "staged",
-    "reason": "Held until the owner walks the four courses at James River State Park against the trail signs. The unblazed connectors (Taylor Trail's dashed section, the Cabell-Running Creek Connector, the Branch Trail Connector, the Running Creek link from the Discovery Area) are drawn about 100 m off the OSM lines on DCR's map, so confirm each on the ground. Also confirm with DCR that a standing time-trial course needs no Special Use Permit, and note the trails are shared with horses and bikes."
-  },
   "trail_review": {
     "checked_at": "2026-11-19",
     "source_urls": [

@@ -12,7 +12,23 @@
   },
   "release": {
     "status": "staged",
-    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs and lots, the Farmville closure from Main Street to Osborne Road (the half, the marathon, the 50 mile and the 100K run through it), daily parking fees, and a Special Use Permit for group events."
+    "reason": "Go-live gate failed: river-road-to-prospect-half: major_road_crossing; orchard-road-to-elam-marathon: major_road_crossing; pamplin-50mi: major_road_crossing; pamplin-100k: major_road_crossing. Details in the manifest gate_failures."
+  },
+  "gate": {
+    "version": 1,
+    "checks": [
+      "source_data",
+      "foot_access",
+      "major_road_crossing",
+      "road_connector",
+      "road_share",
+      "join_gap",
+      "backtrack",
+      "laps",
+      "parking",
+      "end_runout"
+    ],
+    "park_failures": []
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-20",
@@ -106,7 +122,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "river-road-to-prospect-half",
@@ -263,7 +280,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses North Main Street (primary) at grade with no traffic signal"
+        }
+      ]
     },
     {
       "slug": "orchard-road-to-elam-marathon",
@@ -526,7 +549,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses North Main Street (primary) at grade with no traffic signal"
+        }
+      ]
     },
     {
       "slug": "pamplin-50k",
@@ -782,7 +811,8 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": []
     },
     {
       "slug": "pamplin-50mi",
@@ -1198,7 +1228,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses North Main Street (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     },
     {
       "slug": "pamplin-100k",
@@ -1700,7 +1736,13 @@
           }
         ]
       },
-      "route_guide_checked_at": null
+      "route_guide_checked_at": null,
+      "gate_failures": [
+        {
+          "check": "major_road_crossing",
+          "detail": "crosses North Main Street (primary) at grade with no traffic signal 2 times"
+        }
+      ]
     }
   ]
 }

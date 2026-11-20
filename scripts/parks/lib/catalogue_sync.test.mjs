@@ -122,11 +122,14 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the committed stage loads Pocahontas\'s six courses as the committed club and holds every other park staged', () => {
+test('the committed stage loads every park the go-live gate passed as the committed club and holds every other park staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: /);
-	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
+	const live = committedParks().filter((p) => p.status === 'live');
+	assert.ok(live.some((p) => p.slug === 'pocahontas'), 'Pocahontas, already loaded, still passes the gate');
+	assert.match(stage.note, new RegExp(`^${live.length} park\\(s\\): `));
+	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, live.length);
+	for (const park of live) assert.ok(stage.sql.includes(`"slug":"${park.slug}"`), `${park.slug} is loaded`);
 	const staged = committedParks().filter((p) => p.status === 'staged');
 	assert.ok(staged.length > 0);
 	for (const park of staged) {

@@ -45,7 +45,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
 | **Cold Harbor, 5 km and 10 km (2 laps)** (Richmond National Battlefield Park, NPS `rich`; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/cold-harbor/`, joining the three trail pieces along the tour road (`trail_review.road_connectors`, a `road` step in the guide) | **Staged**: waits on the owner's ground check and the NPS permit question. See *Pre-deploy checklist* |
 | **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
-| **Poor Farm Park, 5 km and 10 km (2 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
+| **Poor Farm Park, 5 km, 10 km (2 laps) and half-marathon distance (3 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 | **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 | **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 
@@ -1260,12 +1260,14 @@ These gate going live, not the code:
       line on the connector trail in the woods, about 900 m back along the loop
       from the small lot the loop passes; walks the route guide and
       sets `ground_checked_at`. Foot access is not confirmed in writing (owner
-      decision). A half was not built: on the ways scouted for it no 6.7-7 km
-      lap repeats no trail, and the longest such lap a wider search of the
-      park found is 6,039 m, so a 7 km lap needs about 1 km of out-and-back
-      on each of three laps of a figure-eight, which fails the curation rule.
-      The issue's 8 km no-repeat loop needs 14 junction joins; revisit once
-      those are checked.
+      decision). The half-marathon distance (3 laps) shares the
+      lead-in and the two road-crossing joins; its 6,917 m lap is a longer
+      ring through the west and south singletrack (the Muscle Loop and the
+      Fence Trail among it) and re-runs 6 m of itself. An exact search of
+      the park's OSM trails, leaving out the expert jump and downhill lines
+      (`mtb:scale` 3 and up) and the footways by the fields, found it; the
+      earlier 6,039 m figure came from a narrower set of ways. Walk one half
+      lap against the signs before going live.
 - [ ] **First Landing State Park (staged, issue #1433).** Before its
       `release` goes `live`: the owner walks all four courses against the
       DCR trail guide and the trail signs (the line is OSM's; DCR's maps are

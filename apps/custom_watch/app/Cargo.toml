@@ -158,7 +158,7 @@ embedded-storage-async = { version = "0.4", optional = true }
 # Run-store staging buffer + FlashSink + the BLE notify characteristics' Vec<u8, N>
 # (matches the heapless 0.9 the workspace + nrf-softdevice use, so the GattValue
 # impl applies). Not optional: the default build's flash run store needs it too.
-heapless         = "0.9"
+heapless         = "0.9.4"
 # &'static init for the shared run store (both builds) + the BLE Server (ble build).
 static_cell      = "2"
 

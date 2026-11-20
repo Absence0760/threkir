@@ -83,7 +83,7 @@ test.describe('/runs run list', () => {
 		await page.goto('/runs');
 		await expect(page).toHaveURL(/\/runs$/);
 		await expect(
-			page.getByRole('heading', { level: 1, name: 'Runs' })
+			page.getByRole('heading', { level: 1, name: 'Training' })
 		).toBeAttached();
 		await expect(page.getByLabel('Source')).toBeVisible({ timeout: 10_000 });
 	});

@@ -67,7 +67,7 @@ test.describe('runs — add two runs back to back', () => {
 		try {
 			await test.step('reach /runs from the sidebar', async () => {
 				await page.goto('/dashboard');
-				await page.locator('nav.sidebar').getByRole('link', { name: 'Runs', exact: true }).click();
+				await page.locator('nav.sidebar').getByRole('link', { name: 'Training', exact: true }).click();
 				await page.waitForURL(/\/runs$/, { timeout: 10_000 });
 				await switchRunsToAllTime(page);
 				await expect(page.locator('.run-card').first()).toBeVisible({ timeout: 10_000 });

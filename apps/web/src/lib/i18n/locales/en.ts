@@ -77,7 +77,7 @@ export const en = {
 	'rsvpStatus.waitlisted': 'Waitlisted',
 	'nav.dashboard': 'Dashboard',
 	'nav.history': 'History',
-	'nav.runs': 'Runs',
+	'nav.runs': 'Training',
 	'nav.coach': 'AI Coach',
 	'nav.social': 'Social',
 	'nav.messages': 'Messages',

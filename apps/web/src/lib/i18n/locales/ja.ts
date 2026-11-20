@@ -63,7 +63,7 @@ export const messages = {
 	'rsvpStatus.waitlisted': 'キャンセル待ち',
 	'nav.dashboard': 'ダッシュボード',
 	'nav.history': '履歴',
-	'nav.runs': 'ラン',
+	'nav.runs': 'トレーニング',
 	'nav.coach': 'AI コーチ',
 	'nav.social': 'ソーシャル',
 	'nav.messages': 'メッセージ',

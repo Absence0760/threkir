@@ -48,8 +48,8 @@ test.describe('click-through session journey', () => {
 			await expect(page.getByTestId('dash-today-hero')).toBeVisible({ timeout: 10_000 });
 		});
 
-		await test.step('Runs in the sidebar → open a run → All runs', async () => {
-			await sidebar.getByRole('link', { name: 'Runs', exact: true }).click();
+		await test.step('Training in the sidebar → open a run → All runs', async () => {
+			await sidebar.getByRole('link', { name: 'Training', exact: true }).click();
 			await page.waitForURL(/\/runs$/, { timeout: 10_000 });
 			await switchRunsToAllTime(page);
 			const first = page.locator('.run-card').first();

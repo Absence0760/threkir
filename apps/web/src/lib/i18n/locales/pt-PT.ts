@@ -63,7 +63,7 @@ export const messages = {
 	'rsvpStatus.waitlisted': 'Na lista de espera',
 	'nav.dashboard': 'Painel',
 	'nav.history': 'Histórico',
-	'nav.runs': 'Corridas',
+	'nav.runs': 'Treino',
 	'nav.coach': 'Coach de IA',
 	'nav.social': 'Social',
 	'nav.messages': 'Mensagens',

@@ -81,7 +81,7 @@ test.describe('gym and nutrition visibility switches', () => {
 			await page.goto('/dashboard');
 			await reads;
 			await expect(navLabel(page, 'Dashboard')).toBeVisible({ timeout: 15_000 });
-			await expect(navLabel(page, 'Runs')).toBeVisible();
+			await expect(navLabel(page, 'Training')).toBeVisible();
 			await expect(navLabel(page, 'Gym')).toHaveCount(0);
 			await expect(navLabel(page, 'Nutrition')).toHaveCount(0);
 			// No lift and no meal, so History would only repeat /runs

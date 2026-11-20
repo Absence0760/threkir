@@ -10,6 +10,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 |---|---|
 | `parks` + `park_courses` tables, RLS, grants | Shipped (migration `20271115002383`) |
 | Checkpoint rule in the catalogue matcher (`segments` parity pair) | Shipped, web + Dart |
+| Live course timing on the Apple Watch (#1446): "Timing started" on leaving the start box, "Finished! 8:42:10" on entering the finish box, each with a buzz, by the box rule streamed on the watch's own line fixes (`CourseBoxTiming.swift`, a one-way port of `_scoreByGates`, held to `segments_gate_cases.json` and `park_course_runs.json` to the millisecond) | Built and simulator-tested on watchOS; inert until the phone sends the `park_course` push (`ParkCourse.swift` holds the shape). No device run |
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |

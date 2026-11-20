@@ -178,7 +178,7 @@ test('each refusal case is what its name says', () => {
 	assert.ok(minTo(early, oab.checkpoints[1]) >= 45, `the early turn comes ${minTo(early, oab.checkpoints[1]).toFixed(0)} m from the turn`);
 	assert.ok(minTo(early, oab.checkpoints[0]) < 5 && minTo(early, oab.checkpoints[2]) < 5, 'and runs through the other two');
 
-	const drop = run('p2p_dropout_at_finish');
+	const drop = run('ptp_dropout_at_finish');
 	const gaps = drop.fixes.slice(1).map((f, i) => f.t - drop.fixes[i].t);
 	assert.equal(gaps.filter((g) => g > 1).length, 1, 'one gap');
 	const longest = Math.max(...gaps);

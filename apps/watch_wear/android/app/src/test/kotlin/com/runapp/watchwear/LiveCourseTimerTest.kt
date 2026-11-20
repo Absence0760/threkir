@@ -141,7 +141,7 @@ class LiveCourseTimerTest {
         assertTrue(!gatesShareSpot(spec(p2p).startGate, spec(p2p).endGate))
         val expected = mapOf(
             "oab_clean" to oab, "oab_stopped_at_turn" to oab, "oab_turned_early" to oab,
-            "p2p_clean" to p2p, "p2p_stopped_short" to p2p, "p2p_dropout_at_finish" to p2p,
+            "ptp_clean" to p2p, "ptp_stopped_short" to p2p, "ptp_dropout_at_finish" to p2p,
         )
         for ((key, course) in expected) {
             val c = cases.first { it["key"]!!.jsonPrimitive.content == key }
@@ -172,7 +172,7 @@ class LiveCourseTimerTest {
         val p2p = courses.first { it["slug"]!!.jsonPrimitive.content == "synthetic-point-to-point" }
         val spec = spec(p2p)
         val entry = gateTimingEdges(spec.startGate, spec.endGate).finishEntry
-        val fixes = decode(cases.first { it["key"]!!.jsonPrimitive.content == "p2p_clean" }["track"]!!.jsonObject)
+        val fixes = decode(cases.first { it["key"]!!.jsonPrimitive.content == "ptp_clean" }["track"]!!.jsonObject)
         val s = fixes.map { gateProjection(entry, it.lat, it.lng).s }
         // The first fix in the box, and the last one more than 8 m short.
         val inBox = fixes.indices.first { s[it] >= 0.0 && abs(gateProjection(entry, fixes[it].lat, fixes[it].lng).u) <= entry.halfWidthM }

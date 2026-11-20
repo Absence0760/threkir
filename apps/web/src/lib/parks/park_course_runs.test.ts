@@ -149,14 +149,14 @@ test('an out-and-back: timed clean with no attempt, a stop at the turn is stoppe
 test('a point to point: timed clean, stopped_short 400 m out, and a GPS dropout at the finish is gps_gap', () => {
 	const slug = 'synthetic-point-to-point';
 	const p2p = (key: string) => caseBy(key).attempts[slug];
-	assert.ok(caseBy('p2p_clean').matched[slug], 'the clean run is timed');
-	const short = p2p('p2p_stopped_short');
+	assert.ok(caseBy('ptp_clean').matched[slug], 'the clean run is timed');
+	const short = p2p('ptp_stopped_short');
 	assert.equal(short?.outcome, 'stopped_short');
 	assert.ok(Math.abs((short?.progress_m ?? 0) - (2601 - 400)) <= 35, `stopped 400 m short, reported ${short?.progress_m} m`);
-	const gap = p2p('p2p_dropout_at_finish');
+	const gap = p2p('ptp_dropout_at_finish');
 	assert.equal(gap?.outcome, 'gps_gap', 'it reached the finish: not stopped short, not off course');
 	assert.equal(gap?.progress_m, gap?.course_m);
-	const track = decodeTrack(caseBy('p2p_dropout_at_finish').track, baseMs);
+	const track = decodeTrack(caseBy('ptp_dropout_at_finish').track, baseMs);
 	const longest = Math.max(...track.slice(1).map((p, i) => (Date.parse(p.ts!) - Date.parse(track[i].ts!)) / 1000));
 	assert.ok(longest > 60 && longest <= 300, `a gap the timer may finish across only at the runner's pace: ${longest} s`);
 });
@@ -192,9 +192,9 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 		'oab_clean',
 		'oab_stopped_at_turn',
 		'oab_turned_early',
-		'p2p_clean',
-		'p2p_stopped_short',
-		'p2p_dropout_at_finish',
+		'ptp_clean',
+		'ptp_stopped_short',
+		'ptp_dropout_at_finish',
 	]) {
 		assert.ok(keys.has(key), `no case ${key}`);
 	}

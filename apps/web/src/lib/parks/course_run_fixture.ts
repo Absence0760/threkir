@@ -821,7 +821,7 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 		const eb = p2p.gates.end.bearingDeg;
 		clean(p2p.slug, 330, 151);
 		defs.push({
-			key: 'p2p_stopped_short',
+			key: 'ptp_stopped_short',
 			name: 'synthetic-point-to-point: stopping 400 m short of the finish',
 			course: p2p.slug,
 			why: 'every checkpoint passed, then the run ends 400 m before the line',
@@ -832,7 +832,7 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			want: { effort: false },
 		});
 		defs.push({
-			key: 'p2p_dropout_at_finish',
+			key: 'ptp_dropout_at_finish',
 			name: 'synthetic-point-to-point: the GPS drops out as the runner reaches the finish',
 			course: p2p.slug,
 			why: 'every checkpoint passed, then no fix from 60 m short of the line, through a 4 minute stop there, to 6 m past it: a gap of about 260 s crossed at a tenth of the runner\'s pace, which the timer refuses, then a cool-down out of the box',
@@ -854,10 +854,10 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 	return defs;
 }
 
-/** `swift-creek-half` → `half`, `beaver-lake-trail` → `beaver`, `synthetic-out-and-back` → `oab`. */
+/** `swift-creek-half` → `half`, `beaver-lake-trail` → `beaver`, `synthetic-out-and-back` → `oab`, `synthetic-point-to-point` → `ptp` (a three-letter key outside the Material Symbols vocabulary, so the icon-font subset never mistakes it for an icon). */
 function short(slug: string): string {
 	if (slug === 'synthetic-out-and-back') return 'oab';
-	if (slug === 'synthetic-point-to-point') return 'p2p';
+	if (slug === 'synthetic-point-to-point') return 'ptp';
 	return slug === 'beaver-lake-trail' ? 'beaver' : slug.replace('swift-creek-', '');
 }
 

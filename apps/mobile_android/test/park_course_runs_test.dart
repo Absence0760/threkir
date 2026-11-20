@@ -219,16 +219,16 @@ void main() {
     Map<String, dynamic>? p2p(String key) =>
         (caseBy(key)['attempts'] as Map<String, dynamic>)[slug]
             as Map<String, dynamic>?;
-    expect((caseBy('p2p_clean')['matched'] as Map).containsKey(slug), isTrue);
-    final short = p2p('p2p_stopped_short')!;
+    expect((caseBy('ptp_clean')['matched'] as Map).containsKey(slug), isTrue);
+    final short = p2p('ptp_stopped_short')!;
     expect(short['outcome'], 'stopped_short');
     expect(((short['progress_m'] as int) - (2601 - 400)).abs() <= 35, isTrue);
-    final gap = p2p('p2p_dropout_at_finish')!;
+    final gap = p2p('ptp_dropout_at_finish')!;
     expect(gap['outcome'], 'gps_gap',
         reason: 'it reached the finish: not stopped short, not off course');
     expect(gap['progress_m'], gap['course_m']);
     final track = _decode(
-        caseBy('p2p_dropout_at_finish')['track'] as Map<String, dynamic>,
+        caseBy('ptp_dropout_at_finish')['track'] as Map<String, dynamic>,
         base);
     var longest = 0;
     for (var i = 1; i < track.length; i++) {

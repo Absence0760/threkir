@@ -1461,8 +1461,8 @@ These gate going live, not the code:
   `oab_stopped_at_turn` is `stopped_short` at the turn (not `wrong_direction`,
   although every forward start there also opens a reverse attempt) and
   `oab_turned_early` is `skipped_checkpoint` 2; on the point to point,
-  `p2p_clean` is timed, `p2p_stopped_short` is `stopped_short` 400 m out and
-  `p2p_dropout_at_finish` (no fix from 60 m short of the line, through a stop,
+  `ptp_clean` is timed, `ptp_stopped_short` is `stopped_short` 400 m out and
+  `ptp_dropout_at_finish` (no fix from 60 m short of the line, through a stop,
   to 6 m past it, about 260 s refused at a tenth of the runner's pace) is
   `gps_gap` at the full length. Eight synthetic `attempt:` cases in
   `segments.test.ts` / `segments_test.dart`, among them a 200 s dropout into

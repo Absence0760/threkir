@@ -130,7 +130,7 @@ final class CourseBoxTimerTests: XCTestCase {
         XCTAssertEqual(CourseBox.timingEdges(try XCTUnwrap(gate(p2p["start_gate"])), try XCTUnwrap(gate(p2p["end_gate"]))).layout, .apart)
 
         let keys = ["oab_clean", "oab_stopped_at_turn", "oab_turned_early",
-                    "p2p_clean", "p2p_stopped_short", "p2p_dropout_at_finish"]
+                    "ptp_clean", "ptp_stopped_short", "ptp_dropout_at_finish"]
         for key in keys {
             let c = try XCTUnwrap(cases.first { $0["key"] as? String == key }, key)
             let slug = try XCTUnwrap(c["course"] as? String)
@@ -166,7 +166,7 @@ final class CourseBoxTimerTests: XCTestCase {
         let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
         let p2p = try XCTUnwrap(courses.first { $0["slug"] as? String == "synthetic-point-to-point" })
         let entry = CourseBox.timingEdges(try XCTUnwrap(gate(p2p["start_gate"])), try XCTUnwrap(gate(p2p["end_gate"]))).finishEntry
-        let clean = try XCTUnwrap(cases.first { $0["key"] as? String == "p2p_clean" })
+        let clean = try XCTUnwrap(cases.first { $0["key"] as? String == "ptp_clean" })
         let fixes = try decode(try XCTUnwrap(clean["track"] as? [String: Any]), base: base)
         let s = fixes.map { gateProjection(entry, $0.lat, $0.lng).s }
         let inBox = try XCTUnwrap(fixes.indices.first { s[$0] >= 0 && abs(gateProjection(entry, fixes[$0].lat, fixes[$0].lng).u) <= entry.halfWidthM })

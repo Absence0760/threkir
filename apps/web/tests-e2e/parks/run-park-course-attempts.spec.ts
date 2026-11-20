@@ -113,7 +113,7 @@ test.describe('run detail park course attempts', () => {
 	test.describe('as the owner', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
-		test('a course started and not finished says how far the run got and where to finish', async ({ page }) => {
+		test('a course started and not finished says how far the run got and to run the whole course', async ({ page }) => {
 			await page.goto(`/runs/${runId}`);
 			const section = page.getByTestId('run-park-course-attempts');
 			await expect(section).toBeVisible({ timeout: 20_000 });
@@ -121,7 +121,7 @@ test.describe('run detail park course attempts', () => {
 			const card = section.getByTestId('run-park-course-attempt');
 			await expect(card).toHaveCount(1);
 			await expect(card).toContainText(
-				`${courseName}: no time. You ran 3.20 km of 5.00 km. Finish at the red box to get a time.`,
+				`${courseName}: no time. You ran 3.20 km of 5.00 km. Run the whole course to get a time.`,
 			);
 			await expect(card).toHaveAttribute('href', `/parks/us-va/${parkSlug}/attempt-loop`);
 			const bar = card.getByRole('progressbar', { name: `How far you got on ${courseName}` });

@@ -31,9 +31,9 @@ test('the card links to the course page under its lower-case region', () => {
 	assert.equal(attemptCard(attempt(), 'km', 'en', t).href, '/parks/us-va/pocahontas/lake-loop');
 });
 
-test('stopped short names how far the runner got and where to finish', () => {
+test('stopped short names how far the runner got and to run the whole course', () => {
 	const c = attemptCard(attempt(), 'km', 'en', t);
-	assert.equal(c.reason, 'Lake Loop: no time. You ran 3.20 km of 5.00 km. Finish at the red box to get a time.');
+	assert.equal(c.reason, 'Lake Loop: no time. You ran 3.20 km of 5.00 km. Run the whole course to get a time.');
 	assert.equal(c.progress, '3.20 km of 5.00 km');
 	assert.equal(c.fraction, 0.64);
 	assert.equal(c.barLabel, 'How far you got on Lake Loop');

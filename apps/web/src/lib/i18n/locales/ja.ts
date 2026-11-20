@@ -1704,7 +1704,7 @@ export const messages = {
 	"runDetail.parkCourseRanks": "{month}の{monthRank}位、{season}年の{seasonRank}位",
 	"runDetail.parkCoursesLoadFailed": "公園コースのタイムを読み込めませんでした。",
 	"runDetail.parkCourseAttempts": "タイムが記録されなかった公園コース",
-	"runDetail.parkCourseAttemptStoppedShort": "{course}：タイムなし。{total}のうち{progress}を走りました。赤のボックスでフィニッシュするとタイムが記録されます。",
+	"runDetail.parkCourseAttemptStoppedShort": "{course}：タイムなし。{total}のうち{progress}を走りました。コースを最後まで走るとタイムが記録されます。",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}：タイムなし。チェックポイント{n}（全{count}か所）を通過しませんでした。コースラインから外れずに走り、すべて通過してください。",
 	"runDetail.parkCourseAttemptOffCourse": "{course}：タイムなし。コースから大きく外れました。コースラインに沿って走ってください。",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}：タイムなし。逆回りで走りました。コースマップの矢印に沿って走ってください。",

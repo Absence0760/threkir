@@ -1708,7 +1708,7 @@ export const messages = {
 	"runDetail.parkCourseRanks": "N.º {monthRank} em {month}, n.º {seasonRank} em {season}",
 	"runDetail.parkCoursesLoadFailed": "Não foi possível carregar os seus tempos nos percursos de parque.",
 	"runDetail.parkCourseAttempts": "Percursos de parque sem tempo",
-	"runDetail.parkCourseAttemptStoppedShort": "{course}: sem tempo. Correu {progress} de {total}. Termine na caixa vermelha para ter um tempo.",
+	"runDetail.parkCourseAttemptStoppedShort": "{course}: sem tempo. Correu {progress} de {total}. Corra o percurso todo para ter um tempo.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}: sem tempo. Falhou o ponto de controlo {n} de {count}. Mantenha-se na linha do percurso para passar por todos.",
 	"runDetail.parkCourseAttemptOffCourse": "{course}: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.",

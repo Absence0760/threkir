@@ -1709,7 +1709,7 @@ export const messages = {
 	"runDetail.parkCourseRanks": "N° {monthRank} en {month}, n° {seasonRank} en {season}",
 	"runDetail.parkCoursesLoadFailed": "Impossible de charger vos temps sur parcours de parc.",
 	"runDetail.parkCourseAttempts": "Parcours de parc sans temps",
-	"runDetail.parkCourseAttemptStoppedShort": "{course} : pas de temps. Vous avez couru {progress} sur {total}. Terminez dans la zone rouge pour obtenir un temps.",
+	"runDetail.parkCourseAttemptStoppedShort": "{course} : pas de temps. Vous avez couru {progress} sur {total}. Courez tout le parcours pour obtenir un temps.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course} : pas de temps. Vous avez manqué le point de contrôle {n} sur {count}. Restez sur le tracé du parcours pour passer par chacun.",
 	"runDetail.parkCourseAttemptOffCourse": "{course} : pas de temps. Votre course s'est trop écartée du parcours. Restez sur le tracé du parcours.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course} : pas de temps. Vous l'avez couru dans le mauvais sens. Suivez les flèches sur la carte du parcours.",

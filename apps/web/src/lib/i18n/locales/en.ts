@@ -1722,7 +1722,7 @@ export const en = {
 	"runDetail.parkCourseRanks": "#{monthRank} in {month}, #{seasonRank} in {season}",
 	"runDetail.parkCoursesLoadFailed": "Couldn't load your park course times.",
 	"runDetail.parkCourseAttempts": "Park courses with no time",
-	"runDetail.parkCourseAttemptStoppedShort": "{course}: no time. You ran {progress} of {total}. Finish at the red box to get a time.",
+	"runDetail.parkCourseAttemptStoppedShort": "{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.",
 	"runDetail.parkCourseAttemptOffCourse": "{course}: no time. You ran too far off the course. Stay on the course line.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.",

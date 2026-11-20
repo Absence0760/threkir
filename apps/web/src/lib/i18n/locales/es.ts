@@ -5738,7 +5738,7 @@ export const messages = {
 	"prefs.mapsPagesHeading": "Mapas y páginas",
 	"prefs.startingRunHeading": "Empezar un registro",
 	"prefs.voiceFeedbackHeading": "Indicaciones de voz",
-	"prefs.trainingHeading": "Entrenamiento",
+	"prefs.trainingHeading": "Preferencias de entrenamiento",
 	"prefs.weeklyGoalHeading": "Objetivo semanal",
 	"prefs.raceFuelingHeading": "Avituallamiento en carrera",
 	"prefs.nutritionTargetsHeading": "Objetivos de nutrición",

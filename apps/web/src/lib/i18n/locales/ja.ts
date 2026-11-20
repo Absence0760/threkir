@@ -5733,7 +5733,7 @@ export const messages = {
 	"prefs.mapsPagesHeading": "地図とページ",
 	"prefs.startingRunHeading": "記録の開始",
 	"prefs.voiceFeedbackHeading": "音声フィードバック",
-	"prefs.trainingHeading": "トレーニング",
+	"prefs.trainingHeading": "練習の設定",
 	"prefs.weeklyGoalHeading": "週間目標",
 	"prefs.raceFuelingHeading": "レース中の補給",
 	"prefs.nutritionTargetsHeading": "栄養目標",

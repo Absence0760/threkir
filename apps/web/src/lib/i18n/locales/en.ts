@@ -5753,7 +5753,7 @@ export const en = {
 	"prefs.mapsPagesHeading": "Maps & pages",
 	"prefs.startingRunHeading": "Starting a recording",
 	"prefs.voiceFeedbackHeading": "Voice feedback",
-	"prefs.trainingHeading": "Training",
+	"prefs.trainingHeading": "Training preferences",
 	"prefs.weeklyGoalHeading": "Weekly goal",
 	"prefs.raceFuelingHeading": "Race fuelling",
 	"prefs.nutritionTargetsHeading": "Nutrition targets",

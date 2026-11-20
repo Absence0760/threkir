@@ -8037,6 +8037,7 @@ export const messages = {
 	"parks.notAffiliated": "これらのコースはThrekirが公開しています。公園やその管理機関が主催・後援・推奨するものではありません。公園の規則、開園時間、料金、閉鎖情報に従ってください。",
 	"parks.timesNotEventResults": "ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。",
 	"parks.sharedUseSaturdayMorningGroup": "土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。",
+	"parks.groupPermitNotice": "ひとりでコースを走るのは問題ありません。グループで走る場合やイベントを開く場合は、公園の許可が必要なことがあります。事前に公園に確認してください。",
 	"parks.attributionOsm": "コースライン © OpenStreetMap contributors",
 	"parks.attributionNps": "コースラインは国立公園局のトレイルデータに基づきます",
 	"parks.attributionAgency": "コースラインは公園のトレイルデータに基づきます",

@@ -8042,6 +8042,7 @@ export const messages = {
 	"parks.notAffiliated": "Threkir publie ces parcours. Ils ne sont ni organisés, ni parrainés, ni approuvés par le parc ou l'organisme qui le gère. Les règles, horaires, droits d'entrée et fermetures du parc s'appliquent.",
 	"parks.timesNotEventResults": "Les temps affichés ici sont des temps Threkir sur ces chemins. Ce ne sont les résultats d'aucun événement qui s'y déroule.",
 	"parks.sharedUseSaturdayMorningGroup": "Des groupes organisés empruntent ces chemins le samedi matin. Cédez-leur le passage et évitez de chronométrer un effort au milieu d'eux.",
+	"parks.groupPermitNotice": "Courir un parcours seul ne pose aucun problème. Vous venez en groupe ou organisez un événement ? Le parc peut exiger une autorisation, renseignez-vous auprès du parc avant de venir.",
 	"parks.attributionOsm": "Tracé du parcours © contributeurs d'OpenStreetMap",
 	"parks.attributionNps": "Tracé du parcours issu des données de sentiers du National Park Service",
 	"parks.attributionAgency": "Tracé du parcours issu des données de sentiers du parc",

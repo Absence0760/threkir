@@ -8041,6 +8041,7 @@ export const messages = {
 	"parks.notAffiliated": "A Threkir publica estes percursos. Eles não são organizados, patrocinados nem endossados pelo parque ou pelo órgão que o administra. Valem as regras, os horários, as taxas e os fechamentos do parque.",
 	"parks.timesNotEventResults": "Os tempos aqui são tempos do Threkir nestas trilhas. Não são resultados de nenhum evento realizado nelas.",
 	"parks.sharedUseSaturdayMorningGroup": "Grupos organizados usam estas trilhas aos sábados de manhã. Dê passagem e evite cronometrar uma tentativa no meio deles.",
+	"parks.groupPermitNotice": "Correr um percurso sozinho não tem problema. Vai com um grupo ou vai organizar um evento? O parque pode exigir uma autorização, então consulte o parque antes de ir.",
 	"parks.attributionOsm": "Traçado do percurso © colaboradores do OpenStreetMap",
 	"parks.attributionNps": "Traçado do percurso a partir dos dados de trilhas do National Park Service",
 	"parks.attributionAgency": "Traçado do percurso a partir dos dados de trilhas do próprio parque",

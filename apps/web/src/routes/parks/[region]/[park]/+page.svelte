@@ -521,6 +521,7 @@
 			</div>
 		{/if}
 		<p class="not-affiliated" data-testid="park-not-affiliated">{m('parks.notAffiliated')}</p>
+		<p class="not-affiliated" data-testid="park-group-permit">{m('parks.groupPermitNotice')}</p>
 	{/if}
 </div>
 
@@ -764,6 +765,9 @@
 		font-size: 0.75rem;
 		color: var(--color-text-tertiary);
 		line-height: 1.5;
+	}
+	.not-affiliated + .not-affiliated {
+		margin-top: var(--space-xs);
 	}
 	/* On the narrowest phones the thumbnail gives way, so the name and the
 	   Open link keep their room; the preview draws the line. */

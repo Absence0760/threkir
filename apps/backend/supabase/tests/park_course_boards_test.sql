@@ -57,11 +57,11 @@ create temp table pcb_runs (
   min_lat float8, min_lng float8, max_lat float8, max_lng float8, efforts jsonb not null);
 insert into pcb_runs values
   ('beaver_clean', 'beaver-lake-trail', 37.380278, -77.593448, 37.387369, -77.581682, '[{"slug":"beaver-lake-trail","time_seconds":1296.6702719726563,"started_offset_ms":162611,"matched_by":"gate"}]'::jsonb),
-  ('5k_clean', 'swift-creek-5k', 37.38674, -77.577863, 37.395381, -77.562791, '[{"slug":"swift-creek-5k","time_seconds":1653.9583654785156,"started_offset_ms":160669,"matched_by":"gate"}]'::jsonb),
-  ('10k_clean', 'swift-creek-10k', 37.386768, -77.577993, 37.395388, -77.562765, '[{"slug":"swift-creek-10k","time_seconds":3300.541127685547,"started_offset_ms":162496,"matched_by":"gate"}]'::jsonb),
-  ('half_clean', 'swift-creek-half', 37.360424, -77.60063, 37.39762, -77.536309, '[{"slug":"swift-creek-half","time_seconds":7276.309288574219,"started_offset_ms":163628,"matched_by":"gate"}]'::jsonb),
-  ('marathon_clean', 'swift-creek-marathon', 37.360373, -77.600666, 37.397664, -77.536208, '[{"slug":"swift-creek-marathon","time_seconds":13284.4453671875,"started_offset_ms":161991,"matched_by":"gate"}]'::jsonb),
-  ('50k_clean', 'swift-creek-50k', 37.360415, -77.593326, 37.400013, -77.536018, '[{"slug":"swift-creek-50k","time_seconds":17993.485012695313,"started_offset_ms":164132,"matched_by":"gate"}]'::jsonb),
+  ('5k_clean', 'swift-creek-5k', 37.38674, -77.577863, 37.395381, -77.562791, '[{"slug":"swift-creek-5k","time_seconds":1649.2026977539062,"started_offset_ms":163305,"matched_by":"gate"}]'::jsonb),
+  ('10k_clean', 'swift-creek-10k', 37.386768, -77.577993, 37.395388, -77.562765, '[{"slug":"swift-creek-10k","time_seconds":3296.436097167969,"started_offset_ms":164144,"matched_by":"gate"}]'::jsonb),
+  ('half_clean', 'swift-creek-half', 37.360424, -77.60063, 37.39762, -77.536309, '[{"slug":"swift-creek-half","time_seconds":7271.672555664062,"started_offset_ms":165425,"matched_by":"gate"}]'::jsonb),
+  ('marathon_clean', 'swift-creek-marathon', 37.360373, -77.600666, 37.397664, -77.536208, '[{"slug":"swift-creek-marathon","time_seconds":13281.989233642578,"started_offset_ms":163221,"matched_by":"gate"}]'::jsonb),
+  ('50k_clean', 'swift-creek-50k', 37.360415, -77.593326, 37.400013, -77.536018, '[{"slug":"swift-creek-50k","time_seconds":17988.641420410157,"started_offset_ms":166089,"matched_by":"gate"}]'::jsonb),
   ('beaver_canopy', 'beaver-lake-trail', 37.380296, -77.593414, 37.387324, -77.581682, '[{"slug":"beaver-lake-trail","time_seconds":1339.7457109375,"started_offset_ms":162337,"matched_by":"gate"}]'::jsonb),
   ('beaver_shortcut', 'beaver-lake-trail', 37.380227, -77.593456, 37.387347, -77.581666, '[]'::jsonb),
   ('beaver_cut', 'beaver-lake-trail', 37.380592, -77.593432, 37.387387, -77.581656, '[]'::jsonb),
@@ -69,10 +69,10 @@ insert into pcb_runs values
   ('beaver_short', 'beaver-lake-trail', 37.380276, -77.593431, 37.387369, -77.581678, '[]'::jsonb),
   ('beaver_nearby', 'beaver-lake-trail', 37.380047, -77.594058, 37.386928, -77.58228, '[]'::jsonb),
   ('beaver_three_laps', 'beaver-lake-trail', 37.380167, -77.593458, 37.387358, -77.581637, '[{"slug":"beaver-lake-trail","time_seconds":971.4612543945312,"started_offset_ms":1455682,"matched_by":"gate"}]'::jsonb),
-  ('5k_two_passes_slow_fast', 'swift-creek-5k', 37.386795, -77.577829, 37.395363, -77.562726, '[{"slug":"swift-creek-5k","time_seconds":1498.6255122070313,"started_offset_ms":2195022,"matched_by":"gate"}]'::jsonb),
-  ('5k_two_passes_fast_slow', 'swift-creek-5k', 37.386765, -77.577886, 37.395326, -77.562681, '[{"slug":"swift-creek-5k","time_seconds":1497.574942626953,"started_offset_ms":162463,"matched_by":"gate"}]'::jsonb),
-  ('10k_one_lap', 'swift-creek-10k', 37.386793, -77.578029, 37.395341, -77.56278, '[{"slug":"swift-creek-5k","time_seconds":1649.6021682128905,"started_offset_ms":179047,"matched_by":"gate"}]'::jsonb),
-  ('marathon_one_lap', 'swift-creek-marathon', 37.360395, -77.60056, 37.397576, -77.536289, '[{"slug":"swift-creek-half","time_seconds":6642.535342773437,"started_offset_ms":184823,"matched_by":"gate"}]'::jsonb),
+  ('5k_two_passes_slow_fast', 'swift-creek-5k', 37.386795, -77.577829, 37.395363, -77.562726, '[{"slug":"swift-creek-5k","time_seconds":1495.9956086425782,"started_offset_ms":2196417,"matched_by":"gate"}]'::jsonb),
+  ('5k_two_passes_fast_slow', 'swift-creek-5k', 37.386765, -77.577886, 37.395326, -77.562681, '[{"slug":"swift-creek-5k","time_seconds":1495.0169665527344,"started_offset_ms":163866,"matched_by":"gate"}]'::jsonb),
+  ('10k_one_lap', 'swift-creek-10k', 37.386793, -77.578029, 37.395341, -77.56278, '[{"slug":"swift-creek-5k","time_seconds":1646.8541447753905,"started_offset_ms":180488,"matched_by":"gate"}]'::jsonb),
+  ('marathon_one_lap', 'swift-creek-marathon', 37.360395, -77.60056, 37.397576, -77.536289, '[{"slug":"swift-creek-half","time_seconds":6638.853095214844,"started_offset_ms":186468,"matched_by":"gate"}]'::jsonb),
   ('50k_one_lap', 'swift-creek-50k', 37.360357, -77.593404, 37.400028, -77.536001, '[]'::jsonb);
 -- <<< END GENERATED
 

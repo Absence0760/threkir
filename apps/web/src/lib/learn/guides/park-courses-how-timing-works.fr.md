@@ -4,7 +4,7 @@ description: Comment un parcours permanent dans un parc chronomètre votre cours
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-13
+updated: 2026-11-19
 cta:
   feature: parks
 ---
@@ -19,7 +19,7 @@ C'est donc un **contre-la-montre, pas une course**. Le sentier reste ouvert à t
 
 Toute sortie avec une trace GPS peut compter, que vous l'ayez enregistrée avec Threkir ou importée d'une autre application. La sortie est comparée au tracé du parcours :
 
-- **Départ et arrivée.** Le chrono démarre là où votre sortie franchit le départ du parcours et s'arrête là où elle franchit l'arrivée. L'aller-retour jusqu'au point de départ ne compte pas contre vous.
+- **Départ et arrivée.** La carte du parcours montre une zone de départ et une zone d'arrivée, ou une seule zone quand le parcours part et arrive au même endroit. Le chrono démarre quand vous sortez de la zone de départ et s'arrête quand vous entrez dans la zone d'arrivée : lancez donc l'enregistrement dans la zone de départ. Si vous vous arrêtez à un pas de la zone d'arrivée, ou perdez le GPS une ou deux minutes juste avant, la sortie compte quand même. L'aller-retour jusqu'au point de départ ne compte pas contre vous.
 - **Points de contrôle.** Beaucoup de parcours ont des points de contrôle en chemin. Votre sortie doit tous les franchir, dans l'ordre, pour obtenir un temps.
 - **Le parcours entier.** Une sortie qui ne couvre qu'une partie du parcours, ou un tracé nettement plus court, n'obtient pas de temps.
 

@@ -343,8 +343,8 @@
 			},
 			"matched": {
 				"swift-creek-5k": {
-					"time_seconds": 1653.9583654785156,
-					"started_offset_ms": 160669,
+					"time_seconds": 1649.2026977539062,
+					"started_offset_ms": 163305,
 					"matched_by": "gate"
 				}
 			},
@@ -372,8 +372,8 @@
 			},
 			"matched": {
 				"swift-creek-10k": {
-					"time_seconds": 3300.541127685547,
-					"started_offset_ms": 162496,
+					"time_seconds": 3296.436097167969,
+					"started_offset_ms": 164144,
 					"matched_by": "gate"
 				}
 			},
@@ -401,8 +401,8 @@
 			},
 			"matched": {
 				"swift-creek-half": {
-					"time_seconds": 7276.309288574219,
-					"started_offset_ms": 163628,
+					"time_seconds": 7271.672555664062,
+					"started_offset_ms": 165425,
 					"matched_by": "gate"
 				}
 			},
@@ -430,8 +430,8 @@
 			},
 			"matched": {
 				"swift-creek-marathon": {
-					"time_seconds": 13284.4453671875,
-					"started_offset_ms": 161991,
+					"time_seconds": 13281.989233642578,
+					"started_offset_ms": 163221,
 					"matched_by": "gate"
 				}
 			},
@@ -459,8 +459,8 @@
 			},
 			"matched": {
 				"swift-creek-50k": {
-					"time_seconds": 17993.485012695313,
-					"started_offset_ms": 164132,
+					"time_seconds": 17988.641420410157,
+					"started_offset_ms": 166089,
 					"matched_by": "gate"
 				}
 			},
@@ -651,8 +651,8 @@
 			},
 			"matched": {
 				"swift-creek-5k": {
-					"time_seconds": 1498.6255122070313,
-					"started_offset_ms": 2195022,
+					"time_seconds": 1495.9956086425782,
+					"started_offset_ms": 2196417,
 					"matched_by": "gate"
 				}
 			},
@@ -680,8 +680,8 @@
 			},
 			"matched": {
 				"swift-creek-5k": {
-					"time_seconds": 1497.574942626953,
-					"started_offset_ms": 162463,
+					"time_seconds": 1495.0169665527344,
+					"started_offset_ms": 163866,
 					"matched_by": "gate"
 				}
 			},
@@ -707,8 +707,8 @@
 			},
 			"matched": {
 				"swift-creek-5k": {
-					"time_seconds": 1649.6021682128905,
-					"started_offset_ms": 179047,
+					"time_seconds": 1646.8541447753905,
+					"started_offset_ms": 180488,
 					"matched_by": "gate"
 				}
 			},
@@ -734,8 +734,8 @@
 			},
 			"matched": {
 				"swift-creek-half": {
-					"time_seconds": 6642.535342773437,
-					"started_offset_ms": 184823,
+					"time_seconds": 6638.853095214844,
+					"started_offset_ms": 186468,
 					"matched_by": "gate"
 				}
 			},

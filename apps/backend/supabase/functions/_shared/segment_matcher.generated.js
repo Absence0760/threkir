@@ -12,8 +12,8 @@ var GATE_DEFAULT_OPTIONS = {
   maxHopM: GATE_MAX_HOP_M,
   rejectGapS: GATE_REJECT_GAP_S
 };
-function rad(deg) {
-  return deg * Math.PI / 180;
+function rad(deg2) {
+  return deg2 * Math.PI / 180;
 }
 function wrapLng(d) {
   if (d >= 180) return d - 360;
@@ -88,6 +88,120 @@ var GateCrossingDetector = class {
   }
 };
 
+// apps/web/src/lib/races/course_gates.ts
+function normalizeBearing(deg2) {
+  const b = (deg2 % 360 + 360) % 360;
+  return b >= 360 ? 0 : b;
+}
+function rad2(deg2) {
+  return deg2 * Math.PI / 180;
+}
+function deg(r) {
+  return r * 180 / Math.PI;
+}
+function wrapLng2(d) {
+  if (d >= 180) return d - 360;
+  if (d < -180) return d + 360;
+  return d;
+}
+function planeXY(origin, p) {
+  return {
+    x: rad2(wrapLng2(p.lng - origin.lng)) * GATE_EARTH_RADIUS_M * Math.cos(rad2(origin.lat)),
+    y: rad2(p.lat - origin.lat) * GATE_EARTH_RADIUS_M
+  };
+}
+function fromPlane(origin, x, y) {
+  return {
+    lat: origin.lat + deg(y / GATE_EARTH_RADIUS_M),
+    lng: wrapLng2(origin.lng + deg(x / (GATE_EARTH_RADIUS_M * Math.cos(rad2(origin.lat)))))
+  };
+}
+function offsetPoint(origin, bearingDeg, distM) {
+  return fromPlane(origin, distM * Math.sin(rad2(bearingDeg)), distM * Math.cos(rad2(bearingDeg)));
+}
+function gateLineEnds(gate) {
+  const b = rad2(gate.bearingDeg);
+  const ex = gate.halfWidthM * Math.cos(b);
+  const ey = -gate.halfWidthM * Math.sin(b);
+  return [fromPlane(gate, -ex, -ey), fromPlane(gate, ex, ey)];
+}
+var COURSE_GATE_BOX_DEPTH_M = 10;
+var COURSE_GATE_SHARED_SPOT_M = 10;
+var COURSE_GATE_SHARED_SPOT_DEG = 20;
+function gateBox(gate, depthM, side, from = -1, to = 1) {
+  const b = rad2(gate.bearingDeg);
+  const ax = gate.halfWidthM * Math.cos(b);
+  const ay = -gate.halfWidthM * Math.sin(b);
+  const [near, far] = side === "ahead" ? [0, depthM] : side === "behind" ? [0, -depthM] : [-depthM / 2, depthM / 2];
+  const at = (f, k) => fromPlane(gate, f * ax + k * Math.sin(b), f * ay + k * Math.cos(b));
+  return [at(from, near), at(to, near), at(to, far), at(from, far)];
+}
+function gatesShareSpot(start, finish) {
+  const { x, y } = planeXY(start, finish);
+  if (Math.sqrt(x * x + y * y) > COURSE_GATE_SHARED_SPOT_M) return false;
+  const d = bearingDelta(start.bearingDeg, finish.bearingDeg);
+  return d <= COURSE_GATE_SHARED_SPOT_DEG || d >= 180 - COURSE_GATE_SHARED_SPOT_DEG;
+}
+function gateBoxParts(start, finish, depthM = COURSE_GATE_BOX_DEPTH_M) {
+  const part = (which, gate) => ({
+    which,
+    box: gateBox(gate, depthM, which === "both" ? "centred" : which === "start" ? "behind" : "ahead"),
+    line: gateLineEnds(gate)
+  });
+  const marker = (which, gate, away, distM) => ({
+    which,
+    at: offsetPoint(gate, away, distM)
+  });
+  const back = (g) => g.bearingDeg + 180;
+  if (start && finish && gatesShareSpot(start, finish)) {
+    return {
+      layout: "shared",
+      parts: [part("both", start)],
+      markers: [marker("both", start, back(start), depthM / 2)]
+    };
+  }
+  const parts = [];
+  const markers = [];
+  if (start) {
+    parts.push(part("start", start));
+    markers.push(marker("start", start, back(start), depthM));
+  }
+  if (finish) {
+    parts.push(part("finish", finish));
+    markers.push(marker("finish", finish, finish.bearingDeg, depthM));
+  }
+  return { layout: "apart", parts, markers };
+}
+function edgeGate(a, b, bearingDeg, halfWidthM) {
+  const { x, y } = planeXY(a, b);
+  const mid = fromPlane(a, x / 2, y / 2);
+  return { lat: mid.lat, lng: mid.lng, bearingDeg: normalizeBearing(bearingDeg), halfWidthM };
+}
+function gateTimingEdges(start, finish, depthM = COURSE_GATE_BOX_DEPTH_M) {
+  const { layout, parts } = gateBoxParts(start, finish, depthM);
+  if (layout === "shared") {
+    const [nearL, nearR, farR, farL] = parts[0].box;
+    const sameWay = bearingDelta(start.bearingDeg, finish.bearingDeg) <= 90;
+    return {
+      layout,
+      startExit: edgeGate(farL, farR, start.bearingDeg, start.halfWidthM),
+      finishEntry: sameWay ? edgeGate(nearL, nearR, start.bearingDeg, start.halfWidthM) : edgeGate(farR, farL, start.bearingDeg + 180, start.halfWidthM),
+      depthM
+    };
+  }
+  const [s, f] = parts;
+  return {
+    layout,
+    startExit: edgeGate(s.box[0], s.box[1], start.bearingDeg, start.halfWidthM),
+    finishEntry: edgeGate(f.box[0], f.box[1], finish.bearingDeg, finish.halfWidthM),
+    depthM
+  };
+}
+function bearingDelta(a, b) {
+  const d = Math.abs(normalizeBearing(a) - normalizeBearing(b));
+  return d > 180 ? 360 - d : d;
+}
+
 // apps/web/src/lib/geo/haversine.ts
 function haversineMetres(lat1, lng1, lat2, lng2) {
   const r = 6371e3;
@@ -158,6 +272,11 @@ function effortFromIndex(track, index, segment) {
     started_at: new Date(startTs).toISOString()
   };
 }
+var GLOBAL_SEGMENT_BOX_SLACK_M = 5;
+var GLOBAL_SEGMENT_FINISH_MAX_GAP_S = 300;
+var BOX_REACH_M = COURSE_GATE_BOX_DEPTH_M + GLOBAL_SEGMENT_BOX_SLACK_M;
+var GLOBAL_SEGMENT_GAP_SPEED_MIN = 0.4;
+var GLOBAL_SEGMENT_GAP_SPEED_MAX = 1.5;
 var GLOBAL_SEGMENT_LENGTH_TOLERANCE = 0.25;
 function finiteNumber(v) {
   return typeof v === "number" && Number.isFinite(v);
@@ -209,8 +328,9 @@ function computeGlobalSegmentEfforts(track, segments, toleranceM = 35) {
     if (pts.length < 2 || !(segment.distance_m > 0)) continue;
     const gates = segmentGates(segment);
     if (gates !== null) {
-      if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM)) continue;
-      if (!boundsAdmit(bounds, gates.end, gates.end.halfWidthM)) continue;
+      const reach = BOX_REACH_M;
+      if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM + reach)) continue;
+      if (!boundsAdmit(bounds, gates.end, gates.end.halfWidthM + reach)) continue;
       if (index === null) index = distanceIndex(line);
       out[i] = scoreByGates(line, index, segment, gates.start, gates.end, toleranceM);
       continue;
@@ -229,13 +349,35 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
   const len = segment.distance_m;
   const minCovered = len * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
   const maxCovered = len * (1 + GLOBAL_SEGMENT_LENGTH_TOLERANCE);
-  const startDetector = new GateCrossingDetector(startGate);
-  const endDetector = new GateCrossingDetector(endGate);
-  const chained = linesChain(startGate, endGate);
+  const edges = gateTimingEdges(startGate, endGate);
+  const exit = edges.startExit;
+  const entry = edges.finishEntry;
+  const startDetector = new GateCrossingDetector(exit);
+  const endDetector = new GateCrossingDetector(entry);
+  const chained = edges.layout === "apart" && linesChain(startGate, endGate);
   let pending = [];
   let best = null;
   let prevIdx = -1;
   let prevMs = -Infinity;
+  let tailIdx = -1;
+  let tailMs = NaN;
+  let tailGap = { fromIdx: -1, fromMs: NaN, gapS: 0 };
+  let prevEntryS = NaN;
+  const pick = (endCoveredM, endIdx, endMs2, gap) => {
+    pending = pending.filter((s) => endCoveredM - s.crossing.coveredM <= maxCovered);
+    let picked = null;
+    for (const s of pending) {
+      if (endCoveredM - s.crossing.coveredM < minCovered) continue;
+      if (!(endMs2 > s.crossing.tMs)) continue;
+      if (gap.gapS > GATE_REJECT_GAP_S && !plausibleGap(s, index.cum, gap, endIdx)) continue;
+      if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, endIdx, toleranceM)) continue;
+      picked = s;
+    }
+    return picked;
+  };
+  const record = (startMs2, endMs2) => {
+    if (best === null || endMs2 - startMs2 < best.endMs - best.startMs) best = { startMs: startMs2, endMs: endMs2 };
+  };
   for (let i = 0; i < line.length; i++) {
     const p = line[i];
     const tMs = p.ts ? Date.parse(p.ts) : NaN;
@@ -247,39 +389,88 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
     const fix = { lat, lng, tMs, coveredM: index.cum[i] };
     const endCrossing = endDetector.offer(fix);
     const startCrossing = startDetector.offer(fix);
-    const endForward = endCrossing !== null && endCrossing.direction === "forward" ? endCrossing : null;
-    let closedBy = null;
-    if (endForward !== null) {
-      pending = pending.filter((s) => endForward.coveredM - s.crossing.coveredM <= maxCovered);
-      let pick = null;
-      for (const s of pending) {
-        if (endForward.coveredM - s.crossing.coveredM < minCovered) continue;
-        if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, i, toleranceM)) continue;
-        pick = s;
+    const gap = { fromIdx: prevIdx, fromMs: prevMs, gapS: (tMs - prevMs) / 1e3 };
+    const gapS = gap.gapS;
+    const inFinish = gateProjection(entry, lat, lng);
+    if (inFinish.s >= -GLOBAL_SEGMENT_BOX_SLACK_M && inFinish.s <= edges.depthM && Math.abs(inFinish.u) <= entry.halfWidthM) {
+      if (tailIdx < 0) {
+        tailIdx = i;
+        tailMs = tMs;
+        tailGap = gap;
       }
-      if (pick !== null) {
-        const startMs = pick.crossing.tMs;
-        const endMs = endForward.tMs;
-        if (endMs > startMs && (best === null || endMs - startMs < best.endMs - best.startMs)) {
-          best = { startMs, endMs };
-        }
+    } else {
+      tailIdx = -1;
+    }
+    const entered = endCrossing !== null && endCrossing.direction === "forward" ? endCrossing : gapS > GATE_REJECT_GAP_S && gapS <= GLOBAL_SEGMENT_FINISH_MAX_GAP_S ? enteredAcrossGap(
+      prevEntryS,
+      inFinish,
+      entry.halfWidthM,
+      { tMs: prevMs, coveredM: index.cum[prevIdx] },
+      fix,
+      pending[pending.length - 1]
+    ) : null;
+    prevEntryS = inFinish.s;
+    let closedBy = null;
+    if (entered !== null) {
+      const chosen = pick(entered.coveredM, i, entered.tMs, gap);
+      if (chosen !== null) {
+        record(chosen.crossing.tMs, entered.tMs);
         pending = [];
-        closedBy = endForward;
+        closedBy = entered;
       }
     }
     if (closedBy !== null && chained) pending.push({ crossing: closedBy, fromIdx: prevIdx });
     if (startCrossing !== null && startCrossing.direction === "forward" && (closedBy === null || startCrossing.tMs >= closedBy.tMs)) {
       pending.push({ crossing: startCrossing, fromIdx: prevIdx });
+    } else if (prevIdx < 0) {
+      const atStart = gateProjection(exit, lat, lng);
+      if (atStart.s >= 0 && atStart.s <= GLOBAL_SEGMENT_BOX_SLACK_M && Math.abs(atStart.u) <= exit.halfWidthM) {
+        pending.push({ crossing: firstFixStart(fix, atStart.u), fromIdx: i });
+      }
     }
     prevIdx = i;
     prevMs = tMs;
   }
+  if (tailIdx >= 0 && pending.length > 0) {
+    const chosen = pick(index.cum[tailIdx], tailIdx, tailMs, tailGap);
+    if (chosen !== null) record(chosen.crossing.tMs, tailMs);
+  }
   if (best === null) return null;
+  const { startMs, endMs } = best;
   return {
-    time_seconds: (best.endMs - best.startMs) / 1e3,
-    started_at: new Date(Math.round(best.startMs)).toISOString(),
+    time_seconds: (endMs - startMs) / 1e3,
+    started_at: new Date(Math.round(startMs)).toISOString(),
     matched_by: "gate"
   };
+}
+function enteredAcrossGap(prevS, cur, halfWidthM, prev, fix, since) {
+  if (since === void 0 || !(prevS < 0) || cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
+  const paceS = (prev.tMs - since.crossing.tMs) / 1e3;
+  const paceM = prev.coveredM - since.crossing.coveredM;
+  if (!(paceS > 0) || !(paceM > 0)) return null;
+  const backS = cur.s / (paceM / paceS);
+  const tMs = Math.max(prev.tMs, fix.tMs - backS * 1e3);
+  const f = (tMs - prev.tMs) / (fix.tMs - prev.tMs);
+  return {
+    direction: "forward",
+    fraction: f,
+    tMs,
+    coveredM: Math.max(prev.coveredM, fix.coveredM - cur.s),
+    offsetM: cur.u,
+    gapped: true
+  };
+}
+function firstFixStart(fix, offsetM) {
+  return { direction: "forward", fraction: 0, tMs: fix.tMs, coveredM: fix.coveredM, offsetM, gapped: false };
+}
+function plausibleGap(start, cum, gap, toIdx) {
+  if (gap.gapS > GLOBAL_SEGMENT_FINISH_MAX_GAP_S || gap.fromIdx < 0) return false;
+  const soFarS = (gap.fromMs - start.crossing.tMs) / 1e3;
+  const soFarM = cum[gap.fromIdx] - start.crossing.coveredM;
+  if (!(soFarS > 0) || !(soFarM > 0)) return false;
+  const avg = soFarM / soFarS;
+  const across = (cum[toIdx] - cum[gap.fromIdx]) / gap.gapS;
+  return across >= GLOBAL_SEGMENT_GAP_SPEED_MIN * avg && across <= GLOBAL_SEGMENT_GAP_SPEED_MAX * avg;
 }
 function scoreAgainstTrack(track, index, segment, toleranceM) {
   const cum = index.cum;

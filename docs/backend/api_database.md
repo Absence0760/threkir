@@ -712,6 +712,7 @@ Matching stays narrow — end-to-end against curated geometry via `computeGlobal
 - `segment_match_run_source(p_run_id)` → `(user_id, track_url, track_version, metadata)` — service role only; the track's Storage version is `runs_track_object_version`.
 - `record_segment_match(p_run_id, p_track_version, p_min_lat, p_min_lng, p_max_lat, p_max_lng, p_candidates uuid[], p_efforts jsonb)` → `'recorded' | 'stale' | 'missing'` — service role only. Locks the run row `FOR SHARE`, refuses (`'stale'`) a result for bytes whose version is no longer the stored one, upserts `run_track_extents`, removes this run's efforts on candidates the matcher no longer times, and inserts or corrects (`on conflict (global_segment_id, run_id) do update`) the matched ones, active candidates only. An effort on a closed park course is neither inserted, corrected nor removed, whatever the payload names (`20271219001313`); the run owner's insert policy refuses one too, through the same SECURITY DEFINER helper. The owner comes from the run, never from the caller.
 - `enqueue_segment_backfill(p_segment_id, p_after_run_id default null)` → job id — an admin (`private.is_admin`) or the service role; 42501 for any other signed-in caller, no anon EXECUTE, 22023 for an unknown or pulled segment. A start while a backfill for the segment is queued or running returns that job.
+- `private.segment_matcher_version()` → integer (migration `20280102001446`, decisions § 2589) — the `GLOBAL_SEGMENT_MATCHER_VERSION` the deployed `segment-match` function carries (4). EXECUTE revoked from every API role. Only the release ops task that re-matches efforts after a matcher change reads it, so a sync dispatched before the release that ships the new matcher fails and leaves that task pending; each matcher bump replaces it in a new migration.
 - `segment_backfill_runs(p_segment_id, p_after_run_id, p_limit default 25)` → `run_id` — service role only; the next batch in id order of runs with a track and `distance_m` at least half the segment's, admitting a run already scored only when its stored extent overlaps the segment's padded 50 m. `p_limit` clamped to 1..100.
 - `run_track_extents` — `run_id` (PK, cascades from `runs`), `track_version`, `min_lat` / `min_lng` / `max_lat` / `max_lng`, `scored_at`; GiST index over the box. RLS on with no policy and no grant to anon or authenticated; location-derived, not exported (derived from the exported track). Registered in `derived_state.md`.
 
@@ -2612,10 +2613,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 251 migrations write a function-level `from public, anon` revoke
-today (228 as `revoke execute`, 35 as `revoke all`); it is the house form for
+trigger calls). 252 migrations write a function-level `from public, anon` revoke
+today (229 as `revoke execute`, 35 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 798 migrations in version order and fails the PR on
+keeps it — it replays all 799 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

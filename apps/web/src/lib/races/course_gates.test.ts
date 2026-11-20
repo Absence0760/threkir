@@ -19,6 +19,7 @@ import {
 	gateLineEnds,
 	gateBox,
 	gateBoxParts,
+	gateTimingEdges,
 	gatePointAlong,
 	gatesShareSpot,
 	type GateBoxSide,
@@ -58,6 +59,7 @@ const SECTIONS = [
 	'boxCorners',
 	'sharedSpot',
 	'boxParts',
+	'timingEdges',
 ];
 const META = new Set([
 	'spec',
@@ -274,5 +276,20 @@ test('gateBoxParts', () => {
 			assert.equal(mk.which, marks[i].which, `${note} marker [${i}] which`);
 			nearPoint(mk.at, marks[i].at as Obj, `${note} marker [${i}]`);
 		});
+	}
+});
+
+test('gateTimingEdges', () => {
+	for (const c of cases('timingEdges')) {
+		const got = gateTimingEdges(gate(c.start as Obj), gate(c.finish as Obj), c.depthM as number);
+		const note = String(c.note);
+		assert.equal(got.layout, c.layout, `${note} layout`);
+		assert.equal(got.depthM, c.depthM, `${note} depth`);
+		for (const key of ['startExit', 'finishEntry'] as const) {
+			const want = c[key] as Obj;
+			nearPoint(got[key], want, `${note} ${key}`);
+			nearBearing(got[key].bearingDeg, want.bearingDeg as number, `${note} ${key} bearing`);
+			assert.equal(got[key].halfWidthM, want.halfWidthM, `${note} ${key} half-width`);
+		}
 	}
 });

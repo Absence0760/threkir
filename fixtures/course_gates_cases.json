@@ -25,7 +25,8 @@
   "pointAlong": "{gate, f, point}: the point at f of the half-width along the line, -1 its left end, 1 its right end.",
   "boxCorners": "{gate, depthM, side, from, to, corners}: the box on `side` (behind, ahead or centred) of the line, from `from` to `to` along it; corners are the near edge's left then right end, then the far right and far left corners. The near edge is on the line for behind and ahead; a centred box runs depthM/2 behind to depthM/2 ahead, its near edge the one behind.",
   "sharedSpot": "{start, finish, shared}: whether the two lines sit at one spot (centres within sharedSpotM, facing within sharedSpotDeg of the same way or of opposite ways).",
-  "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart or shared; each part is {which, box, line: [a, b]}: which is start, finish or both, start then finish; a shared spot is one part, both, centred on the start line; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side."
+  "boxParts": "{start, finish, depthM, layout, parts, markers}: start and finish are nullable gates; layout is apart or shared; each part is {which, box, line: [a, b]}: which is start, finish or both, start then finish; a shared spot is one part, both, centred on the start line; each marker is {which, at}: which is start, finish or both, at the middle of the box's far side.",
+  "timingEdges": "{start, finish, depthM, layout, startExit, finishEntry}: the edges a course is timed by, read off the boxes boxParts draws (decisions § 2589). startExit is the edge the start box is left through, forward, with the box behind it; finishEntry the edge the finish box is entered through, forward, with the box depthM ahead of it; each is a line {lat, lng, bearingDeg, halfWidthM}. Apart, they are the two lines. At a shared spot, the exit is the box's far edge facing the start's way; the entry is its near edge facing the start's way when the finish faces within 90 degrees of the start, else its far edge facing the opposite way."
  },
  "degreeTolerance": 1e-09,
  "bearingTolerance": 1e-06,
@@ -1622,6 +1623,182 @@
    "layout": "apart",
    "parts": [],
    "markers": []
+  }
+ ],
+ "timingEdges": [
+  {
+   "note": "apart: the start box is left forward through the start line and the finish box entered through the finish line, so the edges are the lines themselves",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.000899320363724538,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "apart",
+   "startExit": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": 0.000899320363724538,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   }
+  },
+  {
+   "note": "apart, facing east: the edges are the lines, 200 m apart",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.001798640727449076,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "apart",
+   "startExit": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": 0.0,
+    "lng": 0.001798640727449076,
+    "bearingDeg": 90,
+    "halfWidthM": 15
+   }
+  },
+  {
+   "note": "a loop at one spot: the shared box runs 5 m south to 5 m north of the start line; it is left through its north edge (5 m north, facing north) and entered through its south edge (5 m south, facing north)",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "shared",
+   "startExit": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": -4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   }
+  },
+  {
+   "note": "an out-and-back at one spot: left through the north edge facing north, entered on the way back through the same edge facing south",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "shared",
+   "startExit": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   }
+  },
+  {
+   "note": "a loop whose finish line sits 3 m east of the start line and faces 15 degrees off it: still one box centred on the start line, so both edges are the start line's, facing its way",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 2.6979610911736143e-05,
+    "bearingDeg": 15,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "shared",
+   "startExit": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": -4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   }
+  },
+  {
+   "note": "an out-and-back whose finish faces 165 degrees off the start (within 20 of opposed): entered through the north edge facing south, the start line's opposite",
+   "start": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finish": {
+    "lat": 0.0,
+    "lng": 0.0,
+    "bearingDeg": 165,
+    "halfWidthM": 15
+   },
+   "depthM": 10,
+   "layout": "shared",
+   "startExit": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "finishEntry": {
+    "lat": 4.49660181862269e-05,
+    "lng": 0.0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   }
   }
  ]
 }

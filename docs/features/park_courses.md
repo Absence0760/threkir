@@ -132,17 +132,43 @@ Every run is scored on the server (decisions § 2392):
   from `global_segments_in_bbox` (the track's extent padded 50 m). The result is
   written by `record_segment_match` as the service role, refused for bytes that
   are no longer stored, and read through the unchanged visibility rule.
-- **The rule.** A course inherits its catalogue segment's start and end lines
-  (derived from the polyline by a trigger, or placed by a curator). A run is
-  timed from its forward crossing of the start line to its forward crossing of
-  the end line, interpolated between fixes, with the covered distance within
-  25 % of the course length and every checkpoint passed in order between the
-  two. Every complete lap is a candidate and the fastest counts: laps never
-  overlap, and where the end line is the start line (centres within the start
-  line's reach, facing within 90 degrees) the crossing that ends one lap starts
-  the next (matcher version 3, decisions § 2465). A run that never crosses
-  the lines gets no time, whatever circle it passed through. Only a segment
-  without both lines is still matched by the 35 m circles (decisions § 2402).
+- **The rule: leave the start box, enter the finish box.** A course inherits
+  its catalogue segment's start and end lines (derived from the polyline by a
+  trigger, or placed by a curator), and the course map draws a box on each
+  (decisions § 2582). The matcher times by those same boxes, read off them by
+  `gateTimingEdges` in the `course_gates` pair (matcher version 4, decisions
+  § 2589): the clock starts when the run leaves the start box going forward
+  and stops when it next enters the finish box, both interpolated between
+  fixes, with the covered distance within 25 % of the course length and every
+  checkpoint passed in order between the two. Where the boxes are apart, those
+  edges are the start and finish lines themselves. Where both lines sit at
+  one spot (a loop, or an out-and-back) the one box is 10 m deep and centred
+  on the start line, so a run is timed from its far edge out to its near edge
+  back, 10 m less than line to line for every runner.
+  - **GPS slack, 5 m** (`GLOBAL_SEGMENT_BOX_SLACK_M`). A recording whose first
+    fix is already up to 5 m past the start box's exit edge (begun on the
+    line) starts at that fix. One that ends in the finish box, or up to 5 m
+    short of it, without the fixes crossing into it finishes at the first fix
+    of that last stretch, so standing there before stopping the watch adds
+    nothing.
+  - **A GPS gap at the finish.** Up to 60 s any crossing counts, as for every
+    line (`GATE_REJECT_GAP_S`). A gap of up to 5 minutes across the finish
+    still finishes when the first fix after it is in the finish box's lane at
+    or past its edge and the straight-line speed across the gap is between 0.4
+    and 1.5 times the runner's average since the start; the entry is timed
+    back from that fix at the runner's own pace.
+  - Every complete lap is a candidate and the fastest counts: laps never
+    overlap. Through one shared box, leaving it forward again starts the next
+    lap; where the end line is the start line but the boxes are apart (centres
+    within the start line's reach, facing within 90 degrees), the finish
+    starts the next lap (decisions § 2465). A run that never leaves and enters
+    the boxes gets no time, whatever circle it passed through. Only a segment
+    without both lines is still matched by the 35 m circles (decisions § 2402).
+  - `apps/web/src/lib/parks/course_box_timing.test.ts` runs seeded GPS runs
+    over every catalogue course (Pocahontas, Deep Run and the Capital Trail)
+    and holds the timed rates for stopping 1 m past and 3 m short, starting on
+    the line, 5 s and 15 s fixes, a 90 s gap at the finish and a 50K, and no
+    time for stopping halfway or cutting the course.
 - **A closed course takes no new effort** (owner, #1313, 2026-11-10; migration
   `20271219001313`, decisions § 2465). `private.global_segment_course_closed`
   is read at every write path: `global_segments_in_bbox` leaves a closed course
@@ -164,7 +190,11 @@ Every run is scored on the server (decisions § 2392):
   deploying the functions (`apps/backend/ops/tasks/`), which queues
   `enqueue_segment_backfill` for every active segment not on a closed course.
   Matcher version 3 ships with `20271219001313_rematch_segments_matcher_v3`
-  (decisions § 2465); a later version bump adds its own task.
+  (decisions § 2465); version 4 (the boxes) with
+  `20280102001446_rematch_segments_matcher_v4`, which reads
+  `private.segment_matcher_version()` from the same release's migration so a
+  sync dispatched before that release leaves it pending (decisions § 2589). A
+  later version bump adds its own task and bumps that function.
 - **Launch backfill.** After loading a course, run
   `select enqueue_segment_backfill('<global_segment_id>');` as an admin or the
   service role. It scores existing runs 20 a job in id order, each batch queueing
@@ -562,7 +592,7 @@ they already return to the screen the runner came from.
   ahead), its line chequered like the finish edge, with one "Start and
   finish" tag in the same colour and one "Start and finish" key entry. Never
   a green half and a red half at one spot: a runner reads that as half start,
-  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair; the
+  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair, and the matcher times by the same boxes (`gateTimingEdges`, decisions § 2589); the
   colours are `mapStartZoneColour` / `mapFinishZoneColour` (measured in
   `basemap_contrast.test.ts` and `live_run_map_tile_url_test.dart`: each
   clears 3:1 on every ground of its basemap, the pair keeps a lightness gap
@@ -1210,6 +1240,12 @@ These gate going live, not the code:
       closed courses) in the release that ships matcher version 3, after the
       functions deploy (decisions § 2465). Until it has run, boards may still
       show the "measured the old way" note.
+- [ ] Matcher version 4 (the boxes, decisions § 2589) re-matches old efforts
+      through the ops task `20280102001446_rematch_segments_matcher_v4` in the
+      backend release that ships it. Don't dispatch a committing production
+      sync from `main` between the merge and that release expecting it to run:
+      the task stays pending until the release's migration creates
+      `private.segment_matcher_version()`.
 
 ## Tests
 
@@ -1336,6 +1372,12 @@ These gate going live, not the code:
   production job worker is draining `segment_match`, whether the deployed
   function carries the current bundle, and whether production's rows match the
   manifest.
+- Boxes (#1446, decisions § 2589): `parks/course_box_timing.test.ts` (seeded
+  runs over every catalogue course, from `parks/course_box_timing_sim.ts`: the
+  timed rate for each way of starting and stopping, sparse fixes, a gap at the
+  finish and a 50K, and no time for stopping halfway or a cut), the box cases
+  of `fixtures/segments_gate_cases.json` and the `timingEdges` section of
+  `fixtures/course_gates_cases.json`, read by both twins.
 - Lines: pgTAP `global_segment_gates_test.sql` (derivation, curator override and reset, `matched_by`, the owner's delete-then-insert re-match); Playwright `tests-e2e/routes/global-segment-gates.spec.ts`.
 - Server matching: pgTAP `segment_match_jobs_test.sql` (enqueue triggers, the
   bbox lookup, the write and its refusal for replaced bytes, the backfill, grants);

@@ -280,7 +280,11 @@ explains a null, so no matcher version bump came with it.
 **Server.** The `segment-match` function writes the attempts after the efforts
 on every pass, through `record_park_course_attempts` (same stale-bytes refusal;
 a re-score replaces the run's rows, an empty list included), into
-`park_course_attempts`, owner-only by RLS. Clients read
+`park_course_attempts`, owner-only by RLS. The attempts pass has its own
+`try`/`catch`: a throw in the diagnosis or a failed write is logged and the
+pass still returns the efforts it recorded, so it never fails the job or
+stalls a backfill batch on that run; the attempts then wait for the run's next
+scoring (`handler.test.ts`). Clients read
 `get_run_park_course_attempts` through web `fetchParkCourseAttempts` and Dart
 `ApiClient.fetchParkCourseAttempts`; both throw on a failed read, so the card
 section is left out and logged rather than shown empty. Reference:

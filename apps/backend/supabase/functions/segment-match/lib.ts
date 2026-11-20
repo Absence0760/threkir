@@ -390,15 +390,22 @@ export async function scoreRun(client: DbClient, runId: string): Promise<RunResu
 
   // Every pass replaces the run's attempts, an empty list included, so a run
   // re-scored onto a time (or off a moved course) keeps none it no longer has.
-  const attempts = attemptRows(ids, diagnoseGlobalSegmentAttempts(points, geometries), checkpointRows);
-  const { data: attStatus, error: attErr } = await client.rpc('record_park_course_attempts', {
-    p_run_id: runId,
-    p_track_version: src.track_version,
-    p_matcher_version: GLOBAL_SEGMENT_MATCHER_VERSION,
-    p_attempts: attempts,
-  });
-  if (attErr) throw new Error(`attempt write failed (${attErr.code ?? 'unknown'})`);
-  if (attStatus === 'stale') return none('stale');
-  if (attStatus === 'missing') return none('missing');
+  // The efforts are committed by now and the attempts only explain a missing
+  // time, so a failure here is logged and the pass still counts as recorded:
+  // it must never cost the run its times (layered resilience).
+  try {
+    const attempts = attemptRows(ids, diagnoseGlobalSegmentAttempts(points, geometries), checkpointRows);
+    const { data: attStatus, error: attErr } = await client.rpc('record_park_course_attempts', {
+      p_run_id: runId,
+      p_track_version: src.track_version,
+      p_matcher_version: GLOBAL_SEGMENT_MATCHER_VERSION,
+      p_attempts: attempts,
+    });
+    if (attErr) throw new Error(`attempt write failed (${attErr.code ?? 'unknown'})`);
+    if (attStatus === 'stale') return none('stale');
+    if (attStatus === 'missing') return none('missing');
+  } catch (e) {
+    console.error('segment-match: park course attempts not recorded:', e instanceof Error ? e.message : 'unknown');
+  }
   return { outcome: 'recorded', matched: efforts.length };
 }

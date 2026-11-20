@@ -31255,5 +31255,23 @@
   "filterBarRegion": "Region",
   "@filterBarRegion": {
     "description": "Heading of the region choices in a list's filter sheet (the segment catalogue)"
+  },
+  "runCourseTimingStarted": "Timing started",
+  "@runCourseTimingStarted": {
+    "description": "Big message on the recording screen, also spoken, when the runner following a park course leaves its start box going forward and the course time starts"
+  },
+  "runCourseFinished": "Finished! {time}",
+  "@runCourseFinished": {
+    "description": "Big message on the recording screen, also spoken, when the runner following a park course reaches its finish and the time will count on the course board. The recording keeps going.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "8:42:10"
+      }
+    }
+  },
+  "runCourseStoppedShort": "This won't count as a course time. Your run is still saved.",
+  "@runCourseStoppedShort": {
+    "description": "One line on the finished-run summary when the runner stopped a park course after its timing started and before finishing it: no course time, but the run itself is kept"
   }
 }

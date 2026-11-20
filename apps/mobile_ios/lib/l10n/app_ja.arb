@@ -6463,5 +6463,8 @@
   "filterBarSort": "並べ替え",
   "filterBarSource": "ソース",
   "runsSearchHint": "ランの名前で検索",
-  "filterBarRegion": "地域"
+  "filterBarRegion": "地域",
+  "runCourseTimingStarted": "計測開始",
+  "runCourseFinished": "ゴール！{time}",
+  "runCourseStoppedShort": "コースのタイムとしては記録されません。ランは保存されています。"
 }

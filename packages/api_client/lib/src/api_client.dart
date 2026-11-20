@@ -6087,6 +6087,26 @@ class ApiClient {
     );
   }
 
+  /// The park course whose route is [routeId] (the route "Navigate this
+  /// course" hands the recorder), with its catalogue segment, for live course
+  /// timing on the run screen (#1446). Null when no listed course uses the
+  /// route, or RLS hides it. Throws on a failed read.
+  Future<ParkCourseListing?> fetchParkCourseForRoute(String routeId) async {
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colRouteId, routeId)
+        .limit(1)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    return ParkCourseListing(
+      course: ParkCourseRow.fromJson(course),
+      segment: GlobalSegmentRow.fromJson(
+        (course['global_segments'] as Map).cast<String, dynamic>(),
+      ),
+    );
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Walked by keyset
   /// like [fetchAllParkCourses]. Throws on a failed read.

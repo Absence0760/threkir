@@ -24386,4 +24386,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get filterBarRegion => 'Région';
+
+  @override
+  String get runCourseTimingStarted => 'Chrono lancé';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'Arrivée ! $time';
+  }
+
+  @override
+  String get runCourseStoppedShort =>
+      'Ce ne sera pas compté comme un temps sur le parcours. Votre course est quand même enregistrée.';
 }

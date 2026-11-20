@@ -22664,4 +22664,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get filterBarRegion => '地域';
+
+  @override
+  String get runCourseTimingStarted => '計測開始';
+
+  @override
+  String runCourseFinished(String time) {
+    return 'ゴール！$time';
+  }
+
+  @override
+  String get runCourseStoppedShort => 'コースのタイムとしては記録されません。ランは保存されています。';
 }

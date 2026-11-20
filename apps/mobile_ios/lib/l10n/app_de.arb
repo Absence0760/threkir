@@ -6463,5 +6463,8 @@
   "filterBarSort": "Sortieren",
   "filterBarSource": "Quelle",
   "runsSearchHint": "Läufe nach Namen suchen",
-  "filterBarRegion": "Region"
+  "filterBarRegion": "Region",
+  "runCourseTimingStarted": "Zeitmessung gestartet",
+  "runCourseFinished": "Im Ziel! {time}",
+  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert."
 }

@@ -6463,5 +6463,8 @@
   "filterBarSort": "Trier",
   "filterBarSource": "Source",
   "runsSearchHint": "Rechercher par nom de course",
-  "filterBarRegion": "Région"
+  "filterBarRegion": "Région",
+  "runCourseTimingStarted": "Chrono lancé",
+  "runCourseFinished": "Arrivée ! {time}",
+  "runCourseStoppedShort": "Ce ne sera pas compté comme un temps sur le parcours. Votre course est quand même enregistrée."
 }

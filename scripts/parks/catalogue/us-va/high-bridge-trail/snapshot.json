@@ -1,0 +1,4758 @@
+{
+ "fetched_at": "2026-11-20",
+ "sources": {
+  "geometry": "OpenStreetMap API 0.6, © OpenStreetMap contributors, ODbL 1.0",
+  "elevation": "USGS 3D Elevation Program, Elevation Point Query Service (public domain)"
+ },
+ "ways": {
+  "20413889": {
+   "id": 20413889,
+   "version": 16,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "designated",
+    "heritage": "yes",
+    "highway": "path",
+    "horse": "dismount",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "wood",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA;Cumberland, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2",
+    "wikidata": "Q4030901",
+    "wikipedia": "en:High Bridge (Appomattox River)"
+   },
+   "nodes": [
+    210197070,
+    217766327
+   ]
+  },
+  "164024869": {
+   "id": 164024869,
+   "version": 19,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766327,
+    1756867842,
+    7026739501,
+    13418672310,
+    217766330,
+    13418672325,
+    1756867836,
+    1756867841,
+    217766332,
+    7026739498,
+    8179960975,
+    13418636484,
+    1756867820,
+    13418672387,
+    13418672378,
+    1756867849,
+    12174197320,
+    1756867822,
+    12174197306,
+    1756867828,
+    1166214168,
+    1756867824,
+    217766358,
+    217766362,
+    1756867819,
+    1756867831,
+    217766367,
+    217766371,
+    217766376,
+    1756867848,
+    217766379,
+    1756867846,
+    217766383,
+    217766388,
+    217766392,
+    1756867835,
+    217766396,
+    1756867826,
+    1756867851,
+    1756867850,
+    2147389306,
+    1756867834,
+    217766398,
+    2147389309,
+    12174197325,
+    12176008693
+   ]
+  },
+  "164073280": {
+   "id": 164073280,
+   "version": 13,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175994683,
+    217765404,
+    1757353976,
+    217765407,
+    1757353983,
+    1757354037,
+    217765416,
+    217765418,
+    1757354012,
+    1757353996,
+    1757354043,
+    217765422,
+    1757353997,
+    217765424,
+    1757354034,
+    1757353984,
+    217765428,
+    1757354000,
+    217765431,
+    217765436,
+    1757354028,
+    1757354002,
+    1757353987,
+    217765440,
+    1757354013,
+    1757353990,
+    1757354001,
+    217765444,
+    1757354027,
+    1757354021,
+    217765446,
+    217765448,
+    12175994684,
+    1757354017
+   ]
+  },
+  "164076332": {
+   "id": 164076332,
+   "version": 8,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217765930,
+    217765933
+   ]
+  },
+  "164076340": {
+   "id": 164076340,
+   "version": 13,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217765933,
+    13418769022,
+    217765938,
+    217765942,
+    1757371729,
+    2769996497,
+    217765945,
+    217436380,
+    1757371717,
+    217765949,
+    1757371720,
+    1757371748,
+    1757371746,
+    1757371741,
+    217765952
+   ]
+  },
+  "164078570": {
+   "id": 164078570,
+   "version": 8,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "dismount",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "wood",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766035,
+    210196988
+   ]
+  },
+  "164078573": {
+   "id": 164078573,
+   "version": 9,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "yes",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "dismount",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "wood",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766010,
+    217766015
+   ]
+  },
+  "164078574": {
+   "id": 164078574,
+   "version": 7,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217765952,
+    217765964
+   ]
+  },
+  "164078575": {
+   "id": 164078575,
+   "version": 14,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217765964,
+    2184403249,
+    1757371714,
+    217765968,
+    217765972,
+    2770069996,
+    217765982,
+    13677720007,
+    11348908849
+   ]
+  },
+  "164078578": {
+   "id": 164078578,
+   "version": 12,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "dog": "leashed",
+    "highway": "path",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    1757371719,
+    12176008672,
+    8981918419,
+    217766021,
+    217766026,
+    8981918420,
+    217766029,
+    217766032,
+    13418769043,
+    217766035
+   ]
+  },
+  "168547797": {
+   "id": 168547797,
+   "version": 10,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    210196988,
+    1757371711,
+    210196995,
+    1757377175,
+    210196997,
+    1757377212,
+    210197000,
+    11348908853,
+    210197002,
+    210197004,
+    1757377210,
+    1757377204,
+    1757377199,
+    210197006,
+    210197008,
+    210197013,
+    1757377197,
+    210197015,
+    210197017,
+    1757377177,
+    1757377182,
+    1757377184,
+    1757377173,
+    210197019,
+    1757377202,
+    1757377185,
+    210197021,
+    1757377183,
+    210197023,
+    210197025,
+    1757377188,
+    210197029,
+    210197032,
+    1757377195,
+    210197034,
+    1757377174,
+    1757377179,
+    210197037,
+    210197039,
+    1757377192,
+    210197040,
+    5496396799,
+    1757377176,
+    1757377209,
+    210197042,
+    210197045,
+    7026739503,
+    1757377196,
+    210197048,
+    1757377178,
+    7026739504,
+    1757377208,
+    7026739505,
+    210197049,
+    1757377200,
+    210197050,
+    1757377207,
+    209964136,
+    1757377205,
+    210197052,
+    7026739506,
+    210197053,
+    1757377189,
+    210197055,
+    1757377211,
+    7026739507,
+    1757377191,
+    210197056,
+    1757377190,
+    210197057,
+    1757377201,
+    210197059,
+    1757377198,
+    10559799378,
+    1801169338,
+    12176008673,
+    12176008676
+   ]
+  },
+  "168927569": {
+   "id": 168927569,
+   "version": 6,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "bridge": "yes",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "layer": "1",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766433,
+    217766470
+   ]
+  },
+  "168927570": {
+   "id": 168927570,
+   "version": 13,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908795,
+    12176007093,
+    217766495,
+    11348908803,
+    11348908804,
+    217766497,
+    1801102531,
+    1801102535,
+    217766499,
+    217766502,
+    217766504,
+    217529124,
+    217766514,
+    217624212,
+    217625210,
+    217766529,
+    13418769045,
+    217766533,
+    217766538,
+    217766541,
+    217766545,
+    217766552,
+    217766556,
+    13418769046,
+    217766560,
+    13418769047,
+    217766561,
+    217766567,
+    13418769048,
+    217766575,
+    13418769049,
+    217766579,
+    217766582,
+    1756867837,
+    13421788418,
+    1756867825,
+    217766586,
+    217766594,
+    217766596,
+    1756867829,
+    217766597,
+    13418769060,
+    13418769061,
+    217766601,
+    5812001079,
+    217766605,
+    13418769062,
+    217766609,
+    1756867845,
+    217766617,
+    1756867832,
+    1756867823,
+    217766623,
+    1756867839,
+    12769378149,
+    1756867843,
+    217766625,
+    1756867830,
+    12174144900,
+    217766629
+   ]
+  },
+  "169790104": {
+   "id": 169790104,
+   "version": 7,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    1757324967,
+    12767801661,
+    207380555,
+    1757324997,
+    207380560,
+    1757324992,
+    217765492,
+    13427336993,
+    217765495,
+    217765497,
+    217418876,
+    217765499,
+    1757324982,
+    217765504,
+    12767801652,
+    217765506,
+    12767801647,
+    217765510,
+    12767801646,
+    1757324986,
+    217765512,
+    217765516,
+    217765520,
+    1757324988,
+    1809523505,
+    12175865942
+   ]
+  },
+  "970538169": {
+   "id": 970538169,
+   "version": 7,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "dog": "leashed",
+    "highway": "path",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766015,
+    1757371725,
+    12176008669
+   ]
+  },
+  "970538170": {
+   "id": 970538170,
+   "version": 8,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "dismount",
+    "crossing": "marked",
+    "crossing:markings": "lines",
+    "dog": "leashed",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "yes",
+    "kerb": "lowered",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tactile_paving": "yes",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    1757371737,
+    1985256741,
+    8981918417
+   ]
+  },
+  "1221364554": {
+   "id": 1221364554,
+   "version": 5,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "dismount",
+    "dog": "leashed",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "yes",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "concrete",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    8981918417,
+    1757371719
+   ]
+  },
+  "1223501030": {
+   "id": 1223501030,
+   "version": 4,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766470,
+    13418769044,
+    217766475,
+    1801102530,
+    217766487,
+    1801102534,
+    217766492,
+    1801102533,
+    12176007094,
+    11348908794
+   ]
+  },
+  "1223501031": {
+   "id": 1223501031,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "uncontrolled",
+    "crossing:markings": "zebra",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908794,
+    1801102532,
+    11348908795
+   ]
+  },
+  "1223501042": {
+   "id": 1223501042,
+   "version": 4,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908836,
+    12174197307,
+    217766633,
+    217766635,
+    217766639,
+    217766644,
+    1756867844,
+    217766649,
+    217766653,
+    217766658,
+    1756867847,
+    217766662,
+    217766667,
+    12769378150,
+    12769378151,
+    217766670,
+    2149856203,
+    217766675,
+    12174197303,
+    11348908805
+   ]
+  },
+  "1223501043": {
+   "id": 1223501043,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217766629,
+    1756867827,
+    11348908836
+   ]
+  },
+  "1223501046": {
+   "id": 1223501046,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "marked",
+    "crossing:markings": "zebra",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908842,
+    13418769013,
+    11348908843
+   ]
+  },
+  "1223501047": {
+   "id": 1223501047,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175930596,
+    12175962717,
+    12175930598,
+    1757344935,
+    1757344934,
+    217765579,
+    217765582,
+    1757344933,
+    1757344955,
+    1757344930,
+    1757344915,
+    1757344940,
+    217765588,
+    1757344949,
+    217765595,
+    1757344938,
+    217765598,
+    1757344963,
+    1757344911,
+    1757344948,
+    217765604,
+    1757344960,
+    1757344961,
+    1757344923,
+    1757344959,
+    1757344925,
+    217765606,
+    1757344913,
+    1757344921,
+    1757344929,
+    1757344912,
+    1757344928,
+    1757344936,
+    12175962718
+   ]
+  },
+  "1223501048": {
+   "id": 1223501048,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    217765675,
+    13418769021,
+    11348908844
+   ]
+  },
+  "1223501049": {
+   "id": 1223501049,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    1757354029,
+    12175994697,
+    1757354042,
+    1757354007,
+    217765451,
+    1757354032,
+    1757354026,
+    1757353985,
+    217765453,
+    1757354036,
+    217765455,
+    1757354033,
+    217765457,
+    217765459,
+    1757354041,
+    217765461,
+    1757354031,
+    1757354010,
+    217765464,
+    217765466,
+    217765468,
+    217765472,
+    1757354011,
+    217807614,
+    1757354019,
+    217807616,
+    1757354020,
+    1757353980,
+    1757353977,
+    1757353981,
+    217807618,
+    1757354039,
+    1757354004,
+    217807623,
+    217807627,
+    217807630,
+    1757354015,
+    1757354005,
+    1757358350,
+    217807636,
+    217807640,
+    1757358338,
+    217807644,
+    217765817,
+    1756851987,
+    217765822,
+    217765828,
+    217765831,
+    217765835,
+    1757358342,
+    217765838,
+    217765848,
+    217765852,
+    1757358360,
+    217765858,
+    217765859,
+    1757358347,
+    217765860,
+    1757358351,
+    1757358348,
+    1757358355,
+    217765862,
+    1757358358,
+    1757358344,
+    217765926,
+    1757358353,
+    217765930
+   ]
+  },
+  "1223501050": {
+   "id": 1223501050,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    1757354017,
+    1757353979,
+    1757354029
+   ]
+  },
+  "1223501054": {
+   "id": 1223501054,
+   "version": 4,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908852,
+    217766002,
+    217766006,
+    2011740591,
+    1757371722,
+    12946966967,
+    1757371735,
+    217766010
+   ]
+  },
+  "1223501055": {
+   "id": 1223501055,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "uncontrolled",
+    "crossing:markings": "zebra",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908849,
+    1757371754,
+    11348908850
+   ]
+  },
+  "1223501056": {
+   "id": 1223501056,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908850,
+    2770069997,
+    217765999,
+    11348908851
+   ]
+  },
+  "1223501057": {
+   "id": 1223501057,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "uncontrolled",
+    "crossing:markings": "lines",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908851,
+    3708517504,
+    11348908852
+   ]
+  },
+  "1315439286": {
+   "id": 1315439286,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175865943,
+    10722082312,
+    217765527,
+    217765531,
+    1757324955,
+    1757324966,
+    1757324956,
+    217765537,
+    1757324968,
+    1757324977,
+    217765542,
+    217765544,
+    1757324952,
+    1757324953,
+    11348908842
+   ]
+  },
+  "1315439287": {
+   "id": 1315439287,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175865942,
+    1757324980,
+    12175865943
+   ]
+  },
+  "1315444722": {
+   "id": 1315444722,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908843,
+    217765547,
+    217765550,
+    1757324960,
+    1757324993,
+    217765554,
+    1757324958,
+    1757324996,
+    217765558,
+    1757324991,
+    1757324984,
+    1757344931,
+    1757344920,
+    1757344946,
+    217765569,
+    12175930599,
+    12175930597
+   ]
+  },
+  "1315444723": {
+   "id": 1315444723,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175930597,
+    1757344937,
+    12175930596
+   ]
+  },
+  "1315444729": {
+   "id": 1315444729,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175962719,
+    217765608,
+    217765614,
+    1757344956,
+    217765625,
+    217765628,
+    1757344950,
+    1757344957,
+    217765632,
+    1757344927,
+    1757344943,
+    217765637,
+    217765642,
+    1757344951,
+    1757344953,
+    217765644,
+    217765648,
+    1757344964,
+    1757353994,
+    217765651,
+    1757354003,
+    217765667,
+    1757353993,
+    1757354006,
+    217765672,
+    12175962736,
+    217765675
+   ]
+  },
+  "1315444730": {
+   "id": 1315444730,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175962718,
+    13418769017,
+    12175962719
+   ]
+  },
+  "1315447974": {
+   "id": 1315447974,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    11348908844,
+    217765679,
+    13418769018,
+    1757354025,
+    217765683,
+    12175962758,
+    12175962763,
+    1757354047,
+    1757354038,
+    13427004628,
+    217765688,
+    217765693,
+    13427004629,
+    1757354024,
+    217765695,
+    1757354030,
+    1757354035,
+    217765700,
+    1757353982,
+    1757354045,
+    1757354046,
+    217765393,
+    217765396,
+    12175994678,
+    12175994679
+   ]
+  },
+  "1315447975": {
+   "id": 1315447975,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "uncontrolled",
+    "crossing:markings": "zebra",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175994679,
+    1757353988,
+    12175994680
+   ]
+  },
+  "1315447976": {
+   "id": 1315447976,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175994680,
+    217765400,
+    1757354048,
+    1757354009,
+    12175994681,
+    1757353986,
+    12175994682
+   ]
+  },
+  "1315447977": {
+   "id": 1315447977,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11:B13:B21",
+    "tiger:name_base": "Norfolk Southern Railway:Norfolk Sutherland Railroad:Railroad:Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12175994682,
+    1757353991,
+    12175994683
+   ]
+  },
+  "1315450299": {
+   "id": 1315450299,
+   "version": 3,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "dismount",
+    "dog": "leashed",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "yes",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "concrete",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12176008669,
+    8981918422,
+    1757371734,
+    8981918421,
+    1757371737
+   ]
+  },
+  "1315450300": {
+   "id": 1315450300,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:county": "Cumberland, VA",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12176008675,
+    12176008674,
+    1757067707,
+    10559799401,
+    1757377206,
+    1757377186,
+    210197067,
+    209964321,
+    1757377213,
+    1757377180,
+    1757377181,
+    1757377194,
+    1757377187,
+    1757377203,
+    13418672342,
+    210197070
+   ]
+  },
+  "1315450301": {
+   "id": 1315450301,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "uncontrolled",
+    "crossing:markings": "zebra",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "good",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:county": "Cumberland, VA",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12176008676,
+    1757067703,
+    12176008675
+   ]
+  },
+  "1315450304": {
+   "id": 1315450304,
+   "version": 1,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "compacted",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12176008692,
+    12174197324,
+    217766407,
+    2147389297,
+    217766413,
+    217766418,
+    2147389298,
+    217766421,
+    217766424,
+    217766429,
+    1839818453,
+    217766433
+   ]
+  },
+  "1315450305": {
+   "id": 1315450305,
+   "version": 2,
+   "tags": {
+    "abandoned:name": "Farmville Belt Line",
+    "abandoned:railway": "rail",
+    "bicycle": "designated",
+    "crossing": "unmarked",
+    "crossing:markings": "no",
+    "dog": "leashed",
+    "foot": "designated",
+    "highway": "path",
+    "horse": "designated",
+    "name": "High Bridge Trail",
+    "old_railway_operator": "N&W",
+    "operator": "Virginia Department of Conservation and Recreation",
+    "path": "crossing",
+    "railway": "abandoned",
+    "sac_scale": "hiking",
+    "segregated": "no",
+    "smoothness": "intermediate",
+    "stroller": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "B11",
+    "tiger:county": "Nottoway, VA:Prince Edward, VA",
+    "tiger:name_base": "Norfolk Southern Railway",
+    "trail_visibility": "excellent",
+    "wheelchair": "yes",
+    "width": "2"
+   },
+   "nodes": [
+    12176008693,
+    13418672364,
+    12176008692
+   ]
+  }
+ },
+ "nodes": {
+  "207380555": {
+   "lat": 37.2614442,
+   "lon": -78.6794677,
+   "ele": 210.4
+  },
+  "207380560": {
+   "lat": 37.2605505,
+   "lon": -78.6781095,
+   "ele": 210.7
+  },
+  "209964136": {
+   "lat": 37.3249813,
+   "lon": -78.3488476,
+   "ele": 109.4
+  },
+  "209964321": {
+   "lat": 37.3186539,
+   "lon": -78.3295384,
+   "ele": 114.5
+  },
+  "210196988": {
+   "lat": 37.307208,
+   "lon": -78.3866901,
+   "ele": 95.1
+  },
+  "210196995": {
+   "lat": 37.3081281,
+   "lon": -78.3852507,
+   "ele": 97
+  },
+  "210196997": {
+   "lat": 37.3085814,
+   "lon": -78.384019,
+   "ele": 97.3
+  },
+  "210197000": {
+   "lat": 37.3087943,
+   "lon": -78.3829932,
+   "ele": 97.8
+  },
+  "210197002": {
+   "lat": 37.309279,
+   "lon": -78.3793524,
+   "ele": 99.1
+  },
+  "210197004": {
+   "lat": 37.3094933,
+   "lon": -78.377617,
+   "ele": 99.7
+  },
+  "210197006": {
+   "lat": 37.3099433,
+   "lon": -78.3755007,
+   "ele": 100.5
+  },
+  "210197008": {
+   "lat": 37.3101078,
+   "lon": -78.3750852,
+   "ele": 100.5
+  },
+  "210197013": {
+   "lat": 37.3103392,
+   "lon": -78.3745839,
+   "ele": 100.7
+  },
+  "210197015": {
+   "lat": 37.3109345,
+   "lon": -78.3736465,
+   "ele": 101.1
+  },
+  "210197017": {
+   "lat": 37.3112765,
+   "lon": -78.3732364,
+   "ele": 101.2
+  },
+  "210197019": {
+   "lat": 37.3135939,
+   "lon": -78.3713673,
+   "ele": 102.4
+  },
+  "210197021": {
+   "lat": 37.3146136,
+   "lon": -78.3699342,
+   "ele": 102.6
+  },
+  "210197023": {
+   "lat": 37.315238,
+   "lon": -78.368503,
+   "ele": 102.6
+  },
+  "210197025": {
+   "lat": 37.3154611,
+   "lon": -78.3678183,
+   "ele": 102.9
+  },
+  "210197029": {
+   "lat": 37.3158352,
+   "lon": -78.3663378,
+   "ele": 103.5
+  },
+  "210197032": {
+   "lat": 37.3159258,
+   "lon": -78.3658155,
+   "ele": 103.6
+  },
+  "210197034": {
+   "lat": 37.316584,
+   "lon": -78.361193,
+   "ele": 105.5
+  },
+  "210197037": {
+   "lat": 37.3170951,
+   "lon": -78.3595401,
+   "ele": 106.1
+  },
+  "210197039": {
+   "lat": 37.31735,
+   "lon": -78.3588996,
+   "ele": 106.2
+  },
+  "210197040": {
+   "lat": 37.3183177,
+   "lon": -78.3576297,
+   "ele": 106.4
+  },
+  "210197042": {
+   "lat": 37.3210124,
+   "lon": -78.355382,
+   "ele": 106.7
+  },
+  "210197045": {
+   "lat": 37.3214403,
+   "lon": -78.3549857,
+   "ele": 107.1
+  },
+  "210197048": {
+   "lat": 37.3224132,
+   "lon": -78.3539115,
+   "ele": 107.9
+  },
+  "210197049": {
+   "lat": 37.3237495,
+   "lon": -78.3518962,
+   "ele": 109
+  },
+  "210197050": {
+   "lat": 37.3245127,
+   "lon": -78.3503048,
+   "ele": 109.1
+  },
+  "210197052": {
+   "lat": 37.3253324,
+   "lon": -78.3473824,
+   "ele": 109.8
+  },
+  "210197053": {
+   "lat": 37.3254632,
+   "lon": -78.3462369,
+   "ele": 110
+  },
+  "210197055": {
+   "lat": 37.3255481,
+   "lon": -78.3450213,
+   "ele": 110.2
+  },
+  "210197056": {
+   "lat": 37.3254073,
+   "lon": -78.3423834,
+   "ele": 110.8
+  },
+  "210197057": {
+   "lat": 37.3251167,
+   "lon": -78.3408181,
+   "ele": 111.3
+  },
+  "210197059": {
+   "lat": 37.3245681,
+   "lon": -78.3390157,
+   "ele": 111.6
+  },
+  "210197067": {
+   "lat": 37.3206139,
+   "lon": -78.3325005,
+   "ele": 113.6
+  },
+  "210197070": {
+   "lat": 37.3144727,
+   "lon": -78.3232374,
+   "ele": 114
+  },
+  "217418876": {
+   "lat": 37.25961,
+   "lon": -78.675899,
+   "ele": 211.2
+  },
+  "217436380": {
+   "lat": 37.3099774,
+   "lon": -78.4150665,
+   "ele": 106.3
+  },
+  "217529124": {
+   "lat": 37.263229,
+   "lon": -78.287809,
+   "ele": 138.4
+  },
+  "217624212": {
+   "lat": 37.257079,
+   "lon": -78.281035,
+   "ele": 141
+  },
+  "217625210": {
+   "lat": 37.2526677,
+   "lon": -78.2761845,
+   "ele": 143.1
+  },
+  "217765393": {
+   "lat": 37.3013171,
+   "lon": -78.5429042,
+   "ele": 167.7
+  },
+  "217765396": {
+   "lat": 37.3015089,
+   "lon": -78.5408393,
+   "ele": 168
+  },
+  "217765400": {
+   "lat": 37.3024788,
+   "lon": -78.5304876,
+   "ele": 166.9
+  },
+  "217765404": {
+   "lat": 37.3032803,
+   "lon": -78.521894,
+   "ele": 161.6
+  },
+  "217765407": {
+   "lat": 37.3038464,
+   "lon": -78.5158333,
+   "ele": 157.9
+  },
+  "217765416": {
+   "lat": 37.3042138,
+   "lon": -78.5119111,
+   "ele": 156.3
+  },
+  "217765418": {
+   "lat": 37.3043093,
+   "lon": -78.5108979,
+   "ele": 155.7
+  },
+  "217765422": {
+   "lat": 37.3046345,
+   "lon": -78.5092167,
+   "ele": 154.5
+  },
+  "217765424": {
+   "lat": 37.3060591,
+   "lon": -78.5052957,
+   "ele": 151.2
+  },
+  "217765428": {
+   "lat": 37.3062967,
+   "lon": -78.5040228,
+   "ele": 151
+  },
+  "217765431": {
+   "lat": 37.3063431,
+   "lon": -78.50323,
+   "ele": 151
+  },
+  "217765436": {
+   "lat": 37.3063268,
+   "lon": -78.5026814,
+   "ele": 150.8
+  },
+  "217765440": {
+   "lat": 37.3057694,
+   "lon": -78.4997188,
+   "ele": 151.5
+  },
+  "217765444": {
+   "lat": 37.3056159,
+   "lon": -78.4972267,
+   "ele": 153.2
+  },
+  "217765446": {
+   "lat": 37.3062286,
+   "lon": -78.4905681,
+   "ele": 152.3
+  },
+  "217765448": {
+   "lat": 37.3063716,
+   "lon": -78.4891633,
+   "ele": 151.4
+  },
+  "217765451": {
+   "lat": 37.3067838,
+   "lon": -78.4846855,
+   "ele": 148.3
+  },
+  "217765453": {
+   "lat": 37.3067678,
+   "lon": -78.4828424,
+   "ele": 147.8
+  },
+  "217765455": {
+   "lat": 37.3065856,
+   "lon": -78.4818661,
+   "ele": 147.2
+  },
+  "217765457": {
+   "lat": 37.3064234,
+   "lon": -78.4812416,
+   "ele": 146.5
+  },
+  "217765459": {
+   "lat": 37.3062827,
+   "lon": -78.4808612,
+   "ele": 146
+  },
+  "217765461": {
+   "lat": 37.3044546,
+   "lon": -78.4774268,
+   "ele": 143.3
+  },
+  "217765464": {
+   "lat": 37.3028648,
+   "lon": -78.4742999,
+   "ele": 143.3
+  },
+  "217765466": {
+   "lat": 37.3026971,
+   "lon": -78.4738651,
+   "ele": 143.1
+  },
+  "217765468": {
+   "lat": 37.3024833,
+   "lon": -78.4730835,
+   "ele": 142.8
+  },
+  "217765472": {
+   "lat": 37.3023832,
+   "lon": -78.4724727,
+   "ele": 142.7
+  },
+  "217765492": {
+   "lat": 37.2600399,
+   "lon": -78.6770805,
+   "ele": 210.9
+  },
+  "217765495": {
+   "lat": 37.2598224,
+   "lon": -78.6764982,
+   "ele": 211.2
+  },
+  "217765497": {
+   "lat": 37.2596773,
+   "lon": -78.6761328,
+   "ele": 211.2
+  },
+  "217765499": {
+   "lat": 37.2594789,
+   "lon": -78.6754194,
+   "ele": 211.2
+  },
+  "217765504": {
+   "lat": 37.2592179,
+   "lon": -78.6742025,
+   "ele": 211.3
+  },
+  "217765506": {
+   "lat": 37.2590849,
+   "lon": -78.6729742,
+   "ele": 211.3
+  },
+  "217765510": {
+   "lat": 37.259056,
+   "lon": -78.671546,
+   "ele": 211.4
+  },
+  "217765512": {
+   "lat": 37.2593355,
+   "lon": -78.6694751,
+   "ele": 211.6
+  },
+  "217765516": {
+   "lat": 37.2596674,
+   "lon": -78.6680938,
+   "ele": 212.2
+  },
+  "217765520": {
+   "lat": 37.2600411,
+   "lon": -78.6665298,
+   "ele": 212.4
+  },
+  "217765527": {
+   "lat": 37.261014,
+   "lon": -78.662668,
+   "ele": 213.3
+  },
+  "217765531": {
+   "lat": 37.261394,
+   "lon": -78.661336,
+   "ele": 213.9
+  },
+  "217765537": {
+   "lat": 37.2626881,
+   "lon": -78.656935,
+   "ele": 215.1
+  },
+  "217765542": {
+   "lat": 37.2647459,
+   "lon": -78.6528348,
+   "ele": 216.2
+  },
+  "217765544": {
+   "lat": 37.2654092,
+   "lon": -78.6515353,
+   "ele": 216.6
+  },
+  "217765547": {
+   "lat": 37.2674931,
+   "lon": -78.6474326,
+   "ele": 217.9
+  },
+  "217765550": {
+   "lat": 37.2684129,
+   "lon": -78.6456014,
+   "ele": 217.5
+  },
+  "217765554": {
+   "lat": 37.2704345,
+   "lon": -78.64165,
+   "ele": 218
+  },
+  "217765558": {
+   "lat": 37.2745569,
+   "lon": -78.6341591,
+   "ele": 217.5
+  },
+  "217765569": {
+   "lat": 37.2829738,
+   "lon": -78.6189584,
+   "ele": 211.5
+  },
+  "217765579": {
+   "lat": 37.286631,
+   "lon": -78.612402,
+   "ele": 208.7
+  },
+  "217765582": {
+   "lat": 37.28679,
+   "lon": -78.612112,
+   "ele": 208.6
+  },
+  "217765588": {
+   "lat": 37.2923005,
+   "lon": -78.6021795,
+   "ele": 201.4
+  },
+  "217765595": {
+   "lat": 37.292966,
+   "lon": -78.6008974,
+   "ele": 200.4
+  },
+  "217765598": {
+   "lat": 37.293293,
+   "lon": -78.6000748,
+   "ele": 200.1
+  },
+  "217765604": {
+   "lat": 37.2938253,
+   "lon": -78.596431,
+   "ele": 198.2
+  },
+  "217765606": {
+   "lat": 37.2946941,
+   "lon": -78.5879225,
+   "ele": 192.9
+  },
+  "217765608": {
+   "lat": 37.2971019,
+   "lon": -78.577954,
+   "ele": 186.6
+  },
+  "217765614": {
+   "lat": 37.2973386,
+   "lon": -78.5770077,
+   "ele": 186.2
+  },
+  "217765625": {
+   "lat": 37.2986262,
+   "lon": -78.5717286,
+   "ele": 183
+  },
+  "217765628": {
+   "lat": 37.2991504,
+   "lon": -78.5695847,
+   "ele": 181.4
+  },
+  "217765632": {
+   "lat": 37.299681,
+   "lon": -78.5679916,
+   "ele": 180.3
+  },
+  "217765637": {
+   "lat": 37.3002789,
+   "lon": -78.5669832,
+   "ele": 179.8
+  },
+  "217765642": {
+   "lat": 37.3017153,
+   "lon": -78.5652758,
+   "ele": 178.3
+  },
+  "217765644": {
+   "lat": 37.3022753,
+   "lon": -78.5643427,
+   "ele": 177.6
+  },
+  "217765648": {
+   "lat": 37.3025055,
+   "lon": -78.5638256,
+   "ele": 177.3
+  },
+  "217765651": {
+   "lat": 37.3029228,
+   "lon": -78.5624233,
+   "ele": 176.1
+  },
+  "217765667": {
+   "lat": 37.3030621,
+   "lon": -78.5612077,
+   "ele": 174.9
+  },
+  "217765672": {
+   "lat": 37.3029903,
+   "lon": -78.5597123,
+   "ele": 175.9
+  },
+  "217765675": {
+   "lat": 37.3028971,
+   "lon": -78.5590574,
+   "ele": 175
+  },
+  "217765679": {
+   "lat": 37.3028241,
+   "lon": -78.5587568,
+   "ele": 175.2
+  },
+  "217765683": {
+   "lat": 37.3022892,
+   "lon": -78.5574187,
+   "ele": 175.4
+  },
+  "217765688": {
+   "lat": 37.3011807,
+   "lon": -78.5549576,
+   "ele": 174
+  },
+  "217765693": {
+   "lat": 37.3009716,
+   "lon": -78.5542446,
+   "ele": 173.6
+  },
+  "217765695": {
+   "lat": 37.3006961,
+   "lon": -78.5527852,
+   "ele": 172.9
+  },
+  "217765700": {
+   "lat": 37.3005962,
+   "lon": -78.5509782,
+   "ele": 171.7
+  },
+  "217765817": {
+   "lat": 37.3051685,
+   "lon": -78.4488978,
+   "ele": 128.1
+  },
+  "217765822": {
+   "lat": 37.3057395,
+   "lon": -78.4469286,
+   "ele": 127.2
+  },
+  "217765828": {
+   "lat": 37.3061266,
+   "lon": -78.4457275,
+   "ele": 126.2
+  },
+  "217765831": {
+   "lat": 37.3065569,
+   "lon": -78.4443683,
+   "ele": 125.2
+  },
+  "217765835": {
+   "lat": 37.3070197,
+   "lon": -78.4429522,
+   "ele": 124
+  },
+  "217765838": {
+   "lat": 37.3078622,
+   "lon": -78.440351,
+   "ele": 122.9
+  },
+  "217765848": {
+   "lat": 37.3082352,
+   "lon": -78.4391847,
+   "ele": 122
+  },
+  "217765852": {
+   "lat": 37.3090485,
+   "lon": -78.4366553,
+   "ele": 120
+  },
+  "217765858": {
+   "lat": 37.3105862,
+   "lon": -78.4318672,
+   "ele": 117.3
+  },
+  "217765859": {
+   "lat": 37.3113611,
+   "lon": -78.4294771,
+   "ele": 116.1
+  },
+  "217765860": {
+   "lat": 37.31179,
+   "lon": -78.4281484,
+   "ele": 115.2
+  },
+  "217765862": {
+   "lat": 37.3123096,
+   "lon": -78.4255118,
+   "ele": 113.4
+  },
+  "217765926": {
+   "lat": 37.3124234,
+   "lon": -78.4231575,
+   "ele": 111.7
+  },
+  "217765930": {
+   "lat": 37.3122856,
+   "lon": -78.4214625,
+   "ele": 106
+  },
+  "217765933": {
+   "lat": 37.3122472,
+   "lon": -78.4211484,
+   "ele": 107.7
+  },
+  "217765938": {
+   "lat": 37.3120034,
+   "lon": -78.4198612,
+   "ele": 110
+  },
+  "217765942": {
+   "lat": 37.3117645,
+   "lon": -78.4190046,
+   "ele": 109.6
+  },
+  "217765945": {
+   "lat": 37.3108669,
+   "lon": -78.4166933,
+   "ele": 107.8
+  },
+  "217765949": {
+   "lat": 37.3064314,
+   "lon": -78.4087543,
+   "ele": 101.5
+  },
+  "217765952": {
+   "lat": 37.3056235,
+   "lon": -78.4062125,
+   "ele": 101.1
+  },
+  "217765964": {
+   "lat": 37.3055336,
+   "lon": -78.4054209,
+   "ele": 101.2
+  },
+  "217765968": {
+   "lat": 37.3050239,
+   "lon": -78.4013036,
+   "ele": 101.6
+  },
+  "217765972": {
+   "lat": 37.3048915,
+   "lon": -78.4000909,
+   "ele": 101.2
+  },
+  "217765982": {
+   "lat": 37.3045995,
+   "lon": -78.3976495,
+   "ele": 99.5
+  },
+  "217765999": {
+   "lat": 37.3043579,
+   "lon": -78.3954554,
+   "ele": 98
+  },
+  "217766002": {
+   "lat": 37.3042226,
+   "lon": -78.3940894,
+   "ele": 97.4
+  },
+  "217766006": {
+   "lat": 37.304162,
+   "lon": -78.3934989,
+   "ele": 97.3
+  },
+  "217766010": {
+   "lat": 37.3042143,
+   "lon": -78.3922066,
+   "ele": 96.3
+  },
+  "217766015": {
+   "lat": 37.3042392,
+   "lon": -78.3920315,
+   "ele": 96.8
+  },
+  "217766021": {
+   "lat": 37.3048529,
+   "lon": -78.3900329,
+   "ele": 96.7
+  },
+  "217766026": {
+   "lat": 37.3050518,
+   "lon": -78.3896871,
+   "ele": 96.7
+  },
+  "217766029": {
+   "lat": 37.3053742,
+   "lon": -78.3891927,
+   "ele": 96.6
+  },
+  "217766032": {
+   "lat": 37.3057156,
+   "lon": -78.3887536,
+   "ele": 96.8
+  },
+  "217766035": {
+   "lat": 37.3065436,
+   "lon": -78.3875996,
+   "ele": 96.9
+  },
+  "217766327": {
+   "lat": 37.3101658,
+   "lon": -78.3168297,
+   "ele": 120
+  },
+  "217766330": {
+   "lat": 37.3082645,
+   "lon": -78.3142515,
+   "ele": 119.5
+  },
+  "217766332": {
+   "lat": 37.3070397,
+   "lon": -78.3134233,
+   "ele": 119.7
+  },
+  "217766358": {
+   "lat": 37.2959799,
+   "lon": -78.309849,
+   "ele": 124.8
+  },
+  "217766362": {
+   "lat": 37.2951018,
+   "lon": -78.3099729,
+   "ele": 124.9
+  },
+  "217766367": {
+   "lat": 37.2932781,
+   "lon": -78.3103272,
+   "ele": 125.7
+  },
+  "217766371": {
+   "lat": 37.2927828,
+   "lon": -78.3103076,
+   "ele": 125.8
+  },
+  "217766376": {
+   "lat": 37.292189,
+   "lon": -78.3102221,
+   "ele": 125.9
+  },
+  "217766379": {
+   "lat": 37.2910915,
+   "lon": -78.3097755,
+   "ele": 126.3
+  },
+  "217766383": {
+   "lat": 37.2902132,
+   "lon": -78.3091752,
+   "ele": 126.4
+  },
+  "217766388": {
+   "lat": 37.2898724,
+   "lon": -78.308849,
+   "ele": 126.3
+  },
+  "217766392": {
+   "lat": 37.2894838,
+   "lon": -78.3083893,
+   "ele": 126.8
+  },
+  "217766396": {
+   "lat": 37.2887026,
+   "lon": -78.3071126,
+   "ele": 127.7
+  },
+  "217766398": {
+   "lat": 37.2876081,
+   "lon": -78.3037542,
+   "ele": 128.9
+  },
+  "217766407": {
+   "lat": 37.2867362,
+   "lon": -78.3023659,
+   "ele": 129.1
+  },
+  "217766413": {
+   "lat": 37.2861194,
+   "lon": -78.3017195,
+   "ele": 129.1
+  },
+  "217766418": {
+   "lat": 37.2858451,
+   "lon": -78.3014991,
+   "ele": 129.3
+  },
+  "217766421": {
+   "lat": 37.28197,
+   "lon": -78.299198,
+   "ele": 131.3
+  },
+  "217766424": {
+   "lat": 37.281011,
+   "lon": -78.298642,
+   "ele": 131.1
+  },
+  "217766429": {
+   "lat": 37.2755057,
+   "lon": -78.2955316,
+   "ele": 133.3
+  },
+  "217766433": {
+   "lat": 37.2744023,
+   "lon": -78.2949659,
+   "ele": 129.9
+  },
+  "217766470": {
+   "lat": 37.2740018,
+   "lon": -78.294835,
+   "ele": 133.8
+  },
+  "217766475": {
+   "lat": 37.2733935,
+   "lon": -78.2947163,
+   "ele": 134.1
+  },
+  "217766487": {
+   "lat": 37.2721784,
+   "lon": -78.2947859,
+   "ele": 134.4
+  },
+  "217766492": {
+   "lat": 37.2711669,
+   "lon": -78.2948028,
+   "ele": 134.8
+  },
+  "217766495": {
+   "lat": 37.2698918,
+   "lon": -78.2944788,
+   "ele": 135.4
+  },
+  "217766497": {
+   "lat": 37.2694348,
+   "lon": -78.2942606,
+   "ele": 135.5
+  },
+  "217766499": {
+   "lat": 37.268046,
+   "lon": -78.293122,
+   "ele": 135.9
+  },
+  "217766502": {
+   "lat": 37.265472,
+   "lon": -78.290312,
+   "ele": 136.5
+  },
+  "217766504": {
+   "lat": 37.263992,
+   "lon": -78.28866,
+   "ele": 137.6
+  },
+  "217766514": {
+   "lat": 37.260106,
+   "lon": -78.28435,
+   "ele": 139.4
+  },
+  "217766529": {
+   "lat": 37.2520321,
+   "lon": -78.2755542,
+   "ele": 143.4
+  },
+  "217766533": {
+   "lat": 37.2503932,
+   "lon": -78.2742072,
+   "ele": 144.1
+  },
+  "217766538": {
+   "lat": 37.2501387,
+   "lon": -78.2740324,
+   "ele": 144.1
+  },
+  "217766541": {
+   "lat": 37.2490863,
+   "lon": -78.2733851,
+   "ele": 144.2
+  },
+  "217766545": {
+   "lat": 37.2483242,
+   "lon": -78.2729807,
+   "ele": 144.7
+  },
+  "217766552": {
+   "lat": 37.2464588,
+   "lon": -78.2720645,
+   "ele": 145.5
+  },
+  "217766556": {
+   "lat": 37.2457231,
+   "lon": -78.2717043,
+   "ele": 145.6
+  },
+  "217766560": {
+   "lat": 37.2442288,
+   "lon": -78.2710999,
+   "ele": 146.5
+  },
+  "217766561": {
+   "lat": 37.2423011,
+   "lon": -78.2706058,
+   "ele": 146.8
+  },
+  "217766567": {
+   "lat": 37.240897,
+   "lon": -78.270439,
+   "ele": 147.4
+  },
+  "217766575": {
+   "lat": 37.23807,
+   "lon": -78.270287,
+   "ele": 147.6
+  },
+  "217766579": {
+   "lat": 37.2336313,
+   "lon": -78.2700759,
+   "ele": 149.5
+  },
+  "217766582": {
+   "lat": 37.2331322,
+   "lon": -78.2700577,
+   "ele": 149.7
+  },
+  "217766586": {
+   "lat": 37.2309175,
+   "lon": -78.2699466,
+   "ele": 150.9
+  },
+  "217766594": {
+   "lat": 37.2305419,
+   "lon": -78.269915,
+   "ele": 151.1
+  },
+  "217766596": {
+   "lat": 37.2301177,
+   "lon": -78.2698166,
+   "ele": 151.3
+  },
+  "217766597": {
+   "lat": 37.2295168,
+   "lon": -78.2696013,
+   "ele": 151.4
+  },
+  "217766601": {
+   "lat": 37.2283357,
+   "lon": -78.2687702,
+   "ele": 151.4
+  },
+  "217766605": {
+   "lat": 37.2278354,
+   "lon": -78.2682054,
+   "ele": 151.4
+  },
+  "217766609": {
+   "lat": 37.2273619,
+   "lon": -78.2674924,
+   "ele": 151.8
+  },
+  "217766617": {
+   "lat": 37.2269881,
+   "lon": -78.2666363,
+   "ele": 152.3
+  },
+  "217766623": {
+   "lat": 37.2266301,
+   "lon": -78.2651761,
+   "ele": 152.3
+  },
+  "217766625": {
+   "lat": 37.226606,
+   "lon": -78.2637104,
+   "ele": 152.6
+  },
+  "217766629": {
+   "lat": 37.2273273,
+   "lon": -78.2594004,
+   "ele": 154.1
+  },
+  "217766633": {
+   "lat": 37.2276942,
+   "lon": -78.2572795,
+   "ele": 154.4
+  },
+  "217766635": {
+   "lat": 37.2281153,
+   "lon": -78.2548355,
+   "ele": 155.1
+  },
+  "217766639": {
+   "lat": 37.2282166,
+   "lon": -78.2540062,
+   "ele": 155.3
+  },
+  "217766644": {
+   "lat": 37.2282497,
+   "lon": -78.2532305,
+   "ele": 155.6
+  },
+  "217766649": {
+   "lat": 37.2281664,
+   "lon": -78.2517365,
+   "ele": 156.1
+  },
+  "217766653": {
+   "lat": 37.2278392,
+   "lon": -78.2498192,
+   "ele": 156.7
+  },
+  "217766658": {
+   "lat": 37.2274798,
+   "lon": -78.2478776,
+   "ele": 156.9
+  },
+  "217766662": {
+   "lat": 37.22703,
+   "lon": -78.24599,
+   "ele": 157.6
+  },
+  "217766667": {
+   "lat": 37.2263227,
+   "lon": -78.2441858,
+   "ele": 158.1
+  },
+  "217766670": {
+   "lat": 37.2252944,
+   "lon": -78.2423581,
+   "ele": 158.7
+  },
+  "217766675": {
+   "lat": 37.2242158,
+   "lon": -78.2409526,
+   "ele": 159.3
+  },
+  "217807614": {
+   "lat": 37.3023225,
+   "lon": -78.4713205,
+   "ele": 141.8
+  },
+  "217807616": {
+   "lat": 37.3023756,
+   "lon": -78.470471,
+   "ele": 141.3
+  },
+  "217807618": {
+   "lat": 37.3033052,
+   "lon": -78.4670009,
+   "ele": 139
+  },
+  "217807623": {
+   "lat": 37.3034844,
+   "lon": -78.4651995,
+   "ele": 137.6
+  },
+  "217807627": {
+   "lat": 37.3034676,
+   "lon": -78.4641146,
+   "ele": 137.5
+  },
+  "217807630": {
+   "lat": 37.3034557,
+   "lon": -78.4629791,
+   "ele": 137.1
+  },
+  "217807636": {
+   "lat": 37.3042935,
+   "lon": -78.4551129,
+   "ele": 131.7
+  },
+  "217807640": {
+   "lat": 37.3045029,
+   "lon": -78.4533041,
+   "ele": 130.4
+  },
+  "217807644": {
+   "lat": 37.3049361,
+   "lon": -78.4499755,
+   "ele": 128.6
+  },
+  "1166214168": {
+   "lat": 37.2969872,
+   "lon": -78.3099756,
+   "ele": 124.4
+  },
+  "1756851987": {
+   "lat": 37.3054668,
+   "lon": -78.447763,
+   "ele": 127.6
+  },
+  "1756867819": {
+   "lat": 37.294032,
+   "lon": -78.3102416,
+   "ele": 125.4
+  },
+  "1756867820": {
+   "lat": 37.3048139,
+   "lon": -78.3126186,
+   "ele": 120.7
+  },
+  "1756867822": {
+   "lat": 37.3017528,
+   "lon": -78.3115807,
+   "ele": 122.4
+  },
+  "1756867823": {
+   "lat": 37.2267127,
+   "lon": -78.265695,
+   "ele": 152.3
+  },
+  "1756867824": {
+   "lat": 37.2963993,
+   "lon": -78.3098656,
+   "ele": 124.5
+  },
+  "1756867825": {
+   "lat": 37.2313491,
+   "lon": -78.2699618,
+   "ele": 150.7
+  },
+  "1756867826": {
+   "lat": 37.2884871,
+   "lon": -78.3065622,
+   "ele": 127.7
+  },
+  "1756867827": {
+   "lat": 37.2273516,
+   "lon": -78.2592705,
+   "ele": 154.4
+  },
+  "1756867828": {
+   "lat": 37.2973546,
+   "lon": -78.3100783,
+   "ele": 124.2
+  },
+  "1756867829": {
+   "lat": 37.2298619,
+   "lon": -78.2697394,
+   "ele": 151.3
+  },
+  "1756867830": {
+   "lat": 37.2266501,
+   "lon": -78.2633008,
+   "ele": 152.8
+  },
+  "1756867831": {
+   "lat": 37.2939302,
+   "lon": -78.3102607,
+   "ele": 125.4
+  },
+  "1756867832": {
+   "lat": 37.2268267,
+   "lon": -78.2661581,
+   "ele": 152.3
+  },
+  "1756867834": {
+   "lat": 37.2878043,
+   "lon": -78.304208,
+   "ele": 128.6
+  },
+  "1756867835": {
+   "lat": 37.2890526,
+   "lon": -78.3077346,
+   "ele": 127.4
+  },
+  "1756867836": {
+   "lat": 37.3078069,
+   "lon": -78.3138857,
+   "ele": 119.5
+  },
+  "1756867837": {
+   "lat": 37.232659,
+   "lon": -78.2700458,
+   "ele": 150
+  },
+  "1756867839": {
+   "lat": 37.2265905,
+   "lon": -78.2647512,
+   "ele": 152.4
+  },
+  "1756867841": {
+   "lat": 37.3073156,
+   "lon": -78.3135495,
+   "ele": 119.6
+  },
+  "1756867842": {
+   "lat": 37.3091832,
+   "lon": -78.3153483,
+   "ele": 119.6
+  },
+  "1756867843": {
+   "lat": 37.2265793,
+   "lon": -78.2641058,
+   "ele": 152.4
+  },
+  "1756867844": {
+   "lat": 37.2282358,
+   "lon": -78.2524883,
+   "ele": 156
+  },
+  "1756867845": {
+   "lat": 37.2271504,
+   "lon": -78.2670527,
+   "ele": 151.9
+  },
+  "1756867846": {
+   "lat": 37.2905815,
+   "lon": -78.3094689,
+   "ele": 126.5
+  },
+  "1756867847": {
+   "lat": 37.2272948,
+   "lon": -78.2469909,
+   "ele": 157.3
+  },
+  "1756867848": {
+   "lat": 37.2916337,
+   "lon": -78.310055,
+   "ele": 125.8
+  },
+  "1756867849": {
+   "lat": 37.3027036,
+   "lon": -78.3119019,
+   "ele": 121.8
+  },
+  "1756867850": {
+   "lat": 37.2880629,
+   "lon": -78.30504,
+   "ele": 128.3
+  },
+  "1756867851": {
+   "lat": 37.2882681,
+   "lon": -78.3058908,
+   "ele": 128
+  },
+  "1757067703": {
+   "lat": 37.3237236,
+   "lon": -78.3371534,
+   "ele": 112.9
+  },
+  "1757067707": {
+   "lat": 37.3235425,
+   "lon": -78.3368579,
+   "ele": 112.7
+  },
+  "1757324952": {
+   "lat": 37.2658385,
+   "lon": -78.6506715,
+   "ele": 216.9
+  },
+  "1757324953": {
+   "lat": 37.2667265,
+   "lon": -78.6489684,
+   "ele": 217.4
+  },
+  "1757324955": {
+   "lat": 37.2621638,
+   "lon": -78.6584138,
+   "ele": 214.7
+  },
+  "1757324956": {
+   "lat": 37.2624522,
+   "lon": -78.6574961,
+   "ele": 214.9
+  },
+  "1757324958": {
+   "lat": 37.271297,
+   "lon": -78.6400958,
+   "ele": 217.8
+  },
+  "1757324960": {
+   "lat": 37.2694646,
+   "lon": -78.6435572,
+   "ele": 217.8
+  },
+  "1757324966": {
+   "lat": 37.2623011,
+   "lon": -78.6579293,
+   "ele": 214.8
+  },
+  "1757324967": {
+   "lat": 37.2619211,
+   "lon": -78.6800479,
+   "ele": 210.3
+  },
+  "1757324968": {
+   "lat": 37.2633551,
+   "lon": -78.6555676,
+   "ele": 215.4
+  },
+  "1757324977": {
+   "lat": 37.2642081,
+   "lon": -78.6538919,
+   "ele": 216.4
+  },
+  "1757324980": {
+   "lat": 37.2607384,
+   "lon": -78.6637841,
+   "ele": 213.2
+  },
+  "1757324982": {
+   "lat": 37.2593513,
+   "lon": -78.6748837,
+   "ele": 211.3
+  },
+  "1757324984": {
+   "lat": 37.2769567,
+   "lon": -78.6298661,
+   "ele": 216.5
+  },
+  "1757324986": {
+   "lat": 37.2591614,
+   "lon": -78.6703903,
+   "ele": 211.3
+  },
+  "1757324988": {
+   "lat": 37.2602276,
+   "lon": -78.6657762,
+   "ele": 212.8
+  },
+  "1757324991": {
+   "lat": 37.2759916,
+   "lon": -78.6315941,
+   "ele": 217.1
+  },
+  "1757324992": {
+   "lat": 37.2602746,
+   "lon": -78.6775845,
+   "ele": 210.9
+  },
+  "1757324993": {
+   "lat": 37.2703452,
+   "lon": -78.6418347,
+   "ele": 217.8
+  },
+  "1757324996": {
+   "lat": 37.2732657,
+   "lon": -78.6365207,
+   "ele": 217.5
+  },
+  "1757324997": {
+   "lat": 37.2610349,
+   "lon": -78.6788878,
+   "ele": 210.6
+  },
+  "1757344911": {
+   "lat": 37.2935152,
+   "lon": -78.5991595,
+   "ele": 199.9
+  },
+  "1757344912": {
+   "lat": 37.2959399,
+   "lon": -78.5827004,
+   "ele": 189.3
+  },
+  "1757344913": {
+   "lat": 37.2948049,
+   "lon": -78.5873783,
+   "ele": 192.5
+  },
+  "1757344915": {
+   "lat": 37.2916234,
+   "lon": -78.6033876,
+   "ele": 202.4
+  },
+  "1757344920": {
+   "lat": 37.2804357,
+   "lon": -78.6235793,
+   "ele": 213
+  },
+  "1757344921": {
+   "lat": 37.2950291,
+   "lon": -78.5864285,
+   "ele": 191.6
+  },
+  "1757344923": {
+   "lat": 37.2942439,
+   "lon": -78.5922141,
+   "ele": 195.7
+  },
+  "1757344925": {
+   "lat": 37.2946047,
+   "lon": -78.5886198,
+   "ele": 193.4
+  },
+  "1757344927": {
+   "lat": 37.2998377,
+   "lon": -78.5676658,
+   "ele": 180
+  },
+  "1757344928": {
+   "lat": 37.2964737,
+   "lon": -78.5804978,
+   "ele": 188.1
+  },
+  "1757344929": {
+   "lat": 37.2953467,
+   "lon": -78.5851171,
+   "ele": 190.8
+  },
+  "1757344930": {
+   "lat": 37.2909508,
+   "lon": -78.6045882,
+   "ele": 203.3
+  },
+  "1757344931": {
+   "lat": 37.2787905,
+   "lon": -78.6265276,
+   "ele": 214.7
+  },
+  "1757344933": {
+   "lat": 37.2886008,
+   "lon": -78.6088585,
+   "ele": 206.4
+  },
+  "1757344934": {
+   "lat": 37.2861026,
+   "lon": -78.6133791,
+   "ele": 209.4
+  },
+  "1757344935": {
+   "lat": 37.2848341,
+   "lon": -78.615665,
+   "ele": 211.2
+  },
+  "1757344936": {
+   "lat": 37.2969981,
+   "lon": -78.5783863,
+   "ele": 186.7
+  },
+  "1757344937": {
+   "lat": 37.2839871,
+   "lon": -78.6171567,
+   "ele": 211.5
+  },
+  "1757344938": {
+   "lat": 37.2931527,
+   "lon": -78.6004606,
+   "ele": 200.1
+  },
+  "1757344940": {
+   "lat": 37.2920065,
+   "lon": -78.6026955,
+   "ele": 201.6
+  },
+  "1757344943": {
+   "lat": 37.3000197,
+   "lon": -78.5673562,
+   "ele": 180
+  },
+  "1757344946": {
+   "lat": 37.2821149,
+   "lon": -78.6205173,
+   "ele": 211.6
+  },
+  "1757344948": {
+   "lat": 37.293619,
+   "lon": -78.5984517,
+   "ele": 199.5
+  },
+  "1757344949": {
+   "lat": 37.2927048,
+   "lon": -78.601428,
+   "ele": 200.8
+  },
+  "1757344950": {
+   "lat": 37.299347,
+   "lon": -78.5688615,
+   "ele": 181
+  },
+  "1757344951": {
+   "lat": 37.3019545,
+   "lon": -78.5649356,
+   "ele": 178.1
+  },
+  "1757344953": {
+   "lat": 37.3021032,
+   "lon": -78.5646636,
+   "ele": 177.8
+  },
+  "1757344955": {
+   "lat": 37.2899615,
+   "lon": -78.6063906,
+   "ele": 204.4
+  },
+  "1757344956": {
+   "lat": 37.2975125,
+   "lon": -78.5762943,
+   "ele": 185.9
+  },
+  "1757344957": {
+   "lat": 37.2995355,
+   "lon": -78.5683358,
+   "ele": 180.6
+  },
+  "1757344959": {
+   "lat": 37.2943554,
+   "lon": -78.5911461,
+   "ele": 195.1
+  },
+  "1757344960": {
+   "lat": 37.2940059,
+   "lon": -78.5946251,
+   "ele": 197.2
+  },
+  "1757344961": {
+   "lat": 37.2941347,
+   "lon": -78.5933156,
+   "ele": 196.4
+  },
+  "1757344963": {
+   "lat": 37.2934025,
+   "lon": -78.5996844,
+   "ele": 200.1
+  },
+  "1757344964": {
+   "lat": 37.3026417,
+   "lon": -78.563453,
+   "ele": 176.9
+  },
+  "1757353976": {
+   "lat": 37.3037404,
+   "lon": -78.5170413,
+   "ele": 158.8
+  },
+  "1757353977": {
+   "lat": 37.3027003,
+   "lon": -78.4689389,
+   "ele": 140.4
+  },
+  "1757353979": {
+   "lat": 37.3064698,
+   "lon": -78.4884917,
+   "ele": 150.4
+  },
+  "1757353980": {
+   "lat": 37.3025333,
+   "lon": -78.4695887,
+   "ele": 141
+  },
+  "1757353981": {
+   "lat": 37.303172,
+   "lon": -78.4675053,
+   "ele": 139.4
+  },
+  "1757353982": {
+   "lat": 37.3006175,
+   "lon": -78.550396,
+   "ele": 171.2
+  },
+  "1757353983": {
+   "lat": 37.3040381,
+   "lon": -78.5137776,
+   "ele": 157.1
+  },
+  "1757353984": {
+   "lat": 37.3062414,
+   "lon": -78.5044306,
+   "ele": 151
+  },
+  "1757353985": {
+   "lat": 37.3068119,
+   "lon": -78.4834062,
+   "ele": 147.9
+  },
+  "1757353986": {
+   "lat": 37.3032464,
+   "lon": -78.5223359,
+   "ele": 161.6
+  },
+  "1757353987": {
+   "lat": 37.3058808,
+   "lon": -78.500249,
+   "ele": 151.5
+  },
+  "1757353988": {
+   "lat": 37.3024589,
+   "lon": -78.5306934,
+   "ele": 167.2
+  },
+  "1757353990": {
+   "lat": 37.3056225,
+   "lon": -78.4983578,
+   "ele": 152.7
+  },
+  "1757353991": {
+   "lat": 37.303261,
+   "lon": -78.5221407,
+   "ele": 162.1
+  },
+  "1757353993": {
+   "lat": 37.3030787,
+   "lon": -78.5607178,
+   "ele": 176.1
+  },
+  "1757353994": {
+   "lat": 37.3028071,
+   "lon": -78.5629172,
+   "ele": 176.3
+  },
+  "1757353996": {
+   "lat": 37.3044021,
+   "lon": -78.5101597,
+   "ele": 155.2
+  },
+  "1757353997": {
+   "lat": 37.3058691,
+   "lon": -78.5058699,
+   "ele": 151.5
+  },
+  "1757354000": {
+   "lat": 37.3063246,
+   "lon": -78.5036592,
+   "ele": 151
+  },
+  "1757354001": {
+   "lat": 37.3056056,
+   "lon": -78.4977731,
+   "ele": 152.9
+  },
+  "1757354002": {
+   "lat": 37.3061872,
+   "lon": -78.5015861,
+   "ele": 150.8
+  },
+  "1757354003": {
+   "lat": 37.3030217,
+   "lon": -78.5617655,
+   "ele": 176
+  },
+  "1757354004": {
+   "lat": 37.3034654,
+   "lon": -78.4658316,
+   "ele": 138
+  },
+  "1757354005": {
+   "lat": 37.3035439,
+   "lon": -78.4617224,
+   "ele": 136.5
+  },
+  "1757354006": {
+   "lat": 37.3030466,
+   "lon": -78.5602276,
+   "ele": 176
+  },
+  "1757354007": {
+   "lat": 37.3065478,
+   "lon": -78.4870991,
+   "ele": 149.6
+  },
+  "1757354009": {
+   "lat": 37.3031221,
+   "lon": -78.5235684,
+   "ele": 162.4
+  },
+  "1757354010": {
+   "lat": 37.3030444,
+   "lon": -78.4747639,
+   "ele": 143.4
+  },
+  "1757354011": {
+   "lat": 37.3023253,
+   "lon": -78.4717935,
+   "ele": 142.1
+  },
+  "1757354012": {
+   "lat": 37.3043448,
+   "lon": -78.5105294,
+   "ele": 155.5
+  },
+  "1757354013": {
+   "lat": 37.3056995,
+   "lon": -78.4991921,
+   "ele": 152.1
+  },
+  "1757354015": {
+   "lat": 37.3034854,
+   "lon": -78.4623651,
+   "ele": 136.9
+  },
+  "1757354017": {
+   "lat": 37.3064555,
+   "lon": -78.488562,
+   "ele": 150.5
+  },
+  "1757354019": {
+   "lat": 37.3023406,
+   "lon": -78.4709333,
+   "ele": 141.6
+  },
+  "1757354020": {
+   "lat": 37.3024388,
+   "lon": -78.4700266,
+   "ele": 141.2
+  },
+  "1757354021": {
+   "lat": 37.305995,
+   "lon": -78.4929802,
+   "ele": 153.4
+  },
+  "1757354024": {
+   "lat": 37.3007766,
+   "lon": -78.5533192,
+   "ele": 173.2
+  },
+  "1757354025": {
+   "lat": 37.3026226,
+   "lon": -78.5582104,
+   "ele": 175.4
+  },
+  "1757354026": {
+   "lat": 37.3068298,
+   "lon": -78.4837915,
+   "ele": 148
+  },
+  "1757354027": {
+   "lat": 37.3056589,
+   "lon": -78.4965445,
+   "ele": 153.3
+  },
+  "1757354028": {
+   "lat": 37.3062792,
+   "lon": -78.5021298,
+   "ele": 150.7
+  },
+  "1757354029": {
+   "lat": 37.3064964,
+   "lon": -78.4883604,
+   "ele": 149.9
+  },
+  "1757354030": {
+   "lat": 37.3006216,
+   "lon": -78.5521228,
+   "ele": 172.4
+  },
+  "1757354031": {
+   "lat": 37.303508,
+   "lon": -78.4756077,
+   "ele": 143.6
+  },
+  "1757354032": {
+   "lat": 37.3068154,
+   "lon": -78.4841878,
+   "ele": 148.2
+  },
+  "1757354033": {
+   "lat": 37.3065085,
+   "lon": -78.481556,
+   "ele": 146.9
+  },
+  "1757354034": {
+   "lat": 37.3061589,
+   "lon": -78.5048906,
+   "ele": 151.1
+  },
+  "1757354035": {
+   "lat": 37.3005965,
+   "lon": -78.5516179,
+   "ele": 172.1
+  },
+  "1757354036": {
+   "lat": 37.3066935,
+   "lon": -78.4823811,
+   "ele": 147.4
+  },
+  "1757354037": {
+   "lat": 37.3040446,
+   "lon": -78.5136526,
+   "ele": 157.1
+  },
+  "1757354038": {
+   "lat": 37.3015575,
+   "lon": -78.5559127,
+   "ele": 174.7
+  },
+  "1757354039": {
+   "lat": 37.3034039,
+   "lon": -78.4664523,
+   "ele": 138.4
+  },
+  "1757354041": {
+   "lat": 37.305448,
+   "lon": -78.4792206,
+   "ele": 144.8
+  },
+  "1757354042": {
+   "lat": 37.3065739,
+   "lon": -78.4874231,
+   "ele": 149.9
+  },
+  "1757354043": {
+   "lat": 37.30453,
+   "lon": -78.5095708,
+   "ele": 154.8
+  },
+  "1757354045": {
+   "lat": 37.3008073,
+   "lon": -78.5482792,
+   "ele": 170
+  },
+  "1757354046": {
+   "lat": 37.3010575,
+   "lon": -78.5456877,
+   "ele": 168.5
+  },
+  "1757354047": {
+   "lat": 37.3016951,
+   "lon": -78.5562,
+   "ele": 174.9
+  },
+  "1757354048": {
+   "lat": 37.3028681,
+   "lon": -78.5263449,
+   "ele": 164.1
+  },
+  "1757358338": {
+   "lat": 37.3047839,
+   "lon": -78.4508431,
+   "ele": 129.2
+  },
+  "1757358342": {
+   "lat": 37.3074877,
+   "lon": -78.4414922,
+   "ele": 123.5
+  },
+  "1757358344": {
+   "lat": 37.312416,
+   "lon": -78.4240708,
+   "ele": 112.3
+  },
+  "1757358347": {
+   "lat": 37.3116547,
+   "lon": -78.4286131,
+   "ele": 115.6
+  },
+  "1757358348": {
+   "lat": 37.3120715,
+   "lon": -78.4270015,
+   "ele": 114.3
+  },
+  "1757358350": {
+   "lat": 37.3039918,
+   "lon": -78.4576849,
+   "ele": 133.5
+  },
+  "1757358351": {
+   "lat": 37.3119144,
+   "lon": -78.4276698,
+   "ele": 114.8
+  },
+  "1757358353": {
+   "lat": 37.3123492,
+   "lon": -78.4219642,
+   "ele": 111
+  },
+  "1757358355": {
+   "lat": 37.3122264,
+   "lon": -78.4261597,
+   "ele": 113.8
+  },
+  "1757358358": {
+   "lat": 37.3123742,
+   "lon": -78.4248544,
+   "ele": 112.9
+  },
+  "1757358360": {
+   "lat": 37.3097614,
+   "lon": -78.4344707,
+   "ele": 119.1
+  },
+  "1757371711": {
+   "lat": 37.3077229,
+   "lon": -78.3859863,
+   "ele": 96.9
+  },
+  "1757371714": {
+   "lat": 37.3052461,
+   "lon": -78.4031973,
+   "ele": 102
+  },
+  "1757371717": {
+   "lat": 37.3077162,
+   "lon": -78.4110195,
+   "ele": 103.3
+  },
+  "1757371719": {
+   "lat": 37.3046068,
+   "lon": -78.3906629,
+   "ele": 96.3
+  },
+  "1757371720": {
+   "lat": 37.3062143,
+   "lon": -78.4083259,
+   "ele": 101.2
+  },
+  "1757371722": {
+   "lat": 37.3041472,
+   "lon": -78.393063,
+   "ele": 97.1
+  },
+  "1757371725": {
+   "lat": 37.3043507,
+   "lon": -78.3914547,
+   "ele": 96.8
+  },
+  "1757371729": {
+   "lat": 37.3113892,
+   "lon": -78.4179423,
+   "ele": 108.9
+  },
+  "1757371734": {
+   "lat": 37.3044619,
+   "lon": -78.3910898,
+   "ele": 96.9
+  },
+  "1757371735": {
+   "lat": 37.3041534,
+   "lon": -78.3928143,
+   "ele": 96.9
+  },
+  "1757371737": {
+   "lat": 37.3045958,
+   "lon": -78.3909752,
+   "ele": 96.5
+  },
+  "1757371741": {
+   "lat": 37.3057678,
+   "lon": -78.4070426,
+   "ele": 100.9
+  },
+  "1757371746": {
+   "lat": 37.3058792,
+   "lon": -78.4074587,
+   "ele": 100.9
+  },
+  "1757371748": {
+   "lat": 37.3059921,
+   "lon": -78.4078421,
+   "ele": 100.9
+  },
+  "1757371754": {
+   "lat": 37.3044294,
+   "lon": -78.3962019,
+   "ele": 98.8
+  },
+  "1757377173": {
+   "lat": 37.3132822,
+   "lon": -78.3716762,
+   "ele": 102.3
+  },
+  "1757377174": {
+   "lat": 37.3166963,
+   "lon": -78.3606834,
+   "ele": 105.7
+  },
+  "1757377175": {
+   "lat": 37.3083962,
+   "lon": -78.3846196,
+   "ele": 97.1
+  },
+  "1757377176": {
+   "lat": 37.3189363,
+   "lon": -78.3570801,
+   "ele": 106.3
+  },
+  "1757377177": {
+   "lat": 37.3116176,
+   "lon": -78.372898,
+   "ele": 101.4
+  },
+  "1757377178": {
+   "lat": 37.3228244,
+   "lon": -78.3533719,
+   "ele": 108.2
+  },
+  "1757377179": {
+   "lat": 37.3169154,
+   "lon": -78.3599851,
+   "ele": 106
+  },
+  "1757377180": {
+   "lat": 37.3174391,
+   "lon": -78.3276552,
+   "ele": 115.1
+  },
+  "1757377181": {
+   "lat": 37.3169961,
+   "lon": -78.3270037,
+   "ele": 115.2
+  },
+  "1757377182": {
+   "lat": 37.3121406,
+   "lon": -78.3724824,
+   "ele": 101.7
+  },
+  "1757377183": {
+   "lat": 37.31483,
+   "lon": -78.3695024,
+   "ele": 102.5
+  },
+  "1757377184": {
+   "lat": 37.3126975,
+   "lon": -78.3721038,
+   "ele": 102
+  },
+  "1757377185": {
+   "lat": 37.3143412,
+   "lon": -78.3703988,
+   "ele": 102.6
+  },
+  "1757377186": {
+   "lat": 37.321406,
+   "lon": -78.3336605,
+   "ele": 113.4
+  },
+  "1757377187": {
+   "lat": 37.315714,
+   "lon": -78.3250516,
+   "ele": 115.9
+  },
+  "1757377188": {
+   "lat": 37.3156737,
+   "lon": -78.3670813,
+   "ele": 103.5
+  },
+  "1757377189": {
+   "lat": 37.3255146,
+   "lon": -78.3457645,
+   "ele": 109.9
+  },
+  "1757377190": {
+   "lat": 37.3252617,
+   "lon": -78.3414462,
+   "ele": 111.1
+  },
+  "1757377191": {
+   "lat": 37.325486,
+   "lon": -78.3430984,
+   "ele": 110.8
+  },
+  "1757377192": {
+   "lat": 37.3177518,
+   "lon": -78.3582614,
+   "ele": 106.2
+  },
+  "1757377194": {
+   "lat": 37.3164414,
+   "lon": -78.3261537,
+   "ele": 115.5
+  },
+  "1757377195": {
+   "lat": 37.3163326,
+   "lon": -78.3628068,
+   "ele": 104.7
+  },
+  "1757377196": {
+   "lat": 37.3220215,
+   "lon": -78.3543896,
+   "ele": 107.5
+  },
+  "1757377197": {
+   "lat": 37.3106024,
+   "lon": -78.3741136,
+   "ele": 100.8
+  },
+  "1757377198": {
+   "lat": 37.3242195,
+   "lon": -78.3381774,
+   "ele": 112.2
+  },
+  "1757377199": {
+   "lat": 37.3097879,
+   "lon": -78.3760055,
+   "ele": 100.2
+  },
+  "1757377200": {
+   "lat": 37.3241642,
+   "lon": -78.3510844,
+   "ele": 108.9
+  },
+  "1757377201": {
+   "lat": 37.3248409,
+   "lon": -78.3398473,
+   "ele": 111.3
+  },
+  "1757377202": {
+   "lat": 37.313991,
+   "lon": -78.3709084,
+   "ele": 102.6
+  },
+  "1757377203": {
+   "lat": 37.3151602,
+   "lon": -78.324258,
+   "ele": 116.3
+  },
+  "1757377204": {
+   "lat": 37.3096679,
+   "lon": -78.3765417,
+   "ele": 100
+  },
+  "1757377205": {
+   "lat": 37.3251783,
+   "lon": -78.3480707,
+   "ele": 109.8
+  },
+  "1757377206": {
+   "lat": 37.3230143,
+   "lon": -78.3360556,
+   "ele": 112.6
+  },
+  "1757377207": {
+   "lat": 37.324787,
+   "lon": -78.3495415,
+   "ele": 109.2
+  },
+  "1757377208": {
+   "lat": 37.3233611,
+   "lon": -78.352559,
+   "ele": 108.6
+  },
+  "1757377209": {
+   "lat": 37.3205453,
+   "lon": -78.3557809,
+   "ele": 106.5
+  },
+  "1757377210": {
+   "lat": 37.3095808,
+   "lon": -78.3770129,
+   "ele": 99.9
+  },
+  "1757377211": {
+   "lat": 37.3255439,
+   "lon": -78.3441398,
+   "ele": 110.3
+  },
+  "1757377212": {
+   "lat": 37.3087104,
+   "lon": -78.3834926,
+   "ele": 97.6
+  },
+  "1757377213": {
+   "lat": 37.3178164,
+   "lon": -78.3282555,
+   "ele": 114.8
+  },
+  "1801102530": {
+   "lat": 37.2729193,
+   "lon": -78.2947095,
+   "ele": 134.2
+  },
+  "1801102531": {
+   "lat": 37.268931,
+   "lon": -78.2939354,
+   "ele": 135.7
+  },
+  "1801102532": {
+   "lat": 37.2700523,
+   "lon": -78.2945309,
+   "ele": 135.5
+  },
+  "1801102533": {
+   "lat": 37.2706856,
+   "lon": -78.2947363,
+   "ele": 135
+  },
+  "1801102534": {
+   "lat": 37.2716533,
+   "lon": -78.2948111,
+   "ele": 134.6
+  },
+  "1801102535": {
+   "lat": 37.2685074,
+   "lon": -78.2935909,
+   "ele": 135.7
+  },
+  "1801169338": {
+   "lat": 37.3239477,
+   "lon": -78.3375888,
+   "ele": 112.4
+  },
+  "1809523505": {
+   "lat": 37.2606761,
+   "lon": -78.664027,
+   "ele": 213.2
+  },
+  "1839818453": {
+   "lat": 37.2748594,
+   "lon": -78.2951802,
+   "ele": 133.6
+  },
+  "1985256741": {
+   "lat": 37.304596,
+   "lon": -78.3908854,
+   "ele": 96.6
+  },
+  "2011740591": {
+   "lat": 37.3041514,
+   "lon": -78.3932076,
+   "ele": 97.2
+  },
+  "2147389297": {
+   "lat": 37.2864362,
+   "lon": -78.3020205,
+   "ele": 129.1
+  },
+  "2147389298": {
+   "lat": 37.2854442,
+   "lon": -78.3012159,
+   "ele": 129.6
+  },
+  "2147389306": {
+   "lat": 37.2879672,
+   "lon": -78.3046864,
+   "ele": 128.4
+  },
+  "2147389309": {
+   "lat": 37.2872617,
+   "lon": -78.3031064,
+   "ele": 129.2
+  },
+  "2149856203": {
+   "lat": 37.2247569,
+   "lon": -78.2416115,
+   "ele": 159.1
+  },
+  "2184403249": {
+   "lat": 37.3055175,
+   "lon": -78.4052961,
+   "ele": 101.3
+  },
+  "2769996497": {
+   "lat": 37.3111841,
+   "lon": -78.4174518,
+   "ele": 108.4
+  },
+  "2770069996": {
+   "lat": 37.3046441,
+   "lon": -78.3980542,
+   "ele": 99.9
+  },
+  "2770069997": {
+   "lat": 37.3044042,
+   "lon": -78.3959635,
+   "ele": 98.3
+  },
+  "3708517504": {
+   "lat": 37.3043373,
+   "lon": -78.3951752,
+   "ele": 97.9
+  },
+  "5496396799": {
+   "lat": 37.3186472,
+   "lon": -78.3573207,
+   "ele": 106.4
+  },
+  "5812001079": {
+   "lat": 37.2281203,
+   "lon": -78.2685529,
+   "ele": 151.4
+  },
+  "7026739498": {
+   "lat": 37.306752,
+   "lon": -78.3133025,
+   "ele": 119.8
+  },
+  "7026739501": {
+   "lat": 37.3087346,
+   "lon": -78.3147618,
+   "ele": 119.5
+  },
+  "7026739503": {
+   "lat": 37.3216225,
+   "lon": -78.3548209,
+   "ele": 107.2
+  },
+  "7026739504": {
+   "lat": 37.3231062,
+   "lon": -78.352967,
+   "ele": 108.5
+  },
+  "7026739505": {
+   "lat": 37.3235626,
+   "lon": -78.3522338,
+   "ele": 108.8
+  },
+  "7026739506": {
+   "lat": 37.3254235,
+   "lon": -78.3466956,
+   "ele": 109.9
+  },
+  "7026739507": {
+   "lat": 37.3255321,
+   "lon": -78.3436145,
+   "ele": 110.5
+  },
+  "8179960975": {
+   "lat": 37.3066171,
+   "lon": -78.3132489,
+   "ele": 119.9
+  },
+  "8981918417": {
+   "lat": 37.3045928,
+   "lon": -78.3907997,
+   "ele": 96.3
+  },
+  "8981918419": {
+   "lat": 37.3047382,
+   "lon": -78.390289,
+   "ele": 96.5
+  },
+  "8981918420": {
+   "lat": 37.3052539,
+   "lon": -78.3893676,
+   "ele": 96.6
+  },
+  "8981918421": {
+   "lat": 37.3045798,
+   "lon": -78.3909985,
+   "ele": 96.6
+  },
+  "8981918422": {
+   "lat": 37.3044428,
+   "lon": -78.3911187,
+   "ele": 96.9
+  },
+  "10559799378": {
+   "lat": 37.3240342,
+   "lon": -78.3377762,
+   "ele": 112.4
+  },
+  "10559799401": {
+   "lat": 37.3234601,
+   "lon": -78.3367328,
+   "ele": 112.7
+  },
+  "10722082312": {
+   "lat": 37.2607796,
+   "lon": -78.6636173,
+   "ele": 213.2
+  },
+  "11348908794": {
+   "lat": 37.2700846,
+   "lon": -78.2945414,
+   "ele": 135.5
+  },
+  "11348908795": {
+   "lat": 37.2700236,
+   "lon": -78.2945221,
+   "ele": 135.4
+  },
+  "11348908803": {
+   "lat": 37.2697756,
+   "lon": -78.2944233,
+   "ele": 135.3
+  },
+  "11348908804": {
+   "lat": 37.2695487,
+   "lon": -78.294315,
+   "ele": 135.4
+  },
+  "11348908805": {
+   "lat": 37.2238089,
+   "lon": -78.2405243,
+   "ele": 159.9
+  },
+  "11348908836": {
+   "lat": 37.2273626,
+   "lon": -78.2592143,
+   "ele": 154.3
+  },
+  "11348908842": {
+   "lat": 37.267337,
+   "lon": -78.6477453,
+   "ele": 218
+  },
+  "11348908843": {
+   "lat": 37.2673773,
+   "lon": -78.6476645,
+   "ele": 218
+  },
+  "11348908844": {
+   "lat": 37.302871,
+   "lon": -78.5589052,
+   "ele": 174.9
+  },
+  "11348908849": {
+   "lat": 37.3044392,
+   "lon": -78.3962903,
+   "ele": 98.7
+  },
+  "11348908850": {
+   "lat": 37.3044206,
+   "lon": -78.3961227,
+   "ele": 98.7
+  },
+  "11348908851": {
+   "lat": 37.3043416,
+   "lon": -78.395243,
+   "ele": 98
+  },
+  "11348908852": {
+   "lat": 37.3043337,
+   "lon": -78.395118,
+   "ele": 97.9
+  },
+  "11348908853": {
+   "lat": 37.3089179,
+   "lon": -78.3820648,
+   "ele": 98.1
+  },
+  "12174144900": {
+   "lat": 37.2273211,
+   "lon": -78.2594363,
+   "ele": 154
+  },
+  "12174197303": {
+   "lat": 37.2238497,
+   "lon": -78.2405616,
+   "ele": 159.8
+  },
+  "12174197306": {
+   "lat": 37.3015869,
+   "lon": -78.3115177,
+   "ele": 122.4
+  },
+  "12174197307": {
+   "lat": 37.2273701,
+   "lon": -78.2591707,
+   "ele": 154.3
+  },
+  "12174197320": {
+   "lat": 37.301915,
+   "lon": -78.31163,
+   "ele": 122.3
+  },
+  "12174197324": {
+   "lat": 37.2868371,
+   "lon": -78.302482,
+   "ele": 129.3
+  },
+  "12174197325": {
+   "lat": 37.2870663,
+   "lon": -78.3028054,
+   "ele": 129.3
+  },
+  "12175865942": {
+   "lat": 37.2607222,
+   "lon": -78.6638473,
+   "ele": 213.2
+  },
+  "12175865943": {
+   "lat": 37.260762,
+   "lon": -78.6636885,
+   "ele": 213.2
+  },
+  "12175930596": {
+   "lat": 37.2840092,
+   "lon": -78.6171177,
+   "ele": 211.4
+  },
+  "12175930597": {
+   "lat": 37.2839751,
+   "lon": -78.617178,
+   "ele": 211.4
+  },
+  "12175930598": {
+   "lat": 37.2841058,
+   "lon": -78.6169476,
+   "ele": 211.7
+  },
+  "12175930599": {
+   "lat": 37.2838863,
+   "lon": -78.617336,
+   "ele": 211.6
+  },
+  "12175962717": {
+   "lat": 37.2840837,
+   "lon": -78.6169866,
+   "ele": 211.7
+  },
+  "12175962718": {
+   "lat": 37.297029,
+   "lon": -78.5782557,
+   "ele": 186.5
+  },
+  "12175962719": {
+   "lat": 37.2970596,
+   "lon": -78.5781272,
+   "ele": 186.8
+  },
+  "12175962736": {
+   "lat": 37.3029237,
+   "lon": -78.5592032,
+   "ele": 175.5
+  },
+  "12175962758": {
+   "lat": 37.3021007,
+   "lon": -78.5570598,
+   "ele": 175.3
+  },
+  "12175962763": {
+   "lat": 37.3020383,
+   "lon": -78.5569245,
+   "ele": 175.2
+  },
+  "12175994678": {
+   "lat": 37.3024482,
+   "lon": -78.5308815,
+   "ele": 167.1
+  },
+  "12175994679": {
+   "lat": 37.3024585,
+   "lon": -78.5307393,
+   "ele": 167.1
+  },
+  "12175994680": {
+   "lat": 37.3024655,
+   "lon": -78.5306478,
+   "ele": 167.2
+  },
+  "12175994681": {
+   "lat": 37.3032398,
+   "lon": -78.522401,
+   "ele": 161.6
+  },
+  "12175994682": {
+   "lat": 37.3032575,
+   "lon": -78.5221869,
+   "ele": 162.1
+  },
+  "12175994683": {
+   "lat": 37.3032647,
+   "lon": -78.5220929,
+   "ele": 162.1
+  },
+  "12175994684": {
+   "lat": 37.3064364,
+   "lon": -78.4886995,
+   "ele": 150.8
+  },
+  "12175994697": {
+   "lat": 37.3064993,
+   "lon": -78.4883249,
+   "ele": 150
+  },
+  "12176007093": {
+   "lat": 37.2699678,
+   "lon": -78.2945034,
+   "ele": 135.4
+  },
+  "12176007094": {
+   "lat": 37.2701493,
+   "lon": -78.2945624,
+   "ele": 135.4
+  },
+  "12176008669": {
+   "lat": 37.3043917,
+   "lon": -78.3913104,
+   "ele": 96.8
+  },
+  "12176008672": {
+   "lat": 37.3046348,
+   "lon": -78.3905832,
+   "ele": 96.7
+  },
+  "12176008673": {
+   "lat": 37.3238113,
+   "lon": -78.3373205,
+   "ele": 112.5
+  },
+  "12176008674": {
+   "lat": 37.323634,
+   "lon": -78.3370049,
+   "ele": 112.7
+  },
+  "12176008675": {
+   "lat": 37.3237006,
+   "lon": -78.3371117,
+   "ele": 112.9
+  },
+  "12176008676": {
+   "lat": 37.3237563,
+   "lon": -78.3372124,
+   "ele": 112.7
+  },
+  "12176008692": {
+   "lat": 37.2869371,
+   "lon": -78.3026162,
+   "ele": 129.5
+  },
+  "12176008693": {
+   "lat": 37.2869784,
+   "lon": -78.3026713,
+   "ele": 129.5
+  },
+  "12767801646": {
+   "lat": 37.259102,
+   "lon": -78.6709565,
+   "ele": 211.5
+  },
+  "12767801647": {
+   "lat": 37.2590562,
+   "lon": -78.6722615,
+   "ele": 211.4
+  },
+  "12767801652": {
+   "lat": 37.2591308,
+   "lon": -78.6735899,
+   "ele": 211.4
+  },
+  "12767801661": {
+   "lat": 37.261797,
+   "lon": -78.6798971,
+   "ele": 211.2
+  },
+  "12769378149": {
+   "lat": 37.2265721,
+   "lon": -78.2644204,
+   "ele": 152.4
+  },
+  "12769378150": {
+   "lat": 37.2260421,
+   "lon": -78.2436301,
+   "ele": 158.3
+  },
+  "12769378151": {
+   "lat": 37.225546,
+   "lon": -78.2427356,
+   "ele": 158.7
+  },
+  "12946966967": {
+   "lat": 37.3041481,
+   "lon": -78.3930254,
+   "ele": 97.2
+  },
+  "13418636484": {
+   "lat": 37.3064128,
+   "lon": -78.3131688,
+   "ele": 120.1
+  },
+  "13418672310": {
+   "lat": 37.3085582,
+   "lon": -78.3145703,
+   "ele": 119.4
+  },
+  "13418672325": {
+   "lat": 37.3078912,
+   "lon": -78.3139598,
+   "ele": 119.6
+  },
+  "13418672342": {
+   "lat": 37.3147802,
+   "lon": -78.3236939,
+   "ele": 116.9
+  },
+  "13418672364": {
+   "lat": 37.2869597,
+   "lon": -78.3026464,
+   "ele": 129.6
+  },
+  "13418672378": {
+   "lat": 37.3031332,
+   "lon": -78.3120478,
+   "ele": 121.6
+  },
+  "13418672387": {
+   "lat": 37.3031881,
+   "lon": -78.3120664,
+   "ele": 121.6
+  },
+  "13418769013": {
+   "lat": 37.2673516,
+   "lon": -78.647716,
+   "ele": 218
+  },
+  "13418769017": {
+   "lat": 37.2970456,
+   "lon": -78.578186,
+   "ele": 186.7
+  },
+  "13418769018": {
+   "lat": 37.3027273,
+   "lon": -78.5584801,
+   "ele": 175.2
+  },
+  "13418769021": {
+   "lat": 37.3028873,
+   "lon": -78.5590002,
+   "ele": 175
+  },
+  "13418769022": {
+   "lat": 37.3122049,
+   "lon": -78.4208439,
+   "ele": 110.6
+  },
+  "13418769043": {
+   "lat": 37.3061237,
+   "lon": -78.3881678,
+   "ele": 96.8
+  },
+  "13418769044": {
+   "lat": 37.2737225,
+   "lon": -78.2947663,
+   "ele": 134
+  },
+  "13418769045": {
+   "lat": 37.2512022,
+   "lon": -78.2748155,
+   "ele": 143.6
+  },
+  "13418769046": {
+   "lat": 37.2449373,
+   "lon": -78.2713604,
+   "ele": 146.1
+  },
+  "13418769047": {
+   "lat": 37.2430547,
+   "lon": -78.2707697,
+   "ele": 146.8
+  },
+  "13418769048": {
+   "lat": 37.2399277,
+   "lon": -78.2703969,
+   "ele": 147.6
+  },
+  "13418769049": {
+   "lat": 37.2354831,
+   "lon": -78.2701811,
+   "ele": 148.8
+  },
+  "13418769060": {
+   "lat": 37.2291215,
+   "lon": -78.2693869,
+   "ele": 151.5
+  },
+  "13418769061": {
+   "lat": 37.2286736,
+   "lon": -78.2690719,
+   "ele": 151.5
+  },
+  "13418769062": {
+   "lat": 37.2275823,
+   "lon": -78.2678561,
+   "ele": 151.5
+  },
+  "13421788418": {
+   "lat": 37.2323663,
+   "lon": -78.270027,
+   "ele": 150.1
+  },
+  "13427004628": {
+   "lat": 37.3013497,
+   "lon": -78.5554265,
+   "ele": 174.4
+  },
+  "13427004629": {
+   "lat": 37.300864,
+   "lon": -78.553789,
+   "ele": 173.4
+  },
+  "13427336993": {
+   "lat": 37.2599952,
+   "lon": -78.6769607,
+   "ele": 210.9
+  },
+  "13677720007": {
+   "lat": 37.3045194,
+   "lon": -78.3969702,
+   "ele": 99
+  }
+ }
+}

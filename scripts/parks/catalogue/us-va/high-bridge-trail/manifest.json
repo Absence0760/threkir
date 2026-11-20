@@ -1,0 +1,560 @@
+{
+  "park": {
+    "slug": "high-bridge-trail",
+    "name": "High Bridge Trail State Park",
+    "kind": "park",
+    "agency": "state",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.dcr.virginia.gov/state-parks/high-bridge-trail",
+    "osm_boundary": "relation/20029796"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs and lots, the Farmville closure from Main Street to Osborne Road (the half and the marathon run through it), daily parking fees, and a Special Use Permit for group events."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-20",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "high-bridge-station-10k",
+      "name": "High Bridge Station, 10 km",
+      "race_distance": "10k",
+      "course_shape": "out_and_back",
+      "distance_m": 10000,
+      "start_finish": {
+        "lat": 37.306752,
+        "lng": -78.313302
+      },
+      "turn_at_m": 5000,
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20413889,way/164024869,way/168547797,way/1315450300,way/1315450301",
+      "source_checked_at": "2026-11-20",
+      "geojson": "high-bridge-station-10k.geojson",
+      "elevation_m": 13,
+      "checkpoints": [
+        {
+          "lat": 37.316932,
+          "lng": -78.326905
+        },
+        {
+          "lat": 37.32538,
+          "lng": -78.342208
+        },
+        {
+          "lat": 37.318518,
+          "lng": -78.357442
+        }
+      ],
+      "waypoint_count": 79,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at High Bridge Station on Camp Paradise Road in Rice; restrooms are there. Walk to the trail beside the lot, then run west across the High Bridge.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 501
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1667,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5000,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8758
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "river-road-to-prospect-half",
+      "name": "River Road to Prospect, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "point_to_point",
+      "distance_m": 21097.5,
+      "start": {
+        "lat": 37.323416,
+        "lng": -78.336665
+      },
+      "finish": {
+        "lat": 37.302326,
+        "lng": -78.557506
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/164073280,way/164076332,way/164076340,way/164078570,way/164078573,way/164078574,way/164078575,way/164078578,way/168547797,way/970538169,way/970538170,way/1221364554,way/1223501049,way/1223501050,way/1223501054,way/1223501055,way/1223501056,way/1223501057,way/1315447974,way/1315447975,way/1315447976,way/1315447977,way/1315450299,way/1315450300,way/1315450301",
+      "source_checked_at": "2026-11-20",
+      "geojson": "river-road-to-prospect-half.geojson",
+      "elevation_m": 80,
+      "checkpoints": [
+        {
+          "lat": 37.315948,
+          "lng": -78.365653
+        },
+        {
+          "lat": 37.304281,
+          "lng": -78.394634
+        },
+        {
+          "lat": 37.312215,
+          "lng": -78.426222
+        },
+        {
+          "lat": 37.303904,
+          "lng": -78.458475
+        },
+        {
+          "lat": 37.306212,
+          "lng": -78.490736
+        },
+        {
+          "lat": 37.303074,
+          "lng": -78.524092
+        }
+      ],
+      "waypoint_count": 180,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the River Road lot. Cross River Road on the trail and walk about 50 m east to the start line. The finish is beside the Prospect lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3014,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 5206
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 5796
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6028,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6992
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8590
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9042,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12056,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15070,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18084,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "finish",
+            "at_m": 21098
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "orchard-road-to-elam-marathon",
+      "name": "Orchard Road to Elam, marathon distance",
+      "race_distance": "marathon",
+      "course_shape": "point_to_point",
+      "distance_m": 42195,
+      "start": {
+        "lat": 37.22448,
+        "lng": -78.241275
+      },
+      "finish": {
+        "lat": 37.284913,
+        "lng": -78.615523
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/20413889,way/164024869,way/164073280,way/164076332,way/164076340,way/164078570,way/164078573,way/164078574,way/164078575,way/164078578,way/168547797,way/168927569,way/168927570,way/970538169,way/970538170,way/1221364554,way/1223501030,way/1223501031,way/1223501042,way/1223501043,way/1223501047,way/1223501048,way/1223501049,way/1223501050,way/1223501054,way/1223501055,way/1223501056,way/1223501057,way/1315444729,way/1315444730,way/1315447974,way/1315447975,way/1315447976,way/1315447977,way/1315450299,way/1315450300,way/1315450301,way/1315450304,way/1315450305",
+      "source_checked_at": "2026-11-20",
+      "geojson": "orchard-road-to-elam-marathon.geojson",
+      "elevation_m": 119,
+      "checkpoints": [
+        {
+          "lat": 37.233732,
+          "lng": -78.270082
+        },
+        {
+          "lat": 37.25961,
+          "lng": -78.283807
+        },
+        {
+          "lat": 37.284655,
+          "lng": -78.300758
+        },
+        {
+          "lat": 37.309246,
+          "lng": -78.315443
+        },
+        {
+          "lat": 37.325546,
+          "lng": -78.345059
+        },
+        {
+          "lat": 37.310434,
+          "lng": -78.374414
+        },
+        {
+          "lat": 37.306332,
+          "lng": -78.408558
+        },
+        {
+          "lat": 37.307352,
+          "lng": -78.441915
+        },
+        {
+          "lat": 37.304265,
+          "lng": -78.477063
+        },
+        {
+          "lat": 37.304186,
+          "lng": -78.512195
+        },
+        {
+          "lat": 37.300775,
+          "lng": -78.548639
+        },
+        {
+          "lat": 37.295995,
+          "lng": -78.582474
+        }
+      ],
+      "waypoint_count": 323,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Orchard Road lot near Burkeville. Cross Orchard Road on the trail and walk about 100 m west to the start line. The finish is a short walk east of the Elam lot.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3246,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6492,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8441
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9737,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12983,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13143
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16229,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19475,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20639
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 21230
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22426
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22720,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24024
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25966,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29212,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32458,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35703,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38949,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pamplin-50k",
+      "name": "Pamplin, 50 km",
+      "race_distance": "50k",
+      "course_shape": "out_and_back",
+      "distance_m": 50000,
+      "start_finish": {
+        "lat": 37.261407,
+        "lng": -78.679415
+      },
+      "turn_at_m": 25000,
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/164073280,way/164076332,way/164076340,way/169790104,way/1223501046,way/1223501047,way/1223501048,way/1223501049,way/1223501050,way/1315439286,way/1315439287,way/1315444722,way/1315444723,way/1315444729,way/1315444730,way/1315447974,way/1315447975,way/1315447976,way/1315447977",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pamplin-50k.geojson",
+      "elevation_m": 122,
+      "checkpoints": [
+        {
+          "lat": 37.264494,
+          "lng": -78.653331
+        },
+        {
+          "lat": 37.276973,
+          "lng": -78.629837
+        },
+        {
+          "lat": 37.28982,
+          "lng": -78.606647
+        },
+        {
+          "lat": 37.296548,
+          "lng": -78.580199
+        },
+        {
+          "lat": 37.301078,
+          "lng": -78.554607
+        },
+        {
+          "lat": 37.302846,
+          "lng": -78.526581
+        },
+        {
+          "lat": 37.305682,
+          "lng": -78.499004
+        },
+        {
+          "lat": 37.302372,
+          "lng": -78.472338
+        },
+        {
+          "lat": 37.306429,
+          "lng": -78.444771
+        },
+        {
+          "lat": 37.311444,
+          "lng": -78.418097
+        }
+      ],
+      "waypoint_count": 307,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Pamplin lot on Pamplin Road. Walk about 60 m east along the trail to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "High Bridge Trail"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 1,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5000,
+            "order": 2,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7500,
+            "order": 3,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10000,
+            "order": 4,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12500,
+            "order": 5,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15000,
+            "order": 6,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17500,
+            "order": 7,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20000,
+            "order": 8,
+            "of": 10
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22500,
+            "order": 9,
+            "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24687
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25000,
+            "order": 10,
+            "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 25285
+          },
+          {
+            "kind": "finish",
+            "at_m": 50000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

@@ -1780,8 +1780,9 @@ void main() {
   // the bar, while the centre button rises 28dp into the page; a long
   // extended label reached across the middle into it (issue #1300 § 4).
   group('page FABs clear the docked centre button', () {
+    // Runs is not here: its past-run add waits in the hub's ⋮, so it has no
+    // page FAB.
     const pages = <(String, String)>[
-      ('Fitness', 'Runs'),
       ('Fitness', 'Gym'),
       ('Social', 'Clubs'),
       ('Social', 'Challenges'),
@@ -1890,9 +1891,9 @@ void main() {
           of: find.byType(NavigationRail), matching: find.text('Fitness')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await selectTab(tester, 'Runs');
+      await selectTab(tester, 'Gym');
       await pumpUntil(tester, () => pageFab().evaluate().isNotEmpty,
-          describe: 'the Runs page FAB on the rail');
+          describe: 'the Gym page FAB on the rail');
       expect(tester.widget<DockedFabInset>(find.byType(DockedFabInset)).height,
           0);
       final page = tester.widget<Scaffold>(find

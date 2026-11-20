@@ -62,16 +62,70 @@
             "at_m": 411
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 565
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1250,
             "order": 1,
             "of": 2
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 1302
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 1639
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 1972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 2491
+          },
+          {
             "kind": "checkpoint",
             "at_m": 2500,
             "order": 2,
             "of": 2
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 3028
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 3361
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 3698
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 4435
           },
           {
             "kind": "crossing",
@@ -134,10 +188,46 @@
             "at_m": 411
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 565
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 1302
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 1639
+          },
+          {
             "kind": "checkpoint",
             "at_m": 1667,
             "order": 1,
             "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 1972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 2491
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 3301
           },
           {
             "kind": "checkpoint",
@@ -151,6 +241,12 @@
             "at_m": 3469
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 4965
+          },
+          {
             "kind": "checkpoint",
             "at_m": 5000,
             "order": 3,
@@ -158,8 +254,50 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 5035
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 6503
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 6699
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 7509
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 8028
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 8361
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 8698
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 9435
           },
           {
             "kind": "crossing",
@@ -226,6 +364,36 @@
             "at_m": 411
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 565
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 1302
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 1639
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 1972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 2491
+          },
+          {
             "kind": "checkpoint",
             "at_m": 2637,
             "order": 1,
@@ -233,14 +401,38 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 3301
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 3469
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 4965
           },
           {
             "kind": "checkpoint",
             "at_m": 5274,
             "order": 2,
             "of": 4
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 6561
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 6826
           },
           {
             "kind": "crossing",
@@ -296,8 +488,62 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 14271
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 14536
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 16132
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 17600
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 17796
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 18607
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 19125
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 19459
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 19795
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 20533
           },
           {
             "kind": "crossing",
@@ -373,6 +619,42 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 565
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 1302
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 1639
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 1972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 2491
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 3301
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 3469
           },
@@ -381,6 +663,24 @@
             "at_m": 3516,
             "order": 1,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 4965
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 6561
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 6826
           },
           {
             "kind": "checkpoint",
@@ -421,10 +721,47 @@
             "of": 6
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 14145
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 15531
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 16705
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 17369
+          },
+          {
             "kind": "checkpoint",
             "at_m": 17581,
             "order": 5,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 19562
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 20296
           },
           {
             "kind": "junction",
@@ -470,6 +807,43 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 21899
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 22633
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 24826
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 25478
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 26664
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 28050
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 32484
           },
@@ -490,8 +864,62 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 35369
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 35634
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 37230
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 38698
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 38894
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 39704
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 40223
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 40556
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 40893
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 41630
           },
           {
             "kind": "crossing",
@@ -569,6 +997,36 @@
             "at_m": 411
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 565
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 1302
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 1639
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 1972
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 2491
+          },
+          {
             "kind": "checkpoint",
             "at_m": 3014,
             "order": 1,
@@ -576,14 +1034,38 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 3301
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 3469
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 4965
           },
           {
             "kind": "checkpoint",
             "at_m": 6028,
             "order": 2,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 6561
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 6826
           },
           {
             "kind": "crossing",
@@ -618,16 +1100,53 @@
             "of": 6
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 14145
+          },
+          {
             "kind": "checkpoint",
             "at_m": 15070,
             "order": 5,
             "of": 6
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 15531
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 16705
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 17369
+          },
+          {
             "kind": "checkpoint",
             "at_m": 18084,
             "order": 6,
             "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 19562
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 20296
           },
           {
             "kind": "junction",
@@ -738,6 +1257,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Pear Street",
+            "at_m": 50
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 580
           },
@@ -753,10 +1278,59 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cattle Drive",
+            "at_m": 4215
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Tree Hill Lane",
+            "at_m": 4482
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Osborne Turnpike",
+            "at_m": 4616
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 5630
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Chatsworth Road",
+            "at_m": 6019
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Freeless Street",
+            "at_m": 6190
+          },
+          {
             "kind": "checkpoint",
             "at_m": 6492,
             "order": 2,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Messer Road",
+            "at_m": 7714
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Laburnum Avenue",
+            "signal": true,
+            "at_m": 8033
           },
           {
             "kind": "crossing",
@@ -775,10 +1349,41 @@
             "at_m": 8885
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Towhee Lane",
+            "at_m": 8944
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willson Road",
+            "signal": true,
+            "at_m": 9706
+          },
+          {
             "kind": "checkpoint",
             "at_m": 9737,
             "order": 3,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Gregg Road",
+            "at_m": 11477
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Strath Road",
+            "at_m": 11760
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wood Mill Drive",
+            "at_m": 12242
           },
           {
             "kind": "crossing",
@@ -797,6 +1402,18 @@
             "at_m": 13201
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kinvan Road",
+            "at_m": 14005
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Doran Road",
+            "at_m": 15364
+          },
+          {
             "kind": "checkpoint",
             "at_m": 16229,
             "order": 5,
@@ -808,10 +1425,46 @@
             "at_m": 18320
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 18473
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 19211
+          },
+          {
             "kind": "checkpoint",
             "at_m": 19475,
             "order": 6,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 19548
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 19881
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 20400
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 21210
           },
           {
             "kind": "crossing",
@@ -823,6 +1476,24 @@
             "at_m": 22720,
             "order": 7,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 22874
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 24470
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 24735
           },
           {
             "kind": "crossing",
@@ -857,16 +1528,53 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 32054
+          },
+          {
             "kind": "checkpoint",
             "at_m": 32458,
             "order": 10,
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 33439
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 34614
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 35278
+          },
+          {
             "kind": "checkpoint",
             "at_m": 35703,
             "order": 11,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 37471
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 38204
           },
           {
             "kind": "junction",
@@ -991,6 +1699,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Pear Street",
+            "at_m": 50
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 580
           },
@@ -1006,10 +1720,59 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cattle Drive",
+            "at_m": 4215
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Tree Hill Lane",
+            "at_m": 4482
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Osborne Turnpike",
+            "at_m": 4616
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 5630
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Chatsworth Road",
+            "at_m": 6019
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Freeless Street",
+            "at_m": 6190
+          },
+          {
             "kind": "checkpoint",
             "at_m": 6667,
             "order": 2,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Messer Road",
+            "at_m": 7714
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Laburnum Avenue",
+            "signal": true,
+            "at_m": 8033
           },
           {
             "kind": "crossing",
@@ -1028,10 +1791,41 @@
             "at_m": 8885
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Towhee Lane",
+            "at_m": 8944
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Willson Road",
+            "signal": true,
+            "at_m": 9706
+          },
+          {
             "kind": "checkpoint",
             "at_m": 10000,
             "order": 3,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Gregg Road",
+            "at_m": 11477
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Strath Road",
+            "at_m": 11760
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wood Mill Drive",
+            "at_m": 12242
           },
           {
             "kind": "crossing",
@@ -1050,6 +1844,18 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kinvan Road",
+            "at_m": 14005
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Doran Road",
+            "at_m": 15364
+          },
+          {
             "kind": "checkpoint",
             "at_m": 16667,
             "order": 5,
@@ -1061,6 +1867,30 @@
             "at_m": 18320
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Rocky Hill Farm Drive",
+            "at_m": 18473
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Heights Lane",
+            "at_m": 19211
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turner Road",
+            "at_m": 19548
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Camp Hill Road",
+            "at_m": 19881
+          },
+          {
             "kind": "checkpoint",
             "at_m": 20000,
             "order": 6,
@@ -1068,14 +1898,44 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "New Market Road",
+            "at_m": 20400
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sweeney Landing Road",
+            "at_m": 21210
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 21378
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 22874
           },
           {
             "kind": "checkpoint",
             "at_m": 23333,
             "order": 7,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Curles Neck Road",
+            "at_m": 24470
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Turkey Island Road",
+            "at_m": 24735
           },
           {
             "kind": "crossing",
@@ -1110,16 +1970,53 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dogham Lane",
+            "at_m": 32054
+          },
+          {
             "kind": "checkpoint",
             "at_m": 33333,
             "order": 10,
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Shirley Plantation Road",
+            "at_m": 33439
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Roxbury Road",
+            "signal": true,
+            "at_m": 34614
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Ferry Road",
+            "at_m": 35278
+          },
+          {
             "kind": "checkpoint",
             "at_m": 36667,
             "order": 11,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Kimages Road",
+            "at_m": 37471
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Great Plantation Road",
+            "at_m": 38204
           },
           {
             "kind": "junction",
@@ -1152,10 +2049,21 @@
             "of": 14
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wilcox Wharf Road",
+            "at_m": 46258
+          },
+          {
             "kind": "checkpoint",
             "at_m": 46667,
             "order": 14,
             "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 48188
           },
           {
             "kind": "junction",
@@ -1270,10 +2178,21 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wilcox Wharf Road",
+            "at_m": 6346
+          },
+          {
             "kind": "checkpoint",
             "at_m": 6492,
             "order": 2,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 8276
           },
           {
             "kind": "junction",
@@ -1300,6 +2219,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "John Tyler Memorial Highway",
+            "at_m": 10943
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 11257
           },
@@ -1322,8 +2247,25 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Sturgeon Point Road",
+            "at_m": 17640
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 17682
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 18643
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Adams Bridge Road",
+            "at_m": 18991
           },
           {
             "kind": "checkpoint",
@@ -1332,10 +2274,22 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Farmers Rest Road",
+            "at_m": 19698
+          },
+          {
             "kind": "checkpoint",
             "at_m": 22720,
             "order": 7,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Wilcox Neck Road",
+            "at_m": 24866
           },
           {
             "kind": "checkpoint",
@@ -1351,6 +2305,12 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Blue Crab Way",
+            "at_m": 30609
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 30728
           },
@@ -1361,6 +2321,12 @@
             "of": 12
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "John Tyler Highway",
+            "at_m": 32583
+          },
+          {
             "kind": "checkpoint",
             "at_m": 35703,
             "order": 11,
@@ -1368,8 +2334,38 @@
           },
           {
             "kind": "crossing",
+            "crossing": "road",
+            "name": "Two Rivers Road",
+            "at_m": 35712
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Governor's Landing Road",
+            "at_m": 36672
+          },
+          {
+            "kind": "crossing",
             "crossing": "bridge",
             "at_m": 37119
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Heritage Landing Road",
+            "at_m": 37630
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "John Rolfe Lane",
+            "at_m": 37832
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Greensprings Road",
+            "at_m": 38383
           },
           {
             "kind": "checkpoint",
@@ -1386,6 +2382,24 @@
             "kind": "crossing",
             "crossing": "bridge",
             "at_m": 39672
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "4-H Club Road",
+            "at_m": 41708
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Jamestown Road",
+            "at_m": 42017
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Jamestown Road Service Road",
+            "at_m": 42036
           },
           {
             "kind": "finish",

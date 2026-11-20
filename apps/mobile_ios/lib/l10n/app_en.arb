@@ -3797,13 +3797,9 @@
   "@historyAddRun": {
     "description": "Label on the floating action button that opens the manual add-run form"
   },
-  "historyAddRunTooltip": "Add a run manually",
-  "@historyAddRunTooltip": {
-    "description": "Tooltip on the add-run floating action button"
-  },
   "historyAddPastRun": "Add past run",
   "@historyAddPastRun": {
-    "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
+    "description": "Label of the Runs list's manual-entry menu item and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
   },
   "historyEmptyBodyRunPrimary": "Tap {button} to record one, or add one you have already finished",
   "@historyEmptyBodyRunPrimary": {
@@ -23958,10 +23954,6 @@
   "@planFinishFailed": {
     "description": "Error banner when finishing a plan failed; nothing changed"
   },
-  "dashboardLeadAddRun": "Add a run",
-  "@dashboardLeadAddRun": {
-    "description": "Button on the dashboard week card that opens the manual add-a-run form"
-  },
   "runRaceStopTitle": "Race paused",
   "@runRaceStopTitle": {
     "description": "Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped"
@@ -28907,7 +28899,7 @@
   "@parksCourseNotFoundBody": {
     "description": "Park courses (#1313): web key parks.courseNotFoundBody."
   },
-  "parksWebsite": "Park website",
+  "parksWebsite": "Website",
   "@parksWebsite": {
     "description": "Park courses (#1313): web key parks.website."
   },
@@ -28926,6 +28918,14 @@
   "parksAgencyCounty": "County park",
   "@parksAgencyCounty": {
     "description": "Park courses (#1313): web key parks.agencyCounty."
+  },
+  "parksAgencyUsfs": "National forest",
+  "@parksAgencyUsfs": {
+    "description": "Park courses (#1431): a place the US Forest Service runs, e.g. the George Washington & Jefferson National Forests. Web key parks.agencyUsfs."
+  },
+  "parksAgencyUsfws": "Wildlife refuge",
+  "@parksAgencyUsfws": {
+    "description": "Park courses (#1431): a national wildlife refuge the US Fish & Wildlife Service runs. Web key parks.agencyUsfws."
   },
   "parksAgencyOther": "Park",
   "@parksAgencyOther": {
@@ -28995,6 +28995,26 @@
   "parksStatShape": "Shape",
   "@parksStatShape": {
     "description": "Park courses (#1313): web key parks.statShape."
+  },
+  "parksStatLaps": "Laps",
+  "@parksStatLaps": {
+    "description": "Park courses (#1313): web key parks.statLaps."
+  },
+  "parksPreviewHint": "Pick a course to see where it goes and where to start.",
+  "@parksPreviewHint": {
+    "description": "Park courses (#1313): web key parks.previewHint."
+  },
+  "parksOpenCourse": "Open course",
+  "@parksOpenCourse": {
+    "description": "Park courses (#1313): web key parks.openCourse."
+  },
+  "parksPreviewClose": "Close preview",
+  "@parksPreviewClose": {
+    "description": "Park courses (#1313): web key parks.previewClose."
+  },
+  "parksNoTimesYet": "No times here yet this season. Yours could be the first.",
+  "@parksNoTimesYet": {
+    "description": "Park courses (#1313): web key parks.noTimesYet."
   },
   "parksStatSurface": "Surface",
   "@parksStatSurface": {
@@ -29075,17 +29095,41 @@
   "@parksBoardFailed": {
     "description": "Park courses (#1313): web key parks.boardFailed."
   },
-  "parksSafetyNotice": "Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.",
+  "parksSafetyNotice": "Follow the course line on the map and pass every checkpoint in order, or your time won't count.",
   "@parksSafetyNotice": {
     "description": "Park courses (#1313): web key parks.safetyNotice."
+  },
+  "parksNoticeParkHours": "Finish before the park closes.",
+  "@parksNoticeParkHours": {
+    "description": "Before-you-run callout on a park course page, the second plain line: finish before the park closes (web parks.noticeParkHours)."
+  },
+  "parksNoticeFord": "The course crosses a stream with no bridge. After rain it can be too deep to cross.",
+  "@parksNoticeFord": {
+    "description": "Before-you-run line on a park course whose route guide crosses a ford (decisions § 2582)."
+  },
+  "parksNoticePavedTrail": "Shared with cyclists. Keep right and carry water: there may be few fountains.",
+  "@parksNoticePavedTrail": {
+    "description": "Before-you-run line on a paved trail (parks.kind trail, surface road): a shared-use path with cyclists, keep right, carry water."
+  },
+  "parksNoticeLongTrail": "Long course: carry water and food.",
+  "@parksNoticeLongTrail": {
+    "description": "Before-you-run line on a long unpaved trail (parks.kind trail), which has no closing time to name."
+  },
+  "parksNoticeParkHoursLong": "Long course: start early enough to finish before the park closes.",
+  "@parksNoticeParkHoursLong": {
+    "description": "Before-you-run line on a long course in a park: start early enough to finish before closing."
+  },
+  "parksSurfacePaved": "Paved",
+  "@parksSurfacePaved": {
+    "description": "The surface fact on a park course page for a paved course (stored surface road), so a paved trail does not read as running on a road."
+  },
+  "parksNoticeOpenTrail": "A time trial on open trails, not a race. Nobody marshals it.",
+  "@parksNoticeOpenTrail": {
+    "description": "Before-you-run callout, the small secondary line: a time trial on open trails, not a marshalled race (web parks.noticeOpenTrail)."
   },
   "parksNotAffiliated": "Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.",
   "@parksNotAffiliated": {
     "description": "Park courses: non-affiliation notice under the attribution on the park and course screens; web key parks.notAffiliated."
-  },
-  "parksLongCourseNotice": "Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.",
-  "@parksLongCourseNotice": {
-    "description": "Park courses: shown on a course over 15 km (isLongCourse); web key parks.longCourseNotice. Names no park hours on purpose."
   },
   "parksTimesNotEventResults": "Times here are Threkir times on these paths. They are not results of any event held on them.",
   "@parksTimesNotEventResults": {
@@ -29149,13 +29193,9 @@
   "@parksElevationProfile": {
     "description": "Heading over a park course's elevation chart (#1352)."
   },
-  "parksBoardEmptyTitle": "No times yet. Yours could be the first.",
+  "parksBoardEmptyTitle": "No times yet. Run it with Threkir and yours shows up here.",
   "@parksBoardEmptyTitle": {
     "description": "Title of a park course board nobody has a time on yet; replaces the filters (#1352)."
-  },
-  "parksBoardEmptyBody": "Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.",
-  "@parksBoardEmptyBody": {
-    "description": "Body under parksBoardEmptyTitle: how a time gets onto the board (#1352)."
   },
   "parksLegendTitle": "Map key",
   "@parksLegendTitle": {
@@ -29172,6 +29212,22 @@
   "parksLegendStartFinish": "Start and finish",
   "@parksLegendStartFinish": {
     "description": "Map key item: one marker for a course that starts and finishes in the same place (#1352)."
+  },
+  "parksMapJumpStart": "Show the start on the map",
+  "@parksMapJumpStart": {
+    "description": "Accessible name of the Start tag on a park course map and of the Start entry in its key: tapping either moves the map to the start box."
+  },
+  "parksMapJumpFinish": "Show the finish on the map",
+  "@parksMapJumpFinish": {
+    "description": "Accessible name of the Finish tag on a park course map and of the Finish entry in its key: tapping either moves the map to the finish box."
+  },
+  "parksMapJumpStartFinish": "Show the start and finish on the map",
+  "@parksMapJumpStartFinish": {
+    "description": "Accessible name of the one Start and finish tag on a park course map (and its key entry) where the start and finish share a box: tapping it moves the map there."
+  },
+  "parksMapJumpWholeCourse": "Show the whole course",
+  "@parksMapJumpWholeCourse": {
+    "description": "Name and tooltip of the icon button in a park course map's controls that zooms the map back out to the whole course."
   },
   "parksEndsTitle": "Start and finish points",
   "@parksEndsTitle": {
@@ -29224,6 +29280,44 @@
   "parksLegendDirection": "Direction to run",
   "@parksLegendDirection": {
     "description": "Map key item: the arrows along the course line (#1352)."
+  },
+  "parksBoxesApart": "{n, plural, =1 {Start recording in the green box. Follow the arrows to the red box.} other {Start recording in the green box. Follow the arrows round the loop {n} times and finish in the red box.}}",
+  "@parksBoxesApart": {
+    "description": "The one instruction on a park course page (decisions § 2582): start recording inside the green box on the map, follow the map's direction arrows to the red box; with n over 1, round the loop n times first. n is the course's laps (1 for one). Plain words a first-timer or a child follows; never 'gate', 'line' or 'timing'.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksBoxesShared": "{n, plural, =1 {Start recording in the start box. Follow the arrows and finish back in it.} other {Start recording in the start box. Follow the arrows round the loop {n} times and finish back in it.}}",
+  "@parksBoxesShared": {
+    "description": "As parksBoxesApart, for a course whose start and finish share one spot, drawn as one box in the start colour (the start box): finish back in that box; with n over 1, after n laps of the loop.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksEndsGetDirections": "Get directions to the start",
+  "@parksEndsGetDirections": {
+    "description": "The main button in the start and finish block: opens the maps app with directions to the start."
+  },
+  "parksEndsCoordinates": "Coordinates",
+  "@parksEndsCoordinates": {
+    "description": "The heading of the folded-away start and finish coordinates, under the directions button."
+  },
+  "parksTurnAround": "Turn around",
+  "@parksTurnAround": {
+    "description": "The tag on an out-and-back course's map at its last checkpoint, the point to turn around at, with a U-turn icon. A short sign word, as on a race course."
+  },
+  "parksLegendTurnAround": "Turn around here: your run must pass it",
+  "@parksLegendTurnAround": {
+    "description": "Map key item on an out-and-back course: the Turn around mark, the last checkpoint, which the run must reach (web parks.legendTurnAround)."
+  },
+  "parksBoxesOutAndBack": "Start recording in the start box. Follow the arrows to the Turn around mark, then back to the box.",
+  "@parksBoxesOutAndBack": {
+    "description": "The one instruction on an out-and-back course page: start recording in the start-and-finish box, follow the arrows to the Turn around mark on the map (parksTurnAround, named as it appears there), and come back to the box."
   },
   "parksMapCourseLabel": "{n, plural, =0 {Course map. The key below names each mark.} one {Course map with 1 checkpoint. The key below names each mark.} other {Course map with {n} checkpoints. The key below names each mark.}}",
   "@parksMapCourseLabel": {
@@ -30119,6 +30213,33 @@
       }
     }
   },
+  "parkGuideRoad": "{at}: follow the road for {length}. Watch for cars.",
+  "@parkGuideRoad": {
+    "description": "Park course route guide (#1430, web parks.guide.road): the course follows a road for a short stretch between two pieces of trail.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRoadNamed": "{at}: follow the road, {name}, for {length}. Watch for cars.",
+  "@parkGuideRoadNamed": {
+    "description": "Park course route guide (#1430, web parks.guide.roadNamed): as parkGuideRoad, with the road's name from OpenStreetMap.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
   "parkGuideBridge": "{at}: cross the bridge.",
   "@parkGuideBridge": {
     "description": "Park course route guide (#1344, web parks.guide.bridge).",
@@ -30133,6 +30254,48 @@
     "description": "Park course route guide (#1344, web parks.guide.ford).",
     "placeholders": {
       "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoad": "{at}: cross the road. Watch for cars.",
+  "@parkGuideCrossRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoad): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadNamed": "{at}: cross {name}. Watch for cars.",
+  "@parkGuideCrossRoadNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadNamed): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadSignal": "{at}: cross the road at the traffic light.",
+  "@parkGuideCrossRoadSignal": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadSignal): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCrossRoadNamedSignal": "{at}: cross {name} at the traffic light.",
+  "@parkGuideCrossRoadNamedSignal": {
+    "description": "Park course route guide (#1344, web parks.guide.crossRoadNamedSignal): a motor road crossed at grade.",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
         "type": "String"
       }
     }
@@ -30235,6 +30398,53 @@
         "type": "String"
       }
     }
+  },
+  "parkGuideLaps": "{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}",
+  "@parkGuideLaps": {
+    "description": "Park course route guide, short view (decisions § 2582, web parks.guide.laps): how many laps of the loop the course is.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideRoadCrossings": "{total, plural, one {{total} road crossing on this course. Watch for cars.} other {{total} road crossings on this course. Watch for cars.}}",
+  "@parkGuideRoadCrossings": {
+    "description": "Park course route guide, short view (web parks.guide.roadCrossings): how many times the course crosses a motor road, each lap counted. Shown only when it is at least 1.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideRepeatLoop": "Repeat the loop.",
+  "@parkGuideRepeatLoop": {
+    "description": "Park course route guide, full view (web parks.guide.repeatLoop): what a lap after the first says, instead of its steps again."
+  },
+  "parkGuideLapHeader": "Lap {n}",
+  "@parkGuideLapHeader": {
+    "description": "Park course route guide, full view (web parks.guide.lapHeader): the heading over one lap's steps.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideKmHeader": "{from} to {to}",
+  "@parkGuideKmHeader": {
+    "description": "Park course route guide, full view (web parks.guide.kmHeader): the heading over one stretch of a course without laps, two formatted distances along it.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideShowAll": "Show all steps",
+  "@parkGuideShowAll": {
+    "description": "Park course route guide (web parks.guide.showAll): the fold that opens every step, under the short view."
   },
   "parkCourseReportAction": "Report a problem with this course",
   "@parkCourseReportAction": {

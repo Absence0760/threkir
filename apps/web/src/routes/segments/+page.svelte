@@ -6,7 +6,6 @@
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
-	import PageHeader from '#lib/components/PageHeader.svelte';
 	import FilterBar, { type ActiveFilter } from '#lib/components/FilterBar.svelte';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -128,6 +127,10 @@
 			{m('segments.reset')}
 		</button>
 	{/if}
+	<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">
+		<span class="material-symbols" aria-hidden="true">park</span>
+		{m('parks.browseLink')}
+	</a>
 {/snippet}
 
 <!-- The Filters sheet: each control's explanation sits beside it, named by
@@ -179,12 +182,6 @@
 	     catalogue is no longer a run-surface tab of its own. -->
 	<RunSurfaceTabs active="routes" />
 	<RoutesViewNav view="segments" />
-	<PageHeader title={m('segments.browseTitle')} subtitle={m('segments.browseIntro')}>
-		<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">
-			<span class="material-symbols" aria-hidden="true">park</span>
-			{m('parks.browseLink')}
-		</a>
-	</PageHeader>
 
 	{#if loading}
 		<p class="state-msg">{m('segments.loadingSegments')}</p>

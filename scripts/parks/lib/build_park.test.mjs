@@ -66,13 +66,14 @@ function spec() {
  * Build `s` in a throwaway park directory and return a reader over the outputs.
  *
  * @param {ReturnType<typeof spec>} s
+ * @param {{ snapshotWays?: Record<string, any>, warn?: (message: string) => void }} [options]
  */
-function build(s) {
+function build(s, { snapshotWays = ways, warn = (/** @type {string} */ _m) => {} } = {}) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-park-'));
 	try {
 		fs.writeFileSync(path.join(dir, 'park.json'), JSON.stringify(s));
-		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways, nodes }));
-		const out = buildPark(dir);
+		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: snapshotWays, nodes }));
+		const out = buildPark(dir, { warn });
 		return (/** @type {string} */ file) => JSON.parse(/** @type {string} */ (out.get(path.join(dir, file))));
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
@@ -121,6 +122,24 @@ test('the build refuses a bare cycleway with no foot confirmation', () => {
 	assert.throws(() => build(s), /p2p: the course runs on way\(s\) not open to people on foot: way 31 \(highway=cycleway\)/);
 });
 
+test('the build warns, and still builds, on a bike-designated path with no foot tag', () => {
+	// York River State Park's bike-only trails are tagged exactly this way.
+	const bikeWays = { ...ways, 30: { ...ways[30], tags: { highway: 'path', bicycle: 'designated', name: 'Bike Trail' } } };
+	/** @type {string[]} */
+	const warnings = [];
+	const read = build(spec(), { snapshotWays: bikeWays, warn: (m) => warnings.push(m) });
+	assert.equal(read('manifest.json').race_courses.length, 2);
+	assert.equal(warnings.length, 2, 'once per course that walks it');
+	assert.match(warnings[0], /^p2p: way 30 \(bicycle=designated with no foot tag\) may be bike-only; check the land manager's trail map/);
+	assert.match(warnings[1], /^oab: way 30 /);
+
+	const confirmed = spec();
+	/** @type {Record<string, string>} */ (confirmed.trail_review.foot_confirmed)[30] = 'open to walkers per the park trail map';
+	warnings.length = 0;
+	build(confirmed, { snapshotWays: bikeWays, warn: (m) => warnings.push(m) });
+	assert.deepEqual(warnings, [], 'the land manager\'s word in foot_confirmed settles it');
+});
+
 test('a course anchored at the trail end can finish short of it, and the guard still reads the real end', () => {
 	const s = spec();
 	s.race_courses[0].offset_m = 50;
@@ -139,4 +158,57 @@ test('the build refuses a via_ends_at_trail_end course whose via stops short of 
 	const s = spec();
 	s.race_courses[0].via = [1, 60];
 	assert.throws(() => build(s), /p2p: via_ends_at_trail_end, but the via's last node \(node 60\) joins 2 edges/);
+});
+
+/**
+ * The test trail with way 31 cut loose from way 30: it starts at node 100,
+ * `gapM` east of node 31, as OSM draws a near-miss junction.
+ *
+ * @param {number} gapM
+ */
+function gappedBuild(gapM, /** @type {Array<{ nodes: number[], reason: string }> | undefined} */ joins) {
+	const s = spec();
+	/** @type {any} */ (s.trail_review).joins = joins;
+	const gapped = { ...ways, 31: { ...ways[31], nodes: [100, ...ways[31].nodes.slice(1)] } };
+	const gappedNodes = { ...nodes, 100: { lat: 0, lon: 0.03 + gapM / 111195, ele: 10 } };
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-park-'));
+	try {
+		fs.writeFileSync(path.join(dir, 'park.json'), JSON.stringify(s));
+		fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify({ fetched_at: '2026-11-19', ways: gapped, nodes: gappedNodes }));
+		const out = buildPark(dir);
+		return (/** @type {string} */ file) => JSON.parse(/** @type {string} */ (out.get(path.join(dir, file))));
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+test('a trail_review join closes a near-miss junction, is reported with its gap, and adds no guide step', () => {
+	assert.throws(() => gappedBuild(2.9, undefined), /not reachable/);
+	const read = gappedBuild(2.9, [{ nodes: [31, 100], reason: 'near-miss junction in OSM' }]);
+	const p2p = read('manifest.json').race_courses.find((/** @type {any} */ c) => c.slug === 'p2p');
+	assert.deepEqual(p2p.joins, [{ nodes: [31, 100], gap_m: 2.9 }]);
+	assert.equal(p2p.distance_m, 5000);
+	assert.deepEqual(
+		p2p.route_guide.steps.map((/** @type {any} */ s) => s.kind),
+		['start', 'checkpoint', 'checkpoint', 'finish'],
+	);
+});
+
+test('the build refuses a join over the cap, naming its gap', () => {
+	assert.throws(
+		() => gappedBuild(15, [{ nodes: [31, 100], reason: 'near-miss junction in OSM' }]),
+		/join 31-100 spans 15\.0 m, over the 10 m a join may close/,
+	);
+});
+
+test('every committed park rebuilds byte for byte from its spec and snapshot', () => {
+	const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'catalogue');
+	for (const region of fs.readdirSync(root)) {
+		for (const park of fs.readdirSync(path.join(root, region))) {
+			const dir = path.join(root, region, park);
+			for (const [file, contents] of buildPark(dir)) {
+				assert.equal(contents, fs.readFileSync(file, 'utf8'), `${file} is stale`);
+			}
+		}
+	}
 });

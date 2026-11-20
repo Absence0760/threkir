@@ -23,7 +23,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, eight point-to-point and out-and-back courses, decisions § 2581) is committed `staged` and not loaded until its owner checks in #1432 are done. See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, eight point-to-point and out-and-back courses, decisions § 2581) is committed `staged` and not loaded until its owner checks in #1432 are done. High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; four linear race courses, 10K to 50K) is committed `staged` the same way (#1432). See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -40,7 +40,18 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2460. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
 | Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2551). See *The pages* | Shipped |
-| **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
+| **Deep Run Park, 5 km and 10 km (2 laps)** (Henrico County, VA; issues #1345, #1430): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
+| **James River Park Loop, half-marathon distance and marathon distance (2 laps)** (James River Park System, City of Richmond; issue #1430): one 20,746 m ring of the park built from OSM under `scripts/parks/catalogue/us-va/james-river-park/`, with one 7.7 m join and 13 m across the Tredegar Street lot (`road_connectors`) | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
+| **Pony Pasture Loop, 5 km and 10 km (2 laps)** (James River Park System, City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/james-river-park/` beside the Forest Hill Park courses | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
+| **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Staged**: waits on the owner's ground check. See *Pre-deploy checklist* |
+| **Cold Harbor, 5 km and 10 km (2 laps)** (Richmond National Battlefield Park, NPS `rich`; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/cold-harbor/`, joining the three trail pieces along the tour road (`trail_review.road_connectors`, a `road` step in the guide) | **Staged**: waits on the owner's ground check and the NPS permit question. See *Pre-deploy checklist* |
+| **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
+| **Poor Farm Park, 5 km, 10 km (2 laps) and half-marathon distance (3 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
+| **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
+| **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
+| **Manassas National Battlefield Park, 5 km and 10 km (2 laps)** (NPS `mana`; issue #1434): built from OSM, every walked way checked against the NPS Public Trails layer, under `scripts/parks/catalogue/us-va/manassas/`. No half or marathon: every 21.1 km loop crosses US-29 or VA-234 at grade four or more times a lap | **Staged**: waits on the owner's ground check and the permit question. See *Pre-deploy checklist* |
+| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile and 100K wait for their own courses now that the distances exist (§ 2593) | **Staged**: waits on the owner's ground check, the Farmville closure and the permit question. See *Pre-deploy checklist* |
+| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **Staged**: waits on the owner's ground check, end-lot access and NOVA Parks' event rules. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -70,7 +81,9 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 - **Parks:** `slug`, `name`, `kind` (`park` / `trail`: a long trail through
   several parks that belongs to none, such as the Virginia Capital Trail, is
   its own catalogue entry; cards and the park page call it "Trail" in place of
-  the agency label; decisions § 2581), `agency` (`nps` / `state` / `county` / `other`),
+  the agency label; decisions § 2581), `agency` (`nps` / `state` / `county` / `usfs` / `usfws` / `other`;
+  a US Forest Service national forest reads "National forest", a US Fish &
+  Wildlife Service refuge "Wildlife refuge"; decisions § 2593),
   `nps_park_code` (the NPS Data API `parkCode`, `shen`; only on an `nps` park,
   required there by the catalogue check, which the closures sweep reads),
   `region_code` (ISO 3166-2, `US-VA`; the URL segment is its lower case),
@@ -128,17 +141,43 @@ Every run is scored on the server (decisions § 2392):
   from `global_segments_in_bbox` (the track's extent padded 50 m). The result is
   written by `record_segment_match` as the service role, refused for bytes that
   are no longer stored, and read through the unchanged visibility rule.
-- **The rule.** A course inherits its catalogue segment's start and end lines
-  (derived from the polyline by a trigger, or placed by a curator). A run is
-  timed from its forward crossing of the start line to its forward crossing of
-  the end line, interpolated between fixes, with the covered distance within
-  25 % of the course length and every checkpoint passed in order between the
-  two. Every complete lap is a candidate and the fastest counts: laps never
-  overlap, and where the end line is the start line (centres within the start
-  line's reach, facing within 90 degrees) the crossing that ends one lap starts
-  the next (matcher version 3, decisions § 2465). A run that never crosses
-  the lines gets no time, whatever circle it passed through. Only a segment
-  without both lines is still matched by the 35 m circles (decisions § 2402).
+- **The rule: leave the start box, enter the finish box.** A course inherits
+  its catalogue segment's start and end lines (derived from the polyline by a
+  trigger, or placed by a curator), and the course map draws a box on each
+  (decisions § 2582). The matcher times by those same boxes, read off them by
+  `gateTimingEdges` in the `course_gates` pair (matcher version 4, decisions
+  § 2589): the clock starts when the run leaves the start box going forward
+  and stops when it next enters the finish box, both interpolated between
+  fixes, with the covered distance within 25 % of the course length and every
+  checkpoint passed in order between the two. Where the boxes are apart, those
+  edges are the start and finish lines themselves. Where both lines sit at
+  one spot (a loop, or an out-and-back) the one box is 10 m deep and centred
+  on the start line, so a run is timed from its far edge out to its near edge
+  back, 10 m less than line to line for every runner.
+  - **GPS slack, 5 m** (`GLOBAL_SEGMENT_BOX_SLACK_M`). A recording whose first
+    fix is already up to 5 m past the start box's exit edge (begun on the
+    line) starts at that fix. One that ends in the finish box, or up to 5 m
+    short of it, without the fixes crossing into it finishes at the first fix
+    of that last stretch, so standing there before stopping the watch adds
+    nothing.
+  - **A GPS gap at the finish.** Up to 60 s any crossing counts, as for every
+    line (`GATE_REJECT_GAP_S`). A gap of up to 5 minutes across the finish
+    still finishes when the first fix after it is in the finish box's lane at
+    or past its edge and the straight-line speed across the gap is between 0.4
+    and 1.5 times the runner's average since the start; the entry is timed
+    back from that fix at the runner's own pace.
+  - Every complete lap is a candidate and the fastest counts: laps never
+    overlap. Through one shared box, leaving it forward again starts the next
+    lap; where the end line is the start line but the boxes are apart (centres
+    within the start line's reach, facing within 90 degrees), the finish
+    starts the next lap (decisions § 2465). A run that never leaves and enters
+    the boxes gets no time, whatever circle it passed through. Only a segment
+    without both lines is still matched by the 35 m circles (decisions § 2402).
+  - `apps/web/src/lib/parks/course_box_timing.test.ts` runs seeded GPS runs
+    over every catalogue course (Pocahontas, Deep Run and the Capital Trail)
+    and holds the timed rates for stopping 1 m past and 3 m short, starting on
+    the line, 5 s and 15 s fixes, a 90 s gap at the finish and a 50K, and no
+    time for stopping halfway or cutting the course.
 - **A closed course takes no new effort** (owner, #1313, 2026-11-10; migration
   `20271219001313`, decisions § 2465). `private.global_segment_course_closed`
   is read at every write path: `global_segments_in_bbox` leaves a closed course
@@ -160,7 +199,11 @@ Every run is scored on the server (decisions § 2392):
   deploying the functions (`apps/backend/ops/tasks/`), which queues
   `enqueue_segment_backfill` for every active segment not on a closed course.
   Matcher version 3 ships with `20271219001313_rematch_segments_matcher_v3`
-  (decisions § 2465); a later version bump adds its own task.
+  (decisions § 2465); version 4 (the boxes) with
+  `20280102001446_rematch_segments_matcher_v4`, which reads
+  `private.segment_matcher_version()` from the same release's migration so a
+  sync dispatched before that release leaves it pending (decisions § 2589). A
+  later version bump adds its own task and bumps that function.
 - **Launch backfill.** After loading a course, run
   `select enqueue_segment_backfill('<global_segment_id>');` as an admin or the
   service role. It scores existing runs 20 a job in id order, each batch queueing
@@ -297,7 +340,8 @@ because a course is something you go and do, not a stretch you happen to run.
   course count and distance range and opens the park page, which lists the
   courses with their maps, climb, difficulty and this season's records.
   Parks are ordered nearest first once the runner sets a place or uses their
-  location under Filters (the same point the race search uses), measured to
+  location (under Filters in All, or from the search's place rows and Use my
+  location in Courses; the same point the race search uses), measured to
   the park's nearest course start (its centroid when no course has one),
   otherwise by region then name; a park whose courses are all closed comes
   last. When the list is cut short (All shows eight), the section heading
@@ -315,7 +359,10 @@ because a course is something you go and do, not a stretch you happen to run.
   with the help and overflow actions on its row (mobile). It finds races by
   name (the `search_race_listings` RPC, as before), parks by name and place
   (the region's name or code), and courses by their own name, every word
-  of the query matching somewhere, case and accents ignored
+  of the query starting a word of the name or place ("belle" finds Belle
+  Isle State Park, "swift cr" Swift Creek; "ark" does not find every park),
+  case and accents ignored, the cases shared by both sides in
+  `fixtures/park_search_cases.json`
   (`parkSearchTerms` / `parkSearchMatches` / `anyTimeSearchHits` in the
   `any_time_courses` parity pair, on the catalogue's `fold`). A park whose
   name or place matches is listed as its park card; a course that matches
@@ -351,12 +398,31 @@ because a course is something you go and do, not a stretch you happen to run.
   settles for 250 ms before either list changes; the race search is not run
   while Courses hides the races, and runs when they show again. The hint
   names what the view finds ("Search races, parks and courses…" in All,
-  "Search parks and courses…" in Courses, "Search races by name…" in Races).
-  No match says "No courses match “…”" with Clear search. The Courses view's
-  park row follows the search. A switch under the intro, **All · Races · Courses**, shows both or
+  "Search parks, courses or places…" in Courses, "Search races by name…" in
+  Races). No match says "No courses match “…”" with Clear search. The Courses
+  view's park row follows the search.
+- **Places in the Courses search** (web, decisions § 2591): Courses has one
+  search box, never a second place field beside it. Names match first, from
+  the list already loaded, with no geocoder round trip. From three
+  characters the same words are also looked up as a place
+  (`searchPlaces` with a `PlaceBias`: held to the countries the catalogue
+  has parks in plus the reader's locale region, ranked near the catalogue's
+  centre), and any place with a course within 1,000 km is offered below the
+  matches as a "Courses near …" row (`course_place_search.ts`). A place is
+  never applied by typing: tapping its row clears the search, sets the
+  "Near: …" chip (focus moves to it; removing it undoes it) and orders the
+  parks from it. With no name match the view says "No parks or courses are
+  called “…”" above the place rows, or "No parks, courses or places called
+  “…”" when there are none; a failed lookup says so and leaves the name
+  matches standing. A hidden status line announces the counts. Use my
+  location sits beside the chip. The race Filters sheet (All and Races)
+  keeps its own labelled "Near a place…" field for the race calendar,
+  ranked near the courses but not held to their countries. Mobile has never
+  had a place field on this tab (it orders by the phone's fix), so it shares
+  only the matching rule.
+- **Show switch.** A switch under the intro, **All · Races · Courses**, shows both or
   either alone (decisions § 2480). Courses hides the race calendar and its
-  filters, lists every course rather than eight, and puts the place field and
-  Use my location at the top of the courses so they still order them. On web
+  filters and lists every course rather than eight. On web
   the choice is `?show=races|courses` (none, or an unknown value, is All),
   written by a shallow navigation, so a link, a refresh and back from a course
   page reopen it; on mobile it is the tab's own state and the courses are
@@ -388,7 +454,15 @@ because a course is something you go and do, not a stretch you happen to run.
 ## The pages (web, issue #1352)
 
 The owner's 2026-11-10 review found the pages primitive; this is what each
-one does now. Mobile matches it (`park_courses_screen.dart`).
+one does now. Mobile matches it (`park_courses_screen.dart`). On the phone a
+course card opens a bottom sheet (`park_course_preview_sheet.dart`) with the
+course on its own map (start, finish, direction), its status and closure
+note when it is not open, distance, elevation gain, laps, shape and
+difficulty, where to start, Directions to the start and Open course; the
+course opens on top of the sheet, so back returns to the preview. The
+cards carry no line-colour dot (the 10 km loop's colour hid under the 5 km
+line) and no chevron. The OS and app-bar back pop the Navigator stack, so
+they already return to the screen the runner came from.
 
 - **Distances** read through the `park_course_distance` parity pair
   (`lib/parks/park_course_distance.ts` ↔ `park_course_distance.dart`): whole
@@ -403,27 +477,166 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   of the park's course lines (no tile request), the agency, and the course
   count with the distance range. The course read is auxiliary: when it fails
   the parks still list.
-- **Park page:** region, agency and the park website as separate items; a
-  course list (route thumbnail, distance, laps chip, elevation gain,
-  difficulty, this season's record and holder when signed in, status pill)
-  beside a map of every course line (`ParkCoursesMap`) with each distinct
-  start area marked. Pointing at or focusing a course highlights its line.
-  The map waits for cookie consent like every MapLibre map. Side by side from
-  64rem; map first on a phone.
+- **Park page:** region, agency and the website ("Website", not "Park
+  website", since a trail is no park) as separate items; a
+  course list beside a map of every course line (`ParkCoursesMap`) with each
+  distinct start area marked. Side by side from 64rem; map first on a phone.
+  The map waits for cookie consent like every MapLibre map, and it frames the
+  lines again whenever its box changes size until the reader drags or zooms
+  it, so a fit taken against a box still settling (the consent swap, the
+  sticky column, a phone's toolbar) never strands the park in a corner of a
+  zoomed-out map. A point at exactly 0, 0 (a null coordinate) is left out of
+  the frame (`boundsOf`).
+  - **Cards** are `ListCard` buttons on one grid: every card the height of
+    the tallest, the name held to two lines (the whole name stays in the
+    button's accessible name) and the Open link centred. Each carries a route
+    thumbnail (dropped under 30rem), the name, distance, laps chip, elevation
+    gain, difficulty, status pill, this season's record and holder when there
+    is one, and a visible **Open** link named "Open {course}". The heading
+    and the hint above it span both columns, so the first card and the map
+    start on one line. A course with no time says nothing; when no course in
+    the park has one, one line under the list says so.
+  - **Names** (`courseDisplayNames`, one rule for the whole list): the park's
+    own name is dropped from the front ("Virginia Capital Trail, Four Mile
+    Creek, …" reads "Four Mile Creek, …"). Then, if the distance (", 10 km",
+    ", marathon distance", with a trailing shape) and the laps can go from
+    every name without two reading the same, they go from every name; else
+    only the laps go, if that keeps them apart; else the names stay as
+    stored. Never a mix, so the list never trims one card's ", 50 km" and
+    keeps another's ", marathon distance". Pocahontas drops only its laps;
+    the Capital Trail's short names (#1435) stay whole.
+  - **Preview** (decisions § 2588): a line above the list says "Pick a course
+    to see where it goes and where to start." Tapping a card selects its
+    course without leaving the page (tapping it again keeps it; Close or
+    Escape clear it): the map frames it, draws it wider in the pinned-line
+    violet on a halo over the others faded (3.92:1 against a faded line
+    light, 3.63:1 dark; the accent amber read 1.29:1 against the coral line
+    and looked the same), hides the other start areas and pins its start (green)
+    and finish (red), or one "Start and finish" pin when they share a place
+    (`courseEnds`). The key shows "Selected course" only while one is, and
+    the key shows only under a drawn map. A panel gives the name, a status
+    pill and the closure note for a course that is not open, distance,
+    elevation gain, laps as "2 × 5 km", shape, difficulty, one sentence of
+    where to start (the route guide's own getting-there note, else its first
+    line, `startSentence`; not for a closed course), **Open course** and
+    **Directions to the start** (Google Maps, as the course page's start and
+    finish block). From 64rem the panel sits under the sticky map; narrower,
+    the map and panel lift into a sheet fixed to the bottom of the screen,
+    the list staying where it was and the map's place in the page held so
+    nothing jumps. Focus moves to the panel's heading and back to the card
+    when it closes; the card's button carries `aria-pressed`. On a touch
+    screen the map takes two fingers to move (MapLibre's cooperative
+    gestures, its hint in the reader's language), so a thumb scrolling the
+    page never pans the park. The choice is `?course=<slug>`, written
+    shallow: opening a preview from none pushes one history entry, so the
+    browser's or the phone's back closes it, and picking another course
+    replaces it. Back from the course page, a reload and a shared link
+    reopen it, and a slug the park does not have is ignored. No turnaround
+    mark yet for an out-and-back: no park course is one today.
+  - **Back** (decisions § 2588): the link returns to the page the reader came
+    from in the app and names it: "Races & courses" (with its `?show=` kept,
+    even when the Show switch wrote it shallow), "All park courses" for the
+    parks index, else "Back". With no in-app history (a shared link, a fresh
+    tab) it goes to `/races?show=courses`, "Races & courses", the place the
+    sidebar names, rather than the `/parks` index. The target is saved in the
+    history entry, so coming back down from a course page or reloading keeps
+    it. It is a real `<a href>`, and pops history when the target is the
+    entry behind it (stepping over an opened preview's entry, `stacked`), so
+    that page comes back with its scroll and filters.
+- **Course page:** the back link is its park, named for the park; it pops
+  history when the reader came from that park (the preview they left comes
+  back), and otherwise links to the park with the course previewed
+  (`?course=<slug>`).
 - **Course page:** the map marks the checkpoints (`CP 1`, `CP 2`, …) and
-  carries a key (`ParkMapLegend`): start and finish (one red pin, "Start and
-  finish", when the line closes within 30 m, since the finish pin draws over
-  the start), checkpoints, the kilometre or mile badges, and the ▶ direction
-  arrows. An elevation profile, linked to the map, shows when every point has
-  a height. The credit is one line (below). The safety, long-course and
-  not-affiliated notices are one callout (`ParkCourseNotices`), safety first.
-  "Navigate this course" is the filled primary action, "Download GPX" the
-  outline one (primary when there is no route). From 72rem the map, profile
-  and boards take the wide column and the stats, actions and notices the
-  narrow one, so each column's blocks share its width.
-- **Start and finish points** (decisions § 2551): a block on the course page
-  (web `CourseEndsBlock`, at the top of the notices column; mobile
-  `CourseEndsCard`, under the map) gives the start and the finish as
+  carries a key (`ParkMapLegend`). Two checkpoints so close that their
+  markers would cover each other at the whole-course zoom share one marker
+  carrying both numbers (`CP 1, 2`): closer than 5 % of the line's
+  bounding-box diagonal, at least 25 m (`checkpointMarks` in the
+  `park_courses` pair). On an out-and-back the last checkpoint is the turn
+  and is drawn as a "Turn around" tag with a U-turn instead of a number,
+  named in the key as a point the run must pass (decisions § 2582). At the
+  fitted whole-course zoom the map stays quiet: the km or mile badges are one
+  pass over the ground only (one lap of a lapped course, the way out of an
+  out-and-back; `computeDistanceMarkers`' `lapM` in the `distance_markers`
+  pair), every badge on a pass of up to 10 units and every 5th on a longer
+  one (`badgeAtOverview`), the checkpoints are dots without their "CP n"
+  names, and each dot holds its place in the symbol collision pass so no
+  badge is drawn under one. One zoom step in, every badge and every name
+  appears. The phone's course map draws no badges and numbers its dots. The
+  key names only what the map draws at that moment (`courseKeyKinds`): the
+  km or mile badges only while at least one is on screen, which `RunMap`
+  reports once each render settles (`distanceBadgesShown`), so it updates as
+  the reader zooms without flickering mid-move. The key lists the start and finish (below), the
+  checkpoints, the turn-around, the kilometre or mile badges and the ▶
+  direction arrows. An elevation profile, linked to the map, shows when every
+  point has a height. The credit is one line (below). "Navigate this course"
+  is the filled primary action, "Download GPX" the outline one (primary when
+  there is no route). There is one filled action: Navigate this course when
+  the course has a route, with "Get directions to the start" as an outline
+  button above it; with no route, "Get directions to the start" is the filled
+  one and the GPX an outline (decisions § 2582). A stored `road` surface
+  reads "Paved" in the facts, never "Road" (`parks.surfacePaved`; the stored
+  vocabulary is unchanged). The facts box (distance, gain, shape, surface,
+  difficulty) wraps with its last row stretched and each cell drawing its own
+  dividers, so no count of facts leaves an empty filled slot. From 72rem the
+  page is two independent columns, so neither one's length opens a gap in the
+  other: the map, its profile and the board right under them on the left; the
+  facts, the start and finish block, the actions, the notices and the route
+  guide on the right. On a phone, one column: facts, start and finish,
+  actions, map, notices, profile, guide, board.
+- **Start and finish boxes** (decisions § 2582): when the segment has both
+  stored lines (`start_gate_*`, `end_gate_*`, the lines the matcher times),
+  the map draws a green start box behind the start line and a red finish box
+  past the finish line, each 10 m deep and the line's full width, so leaving
+  the green box is crossing the start and entering the red box is crossing
+  the finish. Each box carries a name tag at a fixed size ("Start" with a
+  flag, "Finish" with a chequered flag), filled with the box's colour and
+  inked in `mapBoxInk` (AA on both box colours), set at the box's far side
+  and reaching toward the middle of the course so it never runs off the map,
+  so the boxes are the most visible marks at the whole-course zoom; the tags replace the start and
+  finish pins, and the key names the boxes ("Start", "Finish"). Where the
+  lines share a spot (`gatesShareSpot`: centres within 10 m, facing within
+  20° of the same or opposite way), a loop or an out-and-back, there is one
+  box: the start colour, centred on the start line (5 m behind it, 5 m
+  ahead), its line chequered like the finish edge, with one "Start and
+  finish" tag in the same colour and one "Start and finish" key entry. Never
+  a green half and a red half at one spot: a runner reads that as half start,
+  half finish. The direction arrows say which way to run. The geometry is `gateBoxParts` in the `course_gates` pair, and the matcher times by the same boxes (`gateTimingEdges`, decisions § 2589); the
+  colours are `mapStartZoneColour` / `mapFinishZoneColour` (measured in
+  `basemap_contrast.test.ts` and `live_run_map_tile_url_test.dart`: each
+  clears 3:1 on every ground of its basemap, the pair keeps a lightness gap
+  to a deuteranope, the finish reads apart from the coral track). Hue is
+  never the only cue: the names, the flags, and the finish edge chequered
+  where the start's is solid. A segment missing either line keeps the pins.
+- **Jump-to controls on the map**: the **Start** and **Finish** tags the map
+  draws on its boxes (one **Start and finish** tag where the course draws one
+  shared box) are buttons, named "Show the start on the map" and so on, and
+  so are the Start and Finish entries in the map key under it (padded to a
+  44 px (web) / 48 dp (mobile) hit area without looking bigger). A **Whole
+  course** icon button sits in the map's controls: under zoom and the compass
+  on web (with a tooltip), in the top corner on Android/iOS. There is no
+  separate row of buttons. A start or finish jump fits its box with at least
+  120 m of ground across and never past zoom 18; Whole course fits the line as
+  the map does when it opens. A course without its stored lines has no tags,
+  so its key entries jump to the line's ends. The choice of targets and the
+  bounds are `courseJumps` in the `course_jump` pair
+  (`fixtures/course_jump_cases.json`). Web eases the camera (`RunMap.jumpTo`,
+  which waits for the entrance fit so it never undoes a jump) and makes the
+  key entries buttons once the map is loaded; Android/iOS tween the camera,
+  which still does not pan or pinch. Both jump instead under reduced motion.
+- **Start and finish points** (decisions § 2551, § 2582): a block on the
+  course page (web `CourseEndsBlock`, at the top of the notices column;
+  mobile `CourseEndsCard`, under the map). When the course has its boxes it
+  leads with one sentence (`courseBoxInstruction`): "Start recording in the
+  green box. Follow the arrows to the red box." (on a lapped course "…round
+  the loop 2 times and finish in the red box."); for one shared box, "Start
+  recording in the start box. Follow the arrows and finish back in it." (with its laps when it has
+  them), and with a turn-around "…Follow the arrows to the Turn around mark,
+  then back to the box." It names the map's direction arrows, not a
+  rotation, and a "mark", since nothing on the ground is signed or
+  marshalled. Then a "Get directions to the start" button, and the
+  coordinates folded under "Coordinates". On a phone the block comes right
+  after the facts, above the map. The coordinates give the start and the finish as
   "lat, lng" to five decimals (about 1 m), the order Google and Apple Maps
   read when it is pasted, e.g. `37.39124, -77.57620`. Each row has a copy
   button named for its point ("Copy start coordinates"; web shows "Coordinates
@@ -441,10 +654,28 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   privacy-clipped line for anyone but the route's owner), so it gives no point
   the map does not show. The mobile race page draws no course line, so it
   has no block; its Drive this course screen remains the way to the start.
+- **Before you run** (`ParkCourseNotices` / `_CourseNotices`, decisions
+  § 2582): a few plain lines, safety first: "Follow the course line on the
+  map and pass every checkpoint in order, or your time won't count.", the
+  give-way note when an organised group shares the paths, then only the
+  lines the course's data supports (`courseNotices` in the `park_courses`
+  pair): a ford in its route guide ("The course crosses a stream with no
+  bridge…"); on a trail (`parks.kind = 'trail'`, from #1435) a paved surface
+  gets "Shared with cyclists. Keep right and carry water: there may be few
+  fountains." and a long unpaved one "Long course: carry water and food.",
+  and a trail names no closing time; in a park, "Finish before the park
+  closes.", or on a course over 15 km "Long course: start early enough to
+  finish before the park closes." Nothing about bikes, horses or water
+  crossings is said unless the data holds it. Until `parks.kind` exists the
+  clients read every catalogue entry as a park (web `parkKindOf`, mobile
+  `ParkListing.kind`). The required notices follow as one smaller line: a
+  time trial on open trails, not a race, and nobody marshals it; the times
+  are not event results; not affiliated with the park.
 - **Empty board:** the page asks the all-time completions board for one row
   first (it throws on a failed read, so a failure is not read as empty).
   With no time at all, the board kinds, seasons, Compare and the filters are
-  hidden and an `EmptyState` explains how to get the first time. They appear
+  hidden and an `EmptyState` says, in one line, "No times yet. Run it with
+  Threkir and yours shows up here." They appear
   once there is one; a filtered or this-year board that is empty still says so
   inline.
 - **`/share/course/…`** takes the same distance label, laps chip, credit line,
@@ -455,15 +686,19 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
 
 Issue #1344, [decisions § 2448](../architecture/decisions.md). Each course has
 a short guide a newcomer can follow: where to park, which way round, and every
-turn in order by trail name, with the bridges, fords, surface changes and
-climbs on the way, the checkpoints and the laps.
+turn in order by trail name, with the bridges, fords, roads to cross, surface
+changes and climbs on the way, the checkpoints and the laps.
 
 - **Structured, not prose.** `park_courses.route_guide` is
   `{ version: 1, lang, getting_there?, steps }`. A step is one of `start`
   (`name` or `way`), `direction` (`rotation`: `clockwise` /
   `counterclockwise`, with an optional `keep_on` + `landmark`), `lap` (`lap`,
   `of`), `junction` (`turn`: `left` / `right` / `straight`, and `name` or
-  `way`: `fire_road` / `road` / `path`), `crossing` (`bridge` / `ford`),
+  `way`: `fire_road` / `road` / `path`), `road` (`length_m`, optional
+  `name`: a stretch of road the course follows between two pieces of trail,
+  since migration `20280102001430`), `crossing` (`bridge` / `ford`, or
+  `road` with an optional `name` and `signal: true`: a motor road crossed at
+  grade, since migration `20280105001344`),
   `surface` (`paved` / `gravel` / `dirt` / `unpaved` / `boardwalk`), `climb`
   (`gain_m`, `length_m`), `checkpoint` (`order`, `of`) and `finish`, each with
   its whole-metre `at_m` along the course. The CHECK
@@ -480,9 +715,19 @@ climbs on the way, the checkpoints and the laps.
   step missing.
 - **Generated, never invented.** `scripts/parks/lib/route_guide.mjs` derives
   the steps from the ordered OSM ways: a junction where the trail name changes
-  (a short unnamed bridge or split inside one trail is not one), a junction
+  (a short unnamed bridge or split inside one trail is not one), a road step
+  for each stretch along a way the park's `trail_review.road_connectors` lists
+  (at most 250 m each, or the build refuses the course; a `trail_review.joins`
+  step across a near-miss junction is read as the trail either side and adds
+  none), a junction
   between unnamed ways only where the snapshot shows a branch and the course
-  turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
+  turns, crossings from `bridge` / `ford` tags, a road crossing for each motor
+  road the course crosses at grade (from the snapshot's `road_crossings`, which
+  `fetch_snapshot.mjs --road-crossings-only` adds without moving a course;
+  named service roads only, no bridges or tunnels, the carriageways of one road
+  merged; the rule is in
+  [scripts/parks/README.md § Road crossings](../../scripts/parks/README.md#road-crossings)),
+  surfaces from `surface` tags
   (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
   checkpoints where the build placed them, and the rotation of the loop. A
   lapped race writes lap 1 in full and then only its lap markers, checkpoints
@@ -497,8 +742,28 @@ climbs on the way, the checkpoints and the laps.
   page's meta description says so, and the GPX `<desc>` opens with it. Once
   set, they say "Checked on the ground on <date>." How to check one is in
   [scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides).
-- **Where it shows.** The course page (between the actions and the Before you
-  run notice), the share page (the same component, `ParkCourseRouteGuide`),
+- **Short first** (decisions § 2582). The course page and the share page
+  show the short view from `routeGuideView` (the `route_guide` pair, case
+  table `views`): the start, the direction, how many laps ("2 laps of the
+  loop."), how many times the course crosses a road ("12 road crossings on
+  this course. Watch for cars.", only when there is at least one; a crossing
+  on the loop counts once a lap, and the full view names each road), the first lap's turns where the trail changes (a left or right
+  onto a different trail or kind of way; a straight-on or a turn that stays
+  on the same trail is left out), where each later lap starts ("25.0 km:
+  start lap 2 of 2 and repeat the loop.", so nobody stops at the box after
+  the first) and the finish. Everything else sits under
+  "Show all steps", collapsed: bridges, fords, road crossings, road stretches,
+  surfaces and climbs grouped by
+  lap (a lap after the first reads "Repeat the loop.", then only the steps
+  that differ from lap 1 on it, such as the turn off the loop on the last lap,
+  so nothing a runner needs is hidden) or, with no laps, by
+  5 km stretch with a distance heading. Neither view lists checkpoints; the
+  map marks them. The GPX `<desc>` and the share page's search text keep
+  every line (`routeGuideLines`). The Swift Creek 50K's 68 steps read as 23
+  lines: the start, the direction, "2 laps of the loop.", the 18 turns where
+  the loop changes trail, the start of lap 2, and the finish.
+- **Where it shows.** The course page (in the right-hand column on a wide
+  screen, after the Before you run notice), the share page (the same component, `ParkCourseRouteGuide`),
   the share page's JSON-LD description in canonical English (`GUIDE_EN`, held
   to `locales/en.ts` by a test), the course GPX's track `<desc>` in the same
   English, mobile `ParkCourseScreen`, and a line in the `park-courses` help
@@ -748,6 +1013,12 @@ A linear race course on a rail trail (the Virginia Capital Trail's, decisions
 `out_and_back`, with one line at the start and its checkpoints on the way out
 only, the last on the turn (the way back passes the same places, so a second
 set would overlap the first). Neither has `laps`.
+The race distances run from `5k` to the ultra distances `50k`, `50mi`
+(80,467.2 m) and `100k` (decisions § 2593); a 50 mile or 100K course is
+expected to be a linear one on a long rail trail. The database stores only
+the metres, so a new distance needs no migration.
+
+On a local stack, `bin/seed-demo.sh` runs the same load over every committed park, staged ones too, as a local copy of the official club it creates (owned by `runner@test.com`); `scripts/parks/local_load.mjs` prints that SQL (decisions § 2590).
 
 Shipping a park, or a change to one:
 
@@ -950,7 +1221,123 @@ These gate going live, not the code:
       of course plus a 118 m lead-in each way; if the real route turns further
       out or starts elsewhere, change the via lists, not the line. (c) Walk the
       route guide and set `ground_checked_at`. (d) No sentence naming the
-      Saturday event until #1148 is answered.
+      Saturday event until #1148 is answered. (e) The 10 km (2 laps, issue
+      #1430) shares the 5 km's lead-in; its 4,903 m lap adds the exercise
+      trail, the 4/10- and 8/10-mile trails past the fields and the whole
+      7/10-mile loop, all drawn on the 2026 county map (colored routes or its
+      dashed "Trails"). Walk one lap against the map before going live.
+- [ ] **Rockwood Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,505 m loop (Blue, White, Red, Orange,
+      Yellow, Green and Purple trails) against the county trail map and a GPS
+      trace, checks the start line on the Blue Trail north of the
+      archery-range lot, walks the route guide and sets `ground_checked_at`,
+      and records the brand and data outcome on #1097. The county map dates
+      from 2017; its `trail_review` refuses the paths OSM has beside the
+      Orange Trail and the dashed connectors by Gregory's Pond. A
+      half-marathon was not built: on the map's trails the shortest 7 km lap
+      found repeats 22 % of itself, over the 15 % cap set on #1430.
+- [ ] **Cold Harbor (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,692 m lap (Main Trail to the visitor
+      center and back, the Extended Loop Trail, the Western Trail) against the
+      NPS trail map, including the four tour-road stretches each lap runs on
+      Anderson Wright Drive (56, 219, 41 and 159 m, run facing the one-way
+      traffic) where OSM leaves the trail in three pieces; confirms runners may
+      use the tour road there; checks the start line on the Main Trail east of
+      the tour road (155 m from the crossing for the 5K, 310 m for the 10K);
+      walks the route guide and sets `ground_checked_at`; and asks the park
+      whether an organised run needs a special park use permit. If OSM gains
+      the foot links at the crossings, drop the connectors and rebuild.
+- [ ] **Powhite Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,605 m lap of shared mountain-bike
+      singletrack against the trail signs (the city publishes no trail map, so
+      the line and the unnamed inner trails are OSM's), checks the start line
+      on the Powhite Park Loop Trail north of the Jahnke Road lot (the 10K's
+      is 50 m in from the lot end), walks the route guide and sets
+      `ground_checked_at`. Foot access is not confirmed in writing: OSM
+      forbids foot on none of the ways used, and the owner decided not to ask
+      the city; runners check the park rules themselves.
+- [ ] **Poor Farm Park (staged, issue #1430).** Before its `release` goes
+      `live`: the owner walks the 4,853 m lap of mountain-bike singletrack
+      against the trail signs (Hanover County publishes no trail map, so the
+      line is OSM's), including the two park-road crossings where the build
+      joins trail pieces OSM leaves 0.45 m and 2.93 m apart; checks the start
+      line on the connector trail in the woods, about 900 m back along the loop
+      from the small lot the loop passes; walks the route guide and
+      sets `ground_checked_at`. Foot access is not confirmed in writing (owner
+      decision). The half-marathon distance (3 laps) shares the
+      lead-in and the two road-crossing joins; its 6,917 m lap is a longer
+      ring through the west and south singletrack (the Muscle Loop and the
+      Fence Trail among it) and re-runs 6 m of itself. An exact search of
+      the park's OSM trails, leaving out the expert jump and downhill lines
+      (`mtb:scale` 3 and up) and the footways by the fields, found it; the
+      earlier 6,039 m figure came from a narrower set of ways. Walk one half
+      lap against the signs before going live.
+- [ ] **First Landing State Park (staged, issue #1433).** Before its
+      `release` goes `live`: the owner walks all four courses against the
+      DCR trail guide and the trail signs (the line is OSM's; DCR's maps are
+      reference only until DCR confirms its terms in writing). The 5K
+      (4,853 m loop: Bald Cypress, Osmanthus) and the 10K (9,919 m loop: adds
+      Cape Henry, Kingfisher, Long Creek, Fox Run, High Dune) start on the
+      Bald Cypress Trail about 100 m and 120 m from the Trail Center. The half
+      (one 20,695 m lap) and the marathon (two laps) add White Hill Lake and
+      the Osprey Trail, running the Long Creek Trail between White Hill Lake
+      and the Osprey Trail out and back (798 m each way, 4 % of the lap), and
+      start on the Cape Henry Trail about 150 m and 300 m west of the Trail
+      Center, clear of the Trail Center's service road (the half's line is
+      71 m from it). The Cape Henry Trail is shared with bikes; every other
+      trail used is hiking only. Walk the route guides and set
+      `ground_checked_at`, and confirm with DCR whether a standing timed
+      course needs a special use permit. No linear course on the Cape Henry
+      Trail: the whole trail is about 10 km, so a half out and back would run
+      it end to end, with its ends at roads (the streets west of the park and
+      64th Street), and the
+      loops are the better run.
+- [ ] **James River State Park (staged, issue #1433).** Before its `release`
+      goes `live`: the owner walks the loops against the trail signs: the
+      4,595 m 5K loop (River Trail, Cabell-Running Creek Connector, Cabell
+      Trail, Taylor Trail), the 9,951 m 10K loop (Running Creek Trail ridge,
+      Branch Trail past Branch Pond, Branch Trail Connector, the whole Cabell
+      Trail, the connector and Taylor Trail) and the 20,814 m half loop, run
+      twice for the marathon (adds the Kerr Loop, the Cabell Trail Connector
+      and the River Trail's whole length; one Park Road crossing per lap at
+      the Kerr Loop trailhead). All four share a 494 m lead-in from the
+      Discovery Area lot on Canoe Landing Road. The unblazed connectors (the
+      dashed lines on DCR's map, listed in its trail table with no blaze) sit
+      up to about 100 m off the OSM lines on DCR's map, so check each on the
+      ground; OSM names the Cabell Trail's last stretch to Green Hill
+      "Cabell Creek Connector Trail". Way 19902508 is designated because its
+      north part is the Branch Trail Connector; its south part is Branch Pond
+      Road, which no course walks. Walk the route guides and set
+      `ground_checked_at`, and confirm with DCR that a standing course needs
+      no Special Use Permit. Trails are shared with horses and bikes.
+- [ ] **Manassas National Battlefield Park (staged, issue #1434).** Before
+      its `release` goes `live`: the owner walks both courses at Brawner Farm
+      against the NPS trail map and the blazes (most of each lap is the
+      yellow-blazed bridle loop, shared with horses; the loop crosses no
+      road), walks the route guide and sets `ground_checked_at`, and asks the
+      park whether a standing timed course needs a special use permit (NPS
+      lists $100 with three weeks' review). Ways 46523927 and 331330952 are
+      refused: OSM maps them at Brawner Farm but the NPS trails layer has no
+      line there.
+- [ ] **High Bridge Trail State Park (staged, issue #1432).** Before its
+      `release` goes `live`: the owner walks each start and finish against
+      the trail signs and lots, confirms the Farmville section (Main Street
+      to Osborne Road, closed for the River Road bridge rebuild "through
+      November") has reopened, since the half and the marathon run through
+      it, and checks DCR's daily parking fees and whether a standing course
+      needs a Special Use Permit. Walk the route guides and set
+      `ground_checked_at`.
+- [ ] **Washington & Old Dominion Trail (staged, issue #1432).** Before its
+      `release` goes `live`: the owner walks each start and finish against
+      the trail signs, confirms public access at the end lots (the
+      Purcellville and Leesburg school lots are weekend-only in term; the
+      Deerpath, Clarks Crossing and Vienna lots are unconfirmed), and checks
+      NOVA Parks' event rules (a permit at 25 or more people, and the
+      gathering regulation voted on 2026-11-19). OSM names the bridge way
+      59337961 "W&OD Trail" rather than the trail's full name, so the route
+      guide shows two "straight onto" steps around km 31.7; fix the name on
+      OSM and re-run the snapshot. Walk the route guides and set
+      `ground_checked_at`.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).
@@ -963,6 +1350,12 @@ These gate going live, not the code:
       closed courses) in the release that ships matcher version 3, after the
       functions deploy (decisions § 2465). Until it has run, boards may still
       show the "measured the old way" note.
+- [ ] Matcher version 4 (the boxes, decisions § 2589) re-matches old efforts
+      through the ops task `20280102001446_rematch_segments_matcher_v4` in the
+      backend release that ships it. Don't dispatch a committing production
+      sync from `main` between the merge and that release expecting it to run:
+      the task stays pending until the release's migration creates
+      `private.segment_matcher_version()`.
 
 ## Tests
 
@@ -1089,6 +1482,12 @@ These gate going live, not the code:
   production job worker is draining `segment_match`, whether the deployed
   function carries the current bundle, and whether production's rows match the
   manifest.
+- Boxes (#1446, decisions § 2589): `parks/course_box_timing.test.ts` (seeded
+  runs over every catalogue course, from `parks/course_box_timing_sim.ts`: the
+  timed rate for each way of starting and stopping, sparse fixes, a gap at the
+  finish and a 50K, and no time for stopping halfway or a cut), the box cases
+  of `fixtures/segments_gate_cases.json` and the `timingEdges` section of
+  `fixtures/course_gates_cases.json`, read by both twins.
 - Lines: pgTAP `global_segment_gates_test.sql` (derivation, curator override and reset, `matched_by`, the owner's delete-then-insert re-match); Playwright `tests-e2e/routes/global-segment-gates.spec.ts`.
 - Server matching: pgTAP `segment_match_jobs_test.sql` (enqueue triggers, the
   bbox lookup, the write and its refusal for replaced bytes, the backfill, grants);
@@ -1103,7 +1502,13 @@ These gate going live, not the code:
   `fixtures/route_guide_cases.json` (template per step, fail-closed reading,
   `GUIDE_EN` against the English catalogue); pgTAP
   `park_course_route_guide_test.sql` (the shape predicate, the CHECKs, the load
-  writing the guide and its date with no backfill, each refusal); Playwright
+  writing the guide and its date with no backfill, each refusal) and
+  `park_course_route_guide_road_test.sql` (the road step, #1430) and
+  `park_course_route_guide_road_crossing_test.sql` (the road crossing);
+  `node --test scripts/parks/lib/road_crossings.test.mjs` (the crossing rule,
+  signals, the Overpass parser); road
+  connectors in `course_geometry.test.mjs` (the trail review, the 250 m cap);
+  Playwright
   `tests-e2e/parks/park-course-route-guide.spec.ts` (the list and the draft
   note on the course and share pages, the checked date, the GPX `<desc>`);
   a widget test in `test/park_courses_screen_test.dart`.

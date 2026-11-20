@@ -9,11 +9,17 @@ import test from 'node:test';
 
 import {
 	RACE_DISTANCES_M,
+	JOIN_MAX_M,
+	ROAD_CONNECTOR_MAX_M,
 	assertFootAccess,
+	joinWays,
+	assertRoadConnectors,
 	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
 	footAccessRefusal,
+	footAccessWarning,
+	footAccessWarnings,
 	haversineM,
 	lapCourse,
 	assertViaEndsAtTrailEnd,
@@ -361,7 +367,16 @@ test('slice interpolates elevation at the cut', () => {
 });
 
 test('race distances are the standard ones', () => {
-	assert.deepEqual(RACE_DISTANCES_M, { '5k': 5000, '10k': 10000, half: 21097.5, marathon: 42195, '50k': 50000 });
+	assert.deepEqual(RACE_DISTANCES_M, {
+		'5k': 5000,
+		'10k': 10000,
+		half: 21097.5,
+		marathon: 42195,
+		'50k': 50000,
+		'50mi': 80467.2,
+		'100k': 100000,
+	});
+	assert.equal(RACE_DISTANCES_M['50mi'], Math.round(50 * 1609.344 * 10) / 10);
 });
 
 test('distanceDeviation is signed and relative', () => {
@@ -403,6 +418,34 @@ test('footAccessRefusal refuses a cycleway without foot access', () => {
 test('footAccessRefusal refuses mountain-bike-only trails', () => {
 	assert.equal(footAccessRefusal({ highway: 'path', bicycle: 'designated', foot: 'no' }), 'foot=no, bicycle=designated');
 	assert.equal(footAccessRefusal({ highway: 'path', mtb: 'designated' }), 'mtb=designated');
+});
+
+test('footAccessWarning flags a bike-designated way with no explicit foot access', () => {
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated' }), 'bicycle=designated with no foot tag');
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'permissive' }), 'bicycle=designated with foot=permissive');
+	assert.equal(footAccessWarning({ highway: 'path', foot: 'discouraged' }), 'foot=discouraged');
+});
+
+test('footAccessWarning is silent where foot is explicit, or where the way is refused anyway', () => {
+	assert.equal(footAccessWarning({ highway: 'path' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'designated' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'yes' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', bicycle: 'designated', foot: 'no' }), null);
+	assert.equal(footAccessWarning({ highway: 'path', mtb: 'designated', bicycle: 'designated' }), null);
+	assert.equal(footAccessWarning({ highway: 'cycleway', bicycle: 'designated' }), null);
+});
+
+test('footAccessWarnings names only walked ways, and foot_confirmed settles one', () => {
+	/** @type {import('./course_geometry.mjs').SnapshotWay[]} */
+	const ways = [
+		{ id: 20, nodes: [1, 2], tags: { highway: 'path', bicycle: 'designated' } },
+		{ id: 21, nodes: [2, 3], tags: { highway: 'path' } },
+		{ id: 22, nodes: [3, 4], tags: { highway: 'path', bicycle: 'designated' } },
+	];
+	const warnings = footAccessWarnings([1, 2, 3], ways);
+	assert.equal(warnings.length, 1);
+	assert.match(warnings[0], /^way 20 \(bicycle=designated with no foot tag\) may be bike-only/);
+	assert.deepEqual(footAccessWarnings([1, 2, 3], ways, { 20: 'open to walkers per the park map' }), []);
 });
 
 test('assertFootAccess names the refused way and its tags', () => {
@@ -468,6 +511,59 @@ test('assertTrailReview returns the walked fords and refuses an unrecorded one',
 	assert.throws(() => assertTrailReview(square, ways, reviewed()), /way 11 is tagged ford=yes but trail_review does not list it/);
 	assert.deepEqual(assertTrailReview(square, ways, reviewed({ fords: [11] })), [11]);
 	assert.throws(() => assertTrailReview(square, ways, reviewed({ fords: [99] })), /ford\(s\) 99 that are not designated/);
+});
+
+test('assertTrailReview lets a course walk a road connector, and refuses one also designated', () => {
+	const review = reviewed({ designated: [10, 12], road_connectors: { 11: 'tour road between two trail pieces' } });
+	assert.deepEqual(assertTrailReview(square, loopWays, review), []);
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ road_connectors: { 11: 'tour road' } })),
+		/road_connectors lists way 11, which is also designated or refused/,
+	);
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ designated: [10, 12], road_connectors: { 11: ' ' } })),
+		/road_connectors way 11 needs a reason/,
+	);
+});
+
+test('assertRoadConnectors returns each road stretch and refuses one over the cap', () => {
+	const review = reviewed({ designated: [10, 12], road_connectors: { 11: 'tour road' } });
+	const runs = assertRoadConnectors(square, nodes, loopWays, review);
+	assert.equal(runs.length, 1);
+	const way11 = /** @type {any} */ (loopWays.find((w) => w.id === 11));
+	const expected = pathLengthM(toPoints(way11.nodes, nodes));
+	assert.ok(Math.abs(runs[0].lengthM - expected) < 1e-6);
+	assert.deepEqual(assertRoadConnectors(square, nodes, loopWays, reviewed()), []);
+	const far = Object.fromEntries(Object.entries(nodes).map(([id, n]) => [id, { ...n, lat: n.lat * 3, lon: n.lon * 3 }]));
+	assert.ok(expected * 3 > ROAD_CONNECTOR_MAX_M);
+	assert.throws(() => assertRoadConnectors(square, far, loopWays, review), /over the 250 m a connector may run/);
+});
+
+test('joinWays turns each trail_review join into a synthetic step and refuses a bad one', () => {
+	const near = { ...nodes, 7: { lat: 0, lon: 0.00002, ele: 10 } };
+	const [join] = joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'near-miss junction' }] }), near);
+	assert.equal(join.id, -1);
+	assert.equal(join.join, true);
+	assert.deepEqual(join.nodes, [1, 7]);
+	assert.ok(join.gapM > 2 && join.gapM < 3);
+	assert.deepEqual(joinWays(reviewed(), near), []);
+	const far = { ...nodes, 7: { lat: 0, lon: 0.0001, ele: 10 } };
+	assert.ok(haversineM({ lat: 0, lng: 0 }, { lat: 0, lng: 0.0001 }) > JOIN_MAX_M);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'x' }] }), far), /over the 10 m a join may close/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: ' ' }] }), near), /needs a reason/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 1], reason: 'x' }] }), near), /two different OSM node ids/);
+	assert.throws(() => joinWays(reviewed({ joins: [{ nodes: [1, 99], reason: 'x' }] }), near), /node 99 is missing/);
+	assert.throws(
+		() => joinWays(reviewed({ joins: [{ nodes: [1, 7], reason: 'x' }, { nodes: [7, 1], reason: 'y' }] }), near),
+		/joins 7-1 twice/,
+	);
+});
+
+test('assertTrailReview passes a join the line walks without listing it', () => {
+	const near = { ...nodes, 7: { lat: 0, lon: 0.00002, ele: 10 } };
+	const review = reviewed({ joins: [{ nodes: [1, 7], reason: 'near-miss junction' }] });
+	const ways = [...loopWays, ...joinWays(review, near)];
+	assert.deepEqual(assertTrailReview([7, 1, 2, 3, 4, 1, 7], ways, review), []);
 });
 
 // A straight trail east along the equator, ~111.2 m a hop, split across two ways.

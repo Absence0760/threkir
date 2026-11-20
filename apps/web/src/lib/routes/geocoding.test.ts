@@ -523,3 +523,60 @@ test('geocodePlace (Nominatim path) returns null on a body that is not an array'
 		// — pinned so the guard above cannot be "fixed" into a throw later.
 		assert.equal(await withBody('{"error":"rate limited"}', () => geocodePlace('X')), null);
 	});
+
+// ---- PlaceBias ------------------------------------------------------------
+
+import { biasCountries, mapTilerBiasQuery } from './geocoding_math';
+
+async function urlAsked(call: () => Promise<unknown>): Promise<URL> {
+	const originalFetch = globalThis.fetch;
+	let asked = '';
+	globalThis.fetch = (async (url: unknown) => {
+		asked = String(url);
+		return new Response('[]', { status: 200 });
+	}) as typeof fetch;
+	try {
+		await call();
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return new URL(asked);
+}
+
+test('biasCountries lowercases, dedupes and drops what is not a two-letter code', () => {
+	assert.deepEqual(biasCountries({ countries: ['US', 'us', ' gb ', 'USA', '', 'v1'] }), ['us', 'gb']);
+	assert.deepEqual(biasCountries(undefined), []);
+});
+
+test('mapTilerBiasQuery adds country and proximity, and nothing for no bias', () => {
+	assert.equal(mapTilerBiasQuery(undefined), '');
+	assert.equal(mapTilerBiasQuery({}), '');
+	assert.equal(
+		mapTilerBiasQuery({ countries: ['US', 'CA'], proximity: { lat: 37.5, lng: -77.4 } }),
+		'&country=us,ca&proximity=-77.4,37.5',
+	);
+	assert.equal(mapTilerBiasQuery({ proximity: { lat: Number.NaN, lng: 0 } }), '');
+});
+
+test('a bias reaches both providers, search and geocode alike', async () => {
+	const bias = { countries: ['US'], proximity: { lat: 37.5, lng: -77.4 } };
+	const mt = await urlAsked(() => searchPlacesWithKey('k', 'Belle', 3, undefined, bias));
+	assert.equal(mt.hostname, 'api.maptiler.com');
+	assert.equal(mt.searchParams.get('country'), 'us');
+	assert.equal(mt.searchParams.get('proximity'), '-77.4,37.5');
+
+	const nom = await urlAsked(() => searchPlacesWithKey('', 'Belle', 3, undefined, bias));
+	assert.equal(nom.hostname, 'nominatim.openstreetmap.org');
+	assert.equal(nom.searchParams.get('countrycodes'), 'us');
+
+	const geo = await urlAsked(() => geocodePlaceWithKey('', 'Belle', undefined, bias));
+	assert.equal(geo.searchParams.get('countrycodes'), 'us');
+});
+
+test('with no bias the provider is asked exactly what it was asked before', async () => {
+	const mt = await urlAsked(() => searchPlacesWithKey('k', 'Belle', 3));
+	assert.equal(mt.searchParams.has('country'), false);
+	assert.equal(mt.searchParams.has('proximity'), false);
+	const nom = await urlAsked(() => geocodePlaceWithKey('', 'Belle'));
+	assert.equal(nom.searchParams.has('countrycodes'), false);
+});

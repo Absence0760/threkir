@@ -275,22 +275,15 @@ class _RacesScreenState extends State<RacesScreen> {
     return HubTabBody(
       title: l.runSurfaceTabRacesCourses,
       // No primary action: "Add a race" contributes a listing, which few
-      // people do and nobody comes here to do, so it waits in the overflow
+      // people do and nobody comes here to do, so it waits in the hub's ⋮
       // rather than holding the FAB (issue #1374 report 2).
-      actions: [
-        const HelpButton(routes: ['/races']),
-        PopupMenuButton<void>(
-          key: const Key('races-overflow'),
-          itemBuilder: (_) => [
-            PopupMenuItem<void>(
-              onTap: _openSubmit,
-              child: ListTile(
-                leading: const Icon(Icons.add),
-                title: Text(l.racesSubmitRace),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
+      actions: const [HelpButton(routes: ['/races'])],
+      menu: [
+        HubMenuItem(
+          itemKey: const Key('racesMenuSubmit'),
+          label: l.racesSubmitRace,
+          icon: Icons.add,
+          onSelected: _openSubmit,
         ),
       ],
       filters: _filterBar(l, api: api, racesShown: racesShown),

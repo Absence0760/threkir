@@ -281,6 +281,27 @@ void main() {
     expect(tester.getRect(_heading).left, greaterThanOrEqualTo(action.right));
   });
 
+  testWidgets('an action that draws nothing leaves the title row its gutter, '
+      'either way round', (tester) async {
+    await _phone(tester);
+    for (final dir in TextDirection.values) {
+      await tester.pumpWidget(_app(Directionality(
+        textDirection: dir,
+        child: _plain(actions: const [SizedBox.shrink()]),
+      )));
+      await tester.pump();
+      final header = tester.getRect(find.byType(PageHeader));
+      // The header's own end padding is the narrow one an icon button gets,
+      // so the row keeps the rest of the gutter clear outside it.
+      const outside = AppInsets.gutter - AppSpace.xs;
+      if (dir == TextDirection.ltr) {
+        expect(header.right, moreOrLessEquals(320 - outside), reason: '$dir');
+      } else {
+        expect(header.left, moreOrLessEquals(outside), reason: '$dir');
+      }
+    }
+  });
+
   testWidgets('the status bar keeps the colour of what is under it',
       (tester) async {
     await _phone(tester);

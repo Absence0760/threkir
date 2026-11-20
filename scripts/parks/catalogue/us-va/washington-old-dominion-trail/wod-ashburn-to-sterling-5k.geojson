@@ -1,0 +1,139 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "race_course",
+    "park": "washington-old-dominion-trail",
+    "course": "wod-ashburn-to-sterling-5k",
+    "name": "Ashburn to Sterling, 5 km",
+    "race_distance": "5k",
+    "course_shape": "point_to_point"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -77.486219,
+      39.04327,
+      88.7
+     ],
+     [
+      -77.475163,
+      39.036636,
+      80.8
+     ],
+     [
+      -77.471384,
+      39.034352,
+      76.6
+     ],
+     [
+      -77.466476,
+      39.031424,
+      70.8
+     ],
+     [
+      -77.464697,
+      39.030334,
+      69
+     ],
+     [
+      -77.458997,
+      39.026929,
+      75.2
+     ],
+     [
+      -77.449871,
+      39.021431,
+      74.3
+     ],
+     [
+      -77.447177,
+      39.019786,
+      72.5
+     ],
+     [
+      -77.444503,
+      39.018206,
+      71.1
+     ],
+     [
+      -77.440443,
+      39.01575,
+      75.2
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "start"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.486219,
+     39.04327
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "finish"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.440443,
+     39.01575
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "checkpoint",
+    "order": 1
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.474769,
+     39.036394
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "checkpoint",
+    "order": 2
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.463322,
+     39.029516
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "checkpoint",
+    "order": 3
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.451878,
+     39.022637
+    ]
+   }
+  }
+ ]
+}

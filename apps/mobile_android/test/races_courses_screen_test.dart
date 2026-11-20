@@ -647,8 +647,8 @@ void main() {
 
   group('the search', () {
     testWidgets(
-        'is in the FilterBar with help and the overflow on its row, in every '
-        'view', (tester) async {
+        'is in the FilterBar with help on its row, and Add a race in the '
+        'app bar\'s ⋮ rather than the row, in every view', (tester) async {
       tallView(tester);
       await tester.pumpWidget(_app(RacesScreen(
         service: _Races(),
@@ -664,17 +664,17 @@ void main() {
         expect(search, findsOneWidget, reason: view);
         final help =
             find.descendant(of: bar, matching: find.byType(HelpButton));
-        final overflow = find.descendant(
-            of: bar, matching: find.byKey(const Key('races-overflow')));
         expect(help, findsOneWidget, reason: view);
-        expect(overflow, findsOneWidget, reason: view);
-        // One row: no line holding only the two actions.
+        // One row: no line holding only the help action.
         expect(tester.getCenter(help).dy,
             moreOrLessEquals(tester.getCenter(search).dy, epsilon: 1),
             reason: view);
-        expect(tester.getCenter(overflow).dy,
-            moreOrLessEquals(tester.getCenter(search).dy, epsilon: 1),
+        final menu = find.byKey(const Key('hub-menu'));
+        expect(find.descendant(of: bar, matching: menu), findsNothing,
             reason: view);
+        expect(find.descendant(of: find.byType(AppBar), matching: menu),
+            findsOneWidget,
+            reason: '$view: mounted on its own, the ⋮ is the app bar\'s');
       }
       expect(find.byType(FilterBar), findsOneWidget);
     });

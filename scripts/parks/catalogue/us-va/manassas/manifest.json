@@ -1,0 +1,290 @@
+{
+  "park": {
+    "slug": "manassas",
+    "name": "Manassas National Battlefield Park",
+    "kind": "park",
+    "agency": "nps",
+    "nps_park_code": "mana",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.nps.gov/mana/planyourvisit/hiking.htm",
+    "osm_boundary": "relation/3554290"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks both courses at Brawner Farm against the NPS trail map and the blazes (most of each lap is on the yellow-blazed bridle loop shared with horses), and confirms with the park whether an organised run needs a special use permit (NPS lists $100 with three weeks' review)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-20",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "manassas-5k",
+      "name": "Manassas National Battlefield Park, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4938.7,
+      "lead_in_m": 189.5,
+      "start_line_from_lead_in_start_m": 158.8,
+      "start_finish": {
+        "lat": 38.813875,
+        "lng": -77.566239
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/151179144,way/151179143,way/46526117,way/331331001,way/1304503572,way/482753982,way/331251623,way/482754003",
+      "source_checked_at": "2026-11-20",
+      "geojson": "manassas-5k.geojson",
+      "elevation_m": 37,
+      "checkpoints": [
+        {
+          "lat": 38.809863,
+          "lng": -77.564002
+        },
+        {
+          "lat": 38.815726,
+          "lng": -77.570914
+        },
+        {
+          "lat": 38.820179,
+          "lng": -77.55998
+        }
+      ],
+      "waypoint_count": 180,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Brawner Farm Interpretive Center lot, reached from Pageland Lane. Walk east on the Brawner Farm Loop Trail; the start line is a short way along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Brawner Farm Loop Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 145
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Brawner Loop",
+            "at_m": 599
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 3982
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4889
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Brawner Farm Loop Trail",
+            "at_m": 4969
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 4969
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "manassas-10k",
+      "name": "Manassas National Battlefield Park, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4938.7,
+      "lead_in_m": 189.5,
+      "start_line_from_lead_in_start_m": 128.1,
+      "start_finish": {
+        "lat": 38.813921,
+        "lng": -77.566589
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/151179144,way/151179143,way/46526117,way/331331001,way/1304503572,way/482753982,way/331251623,way/482754003",
+      "source_checked_at": "2026-11-20",
+      "geojson": "manassas-10k.geojson",
+      "elevation_m": 73,
+      "checkpoints": [
+        {
+          "lat": 38.808779,
+          "lng": -77.564585
+        },
+        {
+          "lat": 38.817753,
+          "lng": -77.568912
+        },
+        {
+          "lat": 38.817605,
+          "lng": -77.562341
+        },
+        {
+          "lat": 38.813421,
+          "lng": -77.561676
+        },
+        {
+          "lat": 38.813264,
+          "lng": -77.568964
+        },
+        {
+          "lat": 38.820579,
+          "lng": -77.561257
+        }
+      ],
+      "waypoint_count": 357,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Brawner Farm Interpretive Center lot, reached from Pageland Lane. Walk east on the Brawner Farm Loop Trail; the start line is a short way along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Brawner Farm Loop Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 176
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Brawner Loop",
+            "at_m": 629
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4012
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4920
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Brawner Farm Loop Trail",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5714,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7143,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8571,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Brawner Farm Loop Trail",
+            "at_m": 9939
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 9939
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9994
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

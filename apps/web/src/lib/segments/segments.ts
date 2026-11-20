@@ -18,7 +18,15 @@
  */
 
 import type { GlobalSegmentMatchedBy, TrackPoint } from '../types';
-import { GateCrossingDetector, gateUsable, type Gate, type GateCrossing } from '../geo/gate_crossing';
+import {
+	GATE_REJECT_GAP_S,
+	GateCrossingDetector,
+	gateProjection,
+	gateUsable,
+	type Gate,
+	type GateCrossing,
+} from '../geo/gate_crossing';
+import { COURSE_GATE_BOX_DEPTH_M, gateTimingEdges } from '../races/course_gates';
 import { haversineMetres } from '../geo/haversine';
 import { unwrapLonDeg } from '../routes/geo';
 import { lineLat, lineLng, trackLine } from '../runs/track_line';
@@ -132,9 +140,29 @@ function effortFromIndex(
  * matcher wrote (`runs.metadata.global_segments_matcher_version`, issue
  * #1308). 1 was the circles-only matcher; 2 times a segment with a usable pair
  * of lines by its line crossings and reads only on-track fixes; 3 times every
- * complete lap of a loop, so a run's fastest lap is its effort (§ 2463).
+ * complete lap of a loop, so a run's fastest lap is its effort (§ 2465); 4
+ * times by the drawn start and finish boxes, with GPS slack at either end of
+ * the recording and a longer gap across the finish (§ 2589).
  */
-export const GLOBAL_SEGMENT_MATCHER_VERSION = 3;
+export const GLOBAL_SEGMENT_MATCHER_VERSION = 4;
+
+/**
+ * How far past the start box's exit edge a recording's first fix, or short of
+ * the finish box a recording's last stretch, may sit and still count: the
+ * GPS error of a phone standing at the line (decisions § 2589).
+ */
+export const GLOBAL_SEGMENT_BOX_SLACK_M = 5;
+
+/**
+ * The longest gap between two fixes across the finish edge that still
+ * finishes, when the straight-line speed across it is within
+ * GLOBAL_SEGMENT_GAP_SPEED_MIN..MAX of the runner's average since the start.
+ * Up to GATE_REJECT_GAP_S any crossing counts, as for every line.
+ */
+export const GLOBAL_SEGMENT_FINISH_MAX_GAP_S = 300;
+const BOX_REACH_M = COURSE_GATE_BOX_DEPTH_M + GLOBAL_SEGMENT_BOX_SLACK_M;
+export const GLOBAL_SEGMENT_GAP_SPEED_MIN = 0.4;
+export const GLOBAL_SEGMENT_GAP_SPEED_MAX = 1.5;
 
 /** Covered distance between the start and end must be within this fraction
  *  of the segment's stored length, whichever way the segment is matched. */
@@ -253,17 +281,24 @@ export function linesChain(start: Gate, end: Gate): boolean {
  *
  * Two rules, chosen per segment:
  *
- * - **Lines** (a segment with a usable start and end line, decisions § 2402):
- *   a forward crossing of the start line, then a forward crossing of the end
- *   line later in the run, with the covered distance between them within 25%
- *   of the segment's length and every checkpoint passed in order between
- *   them. The time is the interpolated end crossing minus the interpolated
- *   start crossing. Every complete lap is a candidate and the fastest
- *   counts. Laps never overlap: once a lap closes, only a start crossing at
- *   or after its finish can open the next, and on a loop whose end line is
- *   its start line (`linesChain`) the finish itself opens it (decisions
- *   § 2463). A run that never crosses the lines is not matched by the
- *   circles instead: no circle fallback.
+ * - **Boxes** (a segment with a usable start and end line, decisions § 2402,
+ *   § 2589): the start and finish boxes a course map draws
+ *   (`gateTimingEdges`). The clock starts when the run leaves the start box
+ *   forward and stops when it next enters the finish box, both interpolated
+ *   between fixes, with the covered distance between them within 25% of the
+ *   segment's length and every checkpoint passed in order between them. A
+ *   recording whose first fix is already up to GLOBAL_SEGMENT_BOX_SLACK_M
+ *   past the exit edge starts at that fix; one that ends in the finish box,
+ *   or that slack short of it, without entering finishes where its last
+ *   stretch there began. A gap across the finish edge longer than
+ *   GATE_REJECT_GAP_S counts up to GLOBAL_SEGMENT_FINISH_MAX_GAP_S when it
+ *   was crossed at about the runner's own pace. Every complete lap is a
+ *   candidate and the fastest counts. Laps never overlap: once a lap closes,
+ *   only a start at or after its finish can open the next, and on a loop
+ *   whose end line is its start line but whose boxes are apart
+ *   (`linesChain`) the finish itself opens it (decisions § 2465). A run
+ *   that never leaves and enters the boxes is not matched by the circles
+ *   instead: no circle fallback.
  * - **Circles** (no usable pair of lines): the v1 CURATED end-to-end match,
  *   NOT arbitrary-geometry HMM matching (deferred — see
  *   docs/features/segments.md): the run must approach the segment's START
@@ -322,10 +357,13 @@ export function computeGlobalSegmentEfforts(
 		if (pts.length < 2 || !(segment.distance_m > 0)) continue;
 		const gates = segmentGates(segment);
 		if (gates !== null) {
-			// A crossing lies on the chord between two fixes, so inside the
-			// track's extent, and within the half-width of the line's centre.
-			if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM)) continue;
-			if (!boundsAdmit(bounds, gates.end, gates.end.halfWidthM)) continue;
+			// A box edge is crossed on the chord between two fixes, so inside
+			// the track's extent, and a box edge, or a fix within the slack of
+			// one, lies within its half-width, its depth and the slack of the
+			// line's centre.
+			const reach = BOX_REACH_M;
+			if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM + reach)) continue;
+			if (!boundsAdmit(bounds, gates.end, gates.end.halfWidthM + reach)) continue;
 			if (index === null) index = distanceIndex(line);
 			out[i] = scoreByGates(line, index, segment, gates.start, gates.end, toleranceM);
 			continue;
@@ -358,14 +396,43 @@ function scoreByGates(
 	const len = segment.distance_m;
 	const minCovered = len * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
 	const maxCovered = len * (1 + GLOBAL_SEGMENT_LENGTH_TOLERANCE);
-	const startDetector = new GateCrossingDetector(startGate);
-	const endDetector = new GateCrossingDetector(endGate);
+	const edges = gateTimingEdges(startGate, endGate);
+	const exit = edges.startExit;
+	const entry = edges.finishEntry;
+	const startDetector = new GateCrossingDetector(exit);
+	const endDetector = new GateCrossingDetector(entry);
 
-	const chained = linesChain(startGate, endGate);
+	// Apart, the finish box is not the start box, so on a loop whose end line
+	// is its start line the finish opens the next lap. A shared box is left
+	// forward again to start the next.
+	const chained = edges.layout === 'apart' && linesChain(startGate, endGate);
 	let pending: PendingStart[] = [];
-	let best: { startMs: number; endMs: number } | null = null;
+	let best = null as { startMs: number; endMs: number } | null;
 	let prevIdx = -1;
 	let prevMs = -Infinity;
+	// The fixes since the last one outside the finish box and its slack.
+	let tailIdx = -1;
+	let tailMs = NaN;
+	let tailGap: FixGap = { fromIdx: -1, fromMs: NaN, gapS: 0 };
+	let prevEntry = { s: NaN, u: NaN };
+
+	const pick = (endCoveredM: number, endIdx: number, endMs: number, gap: FixGap): PendingStart | null => {
+		pending = pending.filter((s) => endCoveredM - s.crossing.coveredM <= maxCovered);
+		// Pending starts are in time order, so the last valid one is the latest
+		// start and so the fastest lap ending here.
+		let picked: PendingStart | null = null;
+		for (const s of pending) {
+			if (endCoveredM - s.crossing.coveredM < minCovered) continue;
+			if (!(endMs > s.crossing.tMs)) continue;
+			if (gap.gapS > GATE_REJECT_GAP_S && !plausibleGap(s, index.cum, gap, endIdx)) continue;
+			if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, endIdx, toleranceM)) continue;
+			picked = s;
+		}
+		return picked;
+	};
+	const record = (startMs: number, endMs: number) => {
+		if (best === null || endMs - startMs < best.endMs - best.startMs) best = { startMs, endMs };
+	};
 
 	for (let i = 0; i < line.length; i++) {
 		const p = line[i];
@@ -380,33 +447,46 @@ function scoreByGates(
 		const fix = { lat, lng, tMs, coveredM: index.cum[i] };
 		const endCrossing = endDetector.offer(fix);
 		const startCrossing = startDetector.offer(fix);
-		const endForward = endCrossing !== null && endCrossing.direction === 'forward' ? endCrossing : null;
+
+		const gap: FixGap = { fromIdx: prevIdx, fromMs: prevMs, gapS: (tMs - prevMs) / 1000 };
+		const gapS = gap.gapS;
+		const inFinish = gateProjection(entry, lat, lng);
+		if (inFinish.s >= -GLOBAL_SEGMENT_BOX_SLACK_M && inFinish.s <= edges.depthM && Math.abs(inFinish.u) <= entry.halfWidthM) {
+			if (tailIdx < 0) {
+				tailIdx = i;
+				tailMs = tMs;
+				tailGap = gap;
+			}
+		} else {
+			tailIdx = -1;
+		}
+
+		const entered =
+			endCrossing !== null && endCrossing.direction === 'forward'
+				? endCrossing
+				: gapS > GATE_REJECT_GAP_S && gapS <= GLOBAL_SEGMENT_FINISH_MAX_GAP_S
+					? enteredAcrossGap(
+							prevEntry,
+							inFinish,
+							entry.halfWidthM,
+							{ tMs: prevMs, coveredM: index.cum[prevIdx] },
+							fix,
+							pending[pending.length - 1],
+						)
+					: null;
+		prevEntry = inFinish;
 
 		let closedBy: GateCrossing | null = null;
-		if (endForward !== null) {
-			pending = pending.filter((s) => endForward.coveredM - s.crossing.coveredM <= maxCovered);
-			// Pending starts are in time order, so the last valid one is the
-			// latest start and so the fastest lap ending here.
-			let pick: PendingStart | null = null;
-			for (const s of pending) {
-				if (endForward.coveredM - s.crossing.coveredM < minCovered) continue;
-				if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, i, toleranceM)) continue;
-				pick = s;
-			}
-			if (pick !== null) {
-				const startMs = pick.crossing.tMs;
-				const endMs = endForward.tMs;
-				if (endMs > startMs && (best === null || endMs - startMs < best.endMs - best.startMs)) {
-					best = { startMs, endMs };
-				}
+		if (entered !== null) {
+			const chosen = pick(entered.coveredM, i, entered.tMs, gap);
+			if (chosen !== null) {
+				record(chosen.crossing.tMs, entered.tMs);
 				// Laps never overlap: nothing that started before this finish
 				// can start the next lap.
 				pending = [];
-				closedBy = endForward;
+				closedBy = entered;
 			}
 		}
-		// On a loop whose end line is its start line, the finish opens the next
-		// lap; any start crossing at or after it is a later candidate start.
 		if (closedBy !== null && chained) pending.push({ crossing: closedBy, fromIdx: prevIdx });
 		if (
 			startCrossing !== null &&
@@ -414,17 +494,95 @@ function scoreByGates(
 			(closedBy === null || startCrossing.tMs >= closedBy.tMs)
 		) {
 			pending.push({ crossing: startCrossing, fromIdx: prevIdx });
+		} else if (prevIdx < 0) {
+			// A recording begun on the line: its first fix just past the exit
+			// edge starts the clock there.
+			const atStart = gateProjection(exit, lat, lng);
+			if (atStart.s >= 0 && atStart.s <= GLOBAL_SEGMENT_BOX_SLACK_M && Math.abs(atStart.u) <= exit.halfWidthM) {
+				pending.push({ crossing: firstFixStart(fix, atStart.u), fromIdx: i });
+			}
 		}
 		prevIdx = i;
 		prevMs = tMs;
 	}
 
+	// A recording that ends in the finish box, or just short of it, without
+	// having crossed into it finishes where its last stretch there began.
+	if (tailIdx >= 0 && pending.length > 0) {
+		const chosen = pick(index.cum[tailIdx], tailIdx, tailMs, tailGap);
+		if (chosen !== null) record(chosen.crossing.tMs, tailMs);
+	}
+
 	if (best === null) return null;
+	const { startMs, endMs } = best;
 	return {
-		time_seconds: (best.endMs - best.startMs) / 1000,
-		started_at: new Date(Math.round(best.startMs)).toISOString(),
+		time_seconds: (endMs - startMs) / 1000,
+		started_at: new Date(Math.round(startMs)).toISOString(),
 		matched_by: 'gate',
 	};
+}
+
+/**
+ * The finish edge entered across a gap the line rule refuses: the fix before
+ * it short of the edge or outside the box's lane (a course can pass level with
+ * its finish, off to one side, before it turns in), the fix after it in the finish box's lane at or past
+ * the edge. The path inside the gap is unknown, and the straight line across
+ * it cuts the bend before a finish, so the entry is timed back from the fix
+ * after the gap at the runner's average pace since `since` (the latest
+ * pending start), within the gap.
+ */
+function enteredAcrossGap(
+	prev: { s: number; u: number },
+	cur: { s: number; u: number },
+	halfWidthM: number,
+	prevFix: { tMs: number; coveredM: number },
+	fix: { tMs: number; coveredM: number },
+	since: PendingStart | undefined,
+): GateCrossing | null {
+	if (since === undefined || !(prev.s < 0 || Math.abs(prev.u) > halfWidthM)) return null;
+	if (cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
+	const paceS = (prevFix.tMs - since.crossing.tMs) / 1000;
+	const paceM = prevFix.coveredM - since.crossing.coveredM;
+	if (!(paceS > 0) || !(paceM > 0)) return null;
+	const backS = cur.s / (paceM / paceS);
+	const tMs = Math.max(prevFix.tMs, fix.tMs - backS * 1000);
+	const f = (tMs - prevFix.tMs) / (fix.tMs - prevFix.tMs);
+	return {
+		direction: 'forward',
+		fraction: f,
+		tMs,
+		coveredM: Math.max(prevFix.coveredM, fix.coveredM - cur.s),
+		offsetM: cur.u,
+		gapped: true,
+	};
+}
+
+function firstFixStart(fix: { tMs: number; coveredM: number }, offsetM: number): GateCrossing {
+	return { direction: 'forward', fraction: 0, tMs: fix.tMs, coveredM: fix.coveredM, offsetM, gapped: false };
+}
+
+/** The fixes either side of a step in the track, and the seconds between them. */
+interface FixGap {
+	fromIdx: number;
+	fromMs: number;
+	gapS: number;
+}
+
+/**
+ * Whether a gap of more than GATE_REJECT_GAP_S before fix `toIdx` may still
+ * finish: at most GLOBAL_SEGMENT_FINISH_MAX_GAP_S, and crossed at about the
+ * runner's own pace, its straight-line speed within
+ * GLOBAL_SEGMENT_GAP_SPEED_MIN..MAX of their average from `start` to the fix
+ * before the gap.
+ */
+function plausibleGap(start: PendingStart, cum: Float64Array, gap: FixGap, toIdx: number): boolean {
+	if (gap.gapS > GLOBAL_SEGMENT_FINISH_MAX_GAP_S || gap.fromIdx < 0) return false;
+	const soFarS = (gap.fromMs - start.crossing.tMs) / 1000;
+	const soFarM = cum[gap.fromIdx] - start.crossing.coveredM;
+	if (!(soFarS > 0) || !(soFarM > 0)) return false;
+	const avg = soFarM / soFarS;
+	const across = (cum[toIdx] - cum[gap.fromIdx]) / gap.gapS;
+	return across >= GLOBAL_SEGMENT_GAP_SPEED_MIN * avg && across <= GLOBAL_SEGMENT_GAP_SPEED_MAX * avg;
 }
 
 function scoreAgainstTrack(

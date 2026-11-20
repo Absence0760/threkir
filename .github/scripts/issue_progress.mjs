@@ -112,10 +112,14 @@ export function parseIssuesSection(body) {
 /**
  * Tick each named checkbox in an issue body. A checkbox matches when its text,
  * whitespace-normalised, equals the item; one already ticked counts as ticked.
+ * An item that matches more than one checkbox ticks none of them and is
+ * reported as ambiguous: the issue has the same line under two headings (a
+ * "10K: 2 laps" for each of three parks), and ticking the first would tick
+ * the wrong one.
  *
  * @param {string} body
  * @param {string[]} items
- * @returns {{ body: string, ticked: string[], missing: string[] }}
+ * @returns {{ body: string, ticked: string[], missing: string[], ambiguous: string[] }}
  */
 export function tickItems(body, items) {
 	const lines = body.split('\n');
@@ -123,25 +127,32 @@ export function tickItems(body, items) {
 	const ticked = [];
 	/** @type {string[]} */
 	const missing = [];
+	/** @type {string[]} */
+	const ambiguous = [];
 	for (const item of items) {
 		const want = norm(item);
-		let found = false;
+		/** @type {number[]} */
+		const hits = [];
 		for (let i = 0; i < lines.length; i++) {
 			const m = /^(\s*[-*]\s+)\[([ xX])\](\s+)(.*)$/.exec(lines[i]);
-			if (!m || norm(m[4]) !== want) continue;
-			lines[i] = `${m[1]}[x]${m[3]}${m[4]}`;
-			found = true;
-			break;
+			if (m && norm(m[4]) === want) hits.push(i);
 		}
-		(found ? ticked : missing).push(item);
+		if (hits.length === 0) missing.push(item);
+		else if (hits.length > 1) ambiguous.push(item);
+		else {
+			const i = hits[0];
+			const m = /^(\s*[-*]\s+)\[([ xX])\](\s+)(.*)$/.exec(lines[i]);
+			if (m) lines[i] = `${m[1]}[x]${m[3]}${m[4]}`;
+			ticked.push(item);
+		}
 	}
-	return { body: lines.join('\n'), ticked, missing };
+	return { body: lines.join('\n'), ticked, missing, ambiguous };
 }
 
 /**
  * The workflow's one comment on an issue for a PR, by state.
  *
- * @param {{ pr: number, state: 'open' | 'merged' | 'closed', items: string[], ticked?: string[], missing?: string[] }} c
+ * @param {{ pr: number, state: 'open' | 'merged' | 'closed', items: string[], ticked?: string[], missing?: string[], ambiguous?: string[] }} c
  */
 export function commentBody(c) {
 	const list = (/** @type {string[]} */ xs) => xs.map((x) => `- ${x}`).join('\n');
@@ -153,6 +164,7 @@ export function commentBody(c) {
 		parts.push(`#${c.pr} merged.`);
 		if (c.ticked?.length) parts.push(`Ticked:\n${list(c.ticked)}`);
 		if (c.missing?.length) parts.push(`Not found in the checklist, so not ticked (check the wording):\n${list(c.missing)}`);
+		if (c.ambiguous?.length) parts.push(`More than one checklist line reads exactly like this, so none was ticked (make the line unique, then tick it by hand):\n${list(c.ambiguous)}`);
 		if (!c.items.length) parts.push('It named no checklist items, so nothing was ticked.');
 	} else {
 		parts.push(`#${c.pr} was closed without merging; nothing was ticked.`);
@@ -216,11 +228,29 @@ async function stillInFlight(call, issue, pr) {
 	return open.some((p) => p.number !== pr && parseIssuesSection(p.body).parts.some((x) => x.issue === issue));
 }
 
+/**
+ * A PR or issue number from the event file, checked before it goes into an
+ * API path: a positive whole number, or the run stops.
+ *
+ * @param {unknown} v
+ * @param {string} what
+ * @returns {number}
+ */
+export function positiveId(v, what) {
+	if (typeof v !== 'number' || !Number.isSafeInteger(v) || v < 1) {
+		throw new Error(`${what} must be a positive whole number, got ${JSON.stringify(v)}`);
+	}
+	return v;
+}
+
 /** @param {Record<string, any>} event */
 export async function run(event, { token = process.env.GITHUB_TOKEN ?? '', repo = process.env.GITHUB_REPOSITORY ?? '' } = {}) {
-	const pr = event.pull_request;
-	if (!pr) return;
-	const { parts } = parseIssuesSection(pr.body);
+	const raw = event.pull_request;
+	if (!raw) return;
+	if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`GITHUB_REPOSITORY must be owner/name, got ${JSON.stringify(repo)}`);
+	const pr = { number: positiveId(raw.number, 'pull_request.number'), body: raw.body, merged: raw.merged === true };
+	const parsed = parseIssuesSection(pr.body);
+	const parts = parsed.parts.map((x) => ({ issue: positiveId(x.issue, 'issue number'), items: x.items }));
 	if (parts.length === 0) return;
 	const call = api(token, repo);
 

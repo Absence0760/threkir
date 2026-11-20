@@ -786,7 +786,7 @@ void main() {
   // so the last card sat under it — worst on a 3-button nav bar, which lifts
   // the button another ~48dp into the list.
   testWidgets('the last race card clears the nav bar, and Add a race waits '
-      'in the overflow rather than holding a FAB', (tester) async {
+      'in the ⋮ rather than holding a FAB', (tester) async {
     tester.view.physicalSize = const Size(360, 700);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -811,13 +811,18 @@ void main() {
     expect(tester.getRect(lastCard).bottom, lessThanOrEqualTo(700 - 48),
         reason: 'the last card must end above the 3-button nav bar');
 
-    // Pushed on its own, the controls scroll away with the page's heading.
-    await tester.ensureVisible(
-        find.byKey(const Key('races-overflow'), skipOffstage: false));
+    // Pushed on its own, Add a race is the app bar's ⋮, which stays put
+    // while the controls scroll away with the page's heading.
+    final menu = find.descendant(
+        of: find.byType(AppBar), matching: find.byKey(const Key('hub-menu')));
+    expect(menu, findsOneWidget);
+    await tester.tap(menu);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('races-overflow')));
-    await tester.pumpAndSettle();
-    expect(find.text('Add a race'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('racesMenuSubmit')),
+            matching: find.text('Add a race')),
+        findsOneWidget);
   });
 
   group('RacesScreen — the runner\'s distance unit', () {

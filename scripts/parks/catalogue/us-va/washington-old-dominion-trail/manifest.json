@@ -1,0 +1,1934 @@
+{
+  "park": {
+    "slug": "washington-old-dominion-trail",
+    "name": "Washington & Old Dominion Trail",
+    "kind": "trail",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.novaparks.com/parks/washington-and-old-dominion-railroad-regional-park",
+    "osm_boundary": "relation/1991154"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Owner checks open (#1432): walk each start and finish against the trail signs, public access at the end lots (the Purcellville and Leesburg school lots are weekend-only in term), and NOVA Parks' event rules (permit for 25 or more, the gathering regulation voted on 2026-11-19)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-20",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "wod-ashburn-to-sterling-5k",
+      "name": "Ashburn to Sterling, 5 km",
+      "race_distance": "5k",
+      "course_shape": "point_to_point",
+      "distance_m": 5000,
+      "start": {
+        "lat": 39.04327,
+        "lng": -77.486219
+      },
+      "finish": {
+        "lat": 39.01575,
+        "lng": -77.440443
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/48330452,way/50065502,way/59337960,way/59337961,way/59337964,way/59337965,way/59337968,way/59337971,way/1147641577,way/1147641578,way/1147641579,way/1147641580",
+      "source_checked_at": "2026-11-20",
+      "geojson": "wod-ashburn-to-sterling-5k.geojson",
+      "elevation_m": 15,
+      "checkpoints": [
+        {
+          "lat": 39.036394,
+          "lng": -77.474769
+        },
+        {
+          "lat": 39.029516,
+          "lng": -77.463322
+        },
+        {
+          "lat": 39.022637,
+          "lng": -77.451878
+        }
+      ],
+      "waypoint_count": 10,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the trail lot by Ashburn Road. Walk onto the trail and go east, away from the road, to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Washington & Old Dominion Trail"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2058
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 2963
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "W&OD Trail",
+            "at_m": 4163
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4163
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Washington & Old Dominion Trail",
+            "at_m": 4215
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4501
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "wod-reston-to-vienna-10k",
+      "name": "Reston to Vienna, 10 km",
+      "race_distance": "10k",
+      "course_shape": "point_to_point",
+      "distance_m": 10000,
+      "start": {
+        "lat": 38.954559,
+        "lng": -77.349466
+      },
+      "finish": {
+        "lat": 38.901466,
+        "lng": -77.261027
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/60172950,way/60172963,way/117302786,way/117302787,way/172713857,way/172713874,way/284301665,way/284301666,way/577918833,way/577918834,way/1207067813,way/1207067814,way/1207067825,way/1207067827,way/1245231802,way/1315948366,way/1315948368,way/1315948369,way/1315948370,way/1315948371",
+      "source_checked_at": "2026-11-20",
+      "geojson": "wod-reston-to-vienna-10k.geojson",
+      "elevation_m": 56,
+      "checkpoints": [
+        {
+          "lat": 38.950609,
+          "lng": -77.335962
+        },
+        {
+          "lat": 38.943928,
+          "lng": -77.324976
+        },
+        {
+          "lat": 38.937205,
+          "lng": -77.313743
+        },
+        {
+          "lat": 38.93202,
+          "lng": -77.301299
+        },
+        {
+          "lat": 38.92625,
+          "lng": -77.28898
+        },
+        {
+          "lat": 38.916646,
+          "lng": -77.281872
+        },
+        {
+          "lat": 38.908526,
+          "lng": -77.271948
+        }
+      ],
+      "waypoint_count": 130,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the trail lot on Old Reston Avenue in Reston. Walk east along the trail, away from the road, to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Washington & Old Dominion Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Isaac Newton Square",
+            "at_m": 885
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1251
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Michael Faraday Court",
+            "at_m": 1570
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunset Hills Road",
+            "at_m": 2082
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunrise Valley Drive",
+            "at_m": 2863
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Buckthorn Lane",
+            "at_m": 3973
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hunter Mill Road",
+            "at_m": 4667
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5000,
+            "order": 4,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 5258
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6250,
+            "order": 5,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6330
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7500,
+            "order": 6,
+            "of": 7
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8750,
+            "order": 7,
+            "of": 7
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ayr Hill Avenue Northeast",
+            "at_m": 9370
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Church Street Northeast",
+            "at_m": 9563
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Maple Avenue East",
+            "signal": true,
+            "at_m": 9713
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "wod-leesburg-to-sterling-half",
+      "name": "Leesburg to Sterling, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "point_to_point",
+      "distance_m": 21097.5,
+      "start": {
+        "lat": 39.112092,
+        "lng": -77.580266
+      },
+      "finish": {
+        "lat": 38.991253,
+        "lng": -77.41249
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/8810729,way/8810740,way/8810747,way/48330452,way/48330453,way/50065502,way/59337960,way/59337961,way/59337964,way/59337965,way/59337968,way/59337971,way/59338327,way/59338329,way/59338331,way/60116854,way/60166896,way/60166908,way/60184538,way/60184542,way/60184546,way/169913726,way/169913731,way/925792350,way/979723902,way/979723904,way/979723907,way/979723910,way/1074110350,way/1074110351,way/1147641575,way/1147641576,way/1147641577,way/1147641578,way/1147641579,way/1147641580,way/1147641581,way/1147641582,way/1147641583,way/1147646097,way/1147646098,way/1147646099,way/1147646100,way/1147646101,way/1147646102",
+      "source_checked_at": "2026-11-20",
+      "geojson": "wod-leesburg-to-sterling-half.geojson",
+      "elevation_m": 86,
+      "checkpoints": [
+        {
+          "lat": 39.11141,
+          "lng": -77.564835
+        },
+        {
+          "lat": 39.104312,
+          "lng": -77.551636
+        },
+        {
+          "lat": 39.097296,
+          "lng": -77.54413
+        },
+        {
+          "lat": 39.086727,
+          "lng": -77.53535
+        },
+        {
+          "lat": 39.074985,
+          "lng": -77.529298
+        },
+        {
+          "lat": 39.067213,
+          "lng": -77.516926
+        },
+        {
+          "lat": 39.057149,
+          "lng": -77.509026
+        },
+        {
+          "lat": 39.049299,
+          "lng": -77.49628
+        },
+        {
+          "lat": 39.041576,
+          "lng": -77.483386
+        },
+        {
+          "lat": 39.03383,
+          "lng": -77.470513
+        },
+        {
+          "lat": 39.0261,
+          "lng": -77.457624
+        },
+        {
+          "lat": 39.018353,
+          "lng": -77.444755
+        },
+        {
+          "lat": 39.010469,
+          "lng": -77.432065
+        },
+        {
+          "lat": 38.999333,
+          "lng": -77.424611
+        }
+      ],
+      "waypoint_count": 187,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "On weekends in the school year you can park at Loudoun County High School, off Catoctin Circle. The start line is on the trail near Deerpath Avenue, a short walk west of Catoctin Circle.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Washington & Old Dominion Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 136
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 513
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 790
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 1279
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1406,
+            "order": 1,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1409
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 1595
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 2143
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 2611
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2813,
+            "order": 2,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 3870
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4219,
+            "order": 3,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5626,
+            "order": 4,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7032,
+            "order": 5,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 7199
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7525
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8061
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8439,
+            "order": 6,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9845,
+            "order": 7,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10517
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 11252,
+            "order": 8,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 12219
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12658,
+            "order": 9,
+            "of": 14
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 14065,
+            "order": 10,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 14408
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 15313
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15471,
+            "order": 11,
+            "of": 14
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "W&OD Trail",
+            "at_m": 16513
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16513
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Washington & Old Dominion Trail",
+            "at_m": 16565
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16851
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16878,
+            "order": 12,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18077
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18284,
+            "order": 13,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 18704
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 18866
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19691,
+            "order": 14,
+            "of": 14
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 20554
+          },
+          {
+            "kind": "finish",
+            "at_m": 21097
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "wod-purcellville-to-reston-marathon",
+      "name": "Purcellville to Reston, marathon distance",
+      "race_distance": "marathon",
+      "course_shape": "point_to_point",
+      "distance_m": 42195,
+      "start": {
+        "lat": 39.138539,
+        "lng": -77.712382
+      },
+      "finish": {
+        "lat": 38.95668,
+        "lng": -77.359029
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/8810729,way/8810740,way/8810747,way/46945653,way/46945654,way/48330452,way/48330453,way/50065502,way/59337960,way/59337961,way/59337964,way/59337965,way/59337968,way/59337971,way/59338327,way/59338329,way/59338331,way/59399604,way/59399609,way/59399610,way/60116845,way/60116847,way/60116851,way/60116854,way/60166896,way/60166908,way/60184538,way/60184541,way/60184542,way/60184546,way/140498311,way/142811532,way/165363375,way/169913726,way/169913728,way/169913730,way/169913731,way/169913735,way/173386006,way/173880581,way/244539222,way/399094712,way/399094713,way/439575657,way/551582175,way/925792350,way/979723902,way/979723904,way/979723907,way/979723910,way/1036058126,way/1074110350,way/1074110351,way/1147641573,way/1147641574,way/1147641575,way/1147641576,way/1147641577,way/1147641578,way/1147641579,way/1147641580,way/1147641581,way/1147641582,way/1147641583,way/1147646097,way/1147646098,way/1147646099,way/1147646100,way/1147646101,way/1147646102,way/1147647458,way/1445776978,way/1445776979",
+      "source_checked_at": "2026-11-20",
+      "geojson": "wod-purcellville-to-reston-marathon.geojson",
+      "elevation_m": 204,
+      "checkpoints": [
+        {
+          "lat": 39.143019,
+          "lng": -77.696691
+        },
+        {
+          "lat": 39.145284,
+          "lng": -77.682354
+        },
+        {
+          "lat": 39.146216,
+          "lng": -77.665624
+        },
+        {
+          "lat": 39.143839,
+          "lng": -77.649202
+        },
+        {
+          "lat": 39.146393,
+          "lng": -77.632805
+        },
+        {
+          "lat": 39.146876,
+          "lng": -77.616555
+        },
+        {
+          "lat": 39.139027,
+          "lng": -77.610548
+        },
+        {
+          "lat": 39.126508,
+          "lng": -77.606825
+        },
+        {
+          "lat": 39.115117,
+          "lng": -77.599075
+        },
+        {
+          "lat": 39.111102,
+          "lng": -77.584119
+        },
+        {
+          "lat": 39.112737,
+          "lng": -77.567857
+        },
+        {
+          "lat": 39.105782,
+          "lng": -77.553874
+        },
+        {
+          "lat": 39.098753,
+          "lng": -77.545578
+        },
+        {
+          "lat": 39.088012,
+          "lng": -77.53608
+        },
+        {
+          "lat": 39.075867,
+          "lng": -77.529808
+        },
+        {
+          "lat": 39.067581,
+          "lng": -77.517419
+        },
+        {
+          "lat": 39.057226,
+          "lng": -77.509099
+        },
+        {
+          "lat": 39.049094,
+          "lng": -77.49593
+        },
+        {
+          "lat": 39.0411,
+          "lng": -77.482596
+        },
+        {
+          "lat": 39.033093,
+          "lng": -77.469273
+        },
+        {
+          "lat": 39.025087,
+          "lng": -77.455949
+        },
+        {
+          "lat": 39.017077,
+          "lng": -77.442632
+        },
+        {
+          "lat": 39.008498,
+          "lng": -77.430046
+        },
+        {
+          "lat": 38.996873,
+          "lng": -77.42251
+        },
+        {
+          "lat": 38.989057,
+          "lng": -77.409176
+        },
+        {
+          "lat": 38.97931,
+          "lng": -77.398022
+        },
+        {
+          "lat": 38.97035,
+          "lng": -77.385767
+        },
+        {
+          "lat": 38.961371,
+          "lng": -77.373557
+        }
+      ],
+      "waypoint_count": 430,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the gravel trail lot on Hatcher Avenue in Purcellville. Walk east along the trail, away from the road, to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Washington & Old Dominion Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple",
+            "at_m": 847
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple Avenue",
+            "at_m": 1080
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1455,
+            "order": 1,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hirst Road",
+            "at_m": 1664
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 1920
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Berlin Turnpike",
+            "at_m": 2095
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2910,
+            "order": 2,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ivandale Road",
+            "at_m": 3976
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4365,
+            "order": 3,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hamilton Station Road",
+            "at_m": 5608
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5820,
+            "order": 4,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Meadowlark Drive",
+            "at_m": 6798
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7275,
+            "order": 5,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 8484
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8730,
+            "order": 6,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 9405
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 9588
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9672
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10185,
+            "order": 7,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road",
+            "at_m": 10349
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 11640,
+            "order": 8,
+            "of": 28
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 13095,
+            "order": 9,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 14180
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 14550,
+            "order": 10,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 15036
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 15413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 15690
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16005,
+            "order": 11,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 16179
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16309
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 16495
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 17043
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17460,
+            "order": 12,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 17511
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 18770
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18915,
+            "order": 13,
+            "of": 28
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20370,
+            "order": 14,
+            "of": 28
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 21825,
+            "order": 15,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 22099
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22425
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22961
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 23280,
+            "order": 16,
+            "of": 28
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 24735,
+            "order": 17,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 25418
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26190,
+            "order": 18,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 27119
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 27645,
+            "order": 19,
+            "of": 28
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29100,
+            "order": 20,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 29308
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 30213
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30555,
+            "order": 21,
+            "of": 28
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "W&OD Trail",
+            "at_m": 31413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 31413
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Washington & Old Dominion Trail",
+            "at_m": 31465
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 31751
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32010,
+            "order": 22,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 32977
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 33465,
+            "order": 23,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 33604
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 33766
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 34920,
+            "order": 24,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 35454
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 36375,
+            "order": 25,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Crestview Drive",
+            "at_m": 37742
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 37830,
+            "order": 26,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 38036
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ferndale Avenue",
+            "at_m": 38455
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Grace Street",
+            "at_m": 38828
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 39059
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Station Street",
+            "at_m": 39284
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 39285,
+            "order": 27,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Elden Street",
+            "signal": true,
+            "at_m": 39381
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Van Buren Street",
+            "signal": true,
+            "at_m": 39766
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40740,
+            "order": 28,
+            "of": 28
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 40829
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 41125
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 41849
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "wod-purcellville-to-clarks-crossing-50k",
+      "name": "Purcellville to Clarks Crossing, 50 km",
+      "race_distance": "50k",
+      "course_shape": "point_to_point",
+      "distance_m": 50000,
+      "start": {
+        "lat": 39.138539,
+        "lng": -77.712382
+      },
+      "finish": {
+        "lat": 38.921002,
+        "lng": -77.285788
+      },
+      "surface": "road",
+      "geometry_source": "osm",
+      "source_ref": "way/8810729,way/8810740,way/8810747,way/46945653,way/46945654,way/48330452,way/48330453,way/50065502,way/59337960,way/59337961,way/59337964,way/59337965,way/59337968,way/59337971,way/59338327,way/59338329,way/59338331,way/59399604,way/59399609,way/59399610,way/60116845,way/60116847,way/60116851,way/60116854,way/60166896,way/60166908,way/60172950,way/60172963,way/60184538,way/60184541,way/60184542,way/60184546,way/117302786,way/117302787,way/140498311,way/142811532,way/165363375,way/169913726,way/169913728,way/169913730,way/169913731,way/169913735,way/173386006,way/173386010,way/173880581,way/244539222,way/284301665,way/284301666,way/399094712,way/399094713,way/439575657,way/551582175,way/577918833,way/925792350,way/979723902,way/979723904,way/979723907,way/979723910,way/1036058126,way/1074110350,way/1074110351,way/1147641573,way/1147641574,way/1147641575,way/1147641576,way/1147641577,way/1147641578,way/1147641579,way/1147641580,way/1147641581,way/1147641582,way/1147641583,way/1147646097,way/1147646098,way/1147646099,way/1147646100,way/1147646101,way/1147646102,way/1147647458,way/1207067813,way/1207067814,way/1207067825,way/1207067827,way/1245231802,way/1315948366,way/1315948368,way/1315948369,way/1315948370,way/1315948371,way/1445776978,way/1445776979",
+      "source_checked_at": "2026-11-20",
+      "geojson": "wod-purcellville-to-clarks-crossing-50k.geojson",
+      "elevation_m": 233,
+      "checkpoints": [
+        {
+          "lat": 39.143059,
+          "lng": -77.696518
+        },
+        {
+          "lat": 39.145304,
+          "lng": -77.681994
+        },
+        {
+          "lat": 39.146199,
+          "lng": -77.665082
+        },
+        {
+          "lat": 39.143781,
+          "lng": -77.648483
+        },
+        {
+          "lat": 39.146599,
+          "lng": -77.631941
+        },
+        {
+          "lat": 39.146292,
+          "lng": -77.615777
+        },
+        {
+          "lat": 39.138168,
+          "lng": -77.609938
+        },
+        {
+          "lat": 39.125419,
+          "lng": -77.606481
+        },
+        {
+          "lat": 39.114347,
+          "lng": -77.597787
+        },
+        {
+          "lat": 39.111538,
+          "lng": -77.582402
+        },
+        {
+          "lat": 39.111995,
+          "lng": -77.566136
+        },
+        {
+          "lat": 39.104707,
+          "lng": -77.552209
+        },
+        {
+          "lat": 39.09731,
+          "lng": -77.544144
+        },
+        {
+          "lat": 39.086207,
+          "lng": -77.535088
+        },
+        {
+          "lat": 39.074062,
+          "lng": -77.528454
+        },
+        {
+          "lat": 39.066241,
+          "lng": -77.515115
+        },
+        {
+          "lat": 39.055624,
+          "lng": -77.506847
+        },
+        {
+          "lat": 39.047561,
+          "lng": -77.493349
+        },
+        {
+          "lat": 39.039466,
+          "lng": -77.479887
+        },
+        {
+          "lat": 39.031384,
+          "lng": -77.466411
+        },
+        {
+          "lat": 39.023284,
+          "lng": -77.452954
+        },
+        {
+          "lat": 39.015179,
+          "lng": -77.439503
+        },
+        {
+          "lat": 39.005681,
+          "lng": -77.428057
+        },
+        {
+          "lat": 38.994523,
+          "lng": -77.419428
+        },
+        {
+          "lat": 38.986321,
+          "lng": -77.406366
+        },
+        {
+          "lat": 38.976809,
+          "lng": -77.394612
+        },
+        {
+          "lat": 38.967731,
+          "lng": -77.38226
+        },
+        {
+          "lat": 38.958686,
+          "lng": -77.36988
+        },
+        {
+          "lat": 38.956689,
+          "lng": -77.353894
+        },
+        {
+          "lat": 38.951212,
+          "lng": -77.338524
+        },
+        {
+          "lat": 38.944008,
+          "lng": -77.32506
+        },
+        {
+          "lat": 38.936061,
+          "lng": -77.311861
+        },
+        {
+          "lat": 38.930274,
+          "lng": -77.296887
+        }
+      ],
+      "waypoint_count": 540,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the gravel trail lot on Hatcher Avenue in Purcellville. Walk east along the trail, away from the road, to the start line.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Washington & Old Dominion Trail"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple",
+            "at_m": 847
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "North Maple Avenue",
+            "at_m": 1080
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1471,
+            "order": 1,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hirst Road",
+            "at_m": 1664
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 1920
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Berlin Turnpike",
+            "at_m": 2095
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2941,
+            "order": 2,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ivandale Road",
+            "at_m": 3976
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4412,
+            "order": 3,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hamilton Station Road",
+            "at_m": 5608
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5882,
+            "order": 4,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Meadowlark Drive",
+            "at_m": 6798
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7353,
+            "order": 5,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 8484
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8824,
+            "order": 6,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Simpson Circle",
+            "at_m": 9405
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "at_m": 9588
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9672
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10294,
+            "order": 7,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road",
+            "at_m": 10349
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 11765,
+            "order": 8,
+            "of": 33
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 13235,
+            "order": 9,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 14180
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 14706,
+            "order": 10,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southwest",
+            "at_m": 15036
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dry Mill Road Southwest",
+            "at_m": 15413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Valley View Avenue Southwest",
+            "at_m": 15690
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16176,
+            "order": 11,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South King Street",
+            "at_m": 16179
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16309
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Harrison Street Southeast",
+            "at_m": 16495
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Catoctin Circle Southeast",
+            "signal": true,
+            "at_m": 17043
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sycolin Road Southeast",
+            "at_m": 17511
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17647,
+            "order": 12,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Lawson Road Southeast",
+            "at_m": 18770
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19118,
+            "order": 13,
+            "of": 33
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20588,
+            "order": 14,
+            "of": 33
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22059,
+            "order": 15,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Cochran Mill Road",
+            "at_m": 22099
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22425
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22961
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 23529,
+            "order": 16,
+            "of": 33
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25000,
+            "order": 17,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 25418
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26471,
+            "order": 18,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ashburn Road",
+            "at_m": 27119
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 27941,
+            "order": 19,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 29308
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29412,
+            "order": 20,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Smith Switch Road",
+            "at_m": 30213
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30882,
+            "order": 21,
+            "of": 33
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "W&OD Trail",
+            "at_m": 31413
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 31413
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Washington & Old Dominion Trail",
+            "at_m": 31465
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 31751
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32353,
+            "order": 22,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 32977
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Road",
+            "at_m": 33604
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ruritan Circle",
+            "at_m": 33766
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 33824,
+            "order": 23,
+            "of": 33
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35294,
+            "order": 24,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "South Sterling Boulevard",
+            "at_m": 35454
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 36765,
+            "order": 25,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Crestview Drive",
+            "at_m": 37742
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 38036
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38235,
+            "order": 26,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Ferndale Avenue",
+            "at_m": 38455
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Grace Street",
+            "at_m": 38828
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 39059
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Station Street",
+            "at_m": 39284
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Elden Street",
+            "signal": true,
+            "at_m": 39381
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 39706,
+            "order": 27,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Van Buren Street",
+            "signal": true,
+            "at_m": 39766
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 40829
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 41125
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 41176,
+            "order": 28,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 41849
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 42647,
+            "order": 29,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Old Reston Avenue",
+            "at_m": 42872
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Isaac Newton Square",
+            "at_m": 43985
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 44118,
+            "order": 30,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 44351
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Michael Faraday Court",
+            "at_m": 44670
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunset Hills Road",
+            "at_m": 45181
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 45588,
+            "order": 31,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Sunrise Valley Drive",
+            "at_m": 45963
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 47059,
+            "order": 32,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Buckthorn Lane",
+            "at_m": 47073
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Hunter Mill Road",
+            "at_m": 47767
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 48358
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 48529,
+            "order": 33,
+            "of": 33
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 49429
+          },
+          {
+            "kind": "finish",
+            "at_m": 50000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

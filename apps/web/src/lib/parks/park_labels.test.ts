@@ -93,6 +93,9 @@ test('a trail reads Trail whoever runs it, and a park reads as its agency', () =
 	assert.equal(parkTypeKey('park', 'state'), 'parks.agencyState');
 	assert.equal(parkTypeKey('park', 'other'), 'parks.agencyOther');
 	assert.equal(parkTypeKey(undefined, 'county'), 'parks.agencyCounty');
+	assert.equal(parkTypeKey('park', 'usfs'), 'parks.agencyUsfs');
+	assert.equal(parkTypeKey('park', 'usfws'), 'parks.agencyUsfws');
+	assert.equal(parkTypeKey('trail', 'usfs'), 'parks.kindTrail');
 	assert.equal(parkTypeKey('forest', 'nps'), 'parks.agencyNps');
 	assert.equal(parkTypeKey('park', 'mystery'), null);
 });

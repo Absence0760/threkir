@@ -131,3 +131,58 @@ bool courseShapeShown(String? shape) =>
 
 /// The laps a chip names, or null when there is no chip (one lap or unknown).
 int? courseLapsChip(int? laps) => laps != null && laps > 1 ? laps : null;
+
+final RegExp _lapsSuffix = RegExp(
+  r'\s*\(\s*\d+\s+laps?\s*\)\s*$',
+  caseSensitive: false,
+);
+final RegExp _distanceSuffix = RegExp(
+  r'\s*,\s*(?:\d+(?:[.,]\d+)?\s*(?:km|mi|k)|(?:half-)?marathon distance)'
+  r'(?:\s+(?:out and back|point to point|loop))?\s*$',
+  caseSensitive: false,
+);
+final RegExp _separator = RegExp('^[\\s,:–—-]+');
+
+/// [name] without a leading [parkName] ("Virginia Capital Trail, Four Mile
+/// Creek" reads "Four Mile Creek").
+String _withoutPark(String name, String parkName) {
+  final park = parkName.trim();
+  if (park.isEmpty ||
+      name.length <= park.length ||
+      name.substring(0, park.length).toLowerCase() != park.toLowerCase()) {
+    return name;
+  }
+  final rest = name.substring(park.length);
+  if (!_separator.hasMatch(rest)) return name;
+  final shown = rest.replaceFirst(_separator, '').trim();
+  return shown.isEmpty ? name : shown;
+}
+
+bool _allUnique(List<String> names) => names.toSet().length == names.length;
+
+/// Every course name in a park as its cards show them, by one rule for the
+/// whole list. The park's own name is dropped from the front (the page title
+/// says it). Then, where the distance and laps the chips state can go from
+/// every name without two reading the same, they go from every name ("Swift
+/// Creek Loop, 10 km (2 laps)" reads "Swift Creek Loop"); else only the laps
+/// go, where that keeps them apart; else the names stay as stored. Never a
+/// mix, so a list never trims one card's ", 50 km" and keeps another's
+/// ", marathon distance". The stored names are untouched.
+List<String> courseDisplayNames(List<String> names, [String parkName = '']) {
+  final base = [for (final n in names) _withoutPark(n.trim(), parkName)];
+  final noLaps = [
+    for (final n in base)
+      n.replaceFirst(_lapsSuffix, '').trim().isEmpty
+          ? n
+          : n.replaceFirst(_lapsSuffix, '').trim(),
+  ];
+  final bare = [
+    for (final n in noLaps)
+      n.replaceFirst(_distanceSuffix, '').trim().isEmpty
+          ? n
+          : n.replaceFirst(_distanceSuffix, '').trim(),
+  ];
+  if (_allUnique(bare)) return bare;
+  if (_allUnique(noLaps)) return noLaps;
+  return base;
+}

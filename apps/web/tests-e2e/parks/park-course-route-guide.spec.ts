@@ -27,6 +27,7 @@ const GUIDE = {
 		{ kind: 'direction', at_m: 0, rotation: 'clockwise' },
 		{ kind: 'junction', at_m: 400, turn: 'left', name: 'Ridge Trail' },
 		{ kind: 'checkpoint', at_m: 500, order: 1, of: 1 },
+		{ kind: 'crossing', at_m: 700, crossing: 'road', name: 'Park Road', signal: true },
 		{ kind: 'finish', at_m: 1000 },
 	],
 };
@@ -100,12 +101,25 @@ test.describe('park course route guide (web)', () => {
 			'Drafted from map data, not yet checked on the ground.',
 		);
 		await expect(page.getByTestId('park-course-guide-getting-there')).toHaveText('Park by the boathouse.');
+		// The short view: the start, the direction, how many road crossings, the
+		// turn, the finish. No checkpoint (the map marks it); the full view names the road.
 		const steps = page.getByTestId('park-course-guide-steps').getByRole('listitem');
 		await expect(steps.first()).toHaveText('Start on Lake Trail.');
 		await expect(steps.nth(1)).toHaveText('Run the loop clockwise.');
-		await expect(steps.nth(2)).toHaveText('Pass every checkpoint in order, or the run is not timed.');
+		await expect(steps.nth(2)).toHaveText('1 road crossing on this course. Watch for cars.');
 		await expect(steps.nth(3)).toContainText('turn left onto Ridge Trail.');
-		await expect(steps).toHaveCount(6);
+		await expect(steps.nth(4)).toContainText('finish.');
+		await expect(steps).toHaveCount(5);
+		const all = page.getByTestId('park-course-guide-all');
+		await expect(all).not.toHaveAttribute('open');
+		await all.getByText('Show all steps').click();
+		// One stretch on a 1 km course, its turn, the road it crosses and its finish, still no checkpoint.
+		await expect(all.getByRole('heading', { level: 3 })).toHaveCount(1);
+		await expect(all.getByRole('listitem')).toHaveText([
+			/turn left onto Ridge Trail\./,
+			/cross Park Road at the traffic light\./,
+			/finish\./,
+		]);
 
 		const [download] = await Promise.all([
 			page.waitForEvent('download'),
@@ -116,6 +130,7 @@ test.describe('park course route guide (web)', () => {
 			'<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n',
 		);
 		expect(gpx).toContain('400 m: turn left onto Ridge Trail.');
+		expect(gpx).toContain('700 m: cross Park Road at the traffic light.');
 	});
 
 	test('the share page shows the same guide', async ({ page }) => {

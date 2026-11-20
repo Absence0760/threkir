@@ -91,11 +91,15 @@ const _dataPalettes = <String, Map<String, int>>{
   // live_run_map_tile_url_test.dart, not by this literal count.
   // Plus the personal heatmap's dark-basemap density ramp (`mapHeatRamp`),
   // graded composited at `mapHeatOpacity` in live_run_map_tile_url_test.dart.
+  // Plus the park course finish zone's dark-basemap rung
+  // (`mapFinishZoneColour`, decisions § 2582), graded on its ground and
+  // against the start zone under a deuteranopia simulation there too.
   'lib/widgets/live_run_map.dart': {
     'F59E0B': 1,
     '34D399': 1,
     'FBBF24': 1,
     'F87171': 1,
+    'EF4444': 1,
   },
   // Painted start/finish caps on the mini track preview.
   'lib/widgets/track_preview.dart': {'22C55E': 1, 'EF4444': 1},

@@ -15,7 +15,7 @@
     "reason": "Held until the owner records the brand and data outcome on #1097 and checks this line against a GPS trace of the paths (decisions § 2460)."
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
-  "snapshot_fetched_at": "2026-11-11",
+  "snapshot_fetched_at": "2026-11-19",
   "courses": [],
   "race_courses": [
     {
@@ -36,7 +36,7 @@
       "shared_use": "saturday_morning_group",
       "geometry_source": "osm",
       "source_ref": "way/354922962,way/651195264,way/651195380,way/651196046,way/651196537,way/919780813,way/1335709995,way/1567830875",
-      "source_checked_at": "2026-11-11",
+      "source_checked_at": "2026-11-19",
       "geojson": "deep-run-park-5k.geojson",
       "elevation_m": 45,
       "checkpoints": [
@@ -256,6 +256,506 @@
           {
             "kind": "finish",
             "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "deep-run-park-10k",
+      "name": "Deep Run Park, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4903.3,
+      "lead_in_m": 150.7,
+      "start_line_from_lead_in_start_m": 54,
+      "start_finish": {
+        "lat": 37.624808,
+        "lng": -77.587149
+      },
+      "surface": "mixed",
+      "shared_use": "saturday_morning_group",
+      "geometry_source": "osm",
+      "source_ref": "way/287554905,way/354922962,way/461242317,way/603732711,way/603751335,way/603755656,way/603756090,way/651195261,way/651195380,way/651196046,way/651196537,way/778297092,way/847230002,way/847230003,way/847230004,way/919780813,way/1335709991,way/1415997702,way/1415997704,way/1415997705",
+      "source_checked_at": "2026-11-19",
+      "geojson": "deep-run-park-10k.geojson",
+      "elevation_m": 99,
+      "checkpoints": [
+        {
+          "lat": 37.622541,
+          "lng": -77.585987
+        },
+        {
+          "lat": 37.622784,
+          "lng": -77.588363
+        },
+        {
+          "lat": 37.623242,
+          "lng": -77.590082
+        },
+        {
+          "lat": 37.622639,
+          "lng": -77.587172
+        },
+        {
+          "lat": 37.623407,
+          "lng": -77.588108
+        },
+        {
+          "lat": 37.624634,
+          "lng": -77.588937
+        },
+        {
+          "lat": 37.626181,
+          "lng": -77.590807
+        },
+        {
+          "lat": 37.627037,
+          "lng": -77.590334
+        },
+        {
+          "lat": 37.626238,
+          "lng": -77.592135
+        },
+        {
+          "lat": 37.627017,
+          "lng": -77.594041
+        },
+        {
+          "lat": 37.628019,
+          "lng": -77.592133
+        },
+        {
+          "lat": 37.6279,
+          "lng": -77.589022
+        },
+        {
+          "lat": 37.630246,
+          "lng": -77.589605
+        },
+        {
+          "lat": 37.629007,
+          "lng": -77.586843
+        },
+        {
+          "lat": 37.627023,
+          "lng": -77.585779
+        },
+        {
+          "lat": 37.62528,
+          "lng": -77.585898
+        },
+        {
+          "lat": 37.622944,
+          "lng": -77.585638
+        },
+        {
+          "lat": 37.622565,
+          "lng": -77.587812
+        },
+        {
+          "lat": 37.623477,
+          "lng": -77.590534
+        },
+        {
+          "lat": 37.6225,
+          "lng": -77.58762
+        },
+        {
+          "lat": 37.623797,
+          "lng": -77.588295
+        },
+        {
+          "lat": 37.624326,
+          "lng": -77.588546
+        },
+        {
+          "lat": 37.626022,
+          "lng": -77.590225
+        },
+        {
+          "lat": 37.627436,
+          "lng": -77.590406
+        },
+        {
+          "lat": 37.626318,
+          "lng": -77.591543
+        },
+        {
+          "lat": 37.626525,
+          "lng": -77.594074
+        },
+        {
+          "lat": 37.628142,
+          "lng": -77.592734
+        },
+        {
+          "lat": 37.628036,
+          "lng": -77.589491
+        },
+        {
+          "lat": 37.629794,
+          "lng": -77.589406
+        },
+        {
+          "lat": 37.629361,
+          "lng": -77.587269
+        },
+        {
+          "lat": 37.627453,
+          "lng": -77.58554
+        },
+        {
+          "lat": 37.625713,
+          "lng": -77.58562
+        }
+      ],
+      "waypoint_count": 443,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the lot north of the ponds. The start line is on the paved path that runs south from there to the ponds.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 303,
+            "order": 1,
+            "of": 32
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 327
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 437
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 437
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 606,
+            "order": 2,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 665
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 909,
+            "order": 3,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1025
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1212,
+            "order": 4,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1253
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 1253
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1380
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1430
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1489
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1515,
+            "order": 5,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1584
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1711
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1818,
+            "order": 6,
+            "of": 32
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1853
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2029
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2121,
+            "order": 7,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2253
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2379
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2424,
+            "order": 8,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2538
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2727,
+            "order": 9,
+            "of": 32
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2762
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3030,
+            "order": 10,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 11,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3625
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3636,
+            "order": 12,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3939,
+            "order": 13,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4242,
+            "order": 14,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4545,
+            "order": 15,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4667
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4848,
+            "order": 16,
+            "of": 32
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5152,
+            "order": 17,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5455,
+            "order": 18,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5758,
+            "order": 19,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6061,
+            "order": 20,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6364,
+            "order": 21,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 22,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6970,
+            "order": 23,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7273,
+            "order": 24,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7576,
+            "order": 25,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7879,
+            "order": 26,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8182,
+            "order": 27,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8485,
+            "order": 28,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8788,
+            "order": 29,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9091,
+            "order": 30,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9394,
+            "order": 31,
+            "of": 32
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9697,
+            "order": 32,
+            "of": 32
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 9903
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
           }
         ]
       },

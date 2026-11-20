@@ -490,7 +490,7 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
-### `apps/mobile_android/test/segments_test.dart` — 32 tests
+### `apps/mobile_android/test/segments_test.dart` — 33 tests
 
 Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
@@ -649,7 +649,7 @@ Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file
 
 `AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing at the Account page, by name and never by a path, in every locale, and at the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
 
-### `apps/mobile_ios/test/` — 958 files, byte-for-byte
+### `apps/mobile_ios/test/` — 961 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -774,7 +774,7 @@ TypeScript unit tests for the training plan engine, written against Node's `node
 - True when manually marked
 - True when both set
 
-### `apps/web/src/lib/segments/segments.test.ts` — 56 tests
+### `apps/web/src/lib/segments/segments.test.ts` — 57 tests
 
 TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`: Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
@@ -1551,7 +1551,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,683 declared tests across 699 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,697 declared tests across 701 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -3194,6 +3194,10 @@ Through the numeric inputs: place, turn and remove a line on a routeless course 
 ## A run over a real park course reaches its board (#1342 step 5c, 2026-11-10)
 
 The automated net that replaces the hand test "record a run over one course and check it reaches the board". One shared case table, `fixtures/park_course_runs.json`, generated by `apps/web/src/lib/parks/course_run_fixture.ts` through `pnpm gen:park-course-runs`: seeded 1 Hz runs with about 5 m RMS of correlated GPS error over the six committed Pocahontas course lines, each starting with a minute in the lot and ending with a walk off. See [park_courses.md § Tests](../features/park_courses.md#tests).
+
+### `apps/web/src/lib/parks/course_box_timing.test.ts` — 6 tests
+
+The box timing rule (issue #1446, decisions § 2589) on every catalogue course (Pocahontas, Deep Run, the Virginia Capital Trail): seeded runs from `parks/course_box_timing_sim.ts` with 3 m of drifting GPS error, scored by the matcher the server bundles. Holds a minimum timed rate for stopping 5 m past, 1 m past and 3 m short of the finish (inside the shared box), starting on the line and 0.5 m behind it, a fix every 5 s and 15 s, and a 90 s gap across the finish; no time for stopping halfway, skipping the middle fifth or a third; a 50K at 8.7 h timed within 2 % of line to line less the shared box; and a gap-crossed finish within 15 s of the same run without the gap. Run with `npx tsx --test src/lib/parks/course_box_timing.test.ts` from `apps/web` (about 5 s).
 
 ### `apps/web/src/lib/parks/course_run_fixture.test.ts` — 7 tests
 

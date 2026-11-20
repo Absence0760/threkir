@@ -76,7 +76,7 @@ test.describe('run lifecycle journey', () => {
 					timeout: 10_000
 				});
 
-				await page.getByRole('button', { name: '+ Add run' }).click();
+				await page.getByRole('button', { name: 'Add run' }).click();
 
 				// RunEditor (modal): started_at prefills to now; activity
 				// defaults to 'run'. Set distance + duration so the row

@@ -25,13 +25,17 @@ export function distanceMarkerRank(label: number): number {
 /// clicks / seed data), each marker's position along the polyline is scaled
 /// by `polyline / real` so the count reflects the real distance. A route's
 /// [officialDistanceM] wins over both, short or long, so km 42 of a traced
-/// marathon sits where the race's sign does (`courseDistanceScale`). Mirrors
+/// marathon sits where the race's sign does (`courseDistanceScale`). With
+/// [lapM], a lapped course's one lap in real metres, only the first lap's
+/// badges are emitted: every later lap runs the same ground, so its badges
+/// would sit on the first lap's (decisions § 2582). Mirrors
 /// `computeDistanceMarkers` in `track_decorations.dart`.
 export function computeDistanceMarkers(
 	coords: [number, number][],
 	stepM: number,
 	totalDistanceM?: number | null,
 	officialDistanceM?: number | null,
+	lapM?: number | null,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, DistanceMarkerProps> {
 	const features: GeoJSON.Feature<GeoJSON.Point, DistanceMarkerProps>[] = [];
 	if (coords.length < 2) return { type: 'FeatureCollection', features };
@@ -62,6 +66,7 @@ export function computeDistanceMarkers(
 			const lng = coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * t;
 			const lat = coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * t;
 			const idx = Math.round(nextMarker / scale / stepM);
+			if (lapM != null && lapM > 0 && idx * stepM > lapM + 0.5) break;
 			features.push({
 				type: 'Feature',
 				geometry: { type: 'Point', coordinates: [lng, lat] },

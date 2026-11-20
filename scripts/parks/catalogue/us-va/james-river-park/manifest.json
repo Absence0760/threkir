@@ -1,0 +1,2373 @@
+{
+  "park": {
+    "slug": "james-river-park",
+    "name": "James River Park System",
+    "kind": "park",
+    "agency": "other",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://jamesriverpark.org/trails/"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks every course against the trail signs: Forest Hill (schematic map, short OSM connectors), Pony Pasture (unnamed paths matched to the map by eye), and one lap of the big loop, checking the Boulevard Bridge sidewalk is open on foot, the 13 m across the Tredegar Street lot, the 22nd Street bridge stairs and the Buttermilk Heights creek ford (#1430)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-20",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "forest-hill-park-5k",
+      "name": "Forest Hill Park Loop, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4849.5,
+      "lead_in_m": 514.3,
+      "start_line_from_lead_in_start_m": 439,
+      "start_finish": {
+        "lat": 37.516415,
+        "lng": -77.473561
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
+      "source_checked_at": "2026-11-20",
+      "geojson": "forest-hill-park-5k.geojson",
+      "elevation_m": 111,
+      "checkpoints": [
+        {
+          "lat": 37.520213,
+          "lng": -77.47327
+        },
+        {
+          "lat": 37.521155,
+          "lng": -77.474112
+        },
+        {
+          "lat": 37.522519,
+          "lng": -77.470452
+        },
+        {
+          "lat": 37.520046,
+          "lng": -77.469739
+        }
+      ],
+      "waypoint_count": 251,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 440 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 696
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 876
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1000,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "climb",
+            "gain_m": 27,
+            "length_m": 710,
+            "at_m": 1224
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1603
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2000,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2364
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2364
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 2544
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3000,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 280,
+            "at_m": 3666
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4000,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4431
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 4479
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 4772
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 4925
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 4925
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "forest-hill-park-10k",
+      "name": "Forest Hill Park Loop, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4849.5,
+      "lead_in_m": 514.3,
+      "start_line_from_lead_in_start_m": 363.8,
+      "start_finish": {
+        "lat": 37.516708,
+        "lng": -77.474327
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/76739173,way/76739262,way/287532396,way/287532402,way/291803968,way/291803973,way/295413458,way/296682811,way/303080234,way/303080235,way/303080237,way/1041749400,way/1041749402,way/1112131234,way/1112131236",
+      "source_checked_at": "2026-11-20",
+      "geojson": "forest-hill-park-10k.geojson",
+      "elevation_m": 219,
+      "checkpoints": [
+        {
+          "lat": 37.520091,
+          "lng": -77.473072
+        },
+        {
+          "lat": 37.521478,
+          "lng": -77.473653
+        },
+        {
+          "lat": 37.521305,
+          "lng": -77.470297
+        },
+        {
+          "lat": 37.518604,
+          "lng": -77.471218
+        },
+        {
+          "lat": 37.519058,
+          "lng": -77.472703
+        },
+        {
+          "lat": 37.521324,
+          "lng": -77.47271
+        },
+        {
+          "lat": 37.5213,
+          "lng": -77.470616
+        },
+        {
+          "lat": 37.51984,
+          "lng": -77.469428
+        }
+      ],
+      "waypoint_count": 504,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 365 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 771
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 951
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1111,
+            "order": 1,
+            "of": 8
+          },
+          {
+            "kind": "climb",
+            "gain_m": 27,
+            "length_m": 710,
+            "at_m": 1299
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1678
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2222,
+            "order": 2,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 2439
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 2439
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 2619
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 3,
+            "of": 8
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 280,
+            "at_m": 3741
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4444,
+            "order": 4,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4506
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 4555
+          },
+          {
+            "kind": "climb",
+            "gain_m": 22,
+            "length_m": 390,
+            "at_m": 4609
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 4847
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5556,
+            "order": 5,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 6,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7778,
+            "order": 7,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8889,
+            "order": 8,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 9850
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 9850
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pony-pasture-5k",
+      "name": "Pony Pasture Loop, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4813.9,
+      "lead_in_m": 247.4,
+      "start_line_from_lead_in_start_m": 154.4,
+      "start_finish": {
+        "lat": 37.550891,
+        "lng": -77.518252
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/287520819,way/291918810,way/291918811,way/291918812,way/291918813,way/291918815,way/291918817,way/1138638175,way/1138638176,way/1138638178,way/1138638179,way/1138638180,way/1147644037,way/1153890673,way/1482339238,way/1482339240,way/1482339241,way/1482341764,way/1482341765,way/1482344196,way/1486029052,way/1486029053,way/1486029054,way/1486029055,way/1561728250,way/1561728251",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pony-pasture-5k.geojson",
+      "elevation_m": 0,
+      "checkpoints": [
+        {
+          "lat": 37.547797,
+          "lng": -77.514393
+        },
+        {
+          "lat": 37.544853,
+          "lng": -77.509284
+        },
+        {
+          "lat": 37.545789,
+          "lng": -77.507737
+        },
+        {
+          "lat": 37.548434,
+          "lng": -77.511562
+        }
+      ],
+      "waypoint_count": 179,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Pony Pasture lot on Riverside Drive. The start line is on the gravel riverside trail that leaves the east side of the lot, about 154 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "R.B. Young Riverside Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 93
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 93
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 275
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 641
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 641
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 725
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 951
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1000,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1292
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1303
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1320
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1350
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "The Wetlands",
+            "at_m": 1516
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1516
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2000,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2239
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2239
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 2360
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3000,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3113
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 3444
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3444
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3607
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3627
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 3668
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3668
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3883
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3883
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4000,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4142
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4142
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4230
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4330
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4395
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4520
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4800
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4859
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 4859
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "pony-pasture-10k",
+      "name": "Pony Pasture Loop, 10 km (2 laps)",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 2,
+      "lap_m": 4813.9,
+      "lead_in_m": 247.4,
+      "start_line_from_lead_in_start_m": 61.3,
+      "start_finish": {
+        "lat": 37.550968,
+        "lng": -77.519287
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/287520819,way/291918810,way/291918811,way/291918812,way/291918813,way/291918815,way/291918817,way/1138638175,way/1138638176,way/1138638178,way/1138638179,way/1138638180,way/1147644037,way/1153890673,way/1482339238,way/1482339240,way/1482339241,way/1482341764,way/1482341765,way/1482344196,way/1486029052,way/1486029053,way/1486029054,way/1486029055,way/1561728250,way/1561728251",
+      "source_checked_at": "2026-11-20",
+      "geojson": "pony-pasture-10k.geojson",
+      "elevation_m": 6,
+      "checkpoints": [
+        {
+          "lat": 37.547776,
+          "lng": -77.51419
+        },
+        {
+          "lat": 37.544163,
+          "lng": -77.510245
+        },
+        {
+          "lat": 37.545979,
+          "lng": -77.507455
+        },
+        {
+          "lat": 37.548858,
+          "lng": -77.513926
+        },
+        {
+          "lat": 37.547947,
+          "lng": -77.5158
+        },
+        {
+          "lat": 37.546649,
+          "lng": -77.508699
+        },
+        {
+          "lat": 37.545848,
+          "lng": -77.507812
+        },
+        {
+          "lat": 37.548375,
+          "lng": -77.511371
+        }
+      ],
+      "waypoint_count": 361,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Pony Pasture lot on Riverside Drive. The start line is on the gravel riverside trail that leaves the east side of the lot, about 61 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "R.B. Young Riverside Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 186
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 186
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 368
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 734
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 734
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 818
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Pleasant Creek Trail",
+            "at_m": 1044
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1111,
+            "order": 1,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1385
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1396
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1413
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1443
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "The Wetlands",
+            "at_m": 1609
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1609
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2222,
+            "order": 2,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 2332
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2332
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 2453
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3206
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3333,
+            "order": 3,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "The Wetlands",
+            "at_m": 3538
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3538
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 3700
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3720
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 3761
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 3761
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 3976
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 3976
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4235
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 4235
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4323
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4423
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4444,
+            "order": 4,
+            "of": 8
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4488
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4613
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4893
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "R.B. Young Riverside Trail",
+            "at_m": 4952
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 5000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5556,
+            "order": 5,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6667,
+            "order": 6,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7778,
+            "order": 7,
+            "of": 8
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8889,
+            "order": 8,
+            "of": 8
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 9766
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "james-river-park-half",
+      "name": "James River Park Loop, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "loop",
+      "distance_m": 21097.5,
+      "laps": 1,
+      "lap_m": 20745.5,
+      "lead_in_m": 491.2,
+      "start_line_from_lead_in_start_m": 315.2,
+      "start_finish": {
+        "lat": 37.517043,
+        "lng": -77.47466
+      },
+      "surface": "trail",
+      "fords": [
+        587327555
+      ],
+      "joins": [
+        {
+          "nodes": [
+            9735622197,
+            14119406240
+          ],
+          "gap_m": 7.7
+        }
+      ],
+      "geometry_source": "osm",
+      "source_ref": "way/76131177,way/76131178,way/76131179,way/76131180,way/76160433,way/76167840,way/76210860,way/76217938,way/76227376,way/76227377,way/76230894,way/76230898,way/76230899,way/76739173,way/76739262,way/76739454,way/78944367,way/207188580,way/235764534,way/235764536,way/263127147,way/266860007,way/268210782,way/273391261,way/281467394,way/281467397,way/281467400,way/281467412,way/281467415,way/281467417,way/281467420,way/281467425,way/281597010,way/287532396,way/287532402,way/289791888,way/291803968,way/291803973,way/294875025,way/294992611,way/294992615,way/295413458,way/296545526,way/296545527,way/296678232,way/296678233,way/296678243,way/296678247,way/296681355,way/296681356,way/296681357,way/296682811,way/297600418,way/297603419,way/301660643,way/302768476,way/302935849,way/302935851,way/303080234,way/303080235,way/303080237,way/303080238,way/303083097,way/304805034,way/304805035,way/304806645,way/304806646,way/305756048,way/359871987,way/359871990,way/576880629,way/587327554,way/587327555,way/654765932,way/771693771,way/854239141,way/854239142,way/854249616,way/854249618,way/854250050,way/856166958,way/857196728,way/857197333,way/866036690,way/866043557,way/1041749397,way/1041749401,way/1041762503,way/1050844071,way/1050844072,way/1050844073,way/1059652493,way/1064641216,way/1064641217,way/1064641218,way/1066528384,way/1066528385,way/1073335547,way/1073335548,way/1073335549,way/1073335550,way/1105364742,way/1112131234,way/1112131236,way/1195657303,way/1304198794,way/1304198795,way/1304198796,way/1304198798,way/1304198799,way/1304198800,way/1304198822,way/1304198823,way/1304198824,way/1304198826,way/1304198827,way/1304198832,way/1304362720,way/1304362725,way/1304362741,way/1304362743,way/1304362744,way/1304362757,way/1304362758,way/1304362759,way/1419750345,way/1419750346,way/1419750347,way/1419750348,way/1419750349,way/1419750350,way/1419750351,way/1419750353,way/1419750354,way/1419750355,way/1419750356,way/1419750357,way/1419750358,way/1419750359,way/1419750360,way/1419750361,way/1419750362,way/1419750363,way/1419750364,way/1419750365,way/1419750366,way/1419750370,way/1420097042,way/1422284388,way/1430762457,way/1459703994,way/1459703995,way/1515659802,way/1515659803,way/1520934168,way/1552017524",
+      "source_checked_at": "2026-11-20",
+      "geojson": "james-river-park-half.geojson",
+      "elevation_m": 339,
+      "checkpoints": [
+        {
+          "lat": 37.517465,
+          "lng": -77.470593
+        },
+        {
+          "lat": 37.522235,
+          "lng": -77.470878
+        },
+        {
+          "lat": 37.525664,
+          "lng": -77.47839
+        },
+        {
+          "lat": 37.534659,
+          "lng": -77.482105
+        },
+        {
+          "lat": 37.530624,
+          "lng": -77.467693
+        },
+        {
+          "lat": 37.534904,
+          "lng": -77.45282
+        },
+        {
+          "lat": 37.531255,
+          "lng": -77.449699
+        },
+        {
+          "lat": 37.529459,
+          "lng": -77.452926
+        },
+        {
+          "lat": 37.523833,
+          "lng": -77.456992
+        },
+        {
+          "lat": 37.520884,
+          "lng": -77.474201
+        }
+      ],
+      "start_gate": {
+        "lat": 37.517043,
+        "lng": -77.47466,
+        "bearing_deg": 120.8,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 37.517043,
+        "lng": -77.47466,
+        "bearing_deg": 300.8,
+        "half_width_m": 15
+      },
+      "waypoint_count": 1149,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 316 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "climb",
+            "gain_m": 18,
+            "length_m": 260,
+            "at_m": 491
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 673
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 835
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 965
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1086
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 1244
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill",
+            "at_m": 1547
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1918,
+            "order": 1,
+            "of": 10
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 260,
+            "at_m": 2773
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3836,
+            "order": 2,
+            "of": 10
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3944
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Buttermilk Heights Trail",
+            "at_m": 4038
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Riverside Drive",
+            "at_m": 4038
+          },
+          {
+            "kind": "climb",
+            "gain_m": 16,
+            "length_m": 370,
+            "at_m": 4419
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4695
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Buttermilk Heights (Abandoned Quarry Loop)",
+            "at_m": 5027
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Buttermilk Heights Trail",
+            "at_m": 5282
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 5282
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5754,
+            "order": 3,
+            "of": 10
+          },
+          {
+            "kind": "crossing",
+            "crossing": "ford",
+            "at_m": 6243
+          },
+          {
+            "kind": "climb",
+            "gain_m": 20,
+            "length_m": 520,
+            "at_m": 6339
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6507
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6622
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 7029
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 7029
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7043
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7672,
+            "order": 4,
+            "of": 10
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 7764
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 7769
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7927
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "North Bank Heights",
+            "at_m": 8644
+          },
+          {
+            "kind": "climb",
+            "gain_m": 22,
+            "length_m": 330,
+            "at_m": 9086
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 9259
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 9577
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9590,
+            "order": 5,
+            "of": 10
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 9618
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9861
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 290,
+            "at_m": 9867
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10166
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10470
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10550
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10591
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10665
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10845
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 11508,
+            "order": 6,
+            "of": 10
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 11530
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 11683
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 11818
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11818
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 11950
+          },
+          {
+            "kind": "road",
+            "length_m": 13,
+            "at_m": 11950
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 11959
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Belle Isle Footbridge",
+            "at_m": 12092
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12092
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12135
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 12589
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 12727
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 12903
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13103
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13273
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 13376
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 13426,
+            "order": 7,
+            "of": 10
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 13433
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13523
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 13574
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 14229
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 14464
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 14823
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 14930
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 15249
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15344,
+            "order": 8,
+            "of": 10
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 15345
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 16145
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 16415
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 16415
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16610
+          },
+          {
+            "kind": "climb",
+            "gain_m": 23,
+            "length_m": 430,
+            "at_m": 16712
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "High Water Trail",
+            "at_m": 16800
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "22nd Street Pedestrian Bridge",
+            "at_m": 17071
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 17095
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Buttermilk Trail",
+            "at_m": 17124
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 17135
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 17262,
+            "order": 9,
+            "of": 10
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 18473
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 18681
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18687
+          },
+          {
+            "kind": "climb",
+            "gain_m": 33,
+            "length_m": 430,
+            "at_m": 18702
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19180,
+            "order": 10,
+            "of": 10
+          },
+          {
+            "kind": "climb",
+            "gain_m": 24,
+            "length_m": 530,
+            "at_m": 19851
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20200
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 20922
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 20922
+          },
+          {
+            "kind": "finish",
+            "at_m": 21098
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "james-river-park-marathon",
+      "name": "James River Park Loop, marathon distance (2 laps)",
+      "race_distance": "marathon",
+      "course_shape": "loop",
+      "distance_m": 42195,
+      "laps": 2,
+      "lap_m": 20745.5,
+      "lead_in_m": 491.2,
+      "start_line_from_lead_in_start_m": 139.2,
+      "start_finish": {
+        "lat": 37.518082,
+        "lng": -77.474449
+      },
+      "surface": "trail",
+      "fords": [
+        587327555
+      ],
+      "joins": [
+        {
+          "nodes": [
+            9735622197,
+            14119406240
+          ],
+          "gap_m": 7.7
+        }
+      ],
+      "geometry_source": "osm",
+      "source_ref": "way/76131177,way/76131178,way/76131179,way/76131180,way/76160433,way/76167840,way/76210860,way/76217938,way/76227376,way/76227377,way/76230894,way/76230898,way/76230899,way/76739173,way/76739262,way/76739454,way/78944367,way/207188580,way/235764534,way/235764536,way/263127147,way/266860007,way/268210782,way/273391261,way/281467394,way/281467397,way/281467400,way/281467412,way/281467415,way/281467417,way/281467420,way/281467425,way/281597010,way/287532396,way/287532402,way/289791888,way/291803968,way/291803973,way/294875025,way/294992611,way/294992615,way/295413458,way/296545526,way/296545527,way/296678232,way/296678233,way/296678243,way/296678247,way/296681355,way/296681356,way/296681357,way/296682811,way/297600418,way/297603419,way/301660643,way/302768476,way/302935849,way/302935851,way/303080234,way/303080235,way/303080237,way/303080238,way/303083097,way/304805034,way/304805035,way/304806645,way/304806646,way/305756048,way/359871987,way/359871990,way/576880629,way/587327554,way/587327555,way/654765932,way/771693771,way/854239141,way/854239142,way/854249616,way/854249618,way/854250050,way/856166958,way/857196728,way/857197333,way/866036690,way/866043557,way/1041749397,way/1041749401,way/1041762503,way/1050844071,way/1050844072,way/1050844073,way/1059652493,way/1064641216,way/1064641217,way/1064641218,way/1066528384,way/1066528385,way/1073335547,way/1073335548,way/1073335549,way/1073335550,way/1105364742,way/1112131234,way/1112131236,way/1195657303,way/1304198794,way/1304198795,way/1304198796,way/1304198798,way/1304198799,way/1304198800,way/1304198822,way/1304198823,way/1304198824,way/1304198826,way/1304198827,way/1304198832,way/1304362720,way/1304362725,way/1304362741,way/1304362743,way/1304362744,way/1304362757,way/1304362758,way/1304362759,way/1419750345,way/1419750346,way/1419750347,way/1419750348,way/1419750349,way/1419750350,way/1419750351,way/1419750353,way/1419750354,way/1419750355,way/1419750356,way/1419750357,way/1419750358,way/1419750359,way/1419750360,way/1419750361,way/1419750362,way/1419750363,way/1419750364,way/1419750365,way/1419750366,way/1419750370,way/1420097042,way/1422284388,way/1430762457,way/1459703994,way/1459703995,way/1515659802,way/1515659803,way/1520934168,way/1552017524",
+      "source_checked_at": "2026-11-20",
+      "geojson": "james-river-park-marathon.geojson",
+      "elevation_m": 679,
+      "checkpoints": [
+        {
+          "lat": 37.516969,
+          "lng": -77.469938
+        },
+        {
+          "lat": 37.52229,
+          "lng": -77.470847
+        },
+        {
+          "lat": 37.526131,
+          "lng": -77.479061
+        },
+        {
+          "lat": 37.534417,
+          "lng": -77.482258
+        },
+        {
+          "lat": 37.5307,
+          "lng": -77.465429
+        },
+        {
+          "lat": 37.534945,
+          "lng": -77.448809
+        },
+        {
+          "lat": 37.529583,
+          "lng": -77.449869
+        },
+        {
+          "lat": 37.529349,
+          "lng": -77.454102
+        },
+        {
+          "lat": 37.523656,
+          "lng": -77.463654
+        },
+        {
+          "lat": 37.520305,
+          "lng": -77.471909
+        },
+        {
+          "lat": 37.518505,
+          "lng": -77.471752
+        },
+        {
+          "lat": 37.520952,
+          "lng": -77.470227
+        },
+        {
+          "lat": 37.524713,
+          "lng": -77.475769
+        },
+        {
+          "lat": 37.53094,
+          "lng": -77.484473
+        },
+        {
+          "lat": 37.53033,
+          "lng": -77.468705
+        },
+        {
+          "lat": 37.533839,
+          "lng": -77.455521
+        },
+        {
+          "lat": 37.53047,
+          "lng": -77.450243
+        },
+        {
+          "lat": 37.528856,
+          "lng": -77.453397
+        },
+        {
+          "lat": 37.52388,
+          "lng": -77.456946
+        },
+        {
+          "lat": 37.521111,
+          "lng": -77.473329
+        }
+      ],
+      "waypoint_count": 2307,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the Forest Hill Park lot at New Kent Road and 42nd Street (the park map's trailhead lot). Walk east along the park drive to the Stone House. The start line is on the paved path that runs south from the drive beside the Stone House, about 140 m along it.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "climb",
+            "gain_m": 18,
+            "length_m": 260,
+            "at_m": 667
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 849
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 1011
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1141
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1262
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill - Alternate Reedy Creek Crossing Detour",
+            "at_m": 1420
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Hill",
+            "at_m": 1723
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2009,
+            "order": 1,
+            "of": 20
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 260,
+            "at_m": 2949
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4019,
+            "order": 2,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 4120
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Buttermilk Heights Trail",
+            "at_m": 4214
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Riverside Drive",
+            "at_m": 4214
+          },
+          {
+            "kind": "climb",
+            "gain_m": 16,
+            "length_m": 370,
+            "at_m": 4595
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4871
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Buttermilk Heights (Abandoned Quarry Loop)",
+            "at_m": 5203
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Buttermilk Heights Trail",
+            "at_m": 5458
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 5458
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6028,
+            "order": 3,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "ford",
+            "at_m": 6419
+          },
+          {
+            "kind": "climb",
+            "gain_m": 20,
+            "length_m": 520,
+            "at_m": 6515
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6683
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 6798
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 7205
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 7205
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 7219
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 7940
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 7945
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8037,
+            "order": 4,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 8103
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "North Bank Heights",
+            "at_m": 8820
+          },
+          {
+            "kind": "climb",
+            "gain_m": 22,
+            "length_m": 330,
+            "at_m": 9262
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 9435
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 9753
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "North Bank Trail",
+            "at_m": 9794
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10037
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 290,
+            "at_m": 10043
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 10046,
+            "order": 5,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10342
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10646
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10726
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10767
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 10841
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11021
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 11706
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 11859
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 11994
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11994
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12056,
+            "order": 6,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 12126
+          },
+          {
+            "kind": "road",
+            "length_m": 13,
+            "at_m": 12126
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 12135
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Belle Isle Footbridge",
+            "at_m": 12268
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12268
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12311
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 12765
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 12903
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13079
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13279
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13449
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 13552
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 13609
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 13699
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 13750
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 14065,
+            "order": 7,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 14405
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 14640
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 14999
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 15106
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 15425
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 15521
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16074,
+            "order": 8,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 16321
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 16591
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 16591
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 16786
+          },
+          {
+            "kind": "climb",
+            "gain_m": 23,
+            "length_m": 430,
+            "at_m": 16888
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "High Water Trail",
+            "at_m": 16976
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "22nd Street Pedestrian Bridge",
+            "at_m": 17247
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 17271
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Buttermilk Trail",
+            "at_m": 17300
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 17311
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18084,
+            "order": 9,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 18649
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Hill",
+            "at_m": 18857
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18863
+          },
+          {
+            "kind": "climb",
+            "gain_m": 33,
+            "length_m": 430,
+            "at_m": 18878
+          },
+          {
+            "kind": "climb",
+            "gain_m": 24,
+            "length_m": 530,
+            "at_m": 20027
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 20093,
+            "order": 10,
+            "of": 20
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20376
+          },
+          {
+            "kind": "lap",
+            "at_m": 21098,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 21098
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 21098
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22102,
+            "order": 11,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 24111,
+            "order": 12,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26121,
+            "order": 13,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 28130,
+            "order": 14,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30139,
+            "order": 15,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32149,
+            "order": 16,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 34158,
+            "order": 17,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 36167,
+            "order": 18,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38176,
+            "order": 19,
+            "of": 20
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 40186,
+            "order": 20,
+            "of": 20
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 41843
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 41843
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

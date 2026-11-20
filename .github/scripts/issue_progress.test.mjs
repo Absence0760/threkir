@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LABEL, commentBody, parseIssuesSection, run, stripHtmlComments, tickItems } from './issue_progress.mjs';
+import { LABEL, commentBody, parseIssuesSection, positiveId, run, stripHtmlComments, tickItems } from './issue_progress.mjs';
 
 const BODY = `## Summary
 
@@ -44,6 +44,15 @@ test('tickItems ticks matching checkboxes, keeps ticked ones, and reports the mi
 	assert.equal(r.body, '- [x] Export a run:  CSV and GPX\n  * [x] Import from a file\n- [ ] 5K\n');
 	assert.deepEqual(r.ticked, ['Export a run: CSV and GPX', 'Import from a file']);
 	assert.deepEqual(r.missing, ['10K']);
+});
+
+test('tickItems ticks nothing for a line the checklist holds twice, and says so', () => {
+	const issue = '### Park A\n- [ ] 10K: 2 laps\n### Park B\n- [ ] 10K: 2 laps\n- [ ] Park B 5K\n';
+	const r = tickItems(issue, ['10K: 2 laps', 'Park B 5K']);
+	assert.equal(r.body, '### Park A\n- [ ] 10K: 2 laps\n### Park B\n- [ ] 10K: 2 laps\n- [x] Park B 5K\n');
+	assert.deepEqual(r.ambiguous, ['10K: 2 laps']);
+	assert.deepEqual(r.missing, []);
+	assert.match(commentBody({ pr: 7, state: 'merged', items: ['10K: 2 laps'], ...r }), /More than one checklist line/);
 });
 
 test('tickItems matches whole checkbox text, not a prefix', () => {
@@ -158,4 +167,22 @@ test('stripHtmlComments drops every comment, overlapping or unclosed, and leaves
 
 test('parseIssuesSection ignores a reference hidden in an unclosed comment', () => {
 	assert.deepEqual(parseIssuesSection('## Issues\nPart of #3\n<!-- Part of #4'), { fixes: [], parts: [{ issue: 3, items: [] }] });
+});
+
+test('positiveId takes a positive whole number and refuses anything else', () => {
+	assert.equal(positiveId(34, 'x'), 34);
+	for (const bad of [0, -1, 1.5, Number.NaN, '34', null, undefined, 2 ** 60]) {
+		assert.throws(() => positiveId(bad, 'issue number'), /issue number must be a positive whole number/);
+	}
+});
+
+test('run refuses a PR number or repository that is not well formed, before calling GitHub', async () => {
+	const gh = stubGitHub({});
+	try {
+		await assert.rejects(run({ action: 'opened', pull_request: { number: '7', body: prBody } }, opts), /pull_request\.number/);
+		await assert.rejects(run({ action: 'opened', pull_request: { number: 7, body: prBody } }, { token: 't', repo: 'o/r/../x' }), /GITHUB_REPOSITORY/);
+	} finally {
+		gh.restore();
+	}
+	assert.equal(gh.calls.length, 0);
 });

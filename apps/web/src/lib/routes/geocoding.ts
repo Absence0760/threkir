@@ -4,6 +4,7 @@ import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public'
 import {
 	geocodePlaceWithKey,
 	searchPlacesWithKey,
+	type PlaceBias,
 } from './geocoding_math';
 
 // Re-export the env-free result shapes + the dispatchers' testable
@@ -12,6 +13,7 @@ import {
 // repeat the env read.
 export type {
 	GeocodedPlace,
+	PlaceBias,
 	PlaceSearchOutcome,
 	PlaceSearchResult,
 } from './geocoding_math';
@@ -53,9 +55,10 @@ export function searchPlaces(
 	query: string,
 	limit = 5,
 	signal?: AbortSignal,
+	bias?: PlaceBias,
 ) {
 	warnIfFallbackInProd();
-	return searchPlacesWithKey(PUBLIC_MAPTILER_KEY, query, limit, signal);
+	return searchPlacesWithKey(PUBLIC_MAPTILER_KEY, query, limit, signal, bias);
 }
 
 /// Geocodes a free-text place query to a single best-fit centroid +
@@ -64,7 +67,7 @@ export function searchPlaces(
 /// "fall back to the text-only search path" — never as an error.
 ///
 /// Thin env-binding wrapper around `geocodePlaceWithKey`.
-export function geocodePlace(query: string, signal?: AbortSignal) {
+export function geocodePlace(query: string, signal?: AbortSignal, bias?: PlaceBias) {
 	warnIfFallbackInProd();
-	return geocodePlaceWithKey(PUBLIC_MAPTILER_KEY, query, signal);
+	return geocodePlaceWithKey(PUBLIC_MAPTILER_KEY, query, signal, bias);
 }

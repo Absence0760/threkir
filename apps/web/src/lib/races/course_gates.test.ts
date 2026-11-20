@@ -9,11 +9,20 @@ import {
 	COURSE_GATE_HALF_WIDTH_MAX_M,
 	COURSE_GATE_HALF_WIDTH_MIN_M,
 	COURSE_GATE_ROUTE_WARN_M,
+	COURSE_GATE_BOX_DEPTH_M,
+	COURSE_GATE_SHARED_SPOT_DEG,
+	COURSE_GATE_SHARED_SPOT_M,
 	bearingTo,
 	clampHalfWidth,
 	courseGate,
 	gateArrowTip,
 	gateLineEnds,
+	gateBox,
+	gateBoxParts,
+	gateTimingEdges,
+	gatePointAlong,
+	gatesShareSpot,
+	type GateBoxSide,
 	gateRouteRelation,
 	gateWarnings,
 	normalizeBearing,
@@ -46,6 +55,11 @@ const SECTIONS = [
 	'routeRelation',
 	'warnings',
 	'preflight',
+	'pointAlong',
+	'boxCorners',
+	'sharedSpot',
+	'boxParts',
+	'timingEdges',
 ];
 const META = new Set([
 	'spec',
@@ -116,6 +130,9 @@ test('constants match the case table', () => {
 	assert.equal(COURSE_GATE_DEFAULT_HALF_WIDTH_M, c.defaultHalfWidthM);
 	assert.equal(COURSE_GATE_ROUTE_WARN_M, c.routeWarnM);
 	assert.equal(COURSE_GATE_AGAINST_ROUTE_DEG, c.againstRouteDeg);
+	assert.equal(COURSE_GATE_BOX_DEPTH_M, c.boxDepthM);
+	assert.equal(COURSE_GATE_SHARED_SPOT_M, c.sharedSpotM);
+	assert.equal(COURSE_GATE_SHARED_SPOT_DEG, c.sharedSpotDeg);
 });
 
 test('normalizeBearing', () => {
@@ -203,5 +220,76 @@ test('racePreflight and preflightBlocks', () => {
 		}));
 		assert.deepEqual(got, c.expected, String(c.note));
 		assert.equal(preflightBlocks(racePreflight(courses, c.mode as SessionStartMode)), c.blocks, String(c.note));
+	}
+});
+
+test('gatePointAlong', () => {
+	for (const c of cases('pointAlong')) {
+		nearPoint(gatePointAlong(gate(c.gate as Obj), c.f as number), c.point as Obj, String(c.note));
+	}
+});
+
+function nearPoints(actual: GatePoint[], expected: Obj[], what: string) {
+	assert.equal(actual.length, expected.length, `${what}: point count`);
+	actual.forEach((p, i) => nearPoint(p, expected[i], `${what} [${i}]`));
+}
+
+test('gateBox', () => {
+	for (const c of cases('boxCorners')) {
+		const got = gateBox(
+			gate(c.gate as Obj),
+			c.depthM as number,
+			c.side as GateBoxSide,
+			c.from as number,
+			c.to as number,
+		);
+		nearPoints(got, c.corners as Obj[], String(c.note));
+	}
+});
+
+test('gatesShareSpot', () => {
+	for (const c of cases('sharedSpot')) {
+		assert.equal(gatesShareSpot(gate(c.start as Obj), gate(c.finish as Obj)), c.shared, String(c.note));
+	}
+});
+
+test('gateBoxParts', () => {
+	for (const c of cases('boxParts')) {
+		const got = gateBoxParts(
+			c.start === null ? null : gate(c.start as Obj),
+			c.finish === null ? null : gate(c.finish as Obj),
+			c.depthM as number,
+		);
+		const note = String(c.note);
+		assert.equal(got.layout, c.layout, `${note} layout`);
+		const want = c.parts as Obj[];
+		assert.equal(got.parts.length, want.length, `${note} part count`);
+		got.parts.forEach((p, i) => {
+			const w = want[i];
+			assert.equal(p.which, w.which, `${note} [${i}] which`);
+			nearPoints(p.box, w.box as Obj[], `${note} [${i}] box`);
+			nearPoints(p.line, w.line as Obj[], `${note} [${i}] line`);
+		});
+		const marks = c.markers as Obj[];
+		assert.equal(got.markers.length, marks.length, `${note} marker count`);
+		got.markers.forEach((mk, i) => {
+			assert.equal(mk.which, marks[i].which, `${note} marker [${i}] which`);
+			nearPoint(mk.at, marks[i].at as Obj, `${note} marker [${i}]`);
+		});
+	}
+});
+
+test('gateTimingEdges', () => {
+	for (const c of cases('timingEdges')) {
+		const got = gateTimingEdges(gate(c.start as Obj), gate(c.finish as Obj), c.depthM as number);
+		const note = String(c.note);
+		assert.equal(got.layout, c.layout, `${note} layout`);
+		assert.equal(got.depthM, c.depthM, `${note} depth`);
+		for (const key of ['startExit', 'finishEntry'] as const) {
+			const want = c[key] as Obj;
+			nearPoint(got[key], want, `${note} ${key}`);
+			nearBearing(got[key].bearingDeg, want.bearingDeg as number, `${note} ${key} bearing`);
+			assert.equal(got[key].halfWidthM, want.halfWidthM, `${note} ${key} half-width`);
+		}
 	}
 });

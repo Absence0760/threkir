@@ -294,7 +294,14 @@
 </svelte:head>
 
 <div class="page">
-	<RunSurfaceTabs active="plans" />
+	<RunSurfaceTabs active="plans">
+		{#snippet actions()}
+			<button class="btn btn-primary" type="button" onclick={() => (showPlanModal = true)} data-testid="plans-new">
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('plansPage.newPlan')}
+			</button>
+		{/snippet}
+	</RunSurfaceTabs>
 	<div class="surface-toolbar">
 		<div class="toolbar">
 			<!-- A filter over nothing is noise: with no plans every bucket is 0.
@@ -318,20 +325,16 @@
 			{/if}
 
 			<div class="toolbar-actions">
-				<a class="add-btn add-btn-outline" href="/plans/library">
+				<a class="btn btn-outline" href="/plans/library">
 					<span class="material-symbols" aria-hidden="true">public</span>
 					{m('plansPage.browseLibrary')}
 				</a>
 				{#if showAiPlan}
-					<a class="add-btn add-btn-outline" href={AI_PLAN_HREF}>
+					<a class="btn btn-outline" href={AI_PLAN_HREF}>
 						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
 						{m('plansPage.describeWithAi')}
 					</a>
 				{/if}
-				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
-					<span class="material-symbols" aria-hidden="true">add</span>
-					{m('plansPage.newPlan')}
-				</button>
 			</div>
 		</div>
 	</div>
@@ -619,34 +622,13 @@
 		margin-inline-start: auto;
 	}
 
-	.add-btn {
+	.toolbar-actions :global(.btn) {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-sm) var(--space-lg);
-		background: var(--color-primary);
-		color: var(--color-surface);
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 600;
+		gap: var(--space-2xs);
 		text-decoration: none;
-		border: none;
-		cursor: pointer;
-		transition: background var(--transition-fast);
 	}
-	.add-btn:hover {
-		background: var(--color-primary-hover);
-	}
-	.add-btn-outline {
-		background: transparent;
-		color: var(--color-primary);
-		border: 1.5px solid var(--color-primary);
-	}
-	.add-btn-outline:hover {
-		background: var(--color-primary);
-		color: var(--color-surface);
-	}
-	.add-btn .material-symbols {
+	.toolbar-actions .material-symbols {
 		font-size: 1.1rem;
 	}
 

@@ -192,9 +192,9 @@ void main() {
     expect(find.byKey(const Key('dashboardWeekLeadMeter')), findsNothing);
     // No active plan, so no next-session half at all.
     expect(find.text('Next session'), findsNothing);
-    // Compact: the occasional Add a run / Import moved to Home's overflow
+    // Compact: the occasional Add past run / Import moved to Home's overflow
     // (decisions § 2281).
-    expect(find.descendant(of: _lead, matching: find.text('Add a run')),
+    expect(find.descendant(of: _lead, matching: find.text('Add past run')),
         findsNothing);
     expect(find.descendant(of: _lead, matching: find.text('Import runs')),
         findsNothing);

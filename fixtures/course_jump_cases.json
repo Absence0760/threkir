@@ -1,0 +1,387 @@
+{
+ "_comment": "Course map jump buttons (course_jump pair): which buttons a park course map shows and the bounds each fits, read by apps/web/src/lib/parks/course_jump.test.ts and apps/mobile_android/test/course_jump_test.dart. A null lat stands for a non-finite one. Bounds compare to 1e-9 degrees.",
+ "cases": [
+  {
+   "name": "a point-to-point gets Start, Finish and Whole course, each fitting its own box",
+   "gates": {
+    "start": {
+     "lat": 51.5,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 15
+    },
+    "finish": {
+     "lat": 51.51,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 15
+    }
+   },
+   "line": [
+    {
+     "lat": 51.5,
+     "lng": -0.1
+    },
+    {
+     "lat": 51.505,
+     "lng": -0.1005
+    },
+    {
+     "lat": 51.51,
+     "lng": -0.1
+    }
+   ],
+   "endsShared": false,
+   "jumps": [
+    {
+     "target": "start",
+     "bounds": {
+      "south": 51.49941544176358,
+      "west": -0.10086679357254832,
+      "north": 51.500494626200044,
+      "east": -0.09913320642745169
+     }
+    },
+    {
+     "target": "finish",
+     "bounds": {
+      "south": 51.50950537379995,
+      "west": -0.10086698552867354,
+      "north": 51.51058455823642,
+      "east": -0.09913301447132647
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 51.5,
+      "west": -0.1005,
+      "north": 51.51,
+      "east": -0.1
+     }
+    }
+   ]
+  },
+  {
+   "name": "a loop whose lines share a spot gets one Start and finish button",
+   "gates": {
+    "start": {
+     "lat": 40,
+     "lng": -75,
+     "bearingDeg": 90,
+     "halfWidthM": 15
+    },
+    "finish": {
+     "lat": 40.00002,
+     "lng": -75,
+     "bearingDeg": 90,
+     "halfWidthM": 15
+    }
+   },
+   "line": [
+    {
+     "lat": 40,
+     "lng": -75
+    },
+    {
+     "lat": 40.003,
+     "lng": -74.998
+    },
+    {
+     "lat": 40.002,
+     "lng": -75.003
+    },
+    {
+     "lat": 40.00002,
+     "lng": -75
+    }
+   ],
+   "endsShared": true,
+   "jumps": [
+    {
+     "target": "startFinish",
+     "bounds": {
+      "south": 39.99946040778177,
+      "west": -75.00070438761495,
+      "north": 40.00053959221823,
+      "east": -74.99929561238505
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 40,
+      "west": -75.003,
+      "north": 40.003,
+      "east": -74.998
+     }
+    }
+   ]
+  },
+  {
+   "name": "an out-and-back whose lines face opposite ways at one spot is one button too",
+   "gates": {
+    "start": {
+     "lat": -33.9,
+     "lng": 151.2,
+     "bearingDeg": 0,
+     "halfWidthM": 15
+    },
+    "finish": {
+     "lat": -33.9,
+     "lng": 151.2,
+     "bearingDeg": 180,
+     "halfWidthM": 15
+    }
+   },
+   "line": [
+    {
+     "lat": -33.9,
+     "lng": 151.2
+    },
+    {
+     "lat": -33.89,
+     "lng": 151.2
+    },
+    {
+     "lat": -33.9,
+     "lng": 151.2
+    }
+   ],
+   "endsShared": true,
+   "jumps": [
+    {
+     "target": "startFinish",
+     "bounds": {
+      "south": -33.90053959221823,
+      "west": 151.19934989851603,
+      "north": -33.89946040778177,
+      "east": 151.20065010148394
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": -33.9,
+      "west": 151.2,
+      "north": -33.89,
+      "east": 151.2
+     }
+    }
+   ]
+  },
+  {
+   "name": "a box wider than the least span is fitted as it is across, widened only along",
+   "gates": {
+    "start": {
+     "lat": 51.5,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 100
+    },
+    "finish": {
+     "lat": 51.52,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 100
+    }
+   },
+   "line": [
+    {
+     "lat": 51.5,
+     "lng": -0.1
+    },
+    {
+     "lat": 51.52,
+     "lng": -0.1
+    }
+   ],
+   "endsShared": false,
+   "jumps": [
+    {
+     "target": "start",
+     "bounds": {
+      "south": 51.49941544176358,
+      "west": -0.10144465737959517,
+      "north": 51.500494626200044,
+      "east": -0.09855534262040484
+     }
+    },
+    {
+     "target": "finish",
+     "bounds": {
+      "south": 51.51950537379996,
+      "west": -0.10144529171354984,
+      "north": 51.52058455823642,
+      "east": -0.09855470828645017
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 51.5,
+      "west": -0.1,
+      "north": 51.52,
+      "east": -0.1
+     }
+    }
+   ]
+  },
+  {
+   "name": "without lines the jumps go to the line ends, two apart",
+   "gates": null,
+   "line": [
+    {
+     "lat": 48.85,
+     "lng": 2.35
+    },
+    {
+     "lat": 48.86,
+     "lng": 2.36
+    }
+   ],
+   "endsShared": false,
+   "jumps": [
+    {
+     "target": "start",
+     "bounds": {
+      "south": 48.84946040778177,
+      "west": 2.349179991667053,
+      "north": 48.85053959221823,
+      "east": 2.3508200083329474
+     }
+    },
+    {
+     "target": "finish",
+     "bounds": {
+      "south": 48.85946040778177,
+      "west": 2.359179827850805,
+      "north": 48.86053959221823,
+      "east": 2.360820172149195
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 48.85,
+      "west": 2.35,
+      "north": 48.86,
+      "east": 2.36
+     }
+    }
+   ]
+  },
+  {
+   "name": "without lines, ends the map draws as one pin are one Start and finish",
+   "gates": null,
+   "line": [
+    {
+     "lat": 48.85,
+     "lng": 2.35
+    },
+    {
+     "lat": 48.855,
+     "lng": 2.355
+    },
+    {
+     "lat": 48.8501,
+     "lng": 2.3501
+    }
+   ],
+   "endsShared": true,
+   "jumps": [
+    {
+     "target": "startFinish",
+     "bounds": {
+      "south": 48.84946040778177,
+      "west": 2.349179991667053,
+      "north": 48.85053959221823,
+      "east": 2.3508200083329474
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 48.85,
+      "west": 2.35,
+      "north": 48.855,
+      "east": 2.355
+     }
+    }
+   ]
+  },
+  {
+   "name": "unreadable points are skipped",
+   "gates": null,
+   "line": [
+    {
+     "lat": null,
+     "lng": 2
+    },
+    {
+     "lat": 48.85,
+     "lng": 2.35
+    },
+    {
+     "lat": 48.86,
+     "lng": 2.36
+    }
+   ],
+   "endsShared": false,
+   "jumps": [
+    {
+     "target": "start",
+     "bounds": {
+      "south": 48.84946040778177,
+      "west": 2.349179991667053,
+      "north": 48.85053959221823,
+      "east": 2.3508200083329474
+     }
+    },
+    {
+     "target": "finish",
+     "bounds": {
+      "south": 48.85946040778177,
+      "west": 2.359179827850805,
+      "north": 48.86053959221823,
+      "east": 2.360820172149195
+     }
+    },
+    {
+     "target": "course",
+     "bounds": {
+      "south": 48.85,
+      "west": 2.35,
+      "north": 48.86,
+      "east": 2.36
+     }
+    }
+   ]
+  },
+  {
+   "name": "a line of one point gets no buttons",
+   "gates": {
+    "start": {
+     "lat": 51.5,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 15
+    },
+    "finish": {
+     "lat": 51.51,
+     "lng": -0.1,
+     "bearingDeg": 0,
+     "halfWidthM": 15
+    }
+   },
+   "line": [
+    {
+     "lat": 51.5,
+     "lng": -0.1
+    }
+   ],
+   "endsShared": false,
+   "jumps": []
+  }
+ ]
+}

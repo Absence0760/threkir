@@ -1,5 +1,5 @@
 {
- "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting.",
+ "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting. 'views' are routeGuideView: the short 'summary' lines and the full 'sections' ({lap, from, to, lines}), neither listing checkpoints (decisions § 2582).",
  "cases": [
   {
    "name": "a full guide reads every kind of step in order",
@@ -410,6 +410,301 @@
      "at": 10
     }
    ]
+  },
+  {
+   "name": "road stretches between two pieces of trail, named and unnamed",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Main Trail"
+     },
+     {
+      "kind": "junction",
+      "at_m": 556,
+      "turn": "straight",
+      "name": "Tour Road"
+     },
+     {
+      "kind": "road",
+      "at_m": 556,
+      "length_m": 56,
+      "name": "  Tour Road "
+     },
+     {
+      "kind": "road",
+      "at_m": 1475,
+      "length_m": 219
+     },
+     {
+      "kind": "finish",
+      "at_m": 5000
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startNamed",
+     "name": "Main Trail"
+    },
+    {
+     "key": "straightNamed",
+     "at": 556,
+     "name": "Tour Road"
+    },
+    {
+     "key": "roadNamed",
+     "at": 556,
+     "name": "Tour Road",
+     "length": 56
+    },
+    {
+     "key": "road",
+     "at": 1475,
+     "length": 219
+    },
+    {
+     "key": "finish",
+     "at": 5000
+    }
+   ]
+  },
+  {
+   "name": "roads crossed at grade: named or not, at a traffic light or not",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Washington and Old Dominion Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 820,
+      "crossing": "road",
+      "name": "Hunter Mill Road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 2400,
+      "crossing": "road",
+      "name": "  Sunset Hills Road "
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3100,
+      "crossing": "road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3500,
+      "crossing": "road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 3900,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 5000
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startNamed",
+     "name": "Washington and Old Dominion Trail"
+    },
+    {
+     "key": "crossRoadNamedSignal",
+     "at": 820,
+     "name": "Hunter Mill Road"
+    },
+    {
+     "key": "crossRoadNamed",
+     "at": 2400,
+     "name": "Sunset Hills Road"
+    },
+    {
+     "key": "crossRoadSignal",
+     "at": 3100
+    },
+    {
+     "key": "crossRoad",
+     "at": 3500
+    },
+    {
+     "key": "bridge",
+     "at": 3900
+    },
+    {
+     "key": "finish",
+     "at": 5000
+    }
+   ]
+  },
+  {
+   "name": "a road step with no length",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "road",
+      "at_m": 100
+     },
+     {
+      "kind": "finish",
+      "at_m": 900
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road step of 0 m",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "road",
+      "at_m": 100,
+      "length_m": 0
+     },
+     {
+      "kind": "finish",
+      "at_m": 900
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a bridge crossing with a name",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "bridge",
+      "name": "Mill Bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a ford crossing with a signal",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "ford",
+      "signal": true
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road crossing whose signal is not true",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "road",
+      "signal": false
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a road crossing with a blank name",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 10,
+      "crossing": "road",
+      "name": " "
+     },
+     {
+      "kind": "finish",
+      "at_m": 100
+     }
+    ]
+   },
+   "parsed": null
   },
   {
    "name": "an unknown step kind hides the whole guide",
@@ -1717,6 +2012,821 @@
    "name": "null",
    "guide": null,
    "parsed": null
+  }
+ ],
+ "views": [
+  {
+   "name": "a two-lap course: the summary keeps the first lap's real trail changes and where lap 2 starts, the full view's second lap reads Repeat the loop, then the one turn lap 1 does not have",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "road"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 100,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 200,
+      "turn": "straight",
+      "name": "Trail A"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "right",
+      "name": "Trail B"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 400,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 450,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 500,
+      "turn": "left",
+      "name": "trail b"
+     },
+     {
+      "kind": "junction",
+      "at_m": 600,
+      "turn": "left",
+      "way": "fire_road"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1000,
+      "turn": "left",
+      "way": "road"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1450,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "finish",
+      "at_m": 2000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startRoad"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "laps",
+     "total": 2
+    },
+    {
+     "key": "rightNamed",
+     "at": 300,
+     "name": "Trail B"
+    },
+    {
+     "key": "leftFireRoad",
+     "at": 600
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "finish",
+     "at": 2000
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "rightRoad",
+       "at": 100
+      },
+      {
+       "key": "straightNamed",
+       "at": 200,
+       "name": "Trail A"
+      },
+      {
+       "key": "rightNamed",
+       "at": 300,
+       "name": "Trail B"
+      },
+      {
+       "key": "bridge",
+       "at": 400
+      },
+      {
+       "key": "leftNamed",
+       "at": 500,
+       "name": "trail b"
+      },
+      {
+       "key": "leftFireRoad",
+       "at": 600
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "leftRoad",
+       "at": 1000
+      },
+      {
+       "key": "finish",
+       "at": 2000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a 12 km course without laps: 5 km stretches, the finish in the last",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "counterclockwise",
+      "keep_on": "left",
+      "landmark": "the lake"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 6000,
+      "gain_m": 20,
+      "length_m": 300
+     },
+     {
+      "kind": "junction",
+      "at_m": 11000,
+      "turn": "right",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 12000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "counterclockwise"
+    },
+    {
+     "key": "keepLeft",
+     "landmark": "the lake"
+    },
+    {
+     "key": "leftNamed",
+     "at": 400,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "rightPath",
+     "at": 11000
+    },
+    {
+     "key": "finish",
+     "at": 12000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 400,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "surfaceGravel",
+       "at": 700
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 10000,
+     "lines": [
+      {
+       "key": "climb",
+       "at": 6000,
+       "gain": 20,
+       "length": 300
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 10000,
+     "to": 12000,
+     "lines": [
+      {
+       "key": "rightPath",
+       "at": 11000
+      },
+      {
+       "key": "finish",
+       "at": 12000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a course with nothing between start and finish: one stretch holding the finish",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 3000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "finish",
+     "at": 3000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 3000,
+     "lines": [
+      {
+       "key": "finish",
+       "at": 3000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "steps that end early still put the finish in its own stretch",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": null,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1000,
+      "crossing": "ford"
+     },
+     {
+      "kind": "finish",
+      "at_m": 8000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "finish",
+     "at": 8000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "ford",
+       "at": 1000
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 8000,
+     "lines": [
+      {
+       "key": "finish",
+       "at": 8000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a linear course: the summary counts its road crossings, the full view reads each one and each road stretch",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Washington and Old Dominion Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 820,
+      "crossing": "road",
+      "name": "Hunter Mill Road",
+      "signal": true
+     },
+     {
+      "kind": "road",
+      "at_m": 4000,
+      "length_m": 120,
+      "name": "Park Road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 6100,
+      "crossing": "road"
+     },
+     {
+      "kind": "finish",
+      "at_m": 8000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Washington and Old Dominion Trail"
+    },
+    {
+     "key": "roadCrossings",
+     "total": 2
+    },
+    {
+     "key": "finish",
+     "at": 8000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 5000,
+     "lines": [
+      {
+       "key": "crossRoadNamedSignal",
+       "at": 820,
+       "name": "Hunter Mill Road"
+      },
+      {
+       "key": "roadNamed",
+       "at": 4000,
+       "name": "Park Road",
+       "length": 120
+      }
+     ]
+    },
+    {
+     "lap": null,
+     "from": 5000,
+     "to": 8000,
+     "lines": [
+      {
+       "key": "crossRoad",
+       "at": 6100
+      },
+      {
+       "key": "finish",
+       "at": 8000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "one road crossing reads as one, after the direction",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 500,
+      "crossing": "road",
+      "name": "Park Road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "roadCrossings",
+     "total": 1
+    },
+    {
+     "key": "leftNamed",
+     "at": 300,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "finish",
+     "at": 1000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 300,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "crossRoadNamed",
+       "at": 500,
+       "name": "Park Road"
+      },
+      {
+       "key": "bridge",
+       "at": 600
+      },
+      {
+       "key": "finish",
+       "at": 1000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a lapped course counts the first lap's road crossings once a lap, and a later one once, which its lap lists after Repeat the loop",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "counterclockwise"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 200,
+      "crossing": "road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 700,
+      "crossing": "road",
+      "name": "Oak Street"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 2
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1900,
+      "crossing": "road",
+      "name": "Elm Street"
+     },
+     {
+      "kind": "finish",
+      "at_m": 2000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "counterclockwise"
+    },
+    {
+     "key": "laps",
+     "total": 2
+    },
+    {
+     "key": "roadCrossings",
+     "total": 5
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "finish",
+     "at": 2000
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "crossRoadSignal",
+       "at": 200
+      },
+      {
+       "key": "crossRoadNamed",
+       "at": 700,
+       "name": "Oak Street"
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "crossRoadNamed",
+       "at": 1900,
+       "name": "Elm Street"
+      },
+      {
+       "key": "finish",
+       "at": 2000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a three-lap course: a lap like the first reads only Repeat the loop, the last lists its turn off the loop after it",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 3
+     },
+     {
+      "kind": "lap",
+      "at_m": 2000,
+      "lap": 3,
+      "of": 3
+     },
+     {
+      "kind": "junction",
+      "at_m": 2800,
+      "turn": "right",
+      "name": "Finish Spur"
+     },
+     {
+      "kind": "surface",
+      "at_m": 2850,
+      "surface": "paved"
+     },
+     {
+      "kind": "finish",
+      "at_m": 2950
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "laps",
+     "total": 3
+    },
+    {
+     "key": "leftNamed",
+     "at": 300,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 3
+    },
+    {
+     "key": "lap",
+     "at": 2000,
+     "n": 3,
+     "total": 3
+    },
+    {
+     "key": "finish",
+     "at": 2950
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 300,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "bridge",
+       "at": 600
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      }
+     ]
+    },
+    {
+     "lap": 3,
+     "from": 2000,
+     "to": 2950,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "rightNamed",
+       "at": 2800,
+       "name": "Finish Spur"
+      },
+      {
+       "key": "surfacePaved",
+       "at": 2850
+      },
+      {
+       "key": "finish",
+       "at": 2950
+      }
+     ]
+    }
+   ]
   }
  ]
 }

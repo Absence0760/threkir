@@ -9,7 +9,7 @@
  * (docs/architecture/parity_pairs.md). Both read the case table in
  * `fixtures/route_guide_cases.json`, so which template a step takes, and with
  * which values, changes there or nowhere. The vocabularies mirror the CHECK
- * `private.park_course_route_guide_ok` (migration 20271212001344) and the
+ * `private.park_course_route_guide_ok` (migration 20280105001344) and the
  * generator `scripts/parks/lib/route_guide.mjs`.
  */
 
@@ -18,7 +18,7 @@ export const GUIDE_WAYS = ['fire_road', 'road', 'path'] as const;
 export const GUIDE_ROTATIONS = ['clockwise', 'counterclockwise'] as const;
 export const GUIDE_SIDES = ['left', 'right'] as const;
 export const GUIDE_SURFACES = ['paved', 'gravel', 'dirt', 'unpaved', 'boardwalk'] as const;
-export const GUIDE_CROSSINGS = ['bridge', 'ford'] as const;
+export const GUIDE_CROSSINGS = ['bridge', 'ford', 'road'] as const;
 
 type Turn = (typeof GUIDE_TURNS)[number];
 type Way = (typeof GUIDE_WAYS)[number];
@@ -37,7 +37,10 @@ export type RouteGuideStep =
 	  }
 	| { kind: 'lap'; at_m: number; lap: number; of: number }
 	| ({ kind: 'junction'; at_m: number; turn: Turn } & GuideTarget)
-	| { kind: 'crossing'; at_m: number; crossing: (typeof GUIDE_CROSSINGS)[number] }
+	| { kind: 'road'; at_m: number; length_m: number; name?: string }
+	| { kind: 'crossing'; at_m: number; crossing: 'bridge' | 'ford' }
+	/** A motor road crossed at grade; not the `road` kind, which is a stretch run along one. */
+	| { kind: 'crossing'; at_m: number; crossing: 'road'; name?: string; signal?: true }
 	| { kind: 'surface'; at_m: number; surface: (typeof GUIDE_SURFACES)[number] }
 	| { kind: 'climb'; at_m: number; gain_m: number; length_m: number }
 	| { kind: 'checkpoint'; at_m: number; order: number; of: number }
@@ -92,8 +95,26 @@ function readStep(raw: unknown): RouteGuideStep | null {
 			const target = readTarget(s);
 			return target && oneOf(GUIDE_TURNS, s.turn) ? { kind: 'junction', at_m, turn: s.turn, ...target } : null;
 		}
-		case 'crossing':
-			return oneOf(GUIDE_CROSSINGS, s.crossing) ? { kind: 'crossing', at_m, crossing: s.crossing } : null;
+		case 'road': {
+			if (!isWhole(s.length_m) || s.length_m < 1) return null;
+			if (!('name' in s)) return { kind: 'road', at_m, length_m: s.length_m };
+			return isLabel(s.name) ? { kind: 'road', at_m, length_m: s.length_m, name: s.name.trim() } : null;
+		}
+		case 'crossing': {
+			if (!oneOf(GUIDE_CROSSINGS, s.crossing)) return null;
+			if (s.crossing !== 'road') {
+				return 'name' in s || 'signal' in s ? null : { kind: 'crossing', at_m, crossing: s.crossing };
+			}
+			if ('signal' in s && s.signal !== true) return null;
+			if ('name' in s && !isLabel(s.name)) return null;
+			return {
+				kind: 'crossing',
+				at_m,
+				crossing: 'road',
+				...(isLabel(s.name) ? { name: s.name.trim() } : {}),
+				...(s.signal === true ? { signal: true as const } : {}),
+			};
+		}
 		case 'surface':
 			return oneOf(GUIDE_SURFACES, s.surface) ? { kind: 'surface', at_m, surface: s.surface } : null;
 		case 'climb':
@@ -163,8 +184,14 @@ export const GUIDE_LINE_KEYS = [
 	'leftPath',
 	'rightPath',
 	'straightPath',
+	'road',
+	'roadNamed',
 	'bridge',
 	'ford',
+	'crossRoad',
+	'crossRoadNamed',
+	'crossRoadSignal',
+	'crossRoadNamedSignal',
 	'surfacePaved',
 	'surfaceGravel',
 	'surfaceDirt',
@@ -174,6 +201,9 @@ export const GUIDE_LINE_KEYS = [
 	'checkpoint',
 	'lap',
 	'finish',
+	'laps',
+	'roadCrossings',
+	'repeatLoop',
 ] as const;
 export type GuideLineKey = (typeof GUIDE_LINE_KEYS)[number];
 
@@ -202,6 +232,20 @@ const SURFACE_KEY: Record<(typeof GUIDE_SURFACES)[number], GuideLineKey> = {
 	boardwalk: 'surfaceBoardwalk',
 };
 
+/** The line for a crossing: the bridge or ford, or the road by name, at its signal when it has one. */
+function crossingLine(s: Extract<RouteGuideStep, { kind: 'crossing' }>): GuideLine {
+	if (s.crossing !== 'road') return { key: s.crossing, at: s.at_m };
+	const key = `crossRoad${s.name !== undefined ? 'Named' : ''}${s.signal ? 'Signal' : ''}` as GuideLineKey;
+	return s.name !== undefined ? { key, at: s.at_m, name: s.name } : { key, at: s.at_m };
+}
+
+/** The line for a stretch of road between two pieces of trail. */
+function roadLine(s: Extract<RouteGuideStep, { kind: 'road' }>): GuideLine {
+	return s.name !== undefined
+		? { key: 'roadNamed', at: s.at_m, name: s.name, length: s.length_m }
+		: { key: 'road', at: s.at_m, length: s.length_m };
+}
+
 /**
  * The lines a guide reads as, in order. The start, the direction and (when
  * the course has checkpoints) the stay-on-course note come first; every
@@ -229,8 +273,11 @@ export function routeGuideLines(guide: RouteGuide): GuideLine[] {
 						: { key: `${s.turn}${WAY_SUFFIX[s.way]}`, at: s.at_m },
 				);
 				break;
+			case 'road':
+				rest.push(roadLine(s));
+				break;
 			case 'crossing':
-				rest.push({ key: s.crossing, at: s.at_m });
+				rest.push(crossingLine(s));
 				break;
 			case 'surface':
 				rest.push({ key: SURFACE_KEY[s.surface], at: s.at_m });
@@ -252,6 +299,120 @@ export function routeGuideLines(guide: RouteGuide): GuideLine[] {
 	}
 	if (hasCheckpoint) lines.push({ key: 'passCheckpoints' });
 	return [...lines, ...rest];
+}
+
+/** One group of the full guide: a lap, or a stretch of a course without laps. */
+export interface GuideSection {
+	/** The lap it covers, or null for a stretch of a course without laps. */
+	lap: number | null;
+	/** Where the stretch starts and ends, in metres along the course. */
+	from: number;
+	to: number;
+	lines: GuideLine[];
+}
+
+/** How long a stretch of a course without laps is, in the full guide. */
+export const GUIDE_SECTION_M = 5000;
+
+/**
+ * How a course page shows its guide (decisions § 2582): a short view a
+ * runner reads in seconds, and the rest folded away.
+ *
+ * - `summary`: the start, the direction, how many laps, how many times the
+ *   course crosses a road (only when it does; each lap counted), the turns where the
+ *   trail changes (a left or right onto a different trail or kind of way) on
+ *   the first lap, where each later lap starts (so nobody stops at the box
+ *   after the first), and the finish.
+ * - `sections`: every step but the start and direction, grouped by lap (the
+ *   laps after the first read "Repeat the loop" rather than the same steps
+ *   again, followed by only what differs from lap 1 on that lap, such as the
+ *   turn off the loop on the last one) or, with no laps, by GUIDE_SECTION_M; the finish ends the last.
+ *
+ * Neither lists checkpoints: the map marks them.
+ */
+export function routeGuideView(guide: RouteGuide): { summary: GuideLine[]; sections: GuideSection[] } {
+	const intro: GuideLine[] = [];
+	const lapSteps = guide.steps.filter((s) => s.kind === 'lap');
+	const laps = lapSteps.length > 0 ? lapSteps[0].of : 1;
+	const lapAt = lapSteps.length > 0 ? lapSteps[0].at_m : Infinity;
+	const finish = guide.steps[guide.steps.length - 1];
+	const finishLine: GuideLine = { key: 'finish', at: finish.at_m };
+	const turns: GuideLine[] = [];
+	const lapLines: GuideLine[] = [];
+	const body: { at: number; line: GuideLine }[] = [];
+	let trail = '';
+	const targetKey = (t: GuideTarget) => ('name' in t ? `name:${t.name.toLowerCase()}` : `way:${t.way}`);
+	for (const s of guide.steps) {
+		switch (s.kind) {
+			case 'start':
+				intro.push('name' in s ? { key: 'startNamed', name: s.name } : { key: `start${WAY_SUFFIX[s.way]}` });
+				trail = targetKey(s);
+				break;
+			case 'direction':
+				intro.push({ key: s.rotation });
+				if (s.keep_on && s.landmark) {
+					intro.push({ key: s.keep_on === 'left' ? 'keepLeft' : 'keepRight', landmark: s.landmark });
+				}
+				break;
+			case 'junction': {
+				const line: GuideLine =
+					'name' in s
+						? { key: `${s.turn}Named`, at: s.at_m, name: s.name }
+						: { key: `${s.turn}${WAY_SUFFIX[s.way]}`, at: s.at_m };
+				const key = targetKey(s);
+				if (s.at_m < lapAt && s.turn !== 'straight' && key !== trail) turns.push(line);
+				trail = key;
+				body.push({ at: s.at_m, line });
+				break;
+			}
+			case 'road':
+				body.push({ at: s.at_m, line: roadLine(s) });
+				break;
+			case 'crossing':
+				body.push({ at: s.at_m, line: crossingLine(s) });
+				break;
+			case 'surface':
+				body.push({ at: s.at_m, line: { key: SURFACE_KEY[s.surface], at: s.at_m } });
+				break;
+			case 'climb':
+				body.push({ at: s.at_m, line: { key: 'climb', at: s.at_m, gain: s.gain_m, length: s.length_m } });
+				break;
+			case 'lap':
+				lapLines.push({ key: 'lap', at: s.at_m, n: s.lap, total: s.of });
+				break;
+			default:
+				break;
+		}
+	}
+	if (laps > 1) intro.push({ key: 'laps', total: laps });
+	const crossed = guide.steps.filter((s) => s.kind === 'crossing' && s.crossing === 'road');
+	const roadCrossings = crossed.reduce((n, s) => n + (s.at_m < lapAt ? laps : 1), 0);
+	if (roadCrossings > 0) intro.push({ key: 'roadCrossings', total: roadCrossings });
+	const sections: GuideSection[] = [];
+	if (laps > 1) {
+		sections.push({ lap: 1, from: 0, to: lapAt, lines: body.filter((b) => b.at < lapAt).map((b) => b.line) });
+		for (const l of lapSteps) {
+			const next = lapSteps.find((x) => x.lap === l.lap + 1);
+			const to = next ? next.at_m : finish.at_m;
+			// The generator writes a later lap only where it differs from lap 1, so
+			// whatever body steps it holds are what "Repeat the loop" would hide.
+			const differs = body.filter((b) => b.at >= l.at_m && (b.at < to || !next)).map((b) => b.line);
+			sections.push({ lap: l.lap, from: l.at_m, to, lines: [{ key: 'repeatLoop' }, ...differs] });
+		}
+	} else {
+		for (let from = 0; from < Math.max(finish.at_m, 1); from += GUIDE_SECTION_M) {
+			const to = Math.min(from + GUIDE_SECTION_M, finish.at_m);
+			const lines = body.filter((b) => b.at >= from && b.at < to).map((b) => b.line);
+			if (lines.length > 0) sections.push({ lap: null, from, to, lines });
+		}
+		const last = sections[sections.length - 1];
+		if (!last || last.to < finish.at_m) {
+			const from = Math.floor(Math.max(finish.at_m - 1, 0) / GUIDE_SECTION_M) * GUIDE_SECTION_M;
+			sections.push({ lap: null, from, to: finish.at_m, lines: [] });
+		}
+	}
+	sections[sections.length - 1].lines.push(finishLine);
+	return { summary: [...intro, ...turns, ...lapLines, finishLine], sections };
 }
 
 export interface GuideFormat {
@@ -312,8 +473,14 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	leftPath: "{at}: turn left onto the path.",
 	rightPath: "{at}: turn right onto the path.",
 	straightPath: "{at}: continue straight along the path.",
+	road: "{at}: follow the road for {length}. Watch for cars.",
+	roadNamed: "{at}: follow the road, {name}, for {length}. Watch for cars.",
 	bridge: "{at}: cross the bridge.",
 	ford: "{at}: cross the ford. There is no bridge, so expect water.",
+	crossRoad: "{at}: cross the road. Watch for cars.",
+	crossRoadNamed: "{at}: cross {name}. Watch for cars.",
+	crossRoadSignal: "{at}: cross the road at the traffic light.",
+	crossRoadNamedSignal: "{at}: cross {name} at the traffic light.",
 	surfacePaved: "{at}: paved from here.",
 	surfaceGravel: "{at}: gravel from here.",
 	surfaceDirt: "{at}: dirt trail from here.",
@@ -323,6 +490,9 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	checkpoint: "{at}: checkpoint {n} of {total}.",
 	lap: "{at}: start lap {n} of {total} and repeat the loop.",
 	finish: "{at}: finish.",
+	laps: "{total, plural, one {# lap of the loop.} other {# laps of the loop.}}",
+	roadCrossings: "{total, plural, one {# road crossing on this course. Watch for cars.} other {# road crossings on this course. Watch for cars.}}",
+	repeatLoop: "Repeat the loop.",
 };
 
 const fill = (template: string, params: Record<string, string | number>) =>

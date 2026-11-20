@@ -56,11 +56,35 @@ test('park dirs are the region/park pairs holding a manifest, sorted', () => {
 	);
 });
 
+// Derived from the tree rather than listed: every lane adding a park used to
+// edit the same hand-written line, so parallel park work always conflicted.
+// What the test pins is that findParkDirs finds exactly the folders that hold
+// a manifest, in path order, and that the catalogue has the one live park.
+/** Every committed park, read from disk independently of sync.mjs. */
+function committedParks() {
+	const parks = [];
+	for (const region of fs.readdirSync(CATALOGUE_ROOT).sort()) {
+		const regionDir = path.join(CATALOGUE_ROOT, region);
+		if (!fs.statSync(regionDir).isDirectory()) continue;
+		for (const park of fs.readdirSync(regionDir).sort()) {
+			const dir = path.join(regionDir, park);
+			if (!fs.existsSync(path.join(dir, 'manifest.json'))) continue;
+			const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+			const slugs = [...(manifest.courses ?? []), ...(manifest.race_courses ?? [])].map((/** @type {{ slug: string }} */ c) => c.slug);
+			parks.push({ rel: path.join(region, park), slug: manifest.park.slug, status: manifest.release.status, slugs });
+		}
+	}
+	return parks;
+}
+
 test('the committed catalogue is found on disk', () => {
+	const parks = committedParks();
 	assert.deepEqual(
 		findParkDirs(CATALOGUE_ROOT).map((d) => path.relative(CATALOGUE_ROOT, d)),
-		[path.join('us-va', 'deep-run'), path.join('us-va', 'pocahontas'), path.join('us-va', 'virginia-capital-trail')],
+		parks.map((p) => p.rel),
 	);
+	assert.ok(parks.some((p) => p.rel === path.join('us-va', 'pocahontas')), 'the one live park is committed');
+	assert.ok(parks.length >= 2, 'more than the live park, so staging is exercised');
 });
 
 test('the stage resolves the author at run time and loads every park as it, with the backfill flag on', () => {
@@ -98,14 +122,21 @@ test('an empty catalogue, a repeated park or a malformed publisher is refused', 
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the committed stage loads Pocahontas\'s six courses as the committed club and holds Deep Run Park staged', () => {
+test('the committed stage loads Pocahontas\'s six courses as the committed club and holds every other park staged', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
-	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: deep-run \(1 course\): Held until /);
+	assert.match(stage.note, /^1 park\(s\): pocahontas \(6 courses\)\. Staged, not loaded: /);
 	assert.equal(stage.sql.match(/from private\.load_park_catalogue\(/g)?.length, 1);
-	assert.ok(!stage.sql.includes('"slug":"deep-run"'), 'Deep Run Park never reaches the load');
-	assert.ok(!stage.sql.includes('deep-run-park-5k","name"'));
-	assert.ok(stage.sql.includes("('deep-run', 'deep-run-park-5k', 'staged')"));
+	const staged = committedParks().filter((p) => p.status === 'staged');
+	assert.ok(staged.length > 0);
+	for (const park of staged) {
+		assert.ok(stage.note.includes(`${park.slug} (${park.slugs.length} courses): `), `${park.slug} is listed as staged with its course count`);
+		assert.ok(!stage.sql.includes(`"slug":"${park.slug}"`), `${park.slug} never reaches the load`);
+		for (const slug of park.slugs) {
+			assert.ok(stage.sql.includes(`('${park.slug}', '${slug}', 'staged')`), slug);
+			assert.ok(!stage.sql.includes(`${slug}","name"`), `${slug} is not loaded`);
+		}
+	}
 	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
 	assert.ok(!stage.sql.includes('442e4798'), 'no owner id is committed or emitted');
 	for (const slug of ['beaver-lake-trail', 'swift-creek-5k', 'swift-creek-10k', 'swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k']) {

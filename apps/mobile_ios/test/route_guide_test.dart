@@ -12,6 +12,11 @@ final List<Map<String, dynamic>> _cases = ((jsonDecode(
         as Map<String, dynamic>)['cases'] as List)
     .cast<Map<String, dynamic>>();
 
+final List<Map<String, dynamic>> _views = ((jsonDecode(
+            File('../../fixtures/route_guide_cases.json').readAsStringSync())
+        as Map<String, dynamic>)['views'] as List)
+    .cast<Map<String, dynamic>>();
+
 final Map<String, dynamic> _arb =
     jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
         as Map<String, dynamic>;
@@ -45,6 +50,26 @@ void main() {
     });
   }
 
+  for (final v in _views) {
+    test('route guide view: ${v['name']}', () {
+      final guide = parseRouteGuide(v['guide'])!;
+      final view = routeGuideView(guide);
+      expect([for (final l in view.summary) l.toJson()], v['summary']);
+      expect(
+        [
+          for (final s in view.sections)
+            {
+              'lap': s.lap,
+              'from': s.from,
+              'to': s.to,
+              'lines': [for (final l in s.lines) l.toJson()],
+            }
+        ],
+        v['sections'],
+      );
+    });
+  }
+
   test('every line key has an English template whose placeholders it fills', () {
     for (final key in kGuideLineKeys) {
       expect(_arb[_arbKey(key)], isA<String>(), reason: key);
@@ -72,6 +97,20 @@ void main() {
     expect(text[3], '0.4 km: turn left onto Ridge Trail.');
     expect(text[6], '0.8 km: a climb of 14 m over 300 m.');
     expect(text.last, '2.0 km: finish.');
+  });
+
+  test(
+      'a road crossing reads as one plain sentence, at the traffic light '
+      'when it has one', () {
+    final c = _cases.firstWhere(
+        (x) => (x['name'] as String).startsWith('roads crossed at grade'));
+    final guide = parseRouteGuide(c['guide'])!;
+    expect(routeGuideText(guide, _english).sublist(1, 5), [
+      '0.8 km: cross Hunter Mill Road at the traffic light.',
+      '2.4 km: cross Sunset Hills Road. Watch for cars.',
+      '3.1 km: cross the road at the traffic light.',
+      '3.5 km: cross the road. Watch for cars.',
+    ]);
   });
 
   test('guideEn is the English catalogue, entry for entry', () {

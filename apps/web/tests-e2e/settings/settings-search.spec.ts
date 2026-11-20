@@ -31,7 +31,7 @@ test.describe('settings search', () => {
 		await search.waitFor({ timeout: 15_000 });
 		await search.fill('heart rate zones');
 
-		const hit = page.getByTestId('settings-search-result').filter({ hasText: 'Training' }).first();
+		const hit = page.getByTestId('settings-search-result').filter({ hasText: 'Training preferences' }).first();
 		await expect(hit).toBeVisible();
 		await hit.click();
 		await page.waitForURL(/\/settings\/training#setting-prefs-heartRateZonesHeading$/, { timeout: 10_000 });

@@ -1,19 +1,44 @@
 <script lang="ts">
-	// Everything a runner should know before setting off on a park course, in
-	// one callout (issue #1352): the safety notice first, then the give-way
-	// note when an organised group shares the paths (decisions § 2460), the
-	// long-course notice when it applies, then the times and not-affiliated
-	// notes. Each line keeps the test id it had when they were separate pieces
-	// of fine print.
+	// What a runner must know before setting off on a park course, in one
+	// callout (issue #1352): a few plain lines, safety first (follow the
+	// course line and pass every checkpoint), the give-way note when an
+	// organised group shares the paths (decisions § 2460), then only the lines
+	// the course's data supports: a ford, a paved shared trail, a park's
+	// closing time (courseNotices).
+	// The required notices (a time trial, not a race; times are not event
+	// results; not affiliated with the park) follow as one smaller line.
+	// Each keeps the test id it had when they were separate pieces of fine
+	// print (decisions § 2582).
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
-	import { isLongCourse, type SharedUse } from '#lib/parks/park_courses.ts';
+	import { courseNotices, type CourseNoticeKey, type SharedUse } from '#lib/parks/park_courses.ts';
+	import type { RouteGuide } from '#lib/parks/route_guide.ts';
 
 	let {
 		distanceM,
 		sharedUse,
+		surface,
+		parkKind,
+		guide,
 		testidPrefix,
-	}: { distanceM: number; sharedUse: SharedUse | null; testidPrefix: 'park-course' | 'share-course' } = $props();
+	}: {
+		distanceM: number;
+		sharedUse: SharedUse | null;
+		surface: string | null;
+		parkKind: 'park' | 'trail';
+		guide: RouteGuide | null;
+		testidPrefix: 'park-course' | 'share-course';
+	} = $props();
+
+	// Only what the course's data supports (courseNotices, decisions § 2582).
+	const NOTICE: Record<CourseNoticeKey, { key: MessageKey; id: string }> = {
+		ford: { key: 'parks.notice.ford', id: 'ford' },
+		pavedTrail: { key: 'parks.notice.pavedTrail', id: 'paved-trail' },
+		longTrail: { key: 'parks.notice.longTrail', id: 'long' },
+		parkHours: { key: 'parks.noticeParkHours', id: 'hours' },
+		parkHoursLong: { key: 'parks.notice.parkHoursLong', id: 'long' },
+	};
+	const lines = $derived(courseNotices({ parkKind, surface, distanceM, guide }));
 
 	const SHARED_USE_NOTE: Record<SharedUse, MessageKey> = {
 		saturday_morning_group: 'parks.sharedUseSaturdayMorningGroup',
@@ -32,12 +57,15 @@
 		{#if sharedUse}
 			<li data-testid="{testidPrefix}-shared-use">{m(SHARED_USE_NOTE[sharedUse])}</li>
 		{/if}
-		{#if isLongCourse(distanceM)}
-			<li data-testid="{testidPrefix}-long">{m('parks.longCourseNotice')}</li>
-		{/if}
-		<li class="quiet" data-testid="{testidPrefix}-times">{m('parks.timesNotEventResults')}</li>
-		<li class="quiet" data-testid="{testidPrefix}-not-affiliated">{m('parks.notAffiliated')}</li>
+		{#each lines as line (line)}
+			<li data-testid="{testidPrefix}-{NOTICE[line].id}">{m(NOTICE[line].key)}</li>
+		{/each}
 	</ul>
+	<p class="fine">
+		<span data-testid="{testidPrefix}-open-trail">{m('parks.noticeOpenTrail')}</span>
+		<span data-testid="{testidPrefix}-times">{m('parks.timesNotEventResults')}</span>
+		<span data-testid="{testidPrefix}-not-affiliated">{m('parks.notAffiliated')}</span>
+	</p>
 </aside>
 
 <style>
@@ -67,11 +95,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);
-		font-size: 0.875rem;
+		font-size: 0.95rem;
 		line-height: 1.5;
 		color: var(--color-text);
 	}
-	.quiet {
+	.fine {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.78rem;
+		line-height: 1.45;
 		color: var(--color-text-secondary);
 	}
 </style>

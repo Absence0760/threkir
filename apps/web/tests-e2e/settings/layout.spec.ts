@@ -34,7 +34,7 @@ test.describe('/settings — side-nav structure', () => {
 			{ href: '/settings/body', label: 'Body metrics' },
 			{ href: '/settings/display', label: 'Units & display' },
 			{ href: '/settings/recording', label: 'Recording & voice' },
-			{ href: '/settings/training', label: 'Training' },
+			{ href: '/settings/training', label: 'Training preferences' },
 			{ href: '/settings/privacy', label: 'Privacy & sharing' },
 			{ href: '/settings/notifications', label: 'Notifications' },
 			{ href: '/settings/integrations', label: 'Integrations' },

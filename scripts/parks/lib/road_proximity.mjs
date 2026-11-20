@@ -166,3 +166,32 @@ function pointAlong(line, m) {
 	}
 	return line[line.length - 1];
 }
+
+/**
+ * The `bbox` parameter for an OSM API `map` call: a box `halfDeg` either side
+ * of `p`. The point comes from a committed course file, so it is checked to be
+ * a real coordinate and rounded to OSM's own seven decimal places before it
+ * goes into a request; a malformed file fails here rather than sending one.
+ *
+ * @param {{ lat: number, lng: number }} p
+ * @param {number} halfDeg
+ * @returns {string}
+ */
+export function osmBbox(p, halfDeg) {
+	const lat = coordinate(p?.lat, 90, 'lat');
+	const lng = coordinate(p?.lng, 180, 'lng');
+	const d = coordinate(halfDeg, 1, 'halfDeg');
+	return [lng - d, lat - d, lng + d, lat + d].map((v) => v.toFixed(7)).join(',');
+}
+
+/**
+ * @param {unknown} v
+ * @param {number} limit
+ * @param {string} what
+ */
+function coordinate(v, limit, what) {
+	if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) > limit) {
+		throw new Error(`${what} must be a number within ±${limit}, got ${JSON.stringify(v)}`);
+	}
+	return Math.round(v * 1e7) / 1e7;
+}

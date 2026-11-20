@@ -11,7 +11,18 @@
 		ends,
 		testidPrefix,
 		headingLevel = 2,
-	}: { ends: CourseEnds; testidPrefix: string; headingLevel?: 2 | 3 } = $props();
+		instruction = null,
+	}: {
+		ends: CourseEnds;
+		testidPrefix: string;
+		headingLevel?: 2 | 3;
+		/**
+		 * The course page's one sentence about its start and finish boxes. Set,
+		 * the block leads with it and a button to the start, and folds the
+		 * coordinates away under it (decisions § 2582).
+		 */
+		instruction?: string | null;
+	} = $props();
 
 	type Which = 'start' | 'finish' | 'startFinish';
 	const KEYS: Record<Which, { label: MessageKey; copy: MessageKey; directions: MessageKey }> = {
@@ -49,8 +60,7 @@
 	}
 </script>
 
-<section class="course-ends" aria-labelledby="{testidPrefix}-ends-title" data-testid="{testidPrefix}-ends">
-	<svelte:element this={`h${headingLevel}`} id="{testidPrefix}-ends-title" class="title">{m('parks.endsTitle')}</svelte:element>
+{#snippet points()}
 	<ul>
 		{#each rows as { which, point } (which)}
 			{@const text = formatLatLng(point)}
@@ -90,12 +100,48 @@
 			</li>
 		{/each}
 	</ul>
+{/snippet}
+
+<section class="course-ends" aria-labelledby="{testidPrefix}-ends-title" data-testid="{testidPrefix}-ends">
+	<svelte:element this={`h${headingLevel}`} id="{testidPrefix}-ends-title" class="title">{m('parks.endsTitle')}</svelte:element>
+	{#if instruction}
+		<p class="instruction" data-testid="{testidPrefix}-ends-instruction">{instruction}</p>
+		<a
+			class="btn btn-primary get-directions"
+			href={mapsStartUrl('google', ends.start)}
+			target="_blank"
+			rel="noopener noreferrer"
+			data-testid="{testidPrefix}-ends-get-directions"
+		>
+			<span class="material-symbols" aria-hidden="true">directions</span>
+			{m('parks.endsGetDirections')}
+		</a>
+		<details class="coordinates" data-testid="{testidPrefix}-ends-coordinates">
+			<summary>{m('parks.endsCoordinates')}</summary>
+			{@render points()}
+		</details>
+	{:else}
+		{@render points()}
+	{/if}
 </section>
 
 <style>
 	.title {
 		margin: 0 0 var(--space-sm);
 		font-size: 1rem;
+	}
+	.instruction {
+		margin: 0 0 var(--space-sm);
+		font-size: 1.05rem;
+		font-weight: 600;
+	}
+	.get-directions {
+		margin-bottom: var(--space-sm);
+	}
+	.coordinates summary {
+		cursor: pointer;
+		color: var(--color-text-secondary);
+		margin-bottom: var(--space-xs);
 	}
 	ul {
 		list-style: none;

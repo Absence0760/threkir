@@ -19,19 +19,20 @@ const PREFS = readFileSync(
 // contract; between them they are what stops the peer decaying back into a
 // number you can see but not reach.
 
-function headerBlock(src: string): string {
-	const open = src.indexOf('<PageHeader');
-	const close = src.indexOf('</PageHeader>', open);
-	assert.ok(open >= 0 && close > open, 'PageHeader block not found');
-	return src.slice(open, close);
-}
-
 test('/nutrition links to the targets peer, ungated', () => {
-	const head = headerBlock(DAY);
-	assert.match(head, /href="\/nutrition\/targets"/);
+	// The link is a secondary action in the day row under the title, not on the
+	// title row, which holds only the primary action (decisions § 2584).
+	const at = DAY.indexOf('href="/nutrition/targets"');
+	assert.ok(at >= 0, '/nutrition lost its link to the targets peer');
 	// A data gate here would hide the peer from exactly the user with no
-	// targets yet — the one who needs it. Keep the header branch-free.
-	assert.doesNotMatch(head, /\{#if/);
+	// targets yet — the one who needs it. Every branch opened above the link,
+	// from the page's title down, must be closed before it.
+	const above = DAY.slice(DAY.indexOf('<PageHeader'), at);
+	assert.equal(
+		(above.match(/\{#if\b/g) ?? []).length,
+		(above.match(/\{\/if\}/g) ?? []).length,
+		'the targets link sits inside an {#if} branch',
+	);
 });
 
 test('both body-metrics CTAs deep-link to a section the settings still carry', () => {

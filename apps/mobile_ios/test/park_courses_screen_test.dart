@@ -6,6 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map/flutter_map.dart' show PolygonLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
@@ -15,6 +16,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/elevation_chart.dart';
+import '../lib/widgets/live_run_map.dart' show mapStartZoneColour;
 import '../lib/widgets/park_course_map.dart';
 import 'supabase_test_init.dart';
 import 'worst_case_layout.dart';
@@ -42,6 +44,7 @@ ParkListing _park({
   ),
   season: 2026,
   month: 11,
+  kind: kind,
 );
 
 /// A loop north out of the park and back to where it began, with an
@@ -71,6 +74,9 @@ ParkCourseListing _course({
   Object? routeGuide,
   DateTime? routeGuideCheckedAt,
   String? sharedUse,
+  String surface = 'trail',
+  ({double lat, double lng, double bearing, double halfWidth})? startGate,
+  ({double lat, double lng, double bearing, double halfWidth})? endGate,
 }) => ParkCourseListing(
   course: ParkCourseRow(
     id: id,
@@ -96,9 +102,17 @@ ParkCourseListing _course({
     waypoints: waypoints ?? _loop(),
     distanceM: distanceM,
     elevationM: 45,
-    surface: 'trail',
+    surface: surface,
     isActive: true,
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+    startGateLat: startGate?.lat,
+    startGateLng: startGate?.lng,
+    startGateBearingDeg: startGate?.bearing,
+    startGateHalfWidthM: startGate?.halfWidth,
+    endGateLat: endGate?.lat,
+    endGateLng: endGate?.lng,
+    endGateBearingDeg: endGate?.bearing,
+    endGateHalfWidthM: endGate?.halfWidth,
   ),
 );
 
@@ -428,6 +442,23 @@ void main() {
       expect(find.text('State park'), findsOneWidget);
     });
 
+    testWidgets('a national forest and a wildlife refuge read as such', (
+      tester,
+    ) async {
+      final api = _ParksApi(
+        parks: [
+          _park(id: 'f1', name: 'Jefferson National Forest', agency: 'usfs'),
+          _park(id: 'r1', name: 'Back Bay Refuge', agency: 'usfws'),
+        ],
+        courses: const [],
+      );
+      await tester.pumpWidget(_host(ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.text('National forest'), findsOneWidget);
+      expect(find.text('Wildlife refuge'), findsOneWidget);
+      expect(find.text('Park'), findsNothing);
+    });
+
     testWidgets('groups parks under their region, each a card with its '
         'courses, count and distance range', (tester) async {
       final api = _ParksApi(
@@ -574,10 +605,33 @@ void main() {
         _inCard('a', find.text('Fastest in 2026: 25:00 by Bea')),
         findsOneWidget,
       );
+      // A course with no time stays quiet, and so does the park once any
+      // course has one.
+      expect(_inCard('b', find.textContaining('No time')), findsNothing);
+      expect(find.byKey(const Key('park-no-times-yet')), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('with no time on any course, the park says so once and no '
+        'card repeats it', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkScreen(
+            api: _ParksApi(
+              courses: [_course(id: 'a'), _course(id: 'b', name: 'Bluff')],
+            ),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          ),
+        ),
+      );
+      await _settle(tester);
       expect(
-        _inCard('b', find.textContaining('No time yet this season')),
+        find.text('No times here yet this season. Yours could be the first.'),
         findsOneWidget,
       );
+      expect(_inCard('a', find.textContaining('No time')), findsNothing);
+      expect(_inCard('b', find.textContaining('No time')), findsNothing);
       await _unmount(tester);
     });
 
@@ -868,11 +922,18 @@ void main() {
       await tester.tap(find.text('Lake Loop'));
       await _settle(tester);
       await tester.pump(const Duration(seconds: 1));
+      // The card previews; Open course is what opens the course.
+      expect(find.byType(ParkCourseScreen), findsNothing);
+      await tester.tap(find.byKey(const Key('park-preview-open')));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
       expect(find.byType(ParkCourseScreen), findsOneWidget);
       await tester.tap(find.byKey(const Key('park-course-park-link')));
       await _settle(tester);
       await tester.pump(const Duration(seconds: 1));
+      // Back from the course lands on the preview it was opened from.
       expect(find.byType(ParkCourseScreen), findsNothing);
+      expect(find.byKey(const Key('park-course-preview')), findsOneWidget);
       expect(find.byType(ParkScreen), findsOneWidget);
       await _unmount(tester);
     });
@@ -912,15 +973,17 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.text(
+          find.textContaining(
             'Times here are Threkir times on these paths. '
             'They are not results of any event held on them.',
+            findRichText: true,
           ),
           findsOneWidget,
         );
         final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
         expect(y('park-course-safety'), lessThan(y('park-course-shared-use')));
-        expect(y('park-course-shared-use'), lessThan(y('park-course-times')));
+        expect(y('park-course-shared-use'), lessThan(y('park-course-hours')));
+        expect(y('park-course-hours'), lessThan(y('park-course-fine-print')));
         await _unmount(tester);
       },
     );
@@ -943,10 +1006,8 @@ void main() {
         expect(api.leaderboardSeasons, [2026]);
         expect(find.byKey(const Key('park-course-notices')), findsOneWidget);
         expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
-        expect(
-          find.byKey(const Key('park-course-not-affiliated')),
-          findsOneWidget,
-        );
+        expect(find.byKey(const Key('park-course-fine-print')), findsOneWidget);
+        expect(find.byKey(const Key('park-course-hours')), findsOneWidget);
         expect(find.byKey(const Key('park-course-long')), findsNothing);
         expect(find.byKey(const Key('park-course-share-gpx')), findsOneWidget);
         expect(find.byKey(const Key('park-course-help')), findsOneWidget);
@@ -1074,7 +1135,9 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('the safety notice leads the one notices block', (
+    testWidgets(
+        'the notices lead with two plain lines, safety first, the required '
+        'notices one smaller line under them', (
       tester,
     ) async {
       tallView(tester);
@@ -1092,8 +1155,7 @@ void main() {
       for (final k in [
         'park-course-safety',
         'park-course-long',
-        'park-course-times',
-        'park-course-not-affiliated',
+        'park-course-fine-print',
       ]) {
         expect(
           find.descendant(of: notices, matching: find.byKey(Key(k))),
@@ -1103,15 +1165,27 @@ void main() {
       }
       final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
       expect(y('park-course-safety'), lessThan(y('park-course-long')));
-      expect(y('park-course-long'), lessThan(y('park-course-times')));
+      expect(y('park-course-long'), lessThan(y('park-course-fine-print')));
+      expect(find.byKey(const Key('park-course-hours')), findsNothing,
+          reason: 'the long-course notice already says it');
       expect(
-        y('park-course-times'),
-        lessThan(y('park-course-not-affiliated')),
+        tester
+            .widget<Text>(find.descendant(
+                of: find.byKey(const Key('park-course-safety')),
+                matching: find.byType(Text)))
+            .data,
+        "Follow the course line on the map and pass every checkpoint in "
+        "order, or your time won't count.",
+      );
+      expect(
+        find.textContaining('Threkir publishes these courses.',
+            findRichText: true),
+        findsOneWidget,
       );
       expect(find.byKey(const Key('park-course-shared-use')), findsNothing);
       expect(
         find.textContaining(
-          'Start early enough to finish before the park closes.',
+          'Long course: start early enough to finish before the park closes.',
         ),
         findsOneWidget,
       );
@@ -1180,6 +1254,130 @@ void main() {
           tester.getTopLeft(find.byKey(const Key('park-course-notices'))).dy,
         ),
       );
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'a lapped guide is short: the laps and the turns, no checkpoints, '
+        'and every step folded away by lap', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              laps: 2,
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'way': 'road'},
+                  {'kind': 'direction', 'at_m': 0, 'rotation': 'clockwise'},
+                  {
+                    'kind': 'junction',
+                    'at_m': 300,
+                    'turn': 'right',
+                    'name': 'Trail B',
+                  },
+                  {'kind': 'crossing', 'at_m': 400, 'crossing': 'bridge'},
+                  {'kind': 'checkpoint', 'at_m': 450, 'order': 1, 'of': 1},
+                  {'kind': 'lap', 'at_m': 1000, 'lap': 2, 'of': 2},
+                  {'kind': 'finish', 'at_m': 2000},
+                ],
+              },
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final steps = find.byKey(const Key('park-course-guide-steps'));
+      expect(
+        find.descendant(of: steps, matching: find.text('2 laps of the loop.')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+            of: steps, matching: find.textContaining('onto Trail B.')),
+        findsOneWidget,
+      );
+      final guide = find.byKey(const Key('park-course-guide'));
+      Finder inGuide(String text) =>
+          find.descendant(of: guide, matching: find.textContaining(text));
+      expect(inGuide('checkpoint'), findsNothing);
+      expect(inGuide('cross the bridge'), findsNothing,
+          reason: 'folded away until asked for');
+      final all = find.text('Show all steps');
+      await tester.ensureVisible(all);
+      await tester.tap(all);
+      await _settle(tester);
+      expect(find.text('Lap 1'), findsOneWidget);
+      expect(find.text('Lap 2'), findsOneWidget);
+      expect(find.text('Repeat the loop.'), findsOneWidget);
+      expect(inGuide('cross the bridge'), findsOneWidget);
+      expect(inGuide('checkpoint'), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'the short guide counts the road crossings; the full guide names '
+        'each road, at the traffic light when it has one, and each stretch '
+        'along a road', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'name': 'Rail Trail'},
+                  {
+                    'kind': 'crossing',
+                    'at_m': 820,
+                    'crossing': 'road',
+                    'name': 'Hunter Mill Road',
+                    'signal': true,
+                  },
+                  {
+                    'kind': 'road',
+                    'at_m': 1500,
+                    'length_m': 120,
+                    'name': 'Park Road',
+                  },
+                  {'kind': 'crossing', 'at_m': 2400, 'crossing': 'road'},
+                  {'kind': 'finish', 'at_m': 3000},
+                ],
+              },
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final guide = find.byKey(const Key('park-course-guide'));
+      Finder inGuide(String text) =>
+          find.descendant(of: guide, matching: find.textContaining(text));
+      final steps = find.byKey(const Key('park-course-guide-steps'));
+      expect(
+        find.descendant(
+          of: steps,
+          matching: find.text('2 road crossings on this course. Watch for cars.'),
+        ),
+        findsOneWidget,
+      );
+      expect(inGuide('cross Hunter Mill Road'), findsNothing,
+          reason: 'folded away until asked for');
+      final all = find.text('Show all steps');
+      await tester.ensureVisible(all);
+      await tester.tap(all);
+      await _settle(tester);
+      expect(inGuide('cross Hunter Mill Road at the traffic light.'),
+          findsOneWidget);
+      expect(inGuide('follow the road, Park Road,'), findsOneWidget);
+      expect(inGuide('cross the road. Watch for cars.'), findsOneWidget);
       await _unmount(tester);
     });
 
@@ -1281,6 +1479,249 @@ void main() {
       );
       expect(find.byType(ElevationChart), findsOneWidget);
       expect(find.text('Elevation profile'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    // A loop and an out-and-back alike: never a start half and a finish half.
+    for (final (shape, finishBearing) in [('out_and_back', 180.0), ('loop', 0.0)]) {
+      testWidgets(
+          'a $shape at one spot is one start box, flagged, with one sentence '
+          'and the coordinates folded away', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              shape: shape,
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+              endGate: (
+                lat: 37.0,
+                lng: -77.0,
+                bearing: finishBearing,
+                halfWidth: 15,
+              ),
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final boxes = tester.widget<PolygonLayer>(
+          find.byKey(const ValueKey('park-course-boxes')));
+      expect(boxes.polygons, hasLength(1));
+      expect(
+        boxes.polygons.single.borderColor,
+        isIn([
+          for (final dark in [false, true])
+            mapStartZoneColour(darkBasemap: dark),
+        ]),
+        reason: "one colour, the start's",
+      );
+      expect(find.byKey(const ValueKey('park-course-box-both')), findsOneWidget);
+      expect(find.byKey(const ValueKey('park-course-box-start')), findsNothing);
+      // The boxes take the pins' place, on the map and in its key.
+      expect(find.byKey(const ValueKey('park-course-ends')), findsNothing);
+      expect(
+        find.byKey(const Key('park-course-legend-start-finish-box')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('park-course-legend-start-finish')),
+        findsNothing,
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('course-ends-instruction')))
+            .data,
+        'Start recording in the start box. Follow the arrows and '
+        'finish back in it.',
+      );
+      expect(find.byKey(const Key('course-ends-get-directions')), findsOneWidget);
+      expect(find.byKey(const Key('course-ends-start-finish-coords')),
+          findsNothing);
+      await tester.ensureVisible(find.text('Coordinates'));
+      await tester.tap(find.text('Coordinates'));
+      await _settle(tester);
+      expect(find.byKey(const Key('course-ends-start-finish-coords')),
+          findsOneWidget);
+      await _unmount(tester);
+    });
+    }
+
+    testWidgets(
+        'lines apart are a Start box and a Finish box, and the main button '
+        'opens directions to the start', (tester) async {
+      tallView(tester);
+      final opened = <Uri>[];
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              shape: 'point_to_point',
+              waypoints: [
+                for (var i = 0; i < 6; i++)
+                  {'lat': 37.0 + i * 0.002, 'lng': -77.0},
+              ],
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+              endGate: (lat: 37.01, lng: -77.0, bearing: 0, halfWidth: 15),
+            ),
+            launch: (uri) async {
+              opened.add(uri);
+              return true;
+            },
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('park-course-box-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('park-course-box-finish')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-legend-start-box')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-legend-finish-box')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-legend-start')), findsNothing);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('course-ends-instruction')))
+            .data,
+        'Start recording in the green box. Follow the arrows to the red box.',
+      );
+      final go = find.byKey(const Key('course-ends-get-directions'));
+      expect(find.descendant(of: go, matching: find.text('Get directions to the start')),
+          findsOneWidget);
+      await tester.ensureVisible(go);
+      await tester.tap(go);
+      await _settle(tester);
+      expect(opened, hasLength(1));
+      expect(opened.single.toString(), contains('37.00000%2C-77.00000'));
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'an out-and-back marks its last checkpoint as Turn around, says so in '
+        'its one sentence, and two close checkpoints share a marker',
+        (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              shape: 'out_and_back',
+              waypoints: [
+                {'lat': 37.0, 'lng': -77.0},
+                {'lat': 37.01, 'lng': -77.0},
+                {'lat': 37.0, 'lng': -77.0},
+              ],
+              checkpoints: const [
+                {'lat': 37.003, 'lng': -77.0},
+                {'lat': 37.00334, 'lng': -77.0},
+                {'lat': 37.01, 'lng': -77.0},
+              ],
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+              endGate: (lat: 37.0, lng: -77.0, bearing: 180, halfWidth: 15),
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('park-course-turnaround')),
+          findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('park-course-turnaround')),
+          matching: find.text('Turn around'),
+        ),
+        findsOneWidget,
+      );
+      // 38 m apart on a 1.1 km line: one marker carrying both numbers.
+      expect(find.byKey(const ValueKey('park-course-checkpoint-1-2')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('park-course-checkpoint-3')),
+          findsNothing);
+      expect(find.byKey(const Key('park-course-legend-turnaround')),
+          findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('course-ends-instruction')))
+            .data,
+        'Start recording in the start box. Follow the arrows to the '
+        'Turn around mark, then back to the box.',
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets(
+        'a paved trail: Paved under surface, the shared-path notice and no '
+        'closing time, and Navigate the one filled action', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing:
+                _park(id: 'p1', name: 'Capital Trail', kind: 'trail'),
+            course: _course(
+              shape: 'out_and_back',
+              distanceM: 50000,
+              routeId: 'r1',
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+              endGate: (lat: 37.0, lng: -77.0, bearing: 180, halfWidth: 15),
+              surface: 'road',
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.text('Paved'), findsOneWidget);
+      expect(find.text('Road'), findsNothing);
+      expect(find.byKey(const Key('park-course-paved-trail')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-hours')), findsNothing);
+      expect(find.byKey(const Key('park-course-long')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('course-ends')),
+          matching: find.byType(OutlinedButton),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('Get directions to the start'),
+          matching: find.byType(FilledButton),
+        ),
+        findsNothing,
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets('a course missing a stored line keeps its pins and no boxes', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              startGate: (lat: 37.0, lng: -77.0, bearing: 0, halfWidth: 15),
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const Key('park-course-map')), findsOneWidget);
+      expect(find.byKey(const ValueKey('park-course-boxes')), findsNothing);
+      expect(find.byKey(const ValueKey('park-course-ends')), findsOneWidget);
+      expect(find.byKey(const Key('course-ends-instruction')), findsNothing);
+      expect(find.byKey(const Key('course-ends-get-directions')), findsNothing);
+      expect(
+        find.byKey(const Key('park-course-legend-start-finish')),
+        findsOneWidget,
+      );
       await _unmount(tester);
     });
 
@@ -1413,7 +1854,10 @@ void main() {
       );
       await _settle(tester);
       expect(find.byKey(const Key('park-board-invitation')), findsOneWidget);
-      expect(find.text('No times yet. Yours could be the first.'), findsOneWidget);
+      expect(
+        find.text('No times yet. Run it with Threkir and yours shows up here.'),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('park-board-controls')), findsNothing);
       expect(find.byKey(const Key('park-board-kind')), findsNothing);
       expect(find.byKey(const Key('park-board-season')), findsNothing);

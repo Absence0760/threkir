@@ -30,6 +30,10 @@ import {
 	mapPinnedLine,
 	mapClimbLine,
 	mapStartColour,
+	mapStartZoneColour,
+	mapFinishZoneColour,
+	mapBoxInk,
+	MAP_ZONE_FILL_OPACITY,
 	mapTrackLine,
 	MAP_ARROW_INK,
 	MAP_ARROW_OUTLINE,
@@ -93,12 +97,14 @@ const GROUND_RUNGS: Array<[string, (dark: boolean) => string]> = [
 	['featured halo', mapFeaturedHalo],
 	['zone boundary', mapZoneBoundary],
 	['climb line', mapClimbLine],
+	['start zone', mapStartZoneColour],
+	['finish zone', mapFinishZoneColour],
 ];
 
 test('every overlay rung clears 1.4.11 against the basemap it lands on', () => {
 	// § 534: assert the population, not only the property. A loop over an
 	// emptied list passes every assertion inside it.
-	assert.equal(GROUND_RUNGS.length, 14, 'the number of rungs this sweep graded');
+	assert.equal(GROUND_RUNGS.length, 16, 'the number of rungs this sweep graded');
 	for (const [name, resolve] of GROUND_RUNGS) {
 		const onDark = contrast(resolve(true), DARK_BASEMAP_SAMPLE);
 		assert.ok(
@@ -355,4 +361,74 @@ test('the fixed heat ramp and the 0.55 lines it replaced did not clear the floor
 	);
 	assert.ok(lightLine < MAP_OVERLAY_FLOOR, `light line was ${lightLine.toFixed(3)}:1`);
 	assert.ok(darkLine < MAP_OVERLAY_FLOOR, `dark line was ${darkLine.toFixed(3)}:1`);
+});
+
+/// Machado, Oliveira & Fernandes (2009), severity 1.0, applied to linear RGB:
+/// what a deuteranope sees. https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
+const DEUTERANOPIA = [
+	[0.367322, 0.860646, -0.227968],
+	[0.280085, 0.672501, 0.047413],
+	[-0.01182, 0.04294, 0.968881],
+];
+
+function deuteranope(hex: string): string {
+	const linear = channels(hex).map((c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+	const seen = DEUTERANOPIA.map((row) =>
+		Math.min(1, Math.max(0, row.reduce((sum, k, j) => sum + k * linear[j], 0))),
+	);
+	return (
+		'#' +
+		seen
+			.map((c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055))
+			.map((c) => Math.round(c * 255).toString(16).padStart(2, '0'))
+			.join('')
+	);
+}
+
+test('the start and finish zones differ by lightness, not hue alone, even to a deuteranope', () => {
+	// The caps they replace on a park course read 1.03:1 against each other
+	// on the light basemap under this simulation: one mark, to 1 man in 12.
+	assert.ok(contrast(deuteranope(mapStartColour(false)), deuteranope(mapFinishColour(false))) < 1.1);
+	for (const dark of [true, false]) {
+		const s = mapStartZoneColour(dark);
+		const f = mapFinishZoneColour(dark);
+		assert.ok(contrast(s, f) >= 2, `zones ${s} / ${f}: ${contrast(s, f).toFixed(3)}:1`);
+		const seen = contrast(deuteranope(s), deuteranope(f));
+		assert.ok(seen >= 1.5, `zones to a deuteranope ${deuteranope(s)} / ${deuteranope(f)}: ${seen.toFixed(3)}:1`);
+	}
+});
+
+test('the finish zone reads apart from the course line it sits on', () => {
+	// The light finish cap is the coral track's own luminance (1.00:1).
+	assert.ok(contrast(mapFinishColour(false), mapTrackLine(false)) < 1.05);
+	for (const dark of [true, false]) {
+		const ratio = contrast(mapFinishZoneColour(dark), mapTrackLine(dark));
+		assert.ok(ratio >= 1.5, `finish zone on the track, ${dark ? 'dark' : 'light'}: ${ratio.toFixed(3)}:1`);
+	}
+});
+
+test('a zone wash is decoration, and the cased timing line stands clear of it', () => {
+	const grounds: Array<[boolean, string]> = [
+		[true, DARK_BASEMAP_SAMPLE],
+		[false, LIGHT_BASEMAP_SAMPLE],
+		[false, LIGHT_BASEMAP_WATER_SAMPLE],
+		[false, OSM_FALLBACK_BACKDROP],
+	];
+	for (const [dark, ground] of grounds) {
+		for (const zone of [mapStartZoneColour(dark), mapFinishZoneColour(dark)]) {
+			const wash = composite(zone, ground, MAP_ZONE_FILL_OPACITY);
+			assert.ok(contrast(wash, ground) < MAP_OVERLAY_FLOOR, `${zone} wash on ${ground} is not what carries the zone`);
+			const casing = contrast(mapOverlayOutline(dark), wash);
+			assert.ok(casing >= MAP_OVERLAY_FLOOR, `casing on the ${zone} wash over ${ground}: ${casing.toFixed(3)}:1`);
+		}
+	}
+});
+
+test('a box name tag reads AA: its ink on its own box colour', () => {
+	for (const dark of [true, false]) {
+		for (const fill of [mapStartZoneColour(dark), mapFinishZoneColour(dark)]) {
+			const ratio = contrast(mapBoxInk(dark), fill);
+			assert.ok(ratio >= 4.5, `ink ${mapBoxInk(dark)} on ${fill}: ${ratio.toFixed(3)}:1`);
+		}
+	}
 });

@@ -11,6 +11,7 @@ import {
 	routeGuideEnglish,
 	routeGuideLines,
 	routeGuideText,
+	routeGuideView,
 	type GuideFormat,
 } from './route_guide';
 import { en } from '../i18n/locales/en';
@@ -18,7 +19,8 @@ import { en } from '../i18n/locales/en';
 // The TS reader of fixtures/route_guide_cases.json, the case table the Dart
 // twin (apps/mobile_android/test/route_guide_test.dart) reads too.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
-const { cases } = JSON.parse(readFileSync(join(REPO, 'fixtures', 'route_guide_cases.json'), 'utf-8')) as {
+const { cases, views } = JSON.parse(readFileSync(join(REPO, 'fixtures', 'route_guide_cases.json'), 'utf-8')) as {
+	views: { name: string; guide: unknown; summary: Record<string, unknown>[]; sections: Record<string, unknown>[] }[];
 	cases: {
 		name: string;
 		guide: unknown;
@@ -38,6 +40,16 @@ for (const c of cases) {
 		assert.equal(guide.lang, c.parsed.lang);
 		assert.equal(guide.gettingThere, c.parsed.getting_there);
 		assert.deepEqual(routeGuideLines(guide), c.lines);
+	});
+}
+
+for (const v of views) {
+	test(`route guide view: ${v.name}`, () => {
+		const guide = parseRouteGuide(v.guide);
+		assert.ok(guide);
+		const view = routeGuideView(guide);
+		assert.deepEqual(view.summary, v.summary);
+		assert.deepEqual(view.sections, v.sections);
 	});
 }
 
@@ -71,6 +83,18 @@ test('routeGuideText renders a guide as English lines', () => {
 	assert.equal(text[3], '0.4 km: turn left onto Ridge Trail.');
 	assert.equal(text[6], '0.8 km: a climb of 14 m over 300 m.');
 	assert.equal(text.at(-1), '2.0 km: finish.');
+});
+
+test('a road crossing reads as one plain sentence, at the traffic light when it has one', () => {
+	const c = cases.find((x) => x.name.startsWith('roads crossed at grade'));
+	const guide = parseRouteGuide(c?.guide);
+	assert.ok(guide);
+	assert.deepEqual(routeGuideText(guide, english).slice(1, 5), [
+		'0.8 km: cross Hunter Mill Road at the traffic light.',
+		'2.4 km: cross Sunset Hills Road. Watch for cars.',
+		'3.1 km: cross the road at the traffic light.',
+		'3.5 km: cross the road. Watch for cars.',
+	]);
 });
 
 test('GUIDE_EN is the English catalogue, entry for entry', () => {

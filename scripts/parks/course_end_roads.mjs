@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { REVIEW_WITHIN_M, RUNOUT_M, endReport } from './lib/road_proximity.mjs';
+import { REVIEW_WITHIN_M, RUNOUT_M, endReport, osmBbox } from './lib/road_proximity.mjs';
 
 const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/jaredhoward-dev/threkir)';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6';
@@ -28,7 +28,7 @@ const BOX_DEG = 0.0008;
  * @returns {Promise<import('./lib/road_proximity.mjs').Road[]>}
  */
 async function roadsNear(p) {
-	const bbox = [p.lng - BOX_DEG, p.lat - BOX_DEG, p.lng + BOX_DEG, p.lat + BOX_DEG].join(',');
+	const bbox = osmBbox(p, BOX_DEG);
 	const res = await fetch(`${OSM_API}/map.json?bbox=${bbox}`, {
 		headers: { 'User-Agent': USER_AGENT },
 		signal: AbortSignal.timeout(60_000),

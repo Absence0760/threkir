@@ -12,7 +12,7 @@ import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.
 import { haversineMetres } from '../geo/haversine.ts';
 import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
-export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
+export const PARK_AGENCIES = ['nps', 'state', 'county', 'usfs', 'usfws', 'other'] as const;
 export type ParkAgency = (typeof PARK_AGENCIES)[number];
 
 /** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */
@@ -166,9 +166,46 @@ export function courseOffersWayfinding(status: string): boolean {
 /** Courses longer than this carry the long-course notice. */
 export const LONG_COURSE_THRESHOLD_M = 15000;
 
-/** Whether a course is long enough to show the long-course notice. */
+/** Whether a course is long enough for the long-course lines of its notices. */
 export function isLongCourse(distanceM: number): boolean {
 	return Number.isFinite(distanceM) && distanceM > LONG_COURSE_THRESHOLD_M;
+}
+
+/** A line of a course's Before you run notice beyond the safety line. */
+export type CourseNoticeKey = 'ford' | 'pavedTrail' | 'longTrail' | 'parkHours' | 'parkHoursLong';
+
+/** `parks.kind` as the notices read it: `trail` for a long linear trail, else a park. */
+export function parkKindOf(park: unknown): 'park' | 'trail' {
+	return park !== null && typeof park === 'object' && (park as { kind?: unknown }).kind === 'trail'
+		? 'trail'
+		: 'park';
+}
+
+/**
+ * The lines of a course's Before you run notice that its data supports
+ * (decisions § 2582), hazards first, never a fact the data does not hold:
+ * - `ford`: the route guide crosses a ford.
+ * - on a trail (`parks.kind = 'trail'`), `pavedTrail` when the surface is
+ *   paved (`road`, a shared-use path), else `longTrail` on a long course;
+ *   a trail has no closing time to name.
+ * - in a park, `parkHoursLong` on a long course, else `parkHours`.
+ */
+export function courseNotices(input: {
+	parkKind: 'park' | 'trail';
+	surface: string | null | undefined;
+	distanceM: number;
+	guide: RouteGuide | null;
+}): CourseNoticeKey[] {
+	const out: CourseNoticeKey[] = [];
+	if (input.guide?.steps.some((s) => s.kind === 'crossing' && s.crossing === 'ford')) out.push('ford');
+	const long = isLongCourse(input.distanceM);
+	if (input.parkKind === 'trail') {
+		if (input.surface === 'road') out.push('pavedTrail');
+		else if (long) out.push('longTrail');
+	} else {
+		out.push(long ? 'parkHoursLong' : 'parkHours');
+	}
+	return out;
 }
 
 /**
@@ -513,4 +550,56 @@ function fixed5(v: number): string {
  */
 export function formatLatLng(p: Point): string {
 	return `${fixed5(p.lat)}, ${fixed5(p.lng)}`;
+}
+
+/** Checkpoints closer than this share of the course's extent share one marker. */
+export const CHECKPOINT_MERGE_FRACTION = 0.05;
+/** …and never closer than this, whatever the course's size. */
+export const CHECKPOINT_MERGE_MIN_M = 25;
+
+/** A checkpoint marker on a course map: one or more numbers, or an out-and-back's turn. */
+export interface CheckpointMark {
+	kind: 'numbered' | 'turn';
+	/** The 1-based checkpoint numbers it stands for, in course order. */
+	numbers: number[];
+	lat: number;
+	lng: number;
+}
+
+/**
+ * What a course map marks for its checkpoints (decisions § 2582). On an
+ * out-and-back the last checkpoint is the turn, marked as such. The rest are
+ * numbered, and checkpoints so close that their markers would cover each
+ * other at the whole-course zoom share one marker that carries every number:
+ * closer than CHECKPOINT_MERGE_FRACTION of the line's bounding-box diagonal,
+ * at least CHECKPOINT_MERGE_MIN_M, to the first checkpoint of a marker.
+ */
+export function checkpointMarks(input: {
+	checkpoints: readonly { lat: number; lng: number }[];
+	line: readonly { lat: number; lng: number }[];
+	shape: string | null | undefined;
+}): CheckpointMark[] {
+	const { checkpoints, line } = input;
+	let s = Infinity;
+	let w = Infinity;
+	let n = -Infinity;
+	let e = -Infinity;
+	for (const p of line) {
+		s = Math.min(s, p.lat);
+		n = Math.max(n, p.lat);
+		w = Math.min(w, p.lng);
+		e = Math.max(e, p.lng);
+	}
+	const extent = Number.isFinite(s) ? haversineMetres(s, w, n, e) : 0;
+	const mergeM = Math.max(CHECKPOINT_MERGE_MIN_M, CHECKPOINT_MERGE_FRACTION * extent);
+	const turn = input.shape === 'out_and_back' && checkpoints.length > 0 ? checkpoints.length - 1 : -1;
+	const marks: CheckpointMark[] = [];
+	checkpoints.forEach((c, i) => {
+		if (i === turn) return;
+		const near = marks.find((m) => haversineMetres(m.lat, m.lng, c.lat, c.lng) < mergeM);
+		if (near) near.numbers.push(i + 1);
+		else marks.push({ kind: 'numbered', numbers: [i + 1], lat: c.lat, lng: c.lng });
+	});
+	if (turn >= 0) marks.push({ kind: 'turn', numbers: [turn + 1], lat: checkpoints[turn].lat, lng: checkpoints[turn].lng });
+	return marks;
 }

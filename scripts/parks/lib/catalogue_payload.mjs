@@ -15,7 +15,7 @@ import { assertNoThirdPartyMarks } from './third_party_marks.mjs';
 
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
-export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'];
+export const PARK_AGENCIES = ['nps', 'state', 'county', 'usfs', 'usfws', 'other'];
 /** What a catalogue entry is: a park, or a long trail through several parks that belongs to none (decisions § 2581). */
 export const PARK_KINDS = ['park', 'trail'];
 export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'];
@@ -58,12 +58,14 @@ const US_STATES = Object.freeze({
 });
 
 /** @type {Readonly<Record<string, string>>} */
-const RACE_DISTANCE_WORDS = Object.freeze({
+export const RACE_DISTANCE_WORDS = Object.freeze({
 	'5k': '5 km',
 	'10k': '10 km',
 	half: 'the half-marathon distance (21.1 km)',
 	marathon: 'the marathon distance (42.2 km)',
 	'50k': '50 km',
+	'50mi': '50 miles (80.5 km)',
+	'100k': '100 km',
 });
 
 /**

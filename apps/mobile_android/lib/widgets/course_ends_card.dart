@@ -19,47 +19,124 @@ class CourseEndsCard extends StatelessWidget {
   /// Test seam; production opens the link in the maps app.
   final Future<bool> Function(Uri uri)? launch;
 
-  const CourseEndsCard({super.key, required this.ends, this.launch});
+  /// The course page's one sentence about its start and finish boxes. Set,
+  /// the card leads with it and a button to the start, and folds the
+  /// coordinates away under it (decisions § 2582).
+  final String? instruction;
+
+  /// Whether "Get directions to the start" is the screen's one filled action:
+  /// not when the screen has Navigate this course.
+  final bool primary;
+
+  const CourseEndsCard({
+    super.key,
+    required this.ends,
+    this.launch,
+    this.instruction,
+    this.primary = true,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final finish = ends.finish;
+    final points = _points(l10n);
+    final text = instruction;
     return Column(
       key: const Key('course-ends'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader.title(label: l10n.parksEndsTitle),
         const SizedBox(height: 4),
-        if (finish == null)
-          _EndRow(
-            which: 'start-finish',
-            label: l10n.parksLegendStartFinish,
-            copyLabel: l10n.parksEndsCopyStartFinish,
-            directionsLabel: l10n.parksEndsDirectionsStartFinish,
-            point: ends.start,
-            launch: launch,
-          )
+        if (text == null)
+          ...points
         else ...[
-          _EndRow(
-            which: 'start',
-            label: l10n.parksLegendStart,
-            copyLabel: l10n.parksEndsCopyStart,
-            directionsLabel: l10n.parksEndsDirectionsStart,
-            point: ends.start,
-            launch: launch,
+          Text(
+            text,
+            key: const Key('course-ends-instruction'),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          _EndRow(
-            which: 'finish',
-            label: l10n.parksLegendFinish,
-            copyLabel: l10n.parksEndsCopyFinish,
-            directionsLabel: l10n.parksEndsDirectionsFinish,
-            point: finish,
-            launch: launch,
+          const SizedBox(height: 8),
+          if (primary)
+            FilledButton.icon(
+              key: const Key('course-ends-get-directions'),
+              onPressed: () => _openDirections(context, ends.start, launch),
+              icon: const Icon(Icons.directions),
+              label: Text(l10n.parksEndsGetDirections),
+            )
+          else
+            OutlinedButton.icon(
+              key: const Key('course-ends-get-directions'),
+              onPressed: () => _openDirections(context, ends.start, launch),
+              icon: const Icon(Icons.directions),
+              label: Text(l10n.parksEndsGetDirections),
+            ),
+          ExpansionTile(
+            key: const Key('course-ends-coordinates'),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            title: Text(l10n.parksEndsCoordinates),
+            children: points,
           ),
         ],
       ],
     );
+  }
+
+  List<Widget> _points(AppLocalizations l10n) {
+    final finish = ends.finish;
+    return [
+      if (finish == null)
+        _EndRow(
+          which: 'start-finish',
+          label: l10n.parksLegendStartFinish,
+          copyLabel: l10n.parksEndsCopyStartFinish,
+          directionsLabel: l10n.parksEndsDirectionsStartFinish,
+          point: ends.start,
+          launch: launch,
+        )
+      else ...[
+        _EndRow(
+          which: 'start',
+          label: l10n.parksLegendStart,
+          copyLabel: l10n.parksEndsCopyStart,
+          directionsLabel: l10n.parksEndsDirectionsStart,
+          point: ends.start,
+          launch: launch,
+        ),
+        _EndRow(
+          which: 'finish',
+          label: l10n.parksLegendFinish,
+          copyLabel: l10n.parksEndsCopyFinish,
+          directionsLabel: l10n.parksEndsDirectionsFinish,
+          point: finish,
+          launch: launch,
+        ),
+      ],
+    ];
+  }
+}
+
+// The Drive this course hand-off's link, to the platform's own maps app.
+Future<void> _openDirections(
+  BuildContext context,
+  ({double lat, double lng}) point,
+  Future<bool> Function(Uri uri)? launch,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final app = Platform.isIOS ? MapsApp.apple : MapsApp.google;
+  var opened = false;
+  try {
+    opened =
+        await (launch ??
+            (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
+          Uri.parse(mapsStartUrl(app, point.lat, point.lng)),
+        );
+  } catch (e) {
+    debugPrint('CourseEndsCard: Maps launch failed: $e');
+  }
+  if (!opened && context.mounted) {
+    showTopBanner(context, l10n.courseDriveOpenFailed);
   }
 }
 
@@ -91,23 +168,8 @@ class _EndRow extends StatelessWidget {
     }
   }
 
-  // The Drive this course hand-off's link, to the platform's own maps app.
-  Future<void> _directions(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    final app = Platform.isIOS ? MapsApp.apple : MapsApp.google;
-    var opened = false;
-    try {
-      opened = await (launch ??
-          (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
-        Uri.parse(mapsStartUrl(app, point.lat, point.lng)),
-      );
-    } catch (e) {
-      debugPrint('CourseEndsCard: Maps launch failed: $e');
-    }
-    if (!opened && context.mounted) {
-      showTopBanner(context, l10n.courseDriveOpenFailed);
-    }
-  }
+  Future<void> _directions(BuildContext context) =>
+      _openDirections(context, point, launch);
 
   @override
   Widget build(BuildContext context) {
@@ -124,8 +186,9 @@ class _EndRow extends StatelessWidget {
           SelectableText(
             text,
             key: Key('course-ends-$which-coords'),
-            style: theme.textTheme.bodyLarge
-                ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
           Wrap(
             spacing: 8,

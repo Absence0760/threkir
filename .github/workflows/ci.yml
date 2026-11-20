@@ -1207,6 +1207,11 @@ jobs:
             echo "Fix scripts/refresh_deno_lock_remote.mjs (or its tests); reproduce with: node --test scripts/refresh_deno_lock_remote.test.mjs (stdlib only, no network)."
             exit 1
           fi
+          if ! node --test scripts/next_decision_number.test.mjs; then
+            echo "::error::The decisions-number tool's own unit tests failed, so the number it prints before an entry is written cannot be trusted. Nothing here is about deno.lock or the decisions log itself."
+            echo "Fix scripts/next_decision_number.mjs (or its tests); reproduce with: node --test scripts/next_decision_number.test.mjs (stdlib only, no network)."
+            exit 1
+          fi
       # These two checks parse source files only (no DB), so they run BEFORE
       # the Supabase stack starts. Keeping them after it meant a broken stack
       # — e.g. the run-26820381977 migration-version collision — silently

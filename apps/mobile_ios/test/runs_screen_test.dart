@@ -16,6 +16,8 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/screens/add_run_screen.dart';
+import '../lib/screens/import_screen.dart';
+import '../lib/fab_clearance.dart';
 import 'pump_until.dart';
 
 /// A signed-in fake whose delta pull returns [deltaRuns] (empty by default:
@@ -248,25 +250,52 @@ void main() {
     });
 
     // The shell's centre button, a thumb away, is the one that records; this
-    // one only ever adds a run that already happened, so its label says so.
-    testWidgets('FAB is present with the Add past run label', (tester) async {
+    // list's add only ever adds a run that already happened, so it says so,
+    // and like importing it is occasional, so both wait in the ⋮ (as on
+    // Today) rather than holding a FAB over the list.
+    testWidgets('Add past run and Import runs are in the ⋮, with no FAB',
+        (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      final menu = find.byKey(const Key('hub-menu'));
+      expect(find.descendant(of: find.byType(AppBar), matching: menu),
+          findsOneWidget);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
       expect(
         find.descendant(
-            of: find.byType(FloatingActionButton),
+            of: find.byKey(const Key('runsMenuAddRun')),
             matching: find.text('Add past run')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+            of: find.byKey(const Key('runsMenuImport')),
+            matching: find.text('Import runs')),
         findsOneWidget,
       );
     });
 
-    testWidgets('FAB tap navigates to AddRunScreen', (tester) async {
+    testWidgets('the ⋮\'s Add past run opens AddRunScreen', (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const Key('hub-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('runsMenuAddRun')));
       await tester.pumpAndSettle();
       expect(find.byType(AddRunScreen), findsOneWidget);
+    });
+
+    testWidgets('the ⋮\'s Import runs opens ImportScreen', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
+      await tester.tap(find.byKey(const Key('hub-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('runsMenuImport')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ImportScreen), findsOneWidget);
     });
 
     testWidgets('cloud_off icon shown when apiClient is null', (tester) async {
@@ -593,16 +622,14 @@ void main() {
       expect(find.text('Load 20 more'), findsOneWidget);
     });
 
-    testWidgets('Add Run FAB does not overlap the Load-more button',
-        (tester) async {
-      // Regression: the docked FAB floats over the bottom-right of the
-      // screen but the list's own padding didn't reserve any clearance
-      // for it, so the last row (the Load-more button, when shown)
-      // rendered directly underneath it. Needs a realistic phone-width
-      // viewport — flutter_test's much-wider default surface leaves
-      // enough horizontal gap between the centered Load-more button and
-      // the bottom-right FAB that they never intersect regardless of
-      // bottom padding, masking the bug.
+    testWidgets('the Load-more button ends clear of the shell\'s centre '
+        'button, with no FAB over the list', (tester) async {
+      // Regression: the list's own padding reserved nothing at its end, so
+      // the last row (the Load-more button, when shown) rendered under
+      // whatever floated over the bottom of the screen. The add moved to
+      // the ⋮, so what still rises into the page is the shell's docked
+      // centre button. A realistic phone-width viewport, as flutter_test's
+      // wide default surface hides overlaps.
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -616,15 +643,19 @@ void main() {
       // ignore: invalid_use_of_visible_for_testing_member
       final runStore = LocalRunStore()..debugSeed(_makeRuns(30), dir: _runsDir);
       final routeStore = LocalRouteStore();
+      const inset = 28.0;
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: RunsScreen(
-            apiClient: null,
-            runStore: runStore,
-            routeStore: routeStore,
-            preferences: prefs,
+          home: DockedFabInset(
+            height: inset,
+            child: RunsScreen(
+              apiClient: null,
+              runStore: runStore,
+              routeStore: routeStore,
+              preferences: prefs,
+            ),
           ),
         ),
       );
@@ -636,36 +667,22 @@ void main() {
         300,
         scrollable: _listScrollable(),
       );
-
-      // The clearance contract holds at the END of the scroll extent —
-      // mid-scroll, a docked FAB legitimately covers whatever row is
-      // passing underneath it. Asserted structurally (list padding vs
-      // the FAB's measured footprint) rather than positionally: a
-      // builder list's end-of-scroll geometry in a widget test rests on
-      // estimated extents for unbuilt rows, which drift with framework
-      // versions — the positional form of this assertion went red on an
-      // environment bump with no code change.
+      expect(find.byType(FloatingActionButton), findsNothing);
       expect(
         find.ancestor(
           of: find.text('Load 20 more'),
           matching: find.byType(ListView),
         ),
         findsOneWidget,
-        reason: 'The Load-more footer must live inside the padded list — '
-            'a footer rendered outside it never benefits from the FAB '
-            'clearance.',
+        reason: 'The Load-more footer must live inside the padded list.',
       );
-      final listRect = tester.getRect(find.byType(ListView).first);
-      final fabRect = tester.getRect(find.byType(FloatingActionButton));
       final padding = tester
           .widget<ListView>(find.byType(ListView).first)
           .padding!
           .resolve(TextDirection.ltr);
-      expect(padding.bottom >= listRect.bottom - fabRect.top, isTrue,
-          reason: 'The Add Run FAB must not sit on top of the Load-more '
-              'button — the list needs bottom padding that clears the '
-              "FAB's footprint (padding ${padding.bottom}px, FAB needs "
-              '${listRect.bottom - fabRect.top}px).');
+      expect(padding.bottom, greaterThanOrEqualTo(inset + 16),
+          reason: 'the list ends past the centre button that rises '
+              '${inset}px into the page');
     });
 
     testWidgets('Load more button hidden when fewer rows than page size',

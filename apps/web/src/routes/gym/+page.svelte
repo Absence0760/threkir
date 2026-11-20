@@ -168,12 +168,7 @@
 <svelte:head><title>{t('gym.title')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<PageHeader
-		title={t('gym.title')}
-		subtitle={!loading && workouts.length > 0
-			? t('gym.workouts', { count: workouts.length })
-			: undefined}
-	>
+	<PageHeader title={t('gym.title')}>
 		{#snippet actions()}
 			<button class="btn btn-primary" onclick={() => (showCreate = true)} data-testid="gym-log">
 				<span class="material-symbols" aria-hidden="true">add</span>

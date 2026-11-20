@@ -14,6 +14,7 @@ import 'package:ui_kit/ui_kit.dart'
         ChoiceChipOption,
         EmptyState,
         FilterBar,
+        HubMenuItem,
         HubSelection,
         HubTabBody,
         ListSummary,
@@ -55,6 +56,7 @@ import '../widgets/single_flight.dart';
 import 'add_run_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
+import 'import_screen.dart';
 import 'nutrition_screen.dart';
 import 'run_detail_screen.dart';
 import '../widgets/top_banner.dart';
@@ -1056,6 +1058,9 @@ class _RunsScreenState extends State<RunsScreen>
       filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
       actions: _runActions(l10n),
       primary: widget.showAddFab ? _addAction(l10n) : null,
+      menu: widget.showAddFab && _addKind == _HistoryKind.run
+          ? _runMenu(l10n)
+          : const [],
       selection: _selecting ? _selection(l10n) : null,
       body: _buildBody(theme, l10n, unit, totalCount),
     );
@@ -1167,21 +1172,43 @@ class _RunsScreenState extends State<RunsScreen>
         },
       );
 
+  /// What the add affordance adds into: the active timeline chip, or a run
+  /// on the plain run list (a run-only mount has no chips).
+  _HistoryKind get _addKind => _timelineMode ? _kind : _HistoryKind.run;
+
+  /// Adding a run after the fact and importing history are occasional jobs,
+  /// and the shell's centre button one row below already records a run, so
+  /// on a run list they wait in the hub's ⋮, as they do in Today's, rather
+  /// than holding a FAB over the list.
+  List<HubMenuItem> _runMenu(AppLocalizations l10n) => [
+        HubMenuItem(
+          itemKey: const Key('runsMenuAddRun'),
+          label: l10n.historyAddPastRun,
+          icon: Icons.add,
+          onSelected: _openAddRun,
+        ),
+        HubMenuItem(
+          itemKey: const Key('runsMenuImport'),
+          label: l10n.dashboardImportRuns,
+          icon: Icons.file_download_outlined,
+          onSelected: _openImport,
+        ),
+      ];
+
   /// The add affordance follows the active timeline chip, mirroring web
   /// `/history`: the cross-modal All view opens a run / lift / meal picker; a
-  /// single-modality tab adds straight into that modality beside its "View
-  /// all" link. A run-only mount (no gym store, so no chips) keeps the plain
-  /// Add-run FAB it has always had.
-  PrimaryAction _addAction(AppLocalizations l10n) {
-    final kind = _timelineMode ? _kind : _HistoryKind.run;
-    final (String label, String tooltip, VoidCallback onPressed) = switch (kind) {
+  /// lift or meal tab adds straight into that modality beside its "View all"
+  /// link. Those add into a modality the shell's centre button does not
+  /// cover, so they keep the FAB; a run has none, and goes to [_runMenu].
+  PrimaryAction? _addAction(AppLocalizations l10n) {
+    final (String, String, VoidCallback)? add = switch (_addKind) {
       _HistoryKind.all => (l10n.logSheetTitle, l10n.historyLogTooltip, _openLogPicker),
-      // "Past" because the shell's centre button, one row below, is the one
-      // that records: two "+" buttons both reading "run" was two guesses.
-      _HistoryKind.run => (l10n.historyAddPastRun, l10n.historyAddRunTooltip, _openAddRun),
+      _HistoryKind.run => null,
       _HistoryKind.lift => (l10n.logLift, l10n.historyLogTooltip, _openAddLift),
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
+    if (add == null) return null;
+    final (label, tooltip, onPressed) = add;
     return PrimaryAction(
       label: label,
       icon: Icons.add,
@@ -1267,6 +1294,23 @@ class _RunsScreenState extends State<RunsScreen>
           preferences: widget.preferences,
           apiClient: widget.apiClient,
           social: widget.social,
+        ),
+      ),
+    );
+  }
+
+  /// The same import Today's ⋮ opens. Signed out it still imports locally;
+  /// ImportScreen greys out the cloud push itself.
+  void _openImport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ImportScreen(
+          apiClient: widget.apiClient,
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+          settingsSync: widget.settingsSync,
         ),
       ),
     );
@@ -1506,6 +1550,9 @@ class _RunsScreenState extends State<RunsScreen>
         onTapRun: _openActivityRun,
         onTapLift: _openActivityLift,
         onRefresh: _refreshAll,
+        endPadding: widget.showAddFab && _addKind != _HistoryKind.run
+            ? fabScrollClearance(context)
+            : listEndClearance(context),
       );
       content = contentColumn(context, content);
     } else {
@@ -1706,10 +1753,11 @@ class _RunsScreenState extends State<RunsScreen>
       return _buildRunGrid(theme, l10n, unit, items,
           emptyAfterFilter: emptyAfterFilter, showLoadMore: showLoadMore);
     }
-    // Without the clearance the Add Run FAB sits right on top of the last
-    // row, which is the Load-more button when one shows.
+    // No FAB floats over the run list (its add is in the ⋮), but the shell's
+    // centre button still rises into the page, over the last row, which is
+    // the Load-more button when one shows.
     return ListView.builder(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, fabScrollClearance(context)),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, listEndClearance(context)),
       itemCount:
           items.length + 1 + (emptyAfterFilter ? 1 : 0) + loadMoreSlot,
       itemBuilder: (context, index) {
@@ -1788,8 +1836,7 @@ class _RunsScreenState extends State<RunsScreen>
     return CustomScrollView(
       slivers: [
         SliverPadding(
-          padding:
-              EdgeInsets.fromLTRB(16, 16, 16, fabScrollClearance(context)),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, listEndClearance(context)),
           sliver: SliverMainAxisGroup(slivers: slivers),
         ),
       ],

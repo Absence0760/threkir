@@ -366,7 +366,16 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2710;
+// Raised for the park course start and finish boxes (PR #1441) and the park
+// course list preview with its back link (PR #1442), consolidated in one
+// branch. Route-level code only, with no new dependency: the course map's box,
+// tag, turnaround and key layers, the route-guide selector and course-notice
+// picker on the park course and share pages, and the in-place course preview
+// card and its map on the park page, plus the course map's jump-to controls
+// (#1447) and the page headers' "Create challenge" on /social. Measured at
+// 2718 KB locally on the combined branch (CI measures about 3 KB higher, as
+// both PRs found). Same 6 KB of cover (decisions § 2470).
+export const MAX_CODE_KB = 2727;
 export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

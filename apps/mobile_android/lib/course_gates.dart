@@ -140,6 +140,218 @@ GatePoint _centre(Gate g) => GatePoint(g.lat, g.lng);
 GatePoint gateArrowTip(Gate gate) => offsetPoint(
     _centre(gate), gate.bearingDeg, math.max(20, gate.halfWidthM));
 
+/// How deep a drawn start or finish box is, from its line.
+const double kCourseGateBoxDepthM = 10;
+
+/// Start and finish lines whose centres sit this close, facing the same way
+/// or opposite ways, sit at one spot.
+const double kCourseGateSharedSpotM = 10;
+
+/// How far from parallel (or from opposed) two lines may face and still share
+/// a spot.
+const double kCourseGateSharedSpotDeg = 20;
+
+/// The point on the line at [f] of its half-width: -1 its left end, 0 the
+/// centre, 1 its right end.
+GatePoint gatePointAlong(Gate gate, double f) {
+  final b = _rad(gate.bearingDeg);
+  return fromPlane(_centre(gate), f * gate.halfWidthM * math.cos(b),
+      -f * gate.halfWidthM * math.sin(b));
+}
+
+/// Which side of its line a box sits: behind it (where a runner waits to
+/// start), ahead (where one stops), or centred on it (a start and finish at
+/// one spot, half behind and half ahead).
+enum GateBoxSide { behind, ahead, centred }
+
+/// The box on one side of a line, [depthM] deep, from [from] to [to] along
+/// the line (as [gatePointAlong]). Corners: the near edge first, its left end
+/// then its right (left of travel), then the far right and far left corners.
+/// For `behind` and `ahead` the near edge is on the line, and leaving a
+/// `behind` box through it, or entering an `ahead` one, is crossing the
+/// line. A `centred` box runs from `depthM / 2` behind the line to
+/// `depthM / 2` ahead, its near edge the one behind, so the line crosses its
+/// middle.
+List<GatePoint> gateBox(Gate gate, double depthM, GateBoxSide side,
+    {double from = -1, double to = 1}) {
+  final b = _rad(gate.bearingDeg);
+  final ax = gate.halfWidthM * math.cos(b);
+  final ay = -gate.halfWidthM * math.sin(b);
+  final (near, far) = switch (side) {
+    GateBoxSide.ahead => (0.0, depthM),
+    GateBoxSide.behind => (0.0, -depthM),
+    GateBoxSide.centred => (-depthM / 2, depthM / 2),
+  };
+  final c = _centre(gate);
+  GatePoint at(double f, double k) => fromPlane(
+      c, f * ax + k * math.sin(b), f * ay + k * math.cos(b));
+  return [at(from, near), at(to, near), at(to, far), at(from, far)];
+}
+
+/// Whether a start line and a finish line sit at one spot: an
+/// out-and-back's or a loop's.
+bool gatesShareSpot(Gate start, Gate finish) {
+  final p = planeXY(_centre(start), _centre(finish));
+  if (math.sqrt(p.x * p.x + p.y * p.y) > kCourseGateSharedSpotM) return false;
+  final d = bearingDelta(start.bearingDeg, finish.bearingDeg);
+  return d <= kCourseGateSharedSpotDeg || d >= 180 - kCourseGateSharedSpotDeg;
+}
+
+/// One box on a course map.
+class GateBoxPart {
+  const GateBoxPart({
+    required this.which,
+    required this.box,
+    required this.line,
+  });
+
+  /// The line it belongs to, or null for the one box a start and finish at
+  /// one spot share (web's `'both'`).
+  final GateWhich? which;
+
+  /// As [gateBox] gives it: behind the start line, ahead of the finish line,
+  /// centred on a shared one.
+  final List<GatePoint> box;
+
+  /// The timing line across the box: the stretch of the stored line it
+  /// covers.
+  final (GatePoint, GatePoint) line;
+}
+
+/// How a course's start and finish boxes lie. Twin of web's `GateBoxLayout`:
+/// [apart], two boxes in two places, the start box behind its line and the
+/// finish box ahead of its own; [shared], the lines sit at one spot (a loop,
+/// or an out-and-back), so it is one box in one colour, centred on the start
+/// line, which crosses its middle. Never two colours at one spot: a runner
+/// would read half of it as the start and half as the finish (decisions
+/// § 2582).
+enum GateBoxLayout { apart, shared }
+
+/// Where a box's flag and name go: the middle of the box's far side, so at
+/// a close zoom it sits beside the box rather than over the line. One for a
+/// box the start and finish share ([which] null).
+class GateBoxMarker {
+  const GateBoxMarker({required this.which, required this.at});
+
+  /// The line the box belongs to, or null for a box both share.
+  final GateWhich? which;
+  final GatePoint at;
+}
+
+/// The start and finish boxes a course map draws (decisions § 2582).
+({GateBoxLayout layout, List<GateBoxPart> parts, List<GateBoxMarker> markers})
+    gateBoxParts(
+  Gate? start,
+  Gate? finish, {
+  double depthM = kCourseGateBoxDepthM,
+}) {
+  GateBoxPart part(GateWhich? which, Gate gate) => GateBoxPart(
+        which: which,
+        box: gateBox(
+            gate,
+            depthM,
+            switch (which) {
+              null => GateBoxSide.centred,
+              GateWhich.start => GateBoxSide.behind,
+              GateWhich.finish => GateBoxSide.ahead,
+            }),
+        line: gateLineEnds(gate),
+      );
+
+  GateBoxMarker marker(GateWhich? which, Gate gate, double away, double distM) =>
+      GateBoxMarker(which: which, at: offsetPoint(_centre(gate), away, distM));
+  double back(Gate g) => g.bearingDeg + 180;
+
+  if (start != null && finish != null && gatesShareSpot(start, finish)) {
+    return (
+      layout: GateBoxLayout.shared,
+      parts: [part(null, start)],
+      markers: [marker(null, start, back(start), depthM / 2)],
+    );
+  }
+  return (
+    layout: GateBoxLayout.apart,
+    parts: [
+      if (start != null) part(GateWhich.start, start),
+      if (finish != null) part(GateWhich.finish, finish),
+    ],
+    markers: [
+      if (start != null) marker(GateWhich.start, start, back(start), depthM),
+      if (finish != null)
+        marker(GateWhich.finish, finish, finish.bearingDeg, depthM),
+    ],
+  );
+}
+
+/// The edges a course is timed by, read off the boxes [gateBoxParts] draws
+/// (decisions § 2589): leaving the start box forward is a forward crossing of
+/// [startExit], with the box behind it; entering the finish box is a forward
+/// crossing of [finishEntry], with the box [depthM] ahead of it. Apart, they
+/// are the start and finish lines themselves. At a shared spot, the exit is
+/// the box's far edge and the entry is its near edge on a loop, or its far
+/// edge facing back on an out-and-back, so the timed stretch is [depthM]
+/// shorter than line to line. Twin of web's `GateTimingEdges`.
+class GateTimingEdges {
+  const GateTimingEdges({
+    required this.layout,
+    required this.startExit,
+    required this.finishEntry,
+    required this.depthM,
+  });
+
+  final GateBoxLayout layout;
+  final Gate startExit;
+  final Gate finishEntry;
+  final double depthM;
+}
+
+/// A line along a drawn box edge from corner [a] to corner [b], facing
+/// [bearingDeg].
+Gate _edgeGate(GatePoint a, GatePoint b, double bearingDeg, double halfWidthM) {
+  final p = planeXY(a, b);
+  final mid = fromPlane(a, p.x / 2, p.y / 2);
+  return Gate(
+    lat: mid.lat,
+    lng: mid.lng,
+    bearingDeg: normalizeBearing(bearingDeg),
+    halfWidthM: halfWidthM,
+  );
+}
+
+/// The timing edges of a course with both lines (decisions § 2589). Twin of
+/// web's `gateTimingEdges`.
+GateTimingEdges gateTimingEdges(
+  Gate start,
+  Gate finish, {
+  double depthM = kCourseGateBoxDepthM,
+}) {
+  final boxes = gateBoxParts(start, finish, depthM: depthM);
+  if (boxes.layout == GateBoxLayout.shared) {
+    final box = boxes.parts[0].box;
+    final nearL = box[0];
+    final nearR = box[1];
+    final farR = box[2];
+    final farL = box[3];
+    final sameWay = bearingDelta(start.bearingDeg, finish.bearingDeg) <= 90;
+    return GateTimingEdges(
+      layout: boxes.layout,
+      startExit: _edgeGate(farL, farR, start.bearingDeg, start.halfWidthM),
+      finishEntry: sameWay
+          ? _edgeGate(nearL, nearR, start.bearingDeg, start.halfWidthM)
+          : _edgeGate(farR, farL, start.bearingDeg + 180, start.halfWidthM),
+      depthM: depthM,
+    );
+  }
+  final s = boxes.parts[0].box;
+  final f = boxes.parts[1].box;
+  return GateTimingEdges(
+    layout: boxes.layout,
+    startExit: _edgeGate(s[0], s[1], start.bearingDeg, start.halfWidthM),
+    finishEntry: _edgeGate(f[0], f[1], finish.bearingDeg, finish.halfWidthM),
+    depthM: depthM,
+  );
+}
+
 class GateRouteRelation {
   const GateRouteRelation({
     required this.distanceM,

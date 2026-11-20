@@ -120,7 +120,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 					await page.goto('/runs');
 					// Open the Add-run modal — RunEditor seeds the audience from
 					// the freshly-read privacy_default pref in onMount.
-					await page.getByRole('button', { name: '+ Add run' }).click();
+					await page.getByRole('button', { name: 'Add run' }).click();
 					const selector = page.getByTestId('run-editor-audience');
 					await expect(selector).toBeVisible({ timeout: 10_000 });
 					await expect(selector).toHaveValue(level);

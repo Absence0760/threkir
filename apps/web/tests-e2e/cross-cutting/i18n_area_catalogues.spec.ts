@@ -138,11 +138,12 @@ test.describe('area catalogues on a cold deep link', () => {
 		// Client-side navigation into a second area: the root load re-runs for
 		// the new route and fetches the `runs` area — in German, because the
 		// locale is already applied, before /runs renders.
-		await page.getByRole('link', { name: 'Läufe', exact: true }).first().click();
+		await page.getByRole('link', { name: 'Training', exact: true }).first().click();
 		await expect(page).toHaveURL(/\/runs$/);
-		// The h1 is the sidebar label (`nav.runs`), a core key; the view toggle's
-		// group name (`runs.viewGroup`) is what proves the `runs` area arrived.
-		await expect(page.getByRole('heading', { level: 1, name: 'Läufe' })).toBeVisible();
+		// The h1 is the sidebar label (`nav.runs`, German "Training" like the
+		// phone's hub), a core key; the view toggle's group name
+		// (`runs.viewGroup`) is what proves the `runs` area arrived.
+		await expect(page.getByRole('heading', { level: 1, name: 'Training' })).toBeVisible();
 		await expect(page.getByRole('group', { name: 'Layout der Laufliste' })).toBeVisible();
 		await expectNoRawKeys(page, ['runs', 'history']);
 

@@ -1,7 +1,9 @@
 // The route guide of a park course (issue #1344, decisions § 2448): an ordered
 // list of structured steps a newcomer can follow, derived from what the
 // pipeline already holds — the OSM ways in course order and their names, the
-// junctions where the named trail changes, the bridges and fords, the surface,
+// junctions where the named trail changes, the bridges and fords, the
+// roads it crosses at grade (`road_crossings.mjs`), the stretches of road that join two pieces of trail (a trail_review join across
+// a near-miss junction is no step: it is the same trail), the surface,
 // the climbs in the elevation profile, the checkpoints and the laps.
 //
 // Steps are data, not prose: every client renders them through its own i18n
@@ -13,10 +15,12 @@
 // Pure and deterministic, like the rest of `lib/`; `build.mjs` writes the
 // result into `manifest.json` and `--check` compares it.
 
-import { haversineM } from './course_geometry.mjs';
+import { haversineM, roadConnectorRuns } from './course_geometry.mjs';
+import { roadCrossingAt } from './road_crossings.mjs';
 
 /** @typedef {import('./course_geometry.mjs').SnapshotNode} SnapshotNode */
 /** @typedef {import('./course_geometry.mjs').SnapshotWay} SnapshotWay */
+/** @typedef {import('./road_crossings.mjs').CrossingNode} CrossingNode */
 
 export const ROUTE_GUIDE_VERSION = 1;
 
@@ -25,6 +29,7 @@ export const STEP_KINDS = Object.freeze([
 	'direction',
 	'lap',
 	'junction',
+	'road',
 	'crossing',
 	'surface',
 	'climb',
@@ -36,7 +41,13 @@ export const ROTATIONS = Object.freeze(['clockwise', 'counterclockwise']);
 export const SIDES = Object.freeze(['left', 'right']);
 export const WAY_KINDS = Object.freeze(['fire_road', 'road', 'path']);
 export const SURFACES = Object.freeze(['paved', 'gravel', 'dirt', 'unpaved', 'boardwalk']);
-export const CROSSINGS = Object.freeze(['bridge', 'ford']);
+/**
+ * What a crossing step crosses: water on a bridge or through a ford, or a
+ * motor road at grade (`road`, carrying the road's `name` when OSM has one and
+ * `signal: true` when OSM puts a traffic signal on it). Crossing a road is not
+ * the `road` step kind, which is a stretch run along one.
+ */
+export const CROSSINGS = Object.freeze(['bridge', 'ford', 'road']);
 
 /** Bearings are measured over this much line either side of a junction. */
 export const TURN_LOOK_M = 25;
@@ -57,6 +68,13 @@ export const CLIMB_MIN_GAIN_M = 12;
 export const CLIMB_MIN_GRADE = 0.035;
 /** Two bridges this close together are one crossing. */
 export const CROSSING_MERGE_M = 30;
+/**
+ * Road crossings this close together are one crossing when they share a name
+ * or one has none: the two carriageways of a divided road, or a road and the
+ * unnamed turn lane beside it at one junction. The name, where there is one,
+ * is the crossing's.
+ */
+export const ROAD_CROSSING_MERGE_M = 40;
 /** A lap-2+ step within this of its lap-1 twin is a repeat. */
 export const LAP_MATCH_M = 15;
 /** The most characters of an OSM name a step carries. */
@@ -306,6 +324,8 @@ function mergeShortRuns(runs, cum) {
  *   laps?: { count: number, firstStartM: number, lapM: number } | null,
  *   loop?: boolean,
  *   water?: Array<{ name?: string, ring: { lat: number, lon: number }[] }>,
+ *   roadConnectors?: number[],
+ *   roadCrossings?: Record<string, CrossingNode>,
  *   lang: string,
  *   gettingThere?: string | null,
  * }} GuideInput
@@ -316,7 +336,13 @@ function mergeShortRuns(runs, cum) {
  * the full path. Steps of laps 2..N repeat lap 1's, so only the lap marker
  * and the checkpoints are written for them. `loop` is false for a
  * point-to-point or out-and-back course, which has no way round to name, so
- * its guide carries no direction step.
+ * its guide carries no direction step. `roadConnectors` are the park's
+ * `trail_review.road_connectors` way ids: each stretch along one is a `road`
+ * step with its length, so the runner knows where they leave the trail and
+ * for how far. `roadCrossings` is the snapshot's `road_crossings.nodes`:
+ * each motor road the course crosses at grade is a `crossing` step of
+ * `road`. Without it (a snapshot fetched before road crossings were) the
+ * guide has no road crossings, and is otherwise the same.
  */
 
 /**
@@ -364,6 +390,13 @@ export function buildRouteGuide(input) {
 		const pick = [...(named.length > 0 ? named : candidates)].sort((a, b) => a.id - b.id)[0] ?? null;
 		edgeWay.push(pick);
 	}
+	// A trail_review join closes a gap OSM leaves inside one trail, so it is
+	// read as the trail either side of it and never becomes a step of its own.
+	for (let i = 0; i < edgeWay.length; i++) {
+		if (!edgeWay[i]?.join) continue;
+		const before = i > 0 ? edgeWay[i - 1] : null;
+		edgeWay[i] = before ?? edgeWay.slice(i + 1).find((w) => !w?.join) ?? null;
+	}
 
 	/** @type {Run[]} */
 	let runs = [];
@@ -409,6 +442,50 @@ export function buildRouteGuide(input) {
 		crossings.push({ at: cum[i], crossing });
 	}
 	for (const c of crossings) raw.push({ kind: 'crossing', at: c.at, crossing: c.crossing });
+
+	// A road on a bridge or in a tunnel is not at grade, and neither is a
+	// course that goes over or under the road on a bridge or tunnel of its own.
+	const graded = (/** @type {SnapshotWay | null} */ w) => {
+		const t = w?.tags ?? {};
+		return (t.bridge !== undefined && t.bridge !== 'no') || (t.tunnel !== undefined && t.tunnel !== 'no');
+	};
+	/** @type {{ at: number, name: string | null, signal: boolean }[]} */
+	const roadCrossings = [];
+	const crossingData = input.roadCrossings ?? {};
+	for (let i = 1; i < sequence.length - 1; i++) {
+		const entry = crossingData[String(sequence[i])];
+		if (!entry || (graded(edgeWay[i - 1]) && graded(edgeWay[i]))) continue;
+		const at = (/** @type {number} */ k) => ({ id: sequence[k], lat: points[k].lat, lon: points[k].lng });
+		const hit = roadCrossingAt(entry, at(i), at(i - 1), at(i + 1));
+		if (!hit) continue;
+		const name = hit.name ? hit.name.slice(0, MAX_NAME_LENGTH) : null;
+		const last = roadCrossings[roadCrossings.length - 1];
+		const oneRoad = last && (!last.name || !name || last.name.toLowerCase() === name.toLowerCase());
+		if (last && oneRoad && cum[i] - last.at < ROAD_CROSSING_MERGE_M) {
+			last.name = last.name ?? name;
+			last.signal = last.signal || hit.signal;
+			continue;
+		}
+		roadCrossings.push({ at: cum[i], name, signal: hit.signal });
+	}
+	for (const c of roadCrossings) {
+		raw.push({
+			kind: 'crossing',
+			at: c.at,
+			crossing: 'road',
+			...(c.name ? { name: c.name } : {}),
+			...(c.signal ? { signal: true } : {}),
+		});
+	}
+
+	for (const r of roadConnectorRuns(sequence, nodes, ways, input.roadConnectors ?? [])) {
+		raw.push({
+			kind: 'road',
+			at: r.fromM,
+			length_m: Math.max(1, Math.round(r.lengthM)),
+			...(r.name ? { name: r.name.slice(0, MAX_NAME_LENGTH) } : {}),
+		});
+	}
 
 	// An untagged way carries the surface before it (the first known one at
 	// the start); a stretch shorter than SURFACE_MIN_RUN_M joins the one before.
@@ -524,7 +601,8 @@ const STEP_FIELDS = Object.freeze({
 	direction: ['kind', 'at_m', 'rotation', 'keep_on', 'landmark'],
 	lap: ['kind', 'at_m', 'lap', 'of'],
 	junction: ['kind', 'at_m', 'turn', 'name', 'way'],
-	crossing: ['kind', 'at_m', 'crossing'],
+	road: ['kind', 'at_m', 'length_m', 'name'],
+	crossing: ['kind', 'at_m', 'crossing', 'name', 'signal'],
 	surface: ['kind', 'at_m', 'surface'],
 	climb: ['kind', 'at_m', 'gain_m', 'length_m'],
 	checkpoint: ['kind', 'at_m', 'order', 'of'],
@@ -538,7 +616,7 @@ const isLabel = (v) => typeof v === 'string' && v.trim().length >= 1 && v.trim()
 
 /**
  * Why a route guide is not one the database's CHECK accepts, or null when it
- * is. Mirrors `private.park_course_route_guide_ok` (migration 20271212001344)
+ * is. Mirrors `private.park_course_route_guide_ok` (migration 20280105001344)
  * rule for rule, so a bad manifest fails before a release connects.
  *
  * @param {any} guide
@@ -586,8 +664,15 @@ export function routeGuideRefusal(guide) {
 			if ('landmark' in s && !isLabel(s.landmark)) return `${where} landmark must be 1-${MAX_NAME_LENGTH} characters`;
 		}
 		if (s.kind === 'junction' && !TURNS.includes(s.turn)) return `${where} turn ${s.turn} is not one of ${TURNS.join(', ')}`;
-		if (s.kind === 'crossing' && !CROSSINGS.includes(s.crossing)) return `${where} crossing ${s.crossing} is not one of ${CROSSINGS.join(', ')}`;
+		if (s.kind === 'crossing') {
+			if (!CROSSINGS.includes(s.crossing)) return `${where} crossing ${s.crossing} is not one of ${CROSSINGS.join(', ')}`;
+			if (s.crossing !== 'road' && ('name' in s || 'signal' in s)) return `${where} only a road crossing carries a name or a signal`;
+			if ('signal' in s && s.signal !== true) return `${where} signal is true or left out`;
+		}
 		if (s.kind === 'surface' && !SURFACES.includes(s.surface)) return `${where} surface ${s.surface} is not one of ${SURFACES.join(', ')}`;
+		if (s.kind === 'road' && !(isWhole(s.length_m) && s.length_m >= 1 && s.length_m <= 1_000_000)) {
+			return `${where} road needs a whole length_m`;
+		}
 		if (s.kind === 'climb' && !(isWhole(s.gain_m) && s.gain_m >= 1 && s.gain_m <= 10_000 && isWhole(s.length_m) && s.length_m >= 1 && s.length_m <= 1_000_000)) {
 			return `${where} climb needs whole gain_m and length_m`;
 		}

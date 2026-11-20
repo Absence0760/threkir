@@ -4,7 +4,7 @@ description: Cómo un recorrido permanente en un parque cronometra tu carrera, p
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-13
+updated: 2026-11-19
 cta:
   feature: parks
 ---
@@ -19,7 +19,7 @@ Por eso es una **contrarreloj, no una carrera**. El sendero sigue abierto para t
 
 Cualquier carrera con traza GPS puede contar, tanto si la grabaste con Threkir como si la importaste de otra app. La carrera se compara con la línea del recorrido:
 
-- **Salida y meta.** El reloj arranca donde tu carrera cruza la salida del recorrido y se detiene donde cruza la meta. Ir y volver del punto de inicio no cuenta en tu contra.
+- **Salida y meta.** El mapa del recorrido muestra un recuadro de salida y un recuadro de meta, o un solo recuadro donde el recorrido empieza y termina en el mismo sitio. El reloj arranca cuando sales del recuadro de salida y se detiene cuando entras en el recuadro de meta, así que empieza a grabar en el recuadro de salida. Si paras a un paso del recuadro de meta, o pierdes el GPS uno o dos minutos justo antes, la carrera cuenta igual. Ir y volver del punto de inicio no cuenta en tu contra.
 - **Puntos de control.** Muchos recorridos tienen puntos de control por el camino. Tu carrera debe pasar por todos, en orden, para conseguir un tiempo.
 - **El recorrido completo.** Una carrera que solo cubre parte del recorrido, o una línea mucho más corta, no consigue tiempo.
 

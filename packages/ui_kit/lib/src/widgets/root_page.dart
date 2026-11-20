@@ -126,6 +126,11 @@ class _RootPageState extends State<RootPage> {
 
     final header = _RootHeader(
       padding: padding,
+      // An action that draws nothing (the Fitness hub's ⋮ on a tab with no
+      // menu) still made the row narrow its end padding for an icon button
+      // that isn't there; the header then keeps the gutter itself.
+      emptyActionsInset:
+          actions.isEmpty ? 0 : AppInsets.gutter - AppSpace.xs,
       collapsedExtent: toolbarHeight,
       textDirection: Directionality.of(context),
       onBarShown: _onBarShown,
@@ -264,6 +269,7 @@ enum _Slot { expanded, surface, bar, actions }
 class _RootHeader extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> {
   const _RootHeader({
     required this.padding,
+    required this.emptyActionsInset,
     required this.collapsedExtent,
     required this.textDirection,
     required this.onBarShown,
@@ -275,6 +281,9 @@ class _RootHeader extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> 
 
   /// The [PageHeader]'s padding, whose top and bottom frame the title row.
   final EdgeInsets padding;
+
+  /// What the end of the row keeps clear when the actions lay out zero wide.
+  final double emptyActionsInset;
   final double collapsedExtent;
   final TextDirection textDirection;
   final ValueChanged<bool> onBarShown;
@@ -298,6 +307,7 @@ class _RootHeader extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> 
   _RenderRootHeader createRenderObject(BuildContext context) =>
       _RenderRootHeader(
         padding: padding,
+        emptyActionsInset: emptyActionsInset,
         collapsedExtent: collapsedExtent,
         textDirection: textDirection,
         onBarShown: onBarShown,
@@ -310,6 +320,7 @@ class _RootHeader extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> 
   ) {
     renderObject
       ..padding = padding
+      ..emptyActionsInset = emptyActionsInset
       ..collapsedExtent = collapsedExtent
       ..textDirection = textDirection
       ..onBarShown = onBarShown;
@@ -320,10 +331,12 @@ class _RenderRootHeader extends RenderSliver
     with SlottedContainerRenderObjectMixin<_Slot, RenderBox> {
   _RenderRootHeader({
     required EdgeInsets padding,
+    required double emptyActionsInset,
     required double collapsedExtent,
     required TextDirection textDirection,
     required this.onBarShown,
   })  : _padding = padding,
+        _emptyActionsInset = emptyActionsInset,
         _collapsedExtent = collapsedExtent,
         _textDirection = textDirection;
 
@@ -332,6 +345,14 @@ class _RenderRootHeader extends RenderSliver
   set padding(EdgeInsets value) {
     if (value == _padding) return;
     _padding = value;
+    markNeedsLayout();
+  }
+
+  double get emptyActionsInset => _emptyActionsInset;
+  double _emptyActionsInset;
+  set emptyActionsInset(double value) {
+    if (value == _emptyActionsInset) return;
+    _emptyActionsInset = value;
     markNeedsLayout();
   }
 
@@ -382,7 +403,9 @@ class _RenderRootHeader extends RenderSliver
 
     _actions.layout(BoxConstraints(maxWidth: width), parentUsesSize: true);
     final actionsSize = _actions.size;
-    final side = math.max(0.0, width - actionsSize.width);
+    final reserved =
+        actionsSize.width > 0 ? actionsSize.width : emptyActionsInset;
+    final side = math.max(0.0, width - reserved);
     _expanded.layout(BoxConstraints.tightFor(width: side), parentUsesSize: true);
     final heading = math.max(
       0.0,
@@ -409,7 +432,7 @@ class _RenderRootHeader extends RenderSliver
       parentUsesSize: true,
     );
 
-    final lead = rtl ? actionsSize.width : 0.0;
+    final lead = rtl ? reserved : 0.0;
     _place(_expanded, Offset(lead, (row - heading) / 2 - shrink));
     _place(_surface, Offset.zero);
     _place(_bar, Offset(lead, 0));

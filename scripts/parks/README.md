@@ -8,7 +8,8 @@ Phase 3 of the park courses plan ([#1313](https://github.com/jaredhoward-dev/thr
 scripts/parks/
   lib/course_geometry.mjs        pure geometry: trace, measure, simplify, checkpoints
   lib/route_guide.mjs            pure: the course's route guide steps, and their validator
-  fetch_snapshot.mjs             network step: OSM ways + USGS elevations -> snapshot.json
+  lib/road_crossings.mjs         pure: where a course crosses a motor road at grade
+  fetch_snapshot.mjs             network step: OSM ways + USGS elevations + road crossings -> snapshot.json
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
   lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
   lib/catalogue_sync.mjs         pure: every park + the publisher -> the release sync's SQL
@@ -16,6 +17,8 @@ scripts/parks/
   lib/third_party_marks.mjs      pure: refuses parkrun / parkwalk in any spec or manifest string
   sync.mjs                       the release sync's park stage (and its manual fallback)
   load.mjs                       fallback: one built park -> one SQL statement on stdout
+  local_load.mjs                 local stacks only: every park, staged too, for bin/seed-demo.sh
+  lib/catalogue_local.mjs        pure: that load's SQL (seed guard + local official club + the sync)
   publisher.json                 the official club the courses publish as (slug + id)
   catalogue/<region>/<park>/
     park.json                    the spec, written by hand
@@ -28,8 +31,10 @@ scripts/parks/
 
 1. Find the trail's OSM way ids (the OSM website's "Query features" tool, or an Overpass query on the park boundary) and the node where the course starts. Use OSM or NPS data only. Never trace from AllTrails, Strava, Garmin or another app's routes (their terms forbid it), and use Virginia DCR data only once DCR has confirmed the terms in writing.
 2. Add the course to the park's `park.json`: `osm_ways` lists the ways of ONE loop (dead-end spurs such as piers are pruned automatically), `start_node` is where timing starts, and `published` is the park's own distance with its source URL.
-   Use only ways that are open to people on foot. A park's rules usually keep visitors to its designated trails (Virginia state parks: 4VAC5-30-274), so a course over a social trail or a bike-only trail sends runners where they are not allowed. The build refuses a course whose line uses a way tagged `informal=yes`, `foot=no` or `foot=private`, `access=no` or `access=private` (unless `foot=yes` or `foot=designated` overrides it, as on a foot-only trail), `highway=cycleway` without `foot=yes|designated`, or a mountain-bike trail (`mtb=designated` without foot access, or `bicycle=designated` with `foot=no`). Only ways the line walks are checked, so a pruned spur does not count. Prefer named trails and fire roads (`highway=track` with `foot=yes|designated`), and check every unnamed `path` or `footway` against the park's own trail map: OSM often leaves a park's bike-only trails untagged.
+   Use only ways that are open to people on foot. A park's rules usually keep visitors to its designated trails (Virginia state parks: 4VAC5-30-274), so a course over a social trail or a bike-only trail sends runners where they are not allowed. The build refuses a course whose line uses a way tagged `informal=yes`, `foot=no` or `foot=private`, `access=no` or `access=private` (unless `foot=yes` or `foot=designated` overrides it, as on a foot-only trail), `highway=cycleway` without `foot=yes|designated`, or a mountain-bike trail (`mtb=designated` without foot access, or `bicycle=designated` with `foot=no`). Only ways the line walks are checked, so a pruned spur does not count. It also warns, without refusing, on a walked way tagged `bicycle=designated` with no `foot=yes|designated` or tagged `foot=discouraged`: OSM maps a shared-use path and a bike-only trail the same way (York River State Park's John Blair Trail and Bobcat Run are bike-only on the park's map and carry exactly those tags). Check each warned way against the land manager's map; refuse it in `trail_review` if the map says bike-only, or record the land manager's word in `trail_review.foot_confirmed`, which silences the warning. Prefer named trails and fire roads (`highway=track` with `foot=yes|designated`), and check every unnamed `path` or `footway` against the park's own trail map: OSM often leaves a park's bike-only trails untagged.
 3. Check every way the course walks against the land manager's own trail map and record it in the park's `trail_review`: `checked_at`, the `source_urls` checked, `designated` (way ids confirmed as designated trails or open fire roads), `refused` (way id to the reason), and `fords` (designated ways that cross water with no bridge). The build refuses a course whose line walks a refused way, or any way `designated` does not list, naming the way, so a reroute cannot add an unchecked path. A walked way tagged `ford=yes` must be in `fords`, and each course's walked fords go into its `manifest.json` entry as `fords`.
+   Where the trail itself is broken at a road (a battlefield's tour road between two trail pieces, with no foot link mapped or built), list the road's way in `road_connectors` (way id to why the course uses it, citing the owner's decision) instead of `designated`. The course may then follow that road, but for no more than 250 m in one go (`ROAD_CONNECTOR_MAX_M` in `lib/course_geometry.mjs`), and its route guide gets a `road` step with the stretch's length, so the runner is told plainly where they leave the trail and for how far. A way cannot be both a road connector and designated or refused. Cold Harbor is the one park that uses it today.
+   Where OSM draws two trail pieces that meet as two dead ends a few metres apart (a near-miss junction, often where a trail crosses a park road on two separate road nodes), list the pair in `joins`: `{ "nodes": [a, b], "reason": "..." }`. The build walks each join as a synthetic step, refuses one over 10 m (`JOIN_MAX_M` in `lib/course_geometry.mjs`, inside a phone's GPS error; a wider gap can hide a real obstacle and needs the path mapped), and writes each walked join with its measured `gap_m` into the course's `manifest.json` entry as `joins`. The route guide reads a join as the trail either side of it, never as a step. Fixing the junction in OSM and dropping the entry on the next snapshot is better still. Poor Farm Park is the one park that uses it today.
 4. `node scripts/parks/fetch_snapshot.mjs scripts/parks/catalogue/<region>/<park>`
 5. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>`. The build refuses a course whose traced distance is more than 5 % off the published figure.
 6. Review the `.geojson` on a map (geojson.io, or drop it into QGIS) against the park's trail map before committing.
@@ -45,13 +50,15 @@ Every `park.json` `park` names its `kind`: `park`, or `trail` for a long trail t
 
 A National Park Service unit (`"agency": "nps"` in `park.json`'s `park`) also needs its `nps_park_code`, the NPS Data API `parkCode` (`shen` for Shenandoah, the code in the unit's nps.gov URL). The payload check refuses an `nps` park without one and any other park with one. The daily closures sweep reads the unit's NPS alerts by that code and flags its courses for review (decisions § 2454).
 
+A national forest (George Washington & Jefferson National Forests) is `"agency": "usfs"` and a national wildlife refuge `"agency": "usfws"` (decisions § 2593). Neither takes an `nps_park_code`, and the closures sweep does not read them: no feed of theirs is wired in, so their courses' closure, permit and seasonal-access notes come from the forest or refuge's own pages, recorded in `trail_review` with the URL and checked date. A refuge often limits hours or closes trails for hunts or nesting seasons; say so in the release `reason`.
+
 A trail course (`courses`) is a loop. A point-to-point or out-and-back course on a rail trail is a race course (see *Linear race courses*).
 
 ## Route guides
 
 Every course's manifest entry carries a `route_guide` the build generates
 (`lib/route_guide.mjs`, decisions § 2448): ordered steps (start, direction,
-lap, junction, crossing, surface, climb, checkpoint, finish) from the ways the
+lap, junction, road, crossing, surface, climb, checkpoint, finish) from the ways the
 course walks, their OSM names and tags, the snapshot's elevations and the
 checkpoints. Clients render the steps in each locale, so nothing in it is
 prose except the course's `getting_there` note. `--check` covers it like the
@@ -73,16 +80,63 @@ Per course in `park.json`:
   park. While it is null, every surface says the guide is drafted from map
   data and not yet checked on the ground.
 
+### Road crossings
+
+A `crossing` step of `road` tells a runner where the course crosses a motor
+road at grade: `{ "kind": "crossing", "crossing": "road", "name": "Hunter Mill Road", "signal": true, "at_m": 820 }`,
+read as "0.8 km: cross Hunter Mill Road at the traffic light." (or "cross the
+road. Watch for cars." when OSM gives no name and no signal). It is not the
+`road` step kind, which is a stretch the course runs along a road.
+
+The course ways alone cannot show a crossing, because the road through a
+shared node is not in them, so the snapshot carries `road_crossings`: for
+each course node a motor road passes through, the road's tags and its two
+neighbouring nodes, and how far along each a traffic signal sits. A full
+`fetch_snapshot.mjs` run fetches it (one Overpass query per park). For a park
+whose snapshot is already committed, fetch it alone, which leaves the ways,
+nodes and elevations exactly as they are, so no course line moves:
+
+```
+node scripts/parks/fetch_snapshot.mjs --road-crossings-only scripts/parks/catalogue/<region>/<park>
+node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>
+```
+
+A snapshot without `road_crossings` builds as it did before, with no road
+crossings. The rule (`lib/road_crossings.mjs`):
+
+- A road counts when its `highway` is a motor road (`MOTOR_ROADS` in
+  `lib/road_proximity.mjs`, `_link` included) that cars use (not `access=no` /
+  `motor_vehicle=no`). A `service` road counts only when it has a name and is
+  not a driveway, parking aisle, drive-through, alley or emergency access: an
+  unnamed driveway is nothing a runner can look for, and naming every one would
+  bury the roads that matter.
+- It must be at grade: a road tagged `bridge` or `tunnel` does not count, and
+  neither does a node where the course is on a bridge or in a tunnel on both
+  sides.
+- The course must cross it: the road's arms lie on both sides of the course's
+  path through the node. A road that ends at the trail, or one the course turns
+  onto, off or along (a `road_connectors` stretch), is no crossing.
+- `signal` is set when OSM puts a traffic signal on the crossing node
+  (`crossing=traffic_signals`, `crossing:signals=yes` or
+  `highway=traffic_signals`) or on the road within 15 m of it
+  (`ROAD_SIGNAL_NEAR_M`, a signal mapped on the junction beside the crosswalk).
+  Marked and unmarked crossings read the same.
+- Crossings within 40 m along the course (`ROAD_CROSSING_MERGE_M`) are one
+  when they share a name or one has none: the two carriageways of a divided
+  road, or a road and the unnamed turn lane beside it.
+
 Checking a guide (an owner step, done at the park):
 
 1. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>` and
    read the course's `route_guide.steps` in `manifest.json`, or open the
    course page on a preview deploy.
 2. Walk or run the course with the steps in hand. At each junction check the
-   turn and the trail name against the signs; check each bridge, ford and
-   surface change, and that each climb is where it says.
+   turn and the trail name against the signs; check each bridge, ford, road
+   crossing (its name and whether it has a traffic light) and surface change,
+   and that each climb is where it says.
 3. If a step is wrong, the cause is the data: fix the OSM way (name, `surface`,
-   `bridge`, `ford`) upstream and re-run `fetch_snapshot.mjs`, or change the
+   `bridge`, `ford`) or crossing node (`crossing=traffic_signals`) upstream and
+   re-run `fetch_snapshot.mjs` (`--road-crossings-only` for a road crossing), or change the
    course's ways in `park.json`. Never edit `manifest.json` by hand; `--check`
    would fail it.
 4. When every step matches, set `ground_checked_at` to the date you walked it
@@ -100,7 +154,7 @@ at the top of `lib/route_guide.mjs`.
 
 ## Race courses
 
-A park course is the trail as it is, whatever its length. A race course must measure exactly a race distance (`5k`, `10k`, `half`, `marathon`, `50k`), so it is built differently, under `race_courses` in `park.json`:
+A park course is the trail as it is, whatever its length. A race course must measure exactly a race distance (`5k`, `10k`, `half`, `marathon`, `50k`, `50mi` = 80,467.2 m, `100k`), so it is built differently, under `race_courses` in `park.json`:
 
 - `lead_in_via` runs from the start area to the loop, and `loop_via` goes once around the loop and back to where the lead-in meets it. Each is a list of OSM node ids walked in order along `osm_ways`. A race reuses parts of long, branching ways, so the via list is what pins the route: a junction and the node after it for every junction, plus a node about every 400 m. Without the extra pins, a hop several kilometres long along fire roads can be cut short by another part of the listed ways (the half-marathon loop traced 515 m short that way).
 - `laps` repeats the loop. Marathon and ultra distances are laps of a shorter loop.

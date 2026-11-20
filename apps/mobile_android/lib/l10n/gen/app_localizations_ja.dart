@@ -2806,9 +2806,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyAddRun => 'ランを追加';
 
   @override
-  String get historyAddRunTooltip => '手動でランを追加';
-
-  @override
   String get historyAddPastRun => '過去のランを追加';
 
   @override
@@ -17534,9 +17531,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planFinishFailed => 'プランを完了できませんでした。もう一度お試しください。';
 
   @override
-  String get dashboardLeadAddRun => 'ランを追加';
-
-  @override
   String get runRaceStopTitle => 'レース一時停止中';
 
   @override
@@ -21055,7 +21049,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksCourseNotFoundBody => 'このコースは掲載されていないか、掲載が終了しました。';
 
   @override
-  String get parksWebsite => '公園のウェブサイト';
+  String get parksWebsite => 'ウェブサイト';
 
   @override
   String get parksNoCourses => 'この公園にはまだコースがありません。';
@@ -21068,6 +21062,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksAgencyCounty => '郡立公園';
+
+  @override
+  String get parksAgencyUsfs => '国有林';
+
+  @override
+  String get parksAgencyUsfws => '野生生物保護区';
 
   @override
   String get parksAgencyOther => '公園';
@@ -21119,6 +21119,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksStatShape => '形状';
+
+  @override
+  String get parksStatLaps => '周回数';
+
+  @override
+  String get parksPreviewHint => 'コースを選ぶと、ルートとスタート地点が表示されます。';
+
+  @override
+  String get parksOpenCourse => 'コースを開く';
+
+  @override
+  String get parksPreviewClose => 'プレビューを閉じる';
+
+  @override
+  String get parksNoTimesYet => '今シーズンはここにまだタイムがありません。最初のタイムを残せるかもしれません。';
 
   @override
   String get parksStatSurface => '路面';
@@ -21182,15 +21197,35 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      '標識のあるトレイルから外れないでください。計測にはすべてのチェックポイントが必要なので、近道は記録になりません。これはレースではなくタイムトライアルです。トレイルは誰にでも開かれており、係員はいません。';
+      '地図上のコースラインに沿って走り、すべてのチェックポイントを順番に通過してください。通過しないとタイムは記録されません。';
+
+  @override
+  String get parksNoticeParkHours => '閉園時間までにフィニッシュしてください。';
+
+  @override
+  String get parksNoticeFord => 'コースには橋のない川の渡渉があります。雨の後は深くて渡れないことがあります。';
+
+  @override
+  String get parksNoticePavedTrail =>
+      '自転車と共用の道です。右側を走り、水を持って行きましょう。給水所が少ないかもしれません。';
+
+  @override
+  String get parksNoticeLongTrail => '長いコースです。水と食べ物を持って行きましょう。';
+
+  @override
+  String get parksNoticeParkHoursLong =>
+      '長いコースです。閉園時間までにフィニッシュできるよう、早めにスタートしてください。';
+
+  @override
+  String get parksSurfacePaved => '舗装路';
+
+  @override
+  String get parksNoticeOpenTrail =>
+      '一般に開放されたコースでのタイムトライアルで、レースではありません。係員はいません。';
 
   @override
   String get parksNotAffiliated =>
       'これらのコースはThrekirが公開しています。公園やその管理機関が主催・後援・推奨するものではありません。公園の規則、開園時間、料金、閉鎖情報に従ってください。';
-
-  @override
-  String get parksLongCourseNotice =>
-      '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
   String get parksTimesNotEventResults =>
@@ -21239,11 +21274,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksElevationProfile => '高低図';
 
   @override
-  String get parksBoardEmptyTitle => 'まだタイムがありません。あなたが最初になれます。';
-
-  @override
-  String get parksBoardEmptyBody =>
-      'Threkirで記録しながらこのコースを走ってください。コース全体を走り、すべてのチェックポイントを通過すると、タイムが自動でここに表示されます。提出の手続きは必要ありません。';
+  String get parksBoardEmptyTitle =>
+      'まだタイムはありません。Threkirで走ると、ここにあなたのタイムが表示されます。';
 
   @override
   String get parksLegendTitle => '地図の凡例';
@@ -21256,6 +21288,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksLegendStartFinish => 'スタート・フィニッシュ';
+
+  @override
+  String get parksMapJumpStart => 'スタートを地図で表示';
+
+  @override
+  String get parksMapJumpFinish => 'フィニッシュを地図で表示';
+
+  @override
+  String get parksMapJumpStartFinish => 'スタート兼フィニッシュを地図で表示';
+
+  @override
+  String get parksMapJumpWholeCourse => 'コース全体を表示';
 
   @override
   String get parksEndsTitle => 'スタート・フィニッシュ地点';
@@ -21295,6 +21339,44 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksLegendDirection => '走る方向';
+
+  @override
+  String parksBoxesApart(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '緑のボックスで記録を開始し、矢印に沿って周回コースを$n周走り、赤のボックスでフィニッシュします。',
+      one: '緑のボックスで記録を開始し、矢印に沿って赤のボックスまで走ります。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksBoxesShared(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'スタートボックスで記録を開始し、矢印に沿って周回コースを$n周走り、同じボックスでフィニッシュします。',
+      one: 'スタートボックスで記録を開始し、矢印に沿って走って、同じボックスでフィニッシュします。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksEndsGetDirections => 'スタートへの行き方';
+
+  @override
+  String get parksEndsCoordinates => '座標';
+
+  @override
+  String get parksTurnAround => '折り返し';
+
+  @override
+  String get parksLegendTurnAround => 'ここで折り返し：必ず通過してください';
+
+  @override
+  String get parksBoxesOutAndBack =>
+      'スタートボックスで記録を開始し、矢印に沿って「折り返し」の印まで走り、ボックスに戻ります。';
 
   @override
   String parksMapCourseLabel(int n) {
@@ -21883,6 +21965,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoad(String at, String length) {
+    return '$at：道路を$length進みます。車に注意してください。';
+  }
+
+  @override
+  String parkGuideRoadNamed(String at, String name, String length) {
+    return '$at：道路（$name）を$length進みます。車に注意してください。';
+  }
+
+  @override
   String parkGuideBridge(String at) {
     return '$at：橋を渡ります。';
   }
@@ -21890,6 +21982,26 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String parkGuideFord(String at) {
     return '$at：浅瀬を渡ります。橋はないので、足が濡れる覚悟を。';
+  }
+
+  @override
+  String parkGuideCrossRoad(String at) {
+    return '$at：道路を渡ります。車に注意してください。';
+  }
+
+  @override
+  String parkGuideCrossRoadNamed(String at, String name) {
+    return '$at：道路（$name）を渡ります。車に注意してください。';
+  }
+
+  @override
+  String parkGuideCrossRoadSignal(String at) {
+    return '$at：信号で道路を渡ります。';
+  }
+
+  @override
+  String parkGuideCrossRoadNamedSignal(String at, String name) {
+    return '$at：信号で道路（$name）を渡ります。';
   }
 
   @override
@@ -21936,6 +22048,42 @@ class AppLocalizationsJa extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at：フィニッシュ。';
   }
+
+  @override
+  String parkGuideLaps(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '周回コースを$total周します。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parkGuideRoadCrossings(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: 'このコースでは道路を$total回渡ります。車に注意してください。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parkGuideRepeatLoop => '同じ周回コースをもう一度走ります。';
+
+  @override
+  String parkGuideLapHeader(int n) {
+    return '$n周目';
+  }
+
+  @override
+  String parkGuideKmHeader(String from, String to) {
+    return '$from〜$to';
+  }
+
+  @override
+  String get parkGuideShowAll => 'すべての手順を表示';
 
   @override
   String get parkCourseReportAction => 'このコースの問題を報告';

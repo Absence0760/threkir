@@ -15,9 +15,13 @@
 	import {
 		mapAccentColour,
 		mapFinishColour,
+		mapFinishZoneColour,
 		mapLabelHalo,
 		mapLabelInk,
+		mapBoxInk,
+		mapStartZoneColour,
 		MAP_ARROW_INK,
+		MAP_CONTROL_INK,
 		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
@@ -26,6 +30,8 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
 	import { minMax } from '#lib/util/min_max.ts';
+	import type { CourseJumpTarget } from '#lib/parks/course_jump.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
 	import { buildCumulative, buildSegment, type SelectedSegment } from '#lib/runs/track_segment.ts';
@@ -38,6 +44,9 @@
 	} from '#lib/segments/pace_segments.ts';
 	import { snapToPolyline } from '#lib/routes/route_snap.ts';
 	import { computeDistanceMarkers, METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
+	import { addCourseGateBoxLayers, gateFlagSvg, turnaroundSvg } from '#lib/races/course_gate_layers.ts';
+	import { gateBoxParts } from '#lib/races/course_gates.ts';
+	import type { Gate } from '#lib/geo/gate_crossing.ts';
 	import {
 		buildTrackIndex,
 		nearestIndex,
@@ -136,6 +145,36 @@
 		/// snap is purely the rendered lng/lat; `position_m` is still derived
 		/// server-side from routes.geom.
 		snapToRoute?: boolean;
+		/// A course's stored start and finish lines, drawn as a green start box
+		/// and a red finish box, each with a flag and its name, in place of the
+		/// start and finish pins (`gateBoxParts`, decisions § 2582). Null = the
+		/// pins, as before.
+		gateBoxes?: {
+			start: Gate | null;
+			finish: Gate | null;
+			labels: { start: string; finish: string; both: string };
+		} | null;
+		/// An out-and-back's turn: its last checkpoint, drawn as a named tag
+		/// with a U-turn instead of a numbered pin. Null = none.
+		turnaround?: { lat: number; lng: number; label: string } | null;
+		/// A park course's whole-course view (decisions § 2582): the km / mile
+		/// badges of one lap only (`lapM`, real metres), the ones
+		/// `badgeAtOverview` passes shown at the fitted zoom and the rest once
+		/// zoomed in, the checkpoint names only once zoomed in, and no badge
+		/// under a checkpoint dot. Null = every map's usual layers.
+		courseOverview?: { lapM: number | null; badgeAtOverview: (label: number) => boolean } | null;
+		/// A park course's jump-to controls: the start and finish tags on the
+		/// map become buttons named by `names`, and a Whole course icon button
+		/// joins the zoom controls; each calls `onJump` with its target. Null =
+		/// tags that are only labels and no extra control.
+		courseJump?: {
+			names: Record<CourseJumpTarget, string>;
+			onJump: (target: CourseJumpTarget) => void;
+		} | null;
+		/// Bindable: whether the map draws at least one km / mile badge, read
+		/// once each render settles (after a zoom, a style swap or the first
+		/// load), so a map key can name the badges only while they are there.
+		distanceBadgesShown?: boolean;
 	}
 	let {
 		track = [],
@@ -157,6 +196,11 @@
 		onMarkerDrag,
 		draftMarker = null,
 		snapToRoute = false,
+		gateBoxes = null,
+		turnaround = null,
+		courseOverview = null,
+		courseJump = null,
+		distanceBadgesShown = $bindable(false),
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
@@ -184,6 +228,10 @@
 
 	const DISTANCE_BADGE_ID = 'distance-marker-badge';
 	const DISTANCE_BADGE_RATIO = 2;
+	/// An empty image a course map's checkpoint dots hold their place with in
+	/// the collision pass, a little wider than the 16 px dot and its ring.
+	const MARKER_RESERVE_ID = 'route-marker-reserve';
+	const MARKER_RESERVE_PX = 24;
 
 	/// The km / mile badge as an image, so the badge and its number are one
 	/// symbol that collides as a unit: a filled circle of radius 11 with a
@@ -225,6 +273,8 @@
 
 	let mapContainer = $state<HTMLDivElement>();
 	let map: maplibregl.Map;
+	/// Whether the first style load, and the entrance fit inside it, has run.
+	let styleLoadedOnce = false;
 	let stopResizeWatch: (() => void) | null = null;
 	let animating = $state(false);
 	let animationFrame: number;
@@ -280,8 +330,136 @@
 		animationMarker?.remove();
 	}
 
+	/// Fit the camera to `bounds`, as a course page's jump controls ask: an
+	/// eased move, or a jump when the reader asked for less motion, never
+	/// closer than `maxZoom`. Once the camera settles the container carries
+	/// `data-map-target` and `data-map-zoom`, so a test can see where it went.
+	export function jumpTo(
+		target: string,
+		bounds: { south: number; west: number; north: number; east: number },
+		maxZoom?: number,
+	): void {
+		if (!map) return;
+		// Before the style loads, the entrance fit is still to come and would
+		// undo this jump, so wait for it and jump after.
+		if (!styleLoadedOnce) {
+			map.once('load', () => jumpTo(target, bounds, maxZoom));
+			return;
+		}
+		// Stop a move still in flight (the entrance fit) first: stopping it
+		// fires its own moveend, which would otherwise be read as this one's.
+		map.stop();
+		mapContainer?.removeAttribute('data-map-target');
+		map.once('moveend', () => {
+			mapContainer?.setAttribute('data-map-target', target);
+			mapContainer?.setAttribute('data-map-zoom', map.getZoom().toFixed(2));
+		});
+		map.fitBounds(
+			[
+				[bounds.west, bounds.south],
+				[bounds.east, bounds.north],
+			],
+			// An undefined maxZoom would override the map's own and fit to NaN.
+			{ padding: 50, animate: !motion.reduced, ...(maxZoom === undefined ? {} : { maxZoom }) },
+		);
+	}
+
+	/// The Whole course button under the zoom and compass buttons: a MapLibre
+	/// control group, so it takes their size, focus ring and stacking. The
+	/// title is the pointer's tooltip; the label is its name.
+	function wholeCourseControl(name: string, run: () => void): maplibregl.IControl {
+		let group: HTMLDivElement | null = null;
+		return {
+			onAdd() {
+				group = document.createElement('div');
+				group.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'map-whole-course';
+				button.dataset.testid = 'map-whole-course';
+				button.title = name;
+				button.setAttribute('aria-label', name);
+				const icon = document.createElement('span');
+				icon.className = 'material-symbols';
+				icon.setAttribute('aria-hidden', 'true');
+				icon.textContent = 'zoom_out_map';
+				icon.style.color = MAP_CONTROL_INK;
+				button.appendChild(icon);
+				button.addEventListener('click', run);
+				group.appendChild(button);
+				return group;
+			},
+			onRemove() {
+				group?.remove();
+				group = null;
+			},
+		};
+	}
+
 	let startMarker: maplibregl.Marker | undefined;
 	let endMarker: maplibregl.Marker | undefined;
+	let boxMarkers: maplibregl.Marker[] = [];
+
+	/// A start or finish box's name tag: filled with the box's colour, so it
+	/// is the green or red box at the whole-course zoom, with its flag and
+	/// name. A box the start and finish share is one colour, the start's,
+	/// like the box. The name is text, never markup. With `courseJump` the tag
+	/// is a button that takes the map to its box.
+	function boxMarkerElement(which: 'start' | 'finish' | 'both', name: string): HTMLElement {
+		const target: CourseJumpTarget = which === 'both' ? 'startFinish' : which;
+		const jump = courseJump;
+		return tagElement(
+			`gate-box-marker-${which}`,
+			which === 'finish' ? mapFinishZoneColour(darkBasemap) : mapStartZoneColour(darkBasemap),
+			mapBoxInk(darkBasemap),
+			gateFlagSvg(which, darkBasemap),
+			name,
+			jump ? { label: jump.names[target], run: () => jump.onJump(target) } : undefined,
+		);
+	}
+
+	/// Which side of its point a tag sits: toward the middle of the course, so
+	/// a tag at the edge of the fitted view reads whole instead of running off
+	/// the map.
+	function tagAnchor(lng: number, coords: [number, number][]): 'left' | 'right' {
+		let w = Infinity;
+		let e = -Infinity;
+		for (const [x] of coords) {
+			w = Math.min(w, x);
+			e = Math.max(e, x);
+		}
+		return lng <= (w + e) / 2 ? 'left' : 'right';
+	}
+
+	function tagElement(
+		testid: string,
+		background: string,
+		ink: string,
+		iconSvg: string,
+		name: string,
+		action?: { label: string; run: () => void },
+	): HTMLElement {
+		const el = document.createElement(action ? 'button' : 'div');
+		el.className = action ? 'map-tag map-tag-action' : 'map-tag';
+		el.dataset.testid = testid;
+		if (action) {
+			el.setAttribute('type', 'button');
+			el.setAttribute('aria-label', action.label);
+			el.addEventListener('click', (e) => {
+				// The map's own click handlers would read it as a click on the map.
+				e.stopPropagation();
+				action.run();
+			});
+		}
+		el.style.background = background;
+		el.style.color = ink;
+		el.style.borderColor = mapOverlayOutline(darkBasemap);
+		el.innerHTML = iconSvg;
+		const label = document.createElement('span');
+		label.textContent = name;
+		el.appendChild(label);
+		return el;
+	}
 	let segmentMarker: maplibregl.Marker | undefined;
 	/// Marker rendered at track[hoverIdx] when hoverIdx is in range —
 	/// the chart-driven half of the linked-cursor pattern. Held as an
@@ -471,12 +649,10 @@
 			},
 		});
 
-		const distanceMarkers = computeDistanceMarkers(
-			coords,
-			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
-			totalDistanceM,
-			officialDistanceM,
-		);
+		const distanceMarkers = badgeData(coords, officialDistanceM);
+		// How far in the fitted whole-course view is: the badges and names a
+		// course map holds back appear one step past it.
+		const detailZoom = (bounds ? (map.cameraForBounds(bounds, { padding: 50 })?.zoom ?? 0) : 0) + 1;
 		const badge = distanceBadgeImage(mapLabelHalo(darkBasemap), mapTrackLine(darkBasemap));
 		if (distanceMarkers.features.length > 0 && badge) {
 			if (map.hasImage(DISTANCE_BADGE_ID)) map.updateImage(DISTANCE_BADGE_ID, badge);
@@ -490,24 +666,42 @@
 			// out-and-back). The sort key places every 10th, then every 5th
 			// first, so zooming out keeps 10, 20, 30 and zooming in brings the
 			// rest back.
+			const badgeLayout: maplibregl.SymbolLayerSpecification['layout'] = {
+				'icon-image': DISTANCE_BADGE_ID,
+				'icon-allow-overlap': false,
+				'text-field': ['get', 'label'],
+				'text-size': 11,
+				'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+				'text-allow-overlap': false,
+				'symbol-sort-key': ['get', 'rank'],
+			};
+			const overview: maplibregl.ExpressionSpecification = ['==', ['get', 'overview'], true];
 			map.addLayer({
 				id: 'distance-marker',
 				type: 'symbol',
 				source: 'distance-markers',
-				layout: {
-					'icon-image': DISTANCE_BADGE_ID,
-					'icon-allow-overlap': false,
-					'text-field': ['get', 'label'],
-					'text-size': 11,
-					'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-					'text-allow-overlap': false,
-					'symbol-sort-key': ['get', 'rank'],
-				},
+				...(courseOverview ? { filter: overview } : {}),
+				layout: badgeLayout,
 				paint: {
 					'text-color': mapLabelInk(darkBasemap),
 				},
 			});
+			if (courseOverview) {
+				map.addLayer({
+					id: 'distance-marker-detail',
+					type: 'symbol',
+					source: 'distance-markers',
+					minzoom: detailZoom,
+					filter: ['!', overview],
+					layout: badgeLayout,
+					paint: {
+						'text-color': mapLabelInk(darkBasemap),
+					},
+				});
+			}
 		}
+
+		if (gateBoxes) addCourseGateBoxLayers(map, 'course-gate-boxes', gateBoxes.start, gateBoxes.finish, darkBasemap);
 
 		// Course markers (aid stations, cutoffs, …). Coloured pins above the
 		// trace with an optional label; updated reactively by the $effect
@@ -527,10 +721,29 @@
 				'circle-stroke-width': 2,
 			},
 		});
+		if (courseOverview) {
+			// Each checkpoint dot holds its place in the symbol collision pass,
+			// so no km badge is drawn under one. The image is empty: the
+			// circle layer above draws the dot.
+			if (!map.hasImage(MARKER_RESERVE_ID)) {
+				map.addImage(MARKER_RESERVE_ID, {
+					width: MARKER_RESERVE_PX,
+					height: MARKER_RESERVE_PX,
+					data: new Uint8Array(MARKER_RESERVE_PX * MARKER_RESERVE_PX * 4),
+				});
+			}
+			map.addLayer({
+				id: 'route-marker-reserve',
+				type: 'symbol',
+				source: 'route-markers',
+				layout: { 'icon-image': MARKER_RESERVE_ID, 'icon-allow-overlap': true },
+			});
+		}
 		map.addLayer({
 			id: 'route-marker-label',
 			type: 'symbol',
 			source: 'route-markers',
+			...(courseOverview ? { minzoom: detailZoom } : {}),
 			layout: {
 				'text-field': ['get', 'label'],
 				'text-size': 11,
@@ -565,12 +778,49 @@
 		// a style swap can flip the ground these caps are measured against.
 		startMarker?.remove();
 		endMarker?.remove();
-		startMarker = new maplibregl.Marker({ color: mapStartColour(darkBasemap) })
-			.setLngLat(coords[0])
-			.addTo(map);
-		endMarker = new maplibregl.Marker({ color: mapFinishColour(darkBasemap) })
-			.setLngLat(coords[coords.length - 1])
-			.addTo(map);
+		startMarker = undefined;
+		endMarker = undefined;
+		for (const mk of boxMarkers) mk.remove();
+		boxMarkers = [];
+		if (gateBoxes) {
+			// The boxes' flags take the pins' place: a fixed size at any zoom,
+			// so the start and finish read first on the whole-course view.
+			for (const { which, at } of gateBoxParts(gateBoxes.start, gateBoxes.finish).markers) {
+				boxMarkers.push(
+					new maplibregl.Marker({
+						element: boxMarkerElement(which, gateBoxes.labels[which]),
+						anchor: tagAnchor(at.lng, coords),
+						offset: [tagAnchor(at.lng, coords) === 'left' ? 6 : -6, 0],
+					})
+						.setLngLat([at.lng, at.lat])
+						.addTo(map),
+				);
+			}
+		}
+		if (turnaround) {
+			boxMarkers.push(
+				new maplibregl.Marker({
+					element: tagElement(
+						'turnaround-marker',
+						mapLabelHalo(darkBasemap),
+						mapLabelInk(darkBasemap),
+						turnaroundSvg(mapLabelInk(darkBasemap)),
+						turnaround.label,
+					),
+					anchor: tagAnchor(turnaround.lng, coords),
+				})
+					.setLngLat([turnaround.lng, turnaround.lat])
+					.addTo(map),
+			);
+		}
+		if (!gateBoxes) {
+			startMarker = new maplibregl.Marker({ color: mapStartColour(darkBasemap) })
+				.setLngLat(coords[0])
+				.addTo(map);
+			endMarker = new maplibregl.Marker({ color: mapFinishColour(darkBasemap) })
+				.setLngLat(coords[coords.length - 1])
+				.addTo(map);
+		}
 
 		// Empty selected-segment source + layers; populated when the user
 		// clicks. Rendered above the base trace so the highlight reads
@@ -604,6 +854,7 @@
 		'trace',
 		'distance-markers',
 		'route-markers',
+		'course-gate-boxes',
 		'animated-trace',
 		'selected-segment',
 	] as const;
@@ -640,16 +891,29 @@
 		untrack(() => {
 			const src = map?.getSource('distance-markers') as maplibregl.GeoJSONSource | undefined;
 			if (!src || trackCoords.length < 2) return;
-			src.setData(
-				computeDistanceMarkers(
-					trackCoords,
-					getUnit() === 'mi' ? METRES_PER_MILE : 1000,
-					totalDistanceM,
-					official,
-				),
-			);
+			src.setData(badgeData(trackCoords, official));
 		});
 	});
+
+	/// The km / mile badges for [coords]: one lap's on a course map, each
+	/// marked whether it shows at the whole-course zoom.
+	function badgeData(coords: [number, number][], official: number | null) {
+		const fc = computeDistanceMarkers(
+			coords,
+			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+			totalDistanceM,
+			official,
+			courseOverview?.lapM ?? null,
+		);
+		if (!courseOverview) return fc;
+		return {
+			...fc,
+			features: fc.features.map((f) => ({
+				...f,
+				properties: { ...f.properties, overview: courseOverview.badgeAtOverview(Number(f.properties.label)) },
+			})),
+		};
+	}
 
 	let trackCoords: [number, number][] = [];
 	/// Pace colour stops for `track`, taken with the other snapshots.
@@ -782,8 +1046,25 @@
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
+		const jumpControl = courseJump;
+		if (jumpControl) {
+			map.addControl(
+				wholeCourseControl(jumpControl.names.course, () => jumpControl.onJump('course')),
+				'top-right',
+			);
+		}
 
-		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
+		map.on('load', () => {
+			applyOverlayStep(overlayDraw.styleReady(true));
+			styleLoadedOnce = true;
+		});
+		// 'idle' fires once a render has settled, never mid-zoom, so the
+		// answer does not flicker while the map moves.
+		map.on('idle', () => {
+			const layers = ['distance-marker', 'distance-marker-detail'].filter((id) => map.getLayer(id));
+			const shown = layers.length > 0 && map.queryRenderedFeatures({ layers }).length > 0;
+			if (shown !== distanceBadgesShown) distanceBadgesShown = shown;
+		});
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera
@@ -994,6 +1275,8 @@
 		previewMarker = undefined;
 		for (const mk of pinMarkers.values()) mk.remove();
 		pinMarkers.clear();
+		for (const mk of boxMarkers) mk.remove();
+		boxMarkers = [];
 		draftMk?.remove();
 		draftMk = undefined;
 		map?.remove();
@@ -1020,7 +1303,9 @@
 	style:--map-label-halo={mapLabelHalo(darkBasemap)}
 >
 	{#if mapConsented}
-		<div bind:this={mapContainer} class="run-map" aria-hidden="true"></div>
+		<!-- Hidden from screen readers, except where the map carries controls of
+		     its own (a park course's jump-to buttons), which they must reach. -->
+		<div bind:this={mapContainer} class="run-map" aria-hidden={courseJump ? undefined : 'true'}></div>
 		{#if animatable}
 			<button class="replay-btn" onclick={() => animating ? stopAnimation() : startAnimation()}>
 				<span class="material-symbols">{animating ? 'stop' : 'play_arrow'}</span>
@@ -1232,6 +1517,40 @@
 			0 1px 4px rgba(0, 0, 0, 0.3);
 	}
 
+	/* A start or finish box's name tag, or the turn-around's: big enough to
+	   read first on the whole-course view, and a hit target only as a park
+	   course's jump-to button (.map-tag-action), so the map stays pannable
+	   around it. */
+	:global(.map-tag) {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.2rem 0.55rem 0.2rem 0.4rem;
+		border: 2px solid;
+		border-radius: 999px;
+		font-weight: 700;
+		font-size: 0.95rem;
+		line-height: 1.2;
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow: var(--shadow-md);
+	}
+	:global(.map-tag-action) {
+		pointer-events: auto;
+		cursor: pointer;
+		font-family: inherit;
+	}
+	:global(.map-tag-action:hover) {
+		box-shadow: var(--shadow-lg);
+	}
+	:global(.map-tag-action:focus-visible) {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	:global(.map-whole-course .material-symbols) {
+		font-size: 1.25rem;
+		line-height: 29px;
+	}
 	:global(.segment-pin) {
 		width: 14px;
 		height: 14px;

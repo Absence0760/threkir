@@ -659,6 +659,18 @@
             "at_m": 9358
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dvorak Road",
+            "at_m": 9609
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 11760
+          },
+          {
             "kind": "checkpoint",
             "at_m": 12056,
             "order": 4,
@@ -739,6 +751,12 @@
             "turn": "left",
             "way": "path",
             "at_m": 19943
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 19964
           },
           {
             "kind": "climb",
@@ -993,10 +1011,22 @@
             "at_m": 9424
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dvorak Road",
+            "at_m": 9675
+          },
+          {
             "kind": "checkpoint",
             "at_m": 9737,
             "order": 3,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 11827
           },
           {
             "kind": "checkpoint",
@@ -1079,6 +1109,12 @@
             "turn": "left",
             "way": "path",
             "at_m": 20010
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 20030
           },
           {
             "kind": "climb",
@@ -1471,10 +1507,22 @@
             "at_m": 13000
           },
           {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "Dvorak Road",
+            "at_m": 13250
+          },
+          {
             "kind": "checkpoint",
             "at_m": 15385,
             "order": 4,
             "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 15402
           },
           {
             "kind": "junction",
@@ -1551,6 +1599,12 @@
             "turn": "left",
             "way": "path",
             "at_m": 23912
+          },
+          {
+            "kind": "crossing",
+            "crossing": "road",
+            "name": "State Park Road",
+            "at_m": 23933
           },
           {
             "kind": "climb",

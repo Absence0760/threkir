@@ -690,10 +690,17 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		AAD3DF: [1, 'cartographic'], DCDCDC: [1, 'cartographic'],
 		FFFFFF: [3, 'cartographic'], '1E1B4B': [1, 'cartographic'],
 		'172554': [1, 'cartographic'],
+		// MAP_CONTROL_INK: our own icon inside a MapLibre control group, which
+		// is white on every basemap and theme, so it takes the stock glyphs' ink.
+		'333333': [1, 'cartographic'],
 		F08A5D: [1, 'cartographic'], A33D1A: [1, 'cartographic'],
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
-		'22C55E': [1, 'cartographic'], '15803D': [1, 'cartographic'],
-		EF4444: [2, 'cartographic'], B91C1C: [1, 'cartographic'],
+		'22C55E': [1, 'cartographic'], '15803D': [2, 'cartographic'],
+		EF4444: [3, 'cartographic'], B91C1C: [1, 'cartographic'],
+		// The park course start and finish zones (`mapStartZoneColour` /
+		// `mapFinishZoneColour`), graded on every ground and against each other
+		// under a deuteranopia simulation by basemap_contrast.test.ts.
+		'86EFAC': [1, 'cartographic'], '701A1A': [1, 'cartographic'],
 		'991B1B': [2, 'cartographic'],
 		'22D3EE': [1, 'cartographic'], '0E7490': [1, 'cartographic'],
 		A78BFA: [1, 'cartographic'], '6D28D9': [1, 'cartographic'],

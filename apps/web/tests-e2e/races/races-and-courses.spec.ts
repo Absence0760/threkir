@@ -1,4 +1,7 @@
+import type { Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun, deleteRun } from '../fixtures/simulate';
@@ -7,7 +10,7 @@ import { USER_A, USER_B } from '../fixtures/users';
 /**
  * Races & courses (issue #1352): `/races` holds two sections, the race
  * calendar ("Upcoming races") and the park courses ("Run any time"), each
- * loading and failing on its own. The run-surface strip is five tabs in the
+ * loading and failing on its own. The run-surface strip is four tabs in the
  * mobile order with no Parks tab, and `/parks` stays reachable directly and
  * from the section's "See all N courses" heading link, which shows only when
  * the list is cut short (issue #1374). Run any time lists parks, each opening
@@ -19,6 +22,40 @@ import { USER_A, USER_B } from '../fixtures/users';
  * whatever other parks the local catalogue holds, and its course start is the
  * position the location test grants, so it is nearest there too.
  */
+
+// The place lookup goes to MapTiler when PUBLIC_MAPTILER_KEY is set and to
+// Nominatim when not, so every lookup is answered here, in the shape of the
+// provider the build asked, and never leaves the machine.
+const GEOCODER = /^https:\/\/(nominatim\.openstreetmap\.org\/search|api\.maptiler\.com\/geocoding\/)/;
+
+interface FakePlace {
+	name: string;
+	lat: number;
+	lng: number;
+}
+
+function geocoderBody(url: string, places: FakePlace[]): string {
+	return new URL(url).hostname === 'api.maptiler.com'
+		? JSON.stringify({ features: places.map((p) => ({ place_name: p.name, center: [p.lng, p.lat] })) })
+		: JSON.stringify(places.map((p) => ({ display_name: p.name, lat: String(p.lat), lon: String(p.lng) })));
+}
+
+// Every case gets an empty geocoder so none reaches the real one; it counts
+// nothing, so it is a net rather than a mock a case depends on.
+async function quietGeocoder(page: Page) {
+	await page.route(GEOCODER, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: geocoderBody(route.request().url(), []) }),
+	);
+}
+
+// A case that searches answers through mockRoute, so if the pattern stops
+// matching the case fails instead of asking the real geocoder.
+async function answerPlaces(page: Page, mockRoute: MockRoute, places: FakePlace[], asked: URL[] = []) {
+	await mockRoute(page, GEOCODER, (route) => {
+		asked.push(new URL(route.request().url()));
+		return route.fulfill({ status: 200, contentType: 'application/json', body: geocoderBody(route.request().url(), places) });
+	});
+}
 
 const uniq = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const M_PER_DEG_LAT = 111_320;
@@ -33,7 +70,7 @@ interface Planted {
 	runIds: string[];
 }
 
-async function plantCourse(): Promise<Planted> {
+async function plantCourse(start: { lat: number; lng: number } = START): Promise<Planted> {
 	const admin = getAdminClient();
 	const tag = uniq();
 	const parkSlug = `e2e-any-time-${tag}`;
@@ -44,8 +81,8 @@ async function plantCourse(): Promise<Planted> {
 		.insert({
 			name: courseName,
 			waypoints: [
-				{ lat: START.lat, lng: START.lng },
-				{ lat: START.lat + 5000 / M_PER_DEG_LAT, lng: START.lng },
+				{ lat: start.lat, lng: start.lng },
+				{ lat: start.lat + 5000 / M_PER_DEG_LAT, lng: start.lng },
 			],
 			distance_m: 5000,
 			surface: 'trail',
@@ -116,6 +153,10 @@ async function teardown(p: Planted | null) {
 test.describe('races & courses', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
+	test.beforeEach(async ({ page }) => {
+		await quietGeocoder(page);
+	});
+
 	test('the run-surface strip is four tabs in the mobile order, with no Parks or Segments tab', async ({ page }) => {
 		await page.goto('/races');
 		const strip = page.locator('nav.surface-tabs');
@@ -129,7 +170,10 @@ test.describe('races & courses', () => {
 		]);
 		await expect(strip.getByRole('link', { name: 'Races & courses' })).toHaveAttribute('aria-current', 'page');
 		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
-		await expect(page.getByRole('heading', { level: 1, name: 'Races & courses' })).toBeVisible();
+		// The run surface's title heads the page; Races & courses renders no
+		// second title of its own below the strip.
+		await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+		await expect(page.getByTestId('run-surface-header').getByRole('heading', { level: 1 })).toBeVisible();
 		await expect(page).toHaveTitle(/^Races & courses/);
 	});
 
@@ -182,11 +226,12 @@ test.describe('races & courses', () => {
 		try {
 			planted = await plantCourse();
 			await page.goto(`/parks/us-ak/${planted.parkSlug}`);
-			const course = page.getByTestId('park-course-card').filter({ hasText: planted.courseName });
-			await expect(course.getByTestId('park-course-record')).toContainText(
-				'No time yet this season. Yours could be the first.',
+			await expect(page.getByTestId('park-no-times-yet')).toHaveText(
+				'No times here yet this season. Yours could be the first.',
 				{ timeout: 10_000 },
 			);
+			const course = page.getByTestId('park-course-card').filter({ hasText: planted.courseName });
+			await expect(course.getByTestId('park-course-record')).toHaveCount(0);
 		} finally {
 			await teardown(planted);
 		}
@@ -275,12 +320,13 @@ test.describe('races & courses', () => {
 		await expect(page.getByTestId('races-filters-toggle')).toHaveCount(0);
 		const anyTime = page.getByTestId('races-any-time');
 		await expect(anyTime).toBeVisible();
-		await expect(anyTime.getByTestId('races-near')).toBeVisible();
+		// One search box: the place field lives only in the race Filters sheet.
+		await expect(page.getByTestId('races-near')).toHaveCount(0);
 		await expect(anyTime.getByTestId('races-use-location')).toBeVisible();
 		// Every park is listed here, so there is no "See all".
 		await expect(anyTime.getByTestId('races-any-time-all')).toHaveCount(0);
 		// The search stays, and says what it finds in this view.
-		await expect(page.getByTestId('races-search')).toHaveAttribute('placeholder', 'Search parks and courses…');
+		await expect(page.getByTestId('races-search')).toHaveAttribute('placeholder', 'Search parks, courses or places…');
 
 		await races.click();
 		await expect(page).toHaveURL(/\/races\?show=races$/);
@@ -436,13 +482,97 @@ test.describe('races & courses', () => {
 			await expect(search).toHaveValue(`alaska ${b.parkName.split(' ').pop()}`);
 			await expect(parks).toHaveCount(1);
 
-			// Nothing matches: the empty state names the search and clears it.
+			// Nothing matches, by name or as a place: the empty state names the
+			// search and clears it.
 			await search.fill('zzz-no-such-course');
 			const none = page.getByTestId('races-any-time-no-match');
-			await expect(none).toContainText('No courses match “zzz-no-such-course”');
+			await expect(none).toContainText('No parks, courses or places called “zzz-no-such-course”.');
 			await none.getByTestId('races-any-time-clear-search').click();
 			await expect(search).toHaveValue('');
 			await expect(parks.filter({ hasText: a.parkName })).toHaveCount(1);
+		} finally {
+			for (const p of planted) await teardown(p);
+		}
+	});
+
+	test('in Courses, a park name lists the park first, with a place only offered below it', async ({ page, mockRoute }) => {
+		let planted: Planted | null = null;
+		try {
+			planted = await plantCourse();
+			const asked: URL[] = [];
+			// Registered after the empty answer, so it is the one that answers.
+			await answerPlaces(page, mockRoute, [{ name: 'Anchorage, Alaska, United States', lat: START.lat, lng: START.lng }], asked);
+			await page.goto('/races?show=courses');
+			const anyTime = page.getByTestId('races-any-time');
+			await expect(anyTime.getByTestId('races-any-time-park').first()).toBeVisible({ timeout: 10_000 });
+
+			const word = planted.parkName.split(' ').slice(0, 4).join(' ').toLowerCase();
+			await page.getByTestId('races-search').fill(`${word} ${planted.parkName.split(' ').pop()}`);
+			const parks = anyTime.getByTestId('races-any-time-park');
+			await expect(parks).toHaveCount(1);
+			await expect(parks.first()).toContainText(planted.parkName);
+
+			// The place is offered under the park, never applied: no chip, no
+			// distances.
+			const suggestion = anyTime.getByTestId('races-place-suggestion');
+			await expect(suggestion).toContainText('Courses near Anchorage, Alaska');
+			const parkBox = await parks.first().boundingBox();
+			const placeBox = await suggestion.boundingBox();
+			expect(parkBox && placeBox && placeBox.y > parkBox.y).toBe(true);
+			await expect(anyTime.getByTestId('races-near-clear')).toHaveCount(0);
+			await expect(parks.first()).not.toContainText(/ away/);
+			await expect(page.getByTestId('races-course-search-status')).toHaveText(
+				'1 park or course found. 1 place to search near.',
+			);
+
+			// The lookup is held to the countries the catalogue covers.
+			const last = asked.at(-1);
+			expect(last).toBeDefined();
+			const countries = last!.searchParams.get('country') ?? last!.searchParams.get('countrycodes') ?? '';
+			expect(countries.split(',')).toContain('us');
+		} finally {
+			await teardown(planted);
+		}
+	});
+
+	test('in Courses, picking a place sets the near chip and orders the parks from it', async ({ page, mockRoute }) => {
+		let planted: Planted[] = [];
+		try {
+			const north = { lat: START.lat + 2, lng: START.lng };
+			planted = [await plantCourse(), await plantCourse(north)];
+			const [south, far] = planted;
+			await answerPlaces(page, mockRoute, [
+				// Far from every course: never offered.
+				{ name: 'Zzyzxtown, Somewhere Else', lat: -33.9, lng: 151.2 },
+				{ name: 'Zzyzxtown, Alaska, United States', lat: north.lat + 0.05, lng: north.lng },
+			]);
+			await page.goto('/races?show=courses');
+			const anyTime = page.getByTestId('races-any-time');
+			await expect(anyTime.getByTestId('races-any-time-park').first()).toBeVisible({ timeout: 10_000 });
+
+			const search = page.getByTestId('races-search');
+			await search.fill('zzyzxtown');
+			await expect(anyTime.getByTestId('races-any-time-no-name-match')).toHaveText(
+				'No parks or courses are called “zzyzxtown”.',
+			);
+			const suggestions = anyTime.getByTestId('races-place-suggestion');
+			await expect(suggestions).toHaveCount(1);
+			await expect(suggestions).toContainText('Courses near Zzyzxtown, Alaska');
+
+			await suggestions.getByRole('button').click();
+			const chip = anyTime.getByTestId('races-near-clear');
+			await expect(chip).toContainText('Near: Zzyzxtown, Alaska');
+			await expect(chip).toBeFocused();
+			await expect(search).toHaveValue('');
+
+			const parks = anyTime.getByTestId('races-any-time-park');
+			await expect(parks.nth(0)).toContainText(far.parkName);
+			await expect(parks.nth(0)).toContainText(/ away/);
+			await expect(parks.nth(1)).toContainText(south.parkName);
+
+			await chip.click();
+			await expect(chip).toHaveCount(0);
+			await expect(parks.first()).not.toContainText(/ away/);
 		} finally {
 			for (const p of planted) await teardown(p);
 		}

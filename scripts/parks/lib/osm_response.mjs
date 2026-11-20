@@ -9,13 +9,13 @@
 // coordinates are finite and in range, and tags are short strings, which is
 // what OSM itself enforces (a tag key or value is at most 255 characters).
 
-const MAX_TAG_LENGTH = 255;
+export const MAX_TAG_LENGTH = 255;
 
 /**
  * @param {unknown} value
  * @returns {value is number}
  */
-function isPositiveInteger(value) {
+export function isPositiveInteger(value) {
 	return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
@@ -24,7 +24,7 @@ function isPositiveInteger(value) {
  * @param {number} limit
  * @returns {value is number}
  */
-function isCoordinate(value, limit) {
+export function isCoordinate(value, limit) {
 	return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
 }
 
@@ -32,7 +32,7 @@ function isCoordinate(value, limit) {
  * @param {unknown} value
  * @returns {value is string}
  */
-function isTagString(value) {
+export function isTagString(value) {
 	return typeof value === 'string' && value.length > 0 && value.length <= MAX_TAG_LENGTH;
 }
 

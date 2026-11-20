@@ -8,7 +8,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { parseArgs, readPayload } from '../load.mjs';
-import { MAX_CHECKPOINTS, SHARED_USES, cataloguePayload, courseLine, loadSql } from './catalogue_payload.mjs';
+import { MAX_CHECKPOINTS, RACE_DISTANCE_WORDS, SHARED_USES, cataloguePayload, courseLine, loadSql } from './catalogue_payload.mjs';
+import { RACE_DISTANCES_M } from './course_geometry.mjs';
 import { THIRD_PARTY_MARK, assertNoThirdPartyMarks, thirdPartyMarks } from './third_party_marks.mjs';
 
 const POCAHONTAS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'catalogue', 'us-va', 'pocahontas');
@@ -278,6 +279,16 @@ test('an nps park carries its NPS park code into the payload, and no other park 
 	assert.throws(refused((m) => (m.park.nps_park_code = 'shen')), /only an nps park takes an nps_park_code/);
 });
 
+test('a national forest or a wildlife refuge loads with its own agency and no NPS park code', () => {
+	for (const agency of ['usfs', 'usfws']) {
+		const m = manifest();
+		m.park.agency = agency;
+		const park = cataloguePayload(m, squareOnly).park;
+		assert.deepEqual([park.agency, park.nps_park_code], [agency, null]);
+		assert.throws(refused((m) => Object.assign(m.park, { agency, nps_park_code: 'gwje' })), /only an nps park takes an nps_park_code/);
+	}
+});
+
 test('the manifest is refused where the database would refuse it', () => {
 	assert.throws(refused((m) => (m.park.slug = 'Test Park')), /park slug/);
 	assert.throws(refused((m) => (m.park.agency = 'federal')), /park agency federal/);
@@ -384,6 +395,40 @@ test('a linear race course keeps its shape, carries no laps, and says how it run
 		() => cataloguePayload(manifest({ race_courses: [race({ course_shape: 'lollipop' })] }), files(p2pLine)),
 		/course_shape lollipop/,
 	);
+});
+
+test('every race distance has its words, and the ultra distances load at their exact length', () => {
+	assert.deepEqual(Object.keys(RACE_DISTANCE_WORDS), Object.keys(RACE_DISTANCES_M));
+	const DEG_PER_M = 0.001 / 111.19508;
+	/** @type {Array<[string, number, string]>} */
+	const ultras = [
+		['50mi', 80467.2, '50 miles (80.5 km)'],
+		['100k', 100000, '100 km'],
+	];
+	for (const [key, metres, words] of ultras) {
+		const half = metres / 2;
+		const line = [[0, 0], [half * DEG_PER_M, 0], [0, 0]];
+		const race = {
+			slug: `line-${key}`,
+			name: `Line, ${key}`,
+			race_distance: key,
+			course_shape: 'out_and_back',
+			distance_m: metres,
+			surface: 'trail',
+			geometry_source: 'osm',
+			geojson: 'line.geojson',
+			checkpoints: [],
+			waypoint_count: 3,
+		};
+		const files = reader({ 'square.geojson': geojson(SQUARE), 'line.geojson': geojson(line) });
+		const course = cataloguePayload(manifest({ race_courses: [race] }), files).courses[1];
+		assert.equal(course.official_distance_m, metres, key);
+		assert.equal(course.description, `Measures exactly ${words}: out along the trail to the turnaround and back to the start.`);
+		assert.throws(
+			() => cataloguePayload(manifest({ race_courses: [{ ...race, distance_m: metres - 1 }] }), files),
+			/not the .* distance/,
+		);
+	}
 });
 
 test('loadSql prints one dollar-quoted call that round-trips the payload', () => {

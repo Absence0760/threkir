@@ -24,7 +24,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the park cards, a searched course card and its park link, and "See all N courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, nine point-to-point and out-and-back courses up to 50 miles, decisions § 2581) is staged by the go-live gate (every course crosses a trunk road, or a primary road with no signal, at grade; the Shiplock marathon and the Jamestown marathon also have no public car park within 800 m of an end). High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; six linear race courses, 10K to 100K) is staged by the gate too. Whether a park loads is the gate's call (decisions § 2600). See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, last replaced by `20280101001431`; the full list is in [api_database.md](../backend/api_database.md); decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. The Virginia Capital Trail (a `trail`, nine point-to-point and out-and-back courses up to 50 miles, decisions § 2581) is staged by the go-live gate (every course crosses a trunk road, or a primary road with no signal, at grade; the Shiplock marathon and the Jamestown marathon also have no public car park within 800 m of an end). High Bridge Trail State Park (a state park that is a rail trail, so a `park`: it has its own hours; six linear race courses, 10K to 100K) loads its 10K and 50K and holds the other four (§ 2602). Whether a park loads is the gate's call (decisions § 2600). See *Loading courses* |
 | Live course timing on the Wear OS watch: "Timing started" / "Finished! 8:42:10" with a buzz (each lap announced with its own time; the screen and the summary keep the fastest, "Finished! Best 21:42", what the board keeps), fed every stored line fix at its stored `ts`, by the matcher's box rule ported to Kotlin (`LiveCourseTimer.kt`, the `live_course_timer` pair, held to `fixtures/park_course_runs.json`; issue #1446, decisions § 2595) (decisions § 2595, § 2599) | Built and unit-tested; the phone writes the `/park_courses` Data Layer item (row below), not yet run on a device |
 | The phone puts courses on the watches (#1446): Navigate this course sends the course to the wrist. Wear OS gets the courses the runner navigated, newest first, up to 8, as `/park_courses` (`watch_park_courses.dart` + `WearParkCoursesBridge.kt`, held to `fixtures/wear_park_courses_payload.json`), restated at startup and emptied on sign-out; the Apple Watch gets the one being navigated as its armed route plus the `park_course` push (`AppleWatchRouteBridge.armParkCourse`, claim (7c) of `check_watch_ios_source.mjs`), and every other arm clears it. Public catalogue geometry only | Built and unit-tested on both phones, no paired device run |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
@@ -41,11 +41,11 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 | Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every guide stays marked as a draft until someone sets its `ground_checked_at`, which holds no park back (decisions § 2600). See *Route guide* |
-| Staged parks: a park's `release`, derived by the go-live gate's machine checks into its manifest (`live`, or `staged` naming the failing checks), decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2460, § 2600). See *Loading courses* | Shipped |
+| Staged parks and held courses: a park's `release`, derived by the go-live gate's machine checks into its manifest (`live`, `live` with `held` courses, or `staged` naming the failing checks), decides what the release sync loads; a held course is never created and, if already loaded, never closed (`held_live`); a staged park is validated and reported, never loaded (decisions § 2460, § 2600, § 2602). See *Loading courses* | Shipped |
 | Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2460. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
 | Start and finish coordinates to copy, with directions to each, on the course page (web + mobile) and on a web race page with a linked course (`courseEnds` / `formatLatLng` in the `park_courses` pair; decisions § 2551). See *The pages* | Shipped |
-| **Deep Run Park, 5 km and 10 km (2 laps)** (Henrico County, VA; issues #1345, #1430): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged by the go-live gate**: the 5 km lap re-runs 57 % of itself (twice round the ponds, out and back on the woods path), over the 15 % backtrack cap; the 10 km passes. No longer held on the brand question (decisions § 2600) |
+| **Deep Run Park, 5 km and 10 km (2 laps)** (Henrico County, VA; issues #1345, #1430): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **10 km live** once a backend release loads it; **5 km held** by the go-live gate: its lap re-runs 57 % of itself (twice round the ponds, out and back on the woods path), over the 15 % backtrack cap. No longer held on the brand question (decisions § 2600, § 2602) |
 | **James River Park Loop, half-marathon distance and marathon distance (2 laps)** (James River Park System, City of Richmond; issue #1430): one 20,746 m ring of the park built from OSM under `scripts/parks/catalogue/us-va/james-river-park/`, with one 7.7 m join and 13 m across the Tredegar Street lot (`road_connectors`) | **Live** once a backend release loads it: every course passes the go-live gate (decisions § 2600) |
 | **Pony Pasture Loop, 5 km and 10 km (2 laps)** (James River Park System, City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/james-river-park/` beside the Forest Hill Park courses | **Live** once a backend release loads it: every course passes the go-live gate (decisions § 2600) |
 | **Rockwood Park, 5 km and 10 km (2 laps)** (Chesterfield County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/rockwood/` | **Live** once a backend release loads it: both courses pass the go-live gate; no longer held on the brand question (decisions § 2600) |
@@ -55,8 +55,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Live** once a backend release loads it: every course passes the go-live gate (decisions § 2600) |
 | **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Live** once a backend release loads it: every course passes the go-live gate (decisions § 2600) |
 | **Manassas National Battlefield Park, 5 km and 10 km (2 laps)** (NPS `mana`; issue #1434): built from OSM, every walked way checked against the NPS Public Trails layer, under `scripts/parks/catalogue/us-va/manassas/`. No half or marathon: every 21.1 km loop crosses US-29 or VA-234 at grade four or more times a lap | **Live** once a backend release loads it: both courses pass the go-live gate (decisions § 2600) |
-| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km, 50 miles and 100 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile turns about 4 km past High Bridge Station, just before Rice's Depot Road; the 100K turns about 1.9 km before the trail's east end near Burkeville, so its snapshot carries the two ways past Orchard Road (§ 2593) | **Staged by the go-live gate**: the half, marathon, 50 mile and 100K cross North Main Street (primary) in Farmville at grade with no signal; the 10K and 50K pass (decisions § 2600) |
-| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point, and Purcellville to Clarks Crossing and back, 100 km** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **Staged by the go-live gate**: every course but the 5K crosses a primary road at grade with no signal, and the marathon, 50K and 100K cross motorway ramps at grade; the 5K passes (decisions § 2600) |
+| **High Bridge Trail State Park: High Bridge Station 10 km and Pamplin 50 km, 50 miles and 100 km out and back, River Road to Prospect half and Orchard Road to Elam marathon point to point** (Virginia DCR, Farmville; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/high-bridge-trail/`. The 50 mile turns about 4 km past High Bridge Station, just before Rice's Depot Road; the 100K turns about 1.9 km before the trail's east end near Burkeville, so its snapshot carries the two ways past Orchard Road (§ 2593) | **10K and 50K live** once a backend release loads them; the half, marathon, 50 mile and 100K are **held** by the go-live gate: they cross North Main Street (primary) in Farmville at grade with no signal (decisions § 2600, § 2602) |
+| **Washington & Old Dominion Trail: Ashburn to Sterling 5 km, Reston to Vienna 10 km, Leesburg to Sterling half, Purcellville to Reston marathon, Purcellville to Clarks Crossing 50 km, all point to point, and Purcellville to Clarks Crossing and back, 100 km** (NOVA Parks, `kind` trail; issue #1432): built from OSM under `scripts/parks/catalogue/us-va/washington-old-dominion-trail/`. The 10K starts at the Old Reston Avenue lot rather than the Sunset Hills park-and-ride, which is only about 9.2 km from Vienna; the 5K finishes 260 m short of the Pacific Boulevard lot | **5K live** once a backend release loads it; the other five are **held** by the go-live gate: each crosses a primary road at grade with no signal, and the marathon, 50K and 100K also cross motorway ramps at grade (decisions § 2600, § 2602) |
 
 ## Model
 
@@ -955,8 +955,9 @@ course is in the `/admin/reports` queue, and notifies every admin. Stopping
 short and GPS gaps are the runner's or the device's and never close a course.
 An admin reopens it from `/admin/reports` like any other closure, and the
 reopen resets the evidence: only runs after it count. The sweep deletes
-nothing and does nothing until the `park_course_attempt_closures` flag is
-turned on in `apps/backend/ops/prod_config.json` (seeded off);
+nothing. It is gated on the `park_course_attempt_closures` flag (seeded off by
+its migration), which `apps/backend/ops/prod_config.json` turns on in
+production from launch (owner decision 2026-11-20, decisions § 2602);
 `select * from private.close_park_courses_failing_runs(true)` previews what it
 would close. A report never closes or hides a course by itself. A
 land-manager request is honoured by closing the course within two business
@@ -1172,13 +1173,23 @@ rather than from anything a person writes:
 
 ```json
 "release": { "status": "live" }
+"release": { "status": "live", "held": [{ "course": "<slug>", "reason": "Go-live gate failed: <checks>. ..." }] }
 "release": { "status": "staged", "reason": "Go-live gate failed: <course>: <checks>; ... Details in the manifest gate_failures." }
 ```
 
-`park.json` carries no release (the build refuses one). A park is `live` when
-every course passes every check; otherwise it is `staged`, its reason names
-each failing course and check, each course's manifest entry lists its
+`park.json` carries no release (the build refuses one). Staging is per course
+(decisions § 2602): a park is `live` when every course passes every check,
+`live` with `held` courses when some pass, and `staged` when none pass or a
+park-wide check (`join_gap`) fails. Each course's manifest entry lists its
 `gate_failures` (check and detail) and `gate.park_failures` the park-wide ones.
+A held course never reaches the load: the sync leaves it out of the payload's
+`courses` and names it in the payload's `held`, which `load_park_catalogue`
+reads so it never closes a held course by its absence (migration
+`20280107011432`). So a course that was never loaded and fails is never
+created and is reported `staged`, and a course already loaded that later
+fails (or whose gate data goes missing) stays loaded exactly as it was and is
+reported `held_live`, as § 2460 requires. The park's centroid and bounding box
+are computed from the courses it loads.
 A check whose data is missing fails (`source_data`), so a gap can only keep a
 park out. The checks and their limits (`GATE_VERSION` 1):
 
@@ -1203,16 +1214,16 @@ spec to fix, not a park to stage. `course_ends` comes from
 within 1.5 km and motor roads within 60 m of each end of the built lines).
 
 The release sync validates every park, staged ones included, but calls the
-load only for live parks; each course of a staged park is a `staged` row in
-the step summary and the dry run, and the summary's note names the park and
-its reason. The stage SQL carries a staged park's slugs and nothing else.
+load only for live parks; each course of a staged park and each held course is
+a `staged` row (or `held_live`, when it is already loaded and open) in the
+step summary and the dry run, and the summary's note names it and its reason. The stage SQL carries a staged park's slugs and nothing else.
 `load.mjs` refuses a staged park. Staging holds a park out; it does not close
 one that is already loaded (close it by dropping it from its manifest, or from
 `/admin/reports`), and a loaded park the gate stages keeps its live courses as
-they were until it passes again. A park unstages by passing the gate: fix what
-its `gate_failures` name, rebuild, commit, and publish a `backend@*` release
-(preview it first with a `dry_run` dispatch: the park's courses move from
-`staged` to `created`).
+they were until it passes again. A course unstages by passing the gate: fix
+what its `gate_failures` name, rebuild, commit, and publish a `backend@*`
+release (preview it first with a `dry_run` dispatch: the course moves from
+`staged` to `created`, or from `held_live` to `updated` or `unchanged`).
 
 The fixture park in `seed.sql` is fictional and exists only so local and CI
 stacks have something to render.
@@ -1356,12 +1367,12 @@ These gate going live, not the code:
       The code is built and fail-closed: without the key it asks NPS nothing
       and logs why. Respect the NPS API terms (key in a header, one request per
       ten parks a day).
-- [ ] Arm the run-based closure sweep: preview it in production with
-      `select * from private.close_park_courses_failing_runs(true)` (service
-      role), then set `park_course_attempt_closures` to `"enabled": true`
-      with its sign-off link in `apps/backend/ops/prod_config.json`. Until
-      then it closes nothing, and a gate-passed course has no post-launch
-      check beyond reports and admin review.
+- [x] The run-based closure sweep is live from launch (owner decision
+      2026-11-20, decisions § 2602): `park_course_attempt_closures` is
+      `"enabled": true` in `apps/backend/ops/prod_config.json`, so the backend
+      release that loads the gate-passed parks turns it on in its "Sync
+      production state" step. It is a pure-SQL pg_cron job, so it needs no
+      Vault URL or `cron_urls` entry.
 - [x] The one-off backfill over every active segment (decisions § 2403) is no
       longer a hand step: the ops task
       `20271219001313_rematch_segments_matcher_v3` queues that backfill (minus

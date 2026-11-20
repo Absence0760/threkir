@@ -444,7 +444,7 @@
 		/>
 	{:else}
 		{@const wayfinding = courseOffersWayfinding(course.status)}
-		{@const canNavigate = !!course.route_id && wayfinding}
+		{@const canSeeRoute = !!course.route_id && wayfinding}
 		{@const canDownload = mapTrack.length >= 2 && wayfinding}
 		<header class="detail-header">
 			<div class="title-row">
@@ -742,29 +742,30 @@
 					{/if}
 				</div>
 
-				{#if canNavigate || canDownload}
+				{#if canSeeRoute || canDownload}
 					<div class="course-actions">
-						{#if canNavigate}
-							<!-- On the web it opens the route page (there is no run to
-							     guide here), so with the boxes' sentence above it the
-							     way to the start is the one filled action. -->
+						{#if canSeeRoute}
+							<!-- The web records no runs, so this opens the course's route
+							     page rather than a recorder; the phone's button is Run
+							     this course. With the boxes' sentence above it, the way
+							     to the start is the one filled action. -->
 							<a
 								class="btn action"
 								class:btn-primary={!boxInstruction}
 								class:btn-outline={!!boxInstruction}
 								href="/routes/{course.route_id}"
-								data-testid="park-course-navigate"
+								data-testid="park-course-route"
 							>
-								<span class="material-symbols" aria-hidden="true">directions_run</span>
-								{m('parks.navigate')}
+								<span class="material-symbols" aria-hidden="true">route</span>
+								{m('parks.seeRoute')}
 							</a>
 						{/if}
 						{#if canDownload}
 							<button
 								type="button"
 								class="btn action"
-								class:btn-primary={!canNavigate && !boxInstruction}
-								class:btn-outline={canNavigate || !!boxInstruction}
+								class:btn-primary={!canSeeRoute && !boxInstruction}
+								class:btn-outline={canSeeRoute || !!boxInstruction}
 								onclick={downloadGpx}
 								data-testid="park-course-gpx"
 							>

@@ -3783,7 +3783,7 @@
             "items": [
               "Es ist ein Zeitlauf, kein Rennen. Der Weg bleibt für alle offen und niemand sichert ihn ab, also halte dich an die Regeln des Parks und lass anderen auf dem Weg den Vortritt.",
               "Jede Streckenseite zeigt Distanz, Anstieg, Form, Untergrund und Schwierigkeit, woher die Streckenlinie stammt und ob die Strecke geöffnet ist.",
-              "Wähle **Diese Strecke navigieren**, um der Strecke als Route zu folgen. Solange die Strecke gesperrt ist, wird das nicht angeboten.",
+              "Wähle in der App **Diese Strecke laufen**, um den Rekorder mit geladener Strecke zu öffnen, und drücke Start, wenn du an der Startlinie stehst. Im Web öffnet **Route ansehen** die Strecke als Route. Solange die Strecke gesperrt ist, wird beides nicht angeboten.",
               "Die **Streckenbeschreibung** auf der Streckenseite nennt, wo du parkst, und jede Abzweigung der Reihe nach mit Wegnamen, dazu Brücken, Furten, Straßen, die du überquerst, Wechsel des Untergrunds und Anstiege. Sie ist aus Kartendaten erstellt; solange niemand sie im Park abgelaufen ist, steht das über der Liste. Dieselbe Beschreibung steht in der GPX-Datei der Strecke."
             ]
           },

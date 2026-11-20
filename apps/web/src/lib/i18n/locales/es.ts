@@ -8047,7 +8047,7 @@ export const messages = {
 	"parks.attributionNps": "Trazado del recorrido según los datos de senderos del National Park Service",
 	"parks.attributionAgency": "Trazado del recorrido según los datos de senderos del propio parque",
 	"parks.attributionTraced": "Trazado del recorrido dibujado sobre el mapa publicado del parque",
-	"parks.navigate": "Navegar este recorrido",
+	"parks.seeRoute": "Ver la ruta",
 	"parks.downloadGpx": "Descargar GPX",
 	"parks.browseLink": "Recorridos de parques",
 	"parks.coursesTitle": "Recorridos",

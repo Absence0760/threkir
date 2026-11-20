@@ -48,6 +48,12 @@ import WatchConnectivity
     static let maxSavedRoutes = 12
     static let maxSavedRoutePoints = 128
 
+    /// Checkpoints one park course push may carry. Must match
+    /// `ParkCourse.maxCheckpoints` on the watch and
+    /// `kMaxAppleWatchParkCourseCheckpoints` in `apple_watch_route_bridge.dart`;
+    /// `park_courses.checkpoints` holds at most 50.
+    static let maxParkCourseCheckpoints = 50
+
     /// Finisher times held here while no Flutter engine can take them. Matches
     /// `PendingRaceResultStore.maxEntries` on the watch and
     /// `kPendingRaceResultsMax` in `race_controller.dart`: one row per race, so
@@ -359,6 +365,26 @@ import WatchConnectivity
             }
             WCSession.default.transferUserInfo(payload)
             result(nil)
+        case "push_park_course":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.parkCourseUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_park_course",
+                    message: "Park course payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
         case "push_workout":
             guard let args = call.arguments as? [String: Any],
                   let payload = Self.workoutUserInfo(from: args) else {
@@ -527,6 +553,67 @@ import WatchConnectivity
             "route_distance_m": distance,
             "route_lat": latitudes,
             "route_lng": longitudes,
+        ]
+    }
+
+    /// Repack the park course the wrist times live (#1446) for
+    /// `transferUserInfo`, under its own `park_course` key beside the armed
+    /// route's five (`ParkCourse.decode` in `apps/watch_ios`).
+    ///
+    /// Every field is checked here as well as on the watch, for the
+    /// `routeUserInfo` reason: a payload that reaches `transferUserInfo` is
+    /// retried durably against a watch that would refuse it every time, and
+    /// a refused course CLEARS the one the wrist held. The keys are written
+    /// out literally rather than built from a prefix, so claim (7c) of
+    /// `scripts/check_watch_ios_source.mjs` can read them.
+    ///
+    /// An EMPTY dictionary is a value: it is how arming a plain route, or
+    /// signing out, clears the course. So the only rejection of an empty
+    /// payload is a missing `park_course`.
+    static func parkCourseUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let course = args["park_course"] as? [String: Any] else { return nil }
+        if course.isEmpty { return ["park_course": [String: Any]()] }
+        guard let id = course["course_id"] as? String, !id.isEmpty,
+              let name = course["course_name"] as? String,
+              let distance = course["course_distance_m"] as? Double,
+              let startLat = course["start_gate_lat"] as? Double,
+              let startLng = course["start_gate_lng"] as? Double,
+              let startBearing = course["start_gate_bearing_deg"] as? Double,
+              let startHalfWidth = course["start_gate_half_width_m"] as? Double,
+              let endLat = course["end_gate_lat"] as? Double,
+              let endLng = course["end_gate_lng"] as? Double,
+              let endBearing = course["end_gate_bearing_deg"] as? Double,
+              let endHalfWidth = course["end_gate_half_width_m"] as? Double,
+              let checkpointLat = course["checkpoint_lat"] as? [Double],
+              let checkpointLng = course["checkpoint_lng"] as? [Double],
+              checkpointLat.count == checkpointLng.count,
+              checkpointLat.count <= maxParkCourseCheckpoints
+        else { return nil }
+        let numbers = [distance, startLat, startLng, startBearing, startHalfWidth,
+                       endLat, endLng, endBearing, endHalfWidth] + checkpointLat + checkpointLng
+        guard numbers.allSatisfy(\.isFinite),
+              distance > 0, startHalfWidth > 0, endHalfWidth > 0,
+              abs(startLat) < 90, abs(endLat) < 90,
+              abs(startLng) <= 180, abs(endLng) <= 180,
+              checkpointLat.allSatisfy({ abs($0) <= 90 }),
+              checkpointLng.allSatisfy({ abs($0) <= 180 })
+        else { return nil }
+        return [
+            "park_course": [
+                "course_id": id,
+                "course_name": name,
+                "course_distance_m": distance,
+                "start_gate_lat": startLat,
+                "start_gate_lng": startLng,
+                "start_gate_bearing_deg": startBearing,
+                "start_gate_half_width_m": startHalfWidth,
+                "end_gate_lat": endLat,
+                "end_gate_lng": endLng,
+                "end_gate_bearing_deg": endBearing,
+                "end_gate_half_width_m": endHalfWidth,
+                "checkpoint_lat": checkpointLat,
+                "checkpoint_lng": checkpointLng,
+            ] as [String: Any],
         ]
     }
 

@@ -1716,7 +1716,7 @@ export const REGISTRY = [
 	{
 		name: 'Apple Watch route-push budgets',
 		why:
-			'Three languages bound the same three payloads, and every rejection ' +
+			'Three languages bound the same payloads (the armed route, the picker list and the park course), and every rejection ' +
 			'is silent on the wire. A phone cap above the watch cap queues a ' +
 			'DURABLE `transferUserInfo` the watch refuses on every retry, so the ' +
 			'runner is told the route was sent and the wrist never arms it; a ' +
@@ -1740,6 +1740,14 @@ export const REGISTRY = [
 							where: 'SavedRoutes.maxPointsPerRoute',
 							values: parseSwiftStaticInt(src, 'maxPointsPerRoute'),
 						},
+						{
+							key: 'park course checkpoints',
+							where: 'ParkCourse.maxCheckpoints',
+							values: parseSwiftStaticInt(
+								ctx.read('apps/watch_ios/WatchApp/ParkCourse.swift'),
+								'maxCheckpoints',
+							),
+						},
 					];
 				},
 			},
@@ -1759,6 +1767,11 @@ export const REGISTRY = [
 							where: 'WatchIngestBridge.maxSavedRoutePoints',
 							values: parseSwiftStaticInt(src, 'maxSavedRoutePoints'),
 						},
+						{
+							key: 'park course checkpoints',
+							where: 'WatchIngestBridge.maxParkCourseCheckpoints',
+							values: parseSwiftStaticInt(src, 'maxParkCourseCheckpoints'),
+						},
 					];
 				},
 			},
@@ -1773,6 +1786,11 @@ export const REGISTRY = [
 							key: 'list points per route',
 							where: 'kMaxAppleWatchSavedRoutePoints',
 							values: parseNamedInt(src, 'kMaxAppleWatchSavedRoutePoints'),
+						},
+						{
+							key: 'park course checkpoints',
+							where: 'kMaxAppleWatchParkCourseCheckpoints',
+							values: parseNamedInt(src, 'kMaxAppleWatchParkCourseCheckpoints'),
 						},
 					];
 				},

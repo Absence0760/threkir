@@ -6301,7 +6301,6 @@ export const en = {
 	"gym.exercisesLabel": "Exercises",
 	"gym.setsLabel": "Sets",
 	"gym.volumeLabel": "Volume",
-	"gym.workouts": "{count, plural, one {# workout} other {# workouts}}",
 	"gym.pr.badge": "PR",
 	"gym.pr.title": "Personal record",
 	"gym.pr.weight": "Heaviest",

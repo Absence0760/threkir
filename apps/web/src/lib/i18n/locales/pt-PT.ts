@@ -6285,7 +6285,6 @@ export const messages = {
 	"gym.exercisesLabel": "Exercícios",
 	"gym.setsLabel": "Séries",
 	"gym.volumeLabel": "Volume",
-	"gym.workouts": "{count, plural, one {# treino} other {# treinos}}",
 	"gym.pr.badge": "PR",
 	"gym.pr.title": "Recorde pessoal",
 	"gym.pr.weight": "Mais pesado",

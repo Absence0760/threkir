@@ -106,12 +106,99 @@ final class CourseBoxTimerTests: XCTestCase {
         XCTAssertEqual(boxCases, 23, "every box case in the table is replayed")
     }
 
+    private func timer(_ course: [String: Any]) throws -> CourseBoxTimer {
+        try XCTUnwrap(CourseBoxTimer(
+            startGate: try XCTUnwrap(gate(course["start_gate"])), endGate: try XCTUnwrap(gate(course["end_gate"])),
+            distanceM: d(course["distance_m"]), checkpoints: points(course["checkpoints"])))
+    }
+
+    /// The two synthetic shapes the park lacks (#1446): an out-and-back whose
+    /// lines sit at one spot facing opposite ways (the shared box), and a
+    /// point to point. Each clean run is timed to the matcher's millisecond
+    /// by a finish crossed live, not by `settle`; the stop at the turn, the
+    /// early turn, the stop 400 m short and the 260 s dropout across the
+    /// finish are never timed, live or at Stop.
+    func testTheOutAndBackAndThePointToPointTimeWhatTheMatcherTimed() throws {
+        let fixture = try json("fixtures/park_course_runs.json")
+        let base = try epochMs(try XCTUnwrap(fixture["base_time"] as? String))
+        let courses = try XCTUnwrap(fixture["courses"] as? [[String: Any]])
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let oab = try XCTUnwrap(courses.first { $0["slug"] as? String == "synthetic-out-and-back" })
+        let p2p = try XCTUnwrap(courses.first { $0["slug"] as? String == "synthetic-point-to-point" })
+        let oabStart = try XCTUnwrap(gate(oab["start_gate"])), oabEnd = try XCTUnwrap(gate(oab["end_gate"]))
+        XCTAssertEqual(CourseBox.timingEdges(oabStart, oabEnd).layout, .shared)
+        XCTAssertEqual(CourseBox.timingEdges(try XCTUnwrap(gate(p2p["start_gate"])), try XCTUnwrap(gate(p2p["end_gate"]))).layout, .apart)
+
+        let keys = ["oab_clean", "oab_stopped_at_turn", "oab_turned_early",
+                    "p2p_clean", "p2p_stopped_short", "p2p_dropout_at_finish"]
+        for key in keys {
+            let c = try XCTUnwrap(cases.first { $0["key"] as? String == key }, key)
+            let slug = try XCTUnwrap(c["course"] as? String)
+            let course = slug == "synthetic-out-and-back" ? oab : p2p
+            XCTAssertEqual(course["slug"] as? String, slug, key)
+            let t = try timer(course)
+            var live: [CourseTimingEvent] = []
+            for fix in try decode(try XCTUnwrap(c["track"] as? [String: Any]), base: base) {
+                live += t.offer(lat: fix.lat, lng: fix.lng, tMs: fix.tMs)
+            }
+            let settled = t.settle()
+            XCTAssertNil(settled, "\(key): nothing left for settle")
+            let finishes = live.compactMap(\.finishSeconds)
+            guard let recorded = (c["matched"] as? [String: Any])?[slug] as? [String: Any] else {
+                XCTAssertNil(t.bestSeconds, "\(key): timed")
+                XCTAssertTrue(finishes.isEmpty, "\(key): said Finished!")
+                continue
+            }
+            XCTAssertEqual(try XCTUnwrap(t.bestSeconds, key), d(recorded["time_seconds"]), accuracy: 0.001, key)
+            XCTAssertEqual(Int(t.bestStartMs!.rounded()) - Int(base), (recorded["started_offset_ms"] as? NSNumber)?.intValue, key)
+            XCTAssertEqual(finishes.count, 1, "\(key): one lap, finished live")
+        }
+    }
+
+    /// The phone now settles at Stop too: the clean point to point cut off
+    /// with its last fix 3 m short of the finish line (inside the 5 m slack,
+    /// never in the box) finishes at that fix on Stop; 8 m short, beyond the
+    /// slack, it gets no time.
+    func testAPointToPointEndedWithinTheFinishSlackFinishesAtStop() throws {
+        let fixture = try json("fixtures/park_course_runs.json")
+        let base = try epochMs(try XCTUnwrap(fixture["base_time"] as? String))
+        let courses = try XCTUnwrap(fixture["courses"] as? [[String: Any]])
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let p2p = try XCTUnwrap(courses.first { $0["slug"] as? String == "synthetic-point-to-point" })
+        let entry = CourseBox.timingEdges(try XCTUnwrap(gate(p2p["start_gate"])), try XCTUnwrap(gate(p2p["end_gate"]))).finishEntry
+        let clean = try XCTUnwrap(cases.first { $0["key"] as? String == "p2p_clean" })
+        let fixes = try decode(try XCTUnwrap(clean["track"] as? [String: Any]), base: base)
+        let s = fixes.map { gateProjection(entry, $0.lat, $0.lng).s }
+        let inBox = try XCTUnwrap(fixes.indices.first { s[$0] >= 0 && abs(gateProjection(entry, fixes[$0].lat, fixes[$0].lng).u) <= entry.halfWidthM })
+        let before = try XCTUnwrap((0..<inBox).last { s[$0] < -8 })
+
+        func ending(short: Double) throws -> (CourseBoxTimer, [CourseTimingEvent], CourseTimingEvent?) {
+            let a = fixes[before], b = fixes[inBox]
+            let f = (-short - s[before]) / (s[inBox] - s[before])
+            let last = Fix(lat: a.lat + f * (b.lat - a.lat), lng: a.lng + f * (b.lng - a.lng), tMs: a.tMs + 500)
+            XCTAssertEqual(gateProjection(entry, last.lat, last.lng).s, -short, accuracy: 0.2)
+            let t = try timer(p2p)
+            var events: [CourseTimingEvent] = []
+            for fix in fixes[...before] + [last] { events += t.offer(lat: fix.lat, lng: fix.lng, tMs: fix.tMs) }
+            return (t, events, t.settle())
+        }
+
+        let (_, events, settled) = try ending(short: 3)
+        XCTAssertTrue(events.allSatisfy { $0.finishSeconds == nil }, "never entered the box")
+        guard case let .finished(_, endMs)? = settled else { return XCTFail("3 m short finishes at Stop") }
+        XCTAssertEqual(endMs, fixes[before].tMs + 500, accuracy: 0.0001)
+        let (beyond, _, none) = try ending(short: 8)
+        XCTAssertNil(none, "8 m short: no time")
+        XCTAssertNil(beyond.bestSeconds)
+    }
+
     func testParkCourseRunsAreTimedOnTheirOwnCourseOnly() throws {
         let fixture = try json("fixtures/park_course_runs.json")
         let base = try epochMs(try XCTUnwrap(fixture["base_time"] as? String))
         let courses = try XCTUnwrap(fixture["courses"] as? [[String: Any]])
         let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
-        XCTAssertEqual(courses.count, 6)
+        XCTAssertEqual(courses.count, 8)
+        XCTAssertEqual(cases.count, 25)
         XCTAssertFalse(cases.isEmpty)
 
         for c in cases {

@@ -97,8 +97,8 @@ class LiveCourseTimerTest {
     fun `every case times what the matcher timed, on every course`() {
         val slugs = courses.map { it["slug"]!!.jsonPrimitive.content }
         val specs = courses.map { spec(it) }
-        assertEquals(6, slugs.size)
-        assertEquals(19, cases.size)
+        assertEquals(8, slugs.size)
+        assertEquals(25, cases.size)
         for (c in cases) {
             val key = c["key"]!!.jsonPrimitive.content
             val fixes = decode(c["track"]!!.jsonObject)
@@ -124,6 +124,74 @@ class LiveCourseTimerTest {
                 )
             }
         }
+    }
+
+    /// The two synthetic shapes the park lacks (#1446): an out-and-back whose
+    /// start and finish lines sit at one spot facing opposite ways (the
+    /// shared box), and a point to point. Each clean run is timed to the
+    /// matcher's millisecond by a finish crossed live, not by `settle`; a
+    /// stop at the turn, an early turn, a stop 400 m short and a 260 s
+    /// dropout across the finish are never timed, live or at Stop.
+    @Test
+    fun `the out-and-back and the point to point time what the matcher timed, and settle adds nothing`() {
+        val oab = courses.first { it["slug"]!!.jsonPrimitive.content == "synthetic-out-and-back" }
+        val p2p = courses.first { it["slug"]!!.jsonPrimitive.content == "synthetic-point-to-point" }
+        assertTrue("one spot, opposite ways", gatesShareSpot(spec(oab).startGate, spec(oab).endGate))
+        assertEquals(GateBoxLayout.SHARED, gateTimingEdges(spec(oab).startGate, spec(oab).endGate).layout)
+        assertTrue(!gatesShareSpot(spec(p2p).startGate, spec(p2p).endGate))
+        val expected = mapOf(
+            "oab_clean" to oab, "oab_stopped_at_turn" to oab, "oab_turned_early" to oab,
+            "p2p_clean" to p2p, "p2p_stopped_short" to p2p, "p2p_dropout_at_finish" to p2p,
+        )
+        for ((key, course) in expected) {
+            val c = cases.first { it["key"]!!.jsonPrimitive.content == key }
+            val slug = course["slug"]!!.jsonPrimitive.content
+            assertEquals(key, slug, c["course"]!!.jsonPrimitive.content)
+            val r = run(spec(course), decode(c["track"]!!.jsonObject))
+            val recorded = c["matched"]!!.jsonObject[slug]?.jsonObject
+            if (recorded == null) {
+                assertNull("$key: timed ${r.timer.best?.elapsedS}", r.timer.best)
+                assertTrue("$key: said Finished!", r.events.none { it is CourseEvent.Finished })
+                assertNull("$key: settle finished it", r.settled)
+                continue
+            }
+            val best = r.timer.best!!
+            assertTrue("$key: ${best.elapsedS}", abs(best.elapsedS - recorded["time_seconds"]!!.jsonPrimitive.double) < 0.001)
+            assertEquals(key, recorded["started_offset_ms"]!!.jsonPrimitive.long, Math.round(best.startMs) - baseMs)
+            assertEquals("$key: one lap, finished live", listOf(best), r.events.filterIsInstance<CourseEvent.Finished>())
+            assertNull("$key: nothing left for settle", r.settled)
+        }
+    }
+
+    /// The phone now settles at Stop too: the clean point to point cut off
+    /// with its last fix 3 m short of the finish line (inside the 5 m slack,
+    /// never in the box) finishes at that fix on Stop, and nothing before;
+    /// cut off 8 m short, beyond the slack, it gets no time.
+    @Test
+    fun `a point to point ended within the finish slack finishes at Stop, beyond it does not`() {
+        val p2p = courses.first { it["slug"]!!.jsonPrimitive.content == "synthetic-point-to-point" }
+        val spec = spec(p2p)
+        val entry = gateTimingEdges(spec.startGate, spec.endGate).finishEntry
+        val fixes = decode(cases.first { it["key"]!!.jsonPrimitive.content == "p2p_clean" }["track"]!!.jsonObject)
+        val s = fixes.map { gateProjection(entry, it.lat, it.lng).s }
+        // The first fix in the box, and the last one more than 8 m short.
+        val inBox = fixes.indices.first { s[it] >= 0.0 && abs(gateProjection(entry, fixes[it].lat, fixes[it].lng).u) <= entry.halfWidthM }
+        val before = (0 until inBox).last { s[it] < -8.0 }
+
+        fun endingAt(short: Double): Run {
+            val a = fixes[before]
+            val b = fixes[inBox]
+            val f = (-short - s[before]) / (s[inBox] - s[before])
+            val last = Fix(a.lat + f * (b.lat - a.lat), a.lng + f * (b.lng - a.lng), a.tMs + 500.0)
+            assertEquals(-short, gateProjection(entry, last.lat, last.lng).s, 0.2)
+            return run(spec, fixes.take(before + 1) + last)
+        }
+
+        val inSlack = endingAt(3.0)
+        assertTrue("never entered the box", inSlack.events.none { it is CourseEvent.Finished })
+        assertNotNull("3 m short finishes at Stop", inSlack.settled)
+        assertEquals(fixes[before].tMs + 500.0, inSlack.settled!!.endMs, 0.0)
+        assertNull("8 m short: no time", endingAt(8.0).timer.best)
     }
 
     @Test

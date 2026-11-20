@@ -329,3 +329,129 @@ test('routeGuideRefusal holds a road step to a whole length and its known fields
 	g.steps[1] = { kind: 'road', at_m: 0, length_m: 120, way: 'road' };
 	assert.match(String(routeGuideRefusal(g)), /unknown field way/);
 });
+
+// A straight trail east along the equator, ~22 m between nodes, crossing roads that run north-south.
+const line = Object.fromEntries(
+	[1, 2, 3, 4, 5, 6, 7, 8].map((id) => [id, { lat: 0, lon: (id - 1) * 0.0002, ele: 10 }]),
+);
+const trail = { id: 30, nodes: [1, 2, 3, 4, 5, 6, 7, 8], tags: { highway: 'path', name: 'Rail Trail' } };
+/** @param {number} at node id @param {Record<string, string>} tags @param {Record<string, string>} [nodeTags] @param {number} [way] */
+const roadThrough = (at, tags, nodeTags = {}, way = 900 + at) => ({
+	[at]: {
+		tags: nodeTags,
+		roads: [
+			{
+				id: way,
+				tags,
+				arms: [
+					{ node: 1000 + at, lat: 0.0003, lon: (at - 1) * 0.0002 },
+					{ node: 2000 + at, lat: -0.0003, lon: (at - 1) * 0.0002 },
+				],
+			},
+		],
+	},
+});
+/** @param {Partial<import('./route_guide.mjs').GuideInput>} over */
+const linear = (over = {}) =>
+	buildRouteGuide({
+		sequence: [1, 2, 3, 4, 5, 6, 7, 8],
+		nodes: line,
+		ways: [trail],
+		allWays: [trail],
+		lengthM: 155.7,
+		checkpointAtM: [],
+		loop: false,
+		lang: 'en',
+		...over,
+	});
+/** @param {{ steps: Array<Record<string, unknown>> }} g */
+const roadCrossingSteps = (g) => g.steps.filter((s) => s.kind === 'crossing' && s.crossing === 'road');
+
+test('a road crossed at grade is a road crossing with its name and signal', () => {
+	const g = linear({
+		roadCrossings: {
+			...roadThrough(3, { highway: 'secondary', name: 'Hunter Mill Road' }, { highway: 'crossing', crossing: 'traffic_signals' }),
+			...roadThrough(6, { highway: 'residential' }, { highway: 'crossing', crossing: 'marked' }),
+		},
+	});
+	assert.deepEqual(roadCrossingSteps(g), [
+		{ kind: 'crossing', crossing: 'road', name: 'Hunter Mill Road', signal: true, at_m: 44 },
+		{ kind: 'crossing', crossing: 'road', at_m: 111 },
+	]);
+	assert.equal(routeGuideRefusal(g), null);
+});
+
+test('a course with no road crossing data, or crossing no road, reads as it did before', () => {
+	const before = linear();
+	assert.deepEqual(roadCrossingSteps(before), []);
+	assert.deepEqual(linear({ roadCrossings: {} }), before);
+	// A road that only reaches the trail from one side is not crossed.
+	const deadEnd = roadThrough(3, { highway: 'residential', name: 'Dead End Lane' });
+	deadEnd[3].roads[0].arms.pop();
+	assert.deepEqual(linear({ roadCrossings: deadEnd }), before);
+});
+
+test('a road on a bridge or in a tunnel, or a course on its own bridge, is not at grade', () => {
+	const before = linear();
+	assert.deepEqual(linear({ roadCrossings: roadThrough(3, { highway: 'primary', name: 'Route 7', bridge: 'yes' }) }), before);
+	assert.deepEqual(linear({ roadCrossings: roadThrough(3, { highway: 'primary', name: 'Route 7', tunnel: 'yes' }) }), before);
+	const overpass = { id: 31, nodes: [2, 3, 4], tags: { highway: 'footway', bridge: 'yes' } };
+	const pieces = [{ ...trail, nodes: [1, 2] }, overpass, { ...trail, id: 32, nodes: [4, 5, 6, 7, 8] }];
+	const g = linear({ ways: pieces, allWays: pieces, roadCrossings: roadThrough(3, { highway: 'primary', name: 'Route 7' }) });
+	assert.deepEqual(roadCrossingSteps(g), []);
+	assert.deepEqual(g.steps.filter((s) => s.kind === 'crossing').map((s) => s.crossing), ['bridge']);
+	// At the end of a bridge, where the course comes back down to the road, it is at grade.
+	const atEnd = linear({ ways: pieces, allWays: pieces, roadCrossings: roadThrough(4, { highway: 'primary', name: 'Route 7' }) });
+	assert.deepEqual(roadCrossingSteps(atEnd).map((s) => s.name), ['Route 7']);
+});
+
+test('the two carriageways of one road are one crossing; another road beside it is its own', () => {
+	const dual = linear({
+		roadCrossings: {
+			...roadThrough(3, { highway: 'primary', name: 'Leesburg Pike' }, {}, 901),
+			...roadThrough(4, { highway: 'primary', name: 'Leesburg Pike' }, { crossing: 'traffic_signals' }, 902),
+		},
+	});
+	assert.deepEqual(roadCrossingSteps(dual), [{ kind: 'crossing', crossing: 'road', name: 'Leesburg Pike', signal: true, at_m: 44 }]);
+	const two = linear({
+		roadCrossings: {
+			...roadThrough(3, { highway: 'primary', name: 'Leesburg Pike' }),
+			...roadThrough(4, { highway: 'residential', name: 'Oak Street' }),
+		},
+	});
+	assert.deepEqual(roadCrossingSteps(two).map((s) => s.name), ['Leesburg Pike', 'Oak Street']);
+	// An unnamed turn lane beside a named road, either side of it, is part of that crossing.
+	for (const [first, second] of /** @type {Record<string, string>[][]} */ ([
+		[{ highway: 'tertiary_link' }, { highway: 'tertiary', name: 'Roxbury Road' }],
+		[{ highway: 'tertiary', name: 'Roxbury Road' }, { highway: 'tertiary_link' }],
+	])) {
+		const lane = linear({ roadCrossings: { ...roadThrough(3, first), ...roadThrough(4, second, { crossing: 'traffic_signals' }) } });
+		assert.deepEqual(roadCrossingSteps(lane), [{ kind: 'crossing', crossing: 'road', name: 'Roxbury Road', signal: true, at_m: 44 }]);
+	}
+	// Past ROAD_CROSSING_MERGE_M apart, one name is two crossings (an out-and-back crossing twice is two steps).
+	const apart = linear({
+		roadCrossings: {
+			...roadThrough(2, { highway: 'residential', name: 'Oak Street' }),
+			...roadThrough(5, { highway: 'residential', name: 'Oak Street' }),
+		},
+	});
+	assert.equal(roadCrossingSteps(apart).length, 2);
+});
+
+test('routeGuideRefusal holds a road crossing to its fields and keeps bridges and fords bare', () => {
+	const g = structuredClone(linear());
+	g.steps.splice(1, 0, { kind: 'crossing', at_m: 0, crossing: 'road', name: 'Park Road', signal: true });
+	assert.equal(routeGuideRefusal(g), null);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'road' };
+	assert.equal(routeGuideRefusal(g), null);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'road', signal: false };
+	assert.match(String(routeGuideRefusal(g)), /signal is true or left out/);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'bridge', name: 'Mill Bridge' };
+	assert.match(String(routeGuideRefusal(g)), /only a road crossing carries a name or a signal/);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'ford', signal: true };
+	assert.match(String(routeGuideRefusal(g)), /only a road crossing carries a name or a signal/);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'road', name: ' ' };
+	assert.match(String(routeGuideRefusal(g)), /name must be/);
+	g.steps[1] = { kind: 'crossing', at_m: 0, crossing: 'road', way: 'road' };
+	assert.match(String(routeGuideRefusal(g)), /unknown field way/);
+});

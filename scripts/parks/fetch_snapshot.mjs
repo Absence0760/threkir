@@ -11,23 +11,34 @@
 //     request per way, well inside the API usage policy for an occasional run.
 //   - USGS Elevation Point Query Service (3DEP, US public domain). US only;
 //     a park elsewhere needs another source before it can be built.
+//   - Overpass API (ODbL, © OpenStreetMap contributors): the motor roads
+//     through the course's nodes, written as `road_crossings` so the route
+//     guide can name each road a course crosses at grade
+//     (`lib/road_crossings.mjs`). One request per park.
 //
 // Run: node scripts/parks/fetch_snapshot.mjs scripts/parks/catalogue/us-va/pocahontas
+//
+// `--road-crossings-only` fetches `road_crossings` alone into an existing
+// snapshot and leaves its ways, nodes and elevations exactly as they are, so a
+// park's course geometry does not move with whatever OSM holds today:
+//   node scripts/parks/fetch_snapshot.mjs --road-crossings-only scripts/parks/catalogue/us-va/pocahontas
 
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { parseWayFull } from './lib/osm_response.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
+import { ROAD_HIGHWAY_PATTERN, parseRoadCrossings } from './lib/road_crossings.mjs';
 
 const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/jaredhoward-dev/threkir)';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6';
 const EPQS = 'https://epqs.nationalmap.gov/v1/json';
+const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const ELEVATION_CONCURRENCY = 4;
 const REQUEST_TIMEOUT_MS = 30_000;
 
-/** @param {string} url */
-async function getJson(url) {
+/** @param {string} url @param {RequestInit} [init] */
+async function getJson(url, init = {}) {
 	for (let attempt = 1; ; attempt++) {
 		/** @type {Response | null} */
 		let res = null;
@@ -35,8 +46,9 @@ async function getJson(url) {
 		try {
 			// Without a deadline one stalled EPQS connection hangs the whole run.
 			res = await fetch(url, {
-				headers: { 'User-Agent': USER_AGENT },
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				...init,
+				headers: { 'User-Agent': USER_AGENT, ...init.headers },
+				signal: AbortSignal.timeout(init.method === 'POST' ? 4 * REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS),
 			});
 			// EPQS sometimes answers 200 with an empty body under load; that is
 			// a transient failure, not data.
@@ -67,11 +79,55 @@ async function elevationM(lat, lon) {
 	return Math.round(value * 10) / 10;
 }
 
+/**
+ * The snapshot's `road_crossings`: every motor road through one of the
+ * course nodes, from one Overpass query.
+ *
+ * @param {number[]} nodeIds
+ */
+async function fetchRoadCrossings(nodeIds) {
+	const query = [
+		'[out:json][timeout:180];',
+		`node(id:${nodeIds.join(',')})->.course;`,
+		`way(bn.course)[highway~"${ROAD_HIGHWAY_PATTERN}"]->.roads;`,
+		'.roads out body;',
+		'node(w.roads);',
+		'out body;',
+	].join('\n');
+	const body = await getJson(OVERPASS, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: new URLSearchParams({ data: query }).toString(),
+	});
+	return {
+		fetched_at: new Date().toISOString().slice(0, 10),
+		source: 'OpenStreetMap via the Overpass API, © OpenStreetMap contributors, ODbL 1.0',
+		nodes: parseRoadCrossings(body, nodeIds),
+	};
+}
+
+/** @param {string} snapshotPath */
+async function roadCrossingsOnly(snapshotPath) {
+	const text = readIfExists(snapshotPath);
+	if (text === null) throw new Error(`${snapshotPath} does not exist; run without --road-crossings-only first`);
+	const snapshot = JSON.parse(text);
+	const nodeIds = Object.keys(snapshot.nodes).map(Number);
+	snapshot.road_crossings = await fetchRoadCrossings(nodeIds);
+	fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 1)}\n`);
+	console.log(`${snapshotPath}: ${Object.keys(snapshot.road_crossings.nodes).length} course nodes on a motor road`);
+}
+
 async function main() {
-	const dir = process.argv[2];
+	const args = process.argv.slice(2);
+	const only = args.includes('--road-crossings-only');
+	const dir = args.find((a) => a !== '--road-crossings-only');
 	if (!dir) {
-		console.error('usage: node scripts/parks/fetch_snapshot.mjs <catalogue/park dir>');
+		console.error('usage: node scripts/parks/fetch_snapshot.mjs [--road-crossings-only] <catalogue/park dir>');
 		process.exit(2);
+	}
+	if (only) {
+		await roadCrossingsOnly(path.join(dir, 'snapshot.json'));
+		return;
 	}
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
 	const snapshotPath = path.join(dir, 'snapshot.json');
@@ -128,6 +184,7 @@ async function main() {
 		},
 		ways,
 		nodes: sortedNodes,
+		road_crossings: await fetchRoadCrossings(Object.keys(sortedNodes).map(Number)),
 	};
 	fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 1)}\n`);
 	console.log(

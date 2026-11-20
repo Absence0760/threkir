@@ -134,6 +134,7 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			laps: null,
 			water: snapshot.water,
 			roadConnectors: roadConnectorIds(spec.trail_review),
+			roadCrossings: snapshot.road_crossings?.nodes,
 		});
 
 		const geojson = {
@@ -235,6 +236,7 @@ export function buildPark(dir, { warn = (message) => console.warn(`WARN ${messag
 			laps: { count: race.laps, firstStartM: leadInM, lapM },
 			water: snapshot.water,
 			roadConnectors: roadConnectorIds(spec.trail_review),
+			roadCrossings: snapshot.road_crossings?.nodes,
 		});
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
@@ -383,6 +385,7 @@ function buildLinearRace(spec, snapshot, race, ways, targetM, warn) {
 		loop: false,
 		water: snapshot.water,
 		roadConnectors: roadConnectorIds(spec.trail_review),
+		roadCrossings: snapshot.road_crossings?.nodes,
 	});
 	const start = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 	const last = waypoints[waypoints.length - 1];

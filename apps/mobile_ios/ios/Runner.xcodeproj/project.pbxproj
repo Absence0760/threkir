@@ -54,6 +54,9 @@
 		4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10001 /* LiveRace.swift */; };
 		4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */; };
 		7D1A0C5E3B2F000300D10001 /* PushedWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */; };
+		1446B1000000000000000001 /* GateCrossing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1446B2000000000000000001 /* GateCrossing.swift */; };
+		1446B1000000000000000002 /* CourseBoxTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1446B2000000000000000002 /* CourseBoxTiming.swift */; };
+		1446B1000000000000000003 /* ParkCourse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1446B2000000000000000003 /* ParkCourse.swift */; };
 		7D1A0C5E3B2F000300D10002 /* WatchWorkoutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */; };
 		7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */; };
 		7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00052EC3CC00C636F4 /* ContentView.swift */; };
@@ -245,6 +248,9 @@
 		4A6E1C0B5D2F000400C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
 		4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
 		7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushedWorkout.swift; sourceTree = "<group>"; };
+		1446B2000000000000000001 /* GateCrossing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateCrossing.swift; sourceTree = "<group>"; };
+		1446B2000000000000000002 /* CourseBoxTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseBoxTiming.swift; sourceTree = "<group>"; };
+		1446B2000000000000000003 /* ParkCourse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkCourse.swift; sourceTree = "<group>"; };
 		7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutRunner.swift; sourceTree = "<group>"; };
 		7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
 		7884EA00052EC3CC00C636F4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -481,6 +487,9 @@
 				4A6E1C0B5D2F000400C10001 /* LiveRace.swift */,
 				4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */,
 				7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */,
+				1446B2000000000000000001 /* GateCrossing.swift */,
+				1446B2000000000000000002 /* CourseBoxTiming.swift */,
+				1446B2000000000000000003 /* ParkCourse.swift */,
 				7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */,
 				7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */,
 				7884EA00052EC3CC00C636F4 /* ContentView.swift */,
@@ -963,6 +972,9 @@
 				4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */,
 				4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */,
 				7D1A0C5E3B2F000300D10001 /* PushedWorkout.swift in Sources */,
+				1446B1000000000000000001 /* GateCrossing.swift in Sources */,
+				1446B1000000000000000002 /* CourseBoxTiming.swift in Sources */,
+				1446B1000000000000000003 /* ParkCourse.swift in Sources */,
 				7D1A0C5E3B2F000300D10002 /* WatchWorkoutRunner.swift in Sources */,
 				7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */,
 				7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */,

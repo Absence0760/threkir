@@ -2243,6 +2243,47 @@
         }
       }
     },
+    "Course not finished": {
+      "comment": "Summary screen line when a run left a park course's start box but stopped before a lap counted, so it gets no course time; the run itself is still saved (#1446).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strecke nicht beendet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorrido sin terminar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parcours non terminé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コース未完走"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percurso não concluído"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percurso não concluído"
+          }
+        }
+      }
+    },
     "DEBUG: Sync Direct": {
       "comment": "DEBUG-only button label; not user-facing in Release builds.",
       "localizations": {
@@ -2730,6 +2771,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Faltam cinquenta jardas"
+          }
+        }
+      }
+    },
+    "Finished! %@": {
+      "comment": "Park course finish on the run and summary screens, shown with a buzz when the runner enters the finish box on a lap that counts (#1446). %@ is the course time as h:mm:ss, e.g. 8:42:10. The exclamation matches the phone's runRaceFinishedAuto.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Ziel! %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Meta! %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée ! %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴール！%@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chegada! %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chegada! %@"
           }
         }
       }
@@ -6456,6 +6538,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descarta permanentemente a corrida não sincronizada"
+          }
+        }
+      }
+    },
+    "Timing started": {
+      "comment": "Park course timing on the run screen, shown with a buzz when the runner leaves the course's start box going forward (#1446). Big glanceable text; keep it short.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitmessung läuft"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronometraje iniciado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrono lancé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "計測開始"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronometragem iniciada"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronometragem iniciada"
           }
         }
       }

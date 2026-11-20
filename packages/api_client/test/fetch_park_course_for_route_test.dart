@@ -111,4 +111,51 @@ void main() {
       throwsA(isA<PostgrestException>()),
     );
   });
+
+  group('fetchParkCoursesStartingIn (#1446)', () {
+    test(
+        'asks for open courses whose start line is in the box, and nothing '
+        'else about the runner', () async {
+      fake.body = [_course(segment: _segment)];
+      final got = await api.fetchParkCoursesStartingIn(
+          minLat: 37.49, minLng: -77.51, maxLat: 37.51, maxLng: -77.49);
+      expect(got.single.segment.name, 'Lake loop');
+
+      final req = fake.requests.single;
+      expect(req.method, 'GET');
+      expect(req.url.path, endsWith('/rest/v1/park_courses'));
+      final q = req.url.queryParametersAll;
+      expect(q['select'], ['*,global_segments!inner(*)']);
+      expect(q['status'], ['neq.closed']);
+      expect(q['global_segments.start_gate_lat'],
+          unorderedEquals(['gte.37.49', 'lte.37.51']));
+      expect(q['global_segments.start_gate_lng'],
+          unorderedEquals(['gte.-77.51', 'lte.-77.49']));
+      expect(q.keys.toSet(), {
+        'select',
+        'status',
+        'global_segments.start_gate_lat',
+        'global_segments.start_gate_lng',
+        'limit',
+      });
+    });
+
+    test('a course whose segment RLS hides is left out', () async {
+      fake.body = [_course(segment: null)];
+      expect(
+          await api.fetchParkCoursesStartingIn(
+              minLat: 37.49, minLng: -77.51, maxLat: 37.51, maxLng: -77.49),
+          isEmpty);
+    });
+
+    test('a failed read throws', () async {
+      fake.status = 503;
+      fake.body = {'message': 'unavailable'};
+      await expectLater(
+        api.fetchParkCoursesStartingIn(
+            minLat: 37.49, minLng: -77.51, maxLat: 37.51, maxLng: -77.49),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+  });
 }

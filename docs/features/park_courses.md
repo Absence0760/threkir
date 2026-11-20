@@ -46,6 +46,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Powhite Park, 5 km and 10 km (2 laps)** (City of Richmond; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/powhite-park/` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 | **Poor Farm Park, 5 km and 10 km (2 laps)** (Hanover County, VA; issue #1430): built from OSM under `scripts/parks/catalogue/us-va/poor-farm/`, closing two near-miss junctions with `trail_review.joins` | **Staged**: waits on the owner's ground check; foot access not confirmed in writing by owner decision. See *Pre-deploy checklist* |
 | **First Landing State Park, 5 km, 10 km, half and marathon (2 laps)** (Virginia DCR, Virginia Beach; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/first-landing/`, every way checked against the DCR trail guide; the half is one 20.7 km lap | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
+| **James River State Park, 5 km, 10 km, half and marathon (2 laps)** (Buckingham County, Virginia DCR; issue #1433): built from OSM under `scripts/parks/catalogue/us-va/james-river-state-park/`, one loop per distance with a shared lead-in from the Discovery Area lot, every way checked against DCR's trail guide and Avenza map | **Staged**: waits on the owner's ground check and the DCR permit question. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -1271,6 +1272,24 @@ These gate going live, not the code:
       it end to end, with its ends at roads (the streets west of the park and
       64th Street), and the
       loops are the better run.
+- [ ] **James River State Park (staged, issue #1433).** Before its `release`
+      goes `live`: the owner walks the loops against the trail signs: the
+      4,595 m 5K loop (River Trail, Cabell-Running Creek Connector, Cabell
+      Trail, Taylor Trail), the 9,951 m 10K loop (Running Creek Trail ridge,
+      Branch Trail past Branch Pond, Branch Trail Connector, the whole Cabell
+      Trail, the connector and Taylor Trail) and the 20,814 m half loop, run
+      twice for the marathon (adds the Kerr Loop, the Cabell Trail Connector
+      and the River Trail's whole length; one Park Road crossing per lap at
+      the Kerr Loop trailhead). All four share a 494 m lead-in from the
+      Discovery Area lot on Canoe Landing Road. The unblazed connectors (the
+      dashed lines on DCR's map, listed in its trail table with no blaze) sit
+      up to about 100 m off the OSM lines on DCR's map, so check each on the
+      ground; OSM names the Cabell Trail's last stretch to Green Hill
+      "Cabell Creek Connector Trail". Way 19902508 is designated because its
+      north part is the Branch Trail Connector; its south part is Branch Pond
+      Road, which no course walks. Walk the route guides and set
+      `ground_checked_at`, and confirm with DCR that a standing course needs
+      no Special Use Permit. Trails are shared with horses and bikes.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

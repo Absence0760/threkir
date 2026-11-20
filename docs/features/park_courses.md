@@ -211,6 +211,68 @@ Every run is scored on the server (decisions § 2392):
   (`run_track_extents`) can reach the segment. A second call while one is queued
   returns the same job.
 
+## Why no time
+
+Issue #1446. A run that set out on a course and got no time says which rule it
+missed and how far along it got, on run detail, to its owner only, one card per
+course beside the course chips.
+
+**The rule** is `diagnoseGlobalSegmentAttempts` in the `segments` parity pair
+(web `segments/segments.ts`, Dart `lib/segments.dart`, the same fixture cases
+on both). It never changes a time: it runs the box timer first and only
+explains a null, so no matcher version bump came with it.
+
+- An **attempt** opens where the run leaves the course's start box forward
+  (`gateTimingEdges`, with the timer's first-fix slack) and closes where it next
+  enters the finish box having covered the length guard's lower bound (75 %),
+  where it ends in the finish box as the timer's tail rule reads it, or at the
+  end of the recording. Attempts never overlap; a lapped loop's finish opens
+  the next. A run that never left the start box has none; a run timed on the
+  course has none.
+- A run that crosses into the course **backward through the finish box** opens
+  a reverse attempt. A wrong-way run never leaves the start box forward, so this
+  is the only way it is seen. It counts only when it reaches the start box from
+  the course side having covered 75 % of the length and passed at least two
+  checkpoints in reverse order, more than in order.
+- The **outcome**, in precedence order: `wrong_direction` (a counted reverse
+  attempt; progress 0, since none of the course was run its way round);
+  `skipped_checkpoint` (a checkpoint not passed in order, by the timer's own
+  first-in-tolerance walk, and the run entered the finish box or got further
+  along the line than that checkpoint; `missed_checkpoint` is the first one);
+  `off_course` (entered the finish box with every checkpoint passed, yet
+  untimed: the 25 % length guard); `stopped_short` (anything else that ended
+  before the finish box).
+- **Progress** follows the run along the course line: each fix within 35 m of
+  the line is placed at the nearest point of the line to where the runner
+  should be by now, searched from just behind the last placed point to 1.5
+  times the distance covered since then ahead, so a loop's two ends, a lapped
+  course's laps and an out-and-back's legs are told apart. The furthest placed
+  point not past the first missed checkpoint is the progress, scaled to the
+  stored length. Of several attempts the furthest counts.
+- **Three filters** keep a run on one course from reporting every course it
+  passes through. The six Pocahontas courses share trailheads and trails, and
+  without them a clean half marathon reported three courses it never set out
+  on: an attempt that spent half or more of its time inside an effort the run
+  was timed by (on any segment) is dropped; a forward attempt on a course with
+  checkpoints counts only once it passed the first; a reverse attempt must
+  close as above. An untimed run that follows several courses' shared line
+  still reports each (the 50K's one-lap case reports the half, the marathon
+  and the 50K).
+
+**Server.** The `segment-match` function writes the attempts after the efforts
+on every pass, through `record_park_course_attempts` (same stale-bytes refusal;
+a re-score replaces the run's rows, an empty list included), into
+`park_course_attempts`, owner-only by RLS. Clients read
+`get_run_park_course_attempts` through web `fetchParkCourseAttempts` and Dart
+`ApiClient.fetchParkCourseAttempts`; both throw on a failed read, so the card
+section is left out and logged rather than shown empty. Reference:
+[api_database.md](../backend/api_database.md) (`park_course_attempts`).
+
+**Not covered.** A circle-matched segment (no usable pair of lines) has no start
+box and so no attempt. A runner who quits before the first checkpoint gets no
+card. A run scored before this shipped has no attempts until it is scored again
+(a backfill or a track rewrite).
+
 ## Seasons and boards
 
 - A season is the calendar year in the **park's** timezone, computed from the
@@ -1359,6 +1421,19 @@ These gate going live, not the code:
 
 ## Tests
 
+- Why no time (issue #1446): the shared fixture `fixtures/park_course_runs.json`
+  records every case's attempts on every course, asserted exactly by
+  `parks/park_course_runs.test.ts`, its Dart twin and the segment-match
+  `park_course_runs.test.ts` (what reaches `record_park_course_attempts`);
+  `beaver_shortcut` / `beaver_cut` are `skipped_checkpoint` 2, `beaver_wrong_way`
+  `wrong_direction`, `beaver_short` `stopped_short` 150 m short, `beaver_detour`
+  `off_course`, and no timed run has an attempt. Four synthetic `attempt:` cases
+  in `segments.test.ts` / `segments_test.dart`. pgTAP
+  `park_course_attempts_test.sql` (the write, its stale and missing refusals,
+  the replace, the CHECKs, owner-only reads of the table and the RPC, anon
+  refused both, no client write, the cascade on a run delete). Row readers:
+  `park_courses.test.ts` (`parkCourseAttemptFromRow`) and core_models
+  `park_course_attempt_test.dart`.
 - Reports and closures: pgTAP
   `apps/backend/supabase/tests/park_course_reports_test.sql` (anon and
   authenticated refused the filing RPC and the table, the insert path signed

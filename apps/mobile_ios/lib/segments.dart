@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 
 import 'course_gates.dart'
-    show GateBoxLayout, gateTimingEdges, kCourseGateBoxDepthM;
+    show GateBoxLayout, GatePoint, gateTimingEdges, kCourseGateBoxDepthM, planeXY;
 import 'gate_crossing.dart';
 import 'geo.dart' show unwrapLonDeg;
 import 'run_stats.dart' show haversineMetres;
@@ -595,6 +595,434 @@ bool _passesCheckpoints(
     cursor = hit;
   }
   return true;
+}
+
+/// Which of two outcomes a tie between attempts goes to: wrong way round over
+/// a missed checkpoint over off course over stopped short. Mirrors
+/// `ATTEMPT_OUTCOME_RANK` in `apps/web/src/lib/segments/segments.ts`.
+int _attemptRank(ParkCourseAttemptOutcome o) => switch (o) {
+      ParkCourseAttemptOutcome.stoppedShort => 0,
+      ParkCourseAttemptOutcome.offCourse => 1,
+      ParkCourseAttemptOutcome.skippedCheckpoint => 2,
+      ParkCourseAttemptOutcome.wrongDirection => 3,
+    };
+
+/// Why a run that set out on a gated course got no time on it (issue #1446).
+/// Mirrors `CourseAttempt` in `apps/web/src/lib/segments/segments.ts`.
+class CourseAttempt {
+  final ParkCourseAttemptOutcome outcome;
+
+  /// How far along the course line the run got while still on it,
+  /// 0..[courseM].
+  final int progressM;
+
+  /// The length the length guard uses, rounded.
+  final int courseM;
+
+  /// 1-based, the first checkpoint not passed in order; only for
+  /// [ParkCourseAttemptOutcome.skippedCheckpoint].
+  final int? missedCheckpoint;
+  final int checkpointCount;
+  const CourseAttempt({
+    required this.outcome,
+    required this.progressM,
+    required this.courseM,
+    required this.missedCheckpoint,
+    required this.checkpointCount,
+  });
+}
+
+/// An attempt that spent at least this share of its time inside an effort
+/// the same run was timed by, on any segment, is that effort's run passing
+/// through. Mirrors `COURSE_ATTEMPT_TIMED_OVERLAP`.
+const double kCourseAttemptTimedOverlap = 0.5;
+
+/// One attempt per input segment: why the run got no time on it, or null
+/// when it was timed, never set out on it, or the segment has no usable pair
+/// of lines. The rule, its filters and its progress measure are documented
+/// on `diagnoseGlobalSegmentAttempts` in
+/// `apps/web/src/lib/segments/segments.ts`, which this mirrors.
+List<CourseAttempt?> diagnoseGlobalSegmentAttempts(
+  List<Waypoint> track,
+  List<GlobalSegmentGeometry> segments, {
+  double toleranceM = 35,
+}) {
+  final out = List<CourseAttempt?>.filled(segments.length, null);
+  final efforts =
+      computeGlobalSegmentEfforts(track, segments, toleranceM: toleranceM);
+  final line = trackLine(track);
+  if (line.length < 2) return out;
+  final bounds = _trackBounds(line);
+  final timed = <_TimedSpan>[];
+  for (final e in efforts) {
+    if (e != null) {
+      final startMs = e.startedAt.millisecondsSinceEpoch.toDouble();
+      timed.add(_TimedSpan(startMs, startMs + e.timeSeconds * 1000));
+    }
+  }
+  _TrackDistanceIndex? index;
+  for (var i = 0; i < segments.length; i++) {
+    if (efforts[i] != null) continue;
+    final segment = segments[i];
+    if (segment.points.length < 2 || !(segment.distanceM > 0)) continue;
+    final start = segment.startGate;
+    final end = segment.endGate;
+    if (start == null || end == null || !gateUsable(start) || !gateUsable(end)) {
+      continue;
+    }
+    if (!_boundsAdmit(bounds, start.lat, start.lng,
+        start.halfWidthM + kCourseGateBoxDepthM + kGlobalSegmentBoxSlackM)) {
+      continue;
+    }
+    index ??= _distanceIndex(line);
+    out[i] = _diagnoseByGates(
+        line, index, segment, start, end, timed, toleranceM);
+  }
+  return out;
+}
+
+/// The single-segment form of [diagnoseGlobalSegmentAttempts].
+CourseAttempt? diagnoseGlobalSegmentAttempt(
+  List<Waypoint> track,
+  GlobalSegmentGeometry segment, {
+  double toleranceM = 35,
+}) =>
+    diagnoseGlobalSegmentAttempts(track, [segment], toleranceM: toleranceM)
+        .first;
+
+class _TimedSpan {
+  final double startMs;
+  final double endMs;
+  const _TimedSpan(this.startMs, this.endMs);
+}
+
+class _AttemptWindow {
+  final int fromIdx;
+  final int toIdx;
+  final bool reverse;
+  final bool entered;
+  const _AttemptWindow(this.fromIdx, this.toIdx, this.reverse, this.entered);
+}
+
+class _OpenAttempt {
+  final int fromIdx;
+  final double coveredM;
+  const _OpenAttempt(this.fromIdx, this.coveredM);
+}
+
+CourseAttempt? _diagnoseByGates(
+  List<Waypoint> line,
+  _TrackDistanceIndex index,
+  GlobalSegmentGeometry segment,
+  Gate startGate,
+  Gate endGate,
+  List<_TimedSpan> timed,
+  double toleranceM,
+) {
+  final minCovered = segment.distanceM * (1 - kGlobalSegmentLengthTolerance);
+  final edges = gateTimingEdges(startGate, endGate);
+  final exit = edges.startExit;
+  final entry = edges.finishEntry;
+  final startDetector = GateCrossingDetector(exit);
+  final endDetector = GateCrossingDetector(entry);
+  final chained =
+      edges.layout == GateBoxLayout.apart && linesChain(startGate, endGate);
+
+  final windows = <_AttemptWindow>[];
+  _OpenAttempt? fwd;
+  _OpenAttempt? rev;
+  var prevIdx = -1;
+  var prevMs = double.negativeInfinity;
+  var tailIdx = -1;
+
+  for (var i = 0; i < line.length; i++) {
+    final p = line[i];
+    final ts = p.timestamp;
+    if (ts == null) continue;
+    final tMs = ts.millisecondsSinceEpoch.toDouble();
+    final lat = p.lineLat;
+    final lng = p.lineLng;
+    if (!lat.isFinite || !lng.isFinite || tMs <= prevMs) continue;
+    final fix = GateFix(lat: lat, lng: lng, tMs: tMs, coveredM: index.cum[i]);
+    final endCrossing = endDetector.offer(fix);
+    final startCrossing = startDetector.offer(fix);
+
+    final inFinish = gateProjection(entry, lat, lng);
+    if (inFinish.s >= -kGlobalSegmentBoxSlackM &&
+        inFinish.s <= edges.depthM &&
+        inFinish.u.abs() <= entry.halfWidthM) {
+      if (tailIdx < 0) tailIdx = i;
+    } else {
+      tailIdx = -1;
+    }
+
+    var closedAtMs = double.negativeInfinity;
+    if (fwd != null &&
+        endCrossing != null &&
+        endCrossing.direction == GateDirection.forward &&
+        endCrossing.coveredM - fwd.coveredM >= minCovered) {
+      windows.add(_AttemptWindow(fwd.fromIdx, i, false, true));
+      fwd = chained ? _OpenAttempt(prevIdx, endCrossing.coveredM) : null;
+      closedAtMs = endCrossing.tMs;
+    }
+    if (fwd == null) {
+      if (startCrossing != null &&
+          startCrossing.direction == GateDirection.forward &&
+          startCrossing.tMs >= closedAtMs) {
+        fwd = _OpenAttempt(prevIdx, startCrossing.coveredM);
+      } else if (prevIdx < 0) {
+        final atStart = gateProjection(exit, lat, lng);
+        if (atStart.s >= 0 &&
+            atStart.s <= kGlobalSegmentBoxSlackM &&
+            atStart.u.abs() <= exit.halfWidthM) {
+          fwd = _OpenAttempt(i, index.cum[i]);
+        }
+      }
+    }
+
+    if (rev != null &&
+        startCrossing != null &&
+        startCrossing.direction == GateDirection.backward &&
+        startCrossing.coveredM - rev.coveredM >= minCovered) {
+      windows.add(_AttemptWindow(rev.fromIdx, i, true, true));
+      rev = null;
+    } else if (rev == null &&
+        endCrossing != null &&
+        endCrossing.direction == GateDirection.backward) {
+      rev = _OpenAttempt(prevIdx, endCrossing.coveredM);
+    }
+    prevIdx = i;
+    prevMs = tMs;
+  }
+  if (fwd != null) {
+    final tail =
+        tailIdx >= 0 && index.cum[tailIdx] - fwd.coveredM >= minCovered;
+    windows.add(_AttemptWindow(
+        math.max(fwd.fromIdx, 0), tail ? tailIdx : prevIdx, false, tail));
+  }
+  if (rev != null) {
+    windows.add(_AttemptWindow(math.max(rev.fromIdx, 0), prevIdx, true, false));
+  }
+  if (windows.isEmpty) return null;
+
+  final course = _courseLine(segment);
+  CourseAttempt? best;
+  for (final w in windows) {
+    if (_insideTimedEffort(line, w, timed)) continue;
+    final a = _judgeWindow(line, index, segment, course, w, toleranceM);
+    if (a == null) continue;
+    if (best == null ||
+        a.progressM > best.progressM ||
+        (a.progressM == best.progressM &&
+            _attemptRank(a.outcome) > _attemptRank(best.outcome))) {
+      best = a;
+    }
+  }
+  return best;
+}
+
+bool _insideTimedEffort(
+    List<Waypoint> line, _AttemptWindow w, List<_TimedSpan> timed) {
+  if (timed.isEmpty) return false;
+  final from = line[w.fromIdx].timestamp;
+  final to = line[w.toIdx].timestamp;
+  if (from == null || to == null) return false;
+  final fromMs = from.millisecondsSinceEpoch.toDouble();
+  final toMs = to.millisecondsSinceEpoch.toDouble();
+  final spanMs = toMs - fromMs;
+  if (!(spanMs > 0)) return false;
+  for (final t in timed) {
+    final overlap = math.min(toMs, t.endMs) - math.max(fromMs, t.startMs);
+    if (overlap >= kCourseAttemptTimedOverlap * spanMs) return true;
+  }
+  return false;
+}
+
+/// The course polyline on the tangent plane at its first point, with the
+/// distance along it at each vertex and at each checkpoint.
+class _CourseLine {
+  final GatePoint origin;
+  final List<double> xs;
+  final List<double> ys;
+  final List<double> along;
+  final List<double> checkpointAlong;
+  const _CourseLine(
+      this.origin, this.xs, this.ys, this.along, this.checkpointAlong);
+}
+
+double _hypot(double x, double y) => math.sqrt(x * x + y * y);
+
+_CourseLine _courseLine(GlobalSegmentGeometry segment) {
+  final pts = segment.points;
+  final origin = GatePoint(pts.first.lat, pts.first.lng);
+  final n = pts.length;
+  final xs = List<double>.filled(n, 0);
+  final ys = List<double>.filled(n, 0);
+  final along = List<double>.filled(n, 0);
+  for (var k = 0; k < n; k++) {
+    final q = planeXY(origin, GatePoint(pts[k].lat, pts[k].lng));
+    xs[k] = q.x;
+    ys[k] = q.y;
+    if (k > 0) {
+      along[k] = along[k - 1] + _hypot(xs[k] - xs[k - 1], ys[k] - ys[k - 1]);
+    }
+  }
+  final checkpointAlong = <double>[];
+  var from = 0.0;
+  for (final cp in segment.checkpoints) {
+    final q = planeXY(origin, GatePoint(cp.lat, cp.lng));
+    var bestD = double.infinity;
+    var bestA = from;
+    for (var k = 0; k + 1 < n; k++) {
+      final len = along[k + 1] - along[k];
+      if (!(len > 0) || along[k + 1] < from) continue;
+      final dx = xs[k + 1] - xs[k];
+      final dy = ys[k + 1] - ys[k];
+      var t = ((q.x - xs[k]) * dx + (q.y - ys[k]) * dy) / (len * len);
+      t = math.max(math.max(t, (from - along[k]) / len), 0);
+      t = math.min(t, 1);
+      final d = _hypot(xs[k] + t * dx - q.x, ys[k] + t * dy - q.y);
+      if (d < bestD) {
+        bestD = d;
+        bestA = along[k] + t * len;
+      }
+    }
+    checkpointAlong.add(bestA);
+    from = bestA;
+  }
+  return _CourseLine(origin, xs, ys, along, checkpointAlong);
+}
+
+/// How many checkpoints the track passes in order between two indices, by
+/// the timer's own walk ([_passesCheckpoints]).
+int _checkpointsPassedInOrder(
+  List<Waypoint> track,
+  List<Waypoint> checkpoints,
+  int fromIdx,
+  int toIdx,
+  double toleranceM,
+) {
+  var cursor = fromIdx;
+  var passed = 0;
+  for (final cp in checkpoints) {
+    var hit = -1;
+    for (var i = cursor; i <= toIdx; i++) {
+      if (haversineMetres(track[i].lineLat, track[i].lineLng, cp.lat, cp.lng) <=
+          toleranceM) {
+        hit = i;
+        break;
+      }
+    }
+    if (hit < 0) break;
+    passed++;
+    cursor = hit;
+  }
+  return passed;
+}
+
+CourseAttempt? _judgeWindow(
+  List<Waypoint> line,
+  _TrackDistanceIndex index,
+  GlobalSegmentGeometry segment,
+  _CourseLine course,
+  _AttemptWindow w,
+  double toleranceM,
+) {
+  final checkpoints = segment.checkpoints;
+  final count = checkpoints.length;
+  final courseM = math.max(1, segment.distanceM.round());
+  final passed = _checkpointsPassedInOrder(
+      line, checkpoints, w.fromIdx, w.toIdx, toleranceM);
+  if (w.reverse) {
+    if (!w.entered || count < 2) return null;
+    final reversed = _checkpointsPassedInOrder(line,
+        checkpoints.reversed.toList(), w.fromIdx, w.toIdx, toleranceM);
+    if (reversed < 2 || reversed <= passed) return null;
+    return CourseAttempt(
+      outcome: ParkCourseAttemptOutcome.wrongDirection,
+      progressM: 0,
+      courseM: courseM,
+      missedCheckpoint: null,
+      checkpointCount: count,
+    );
+  }
+  if (count > 0 && passed == 0) return null;
+
+  final xs = course.xs;
+  final ys = course.ys;
+  final along = course.along;
+  final lineM = along.last;
+  final cap =
+      passed < count ? course.checkpointAlong[passed] + toleranceM : lineM;
+  var pos = 0.0;
+  var lastIdx = w.fromIdx;
+  var reached = 0.0;
+  var furthest = 0.0;
+  for (var i = w.fromIdx; i <= w.toIdx; i++) {
+    final p = line[i];
+    final lat = p.lineLat;
+    final lng = p.lineLng;
+    if (!lat.isFinite || !lng.isFinite) continue;
+    final f = planeXY(course.origin, GatePoint(lat, lng));
+    final sinceM = index.cum[i] - index.cum[lastIdx];
+    final lo = pos - 2 * toleranceM;
+    final hi = pos + 1.5 * sinceM + 2 * toleranceM;
+    final expect = pos + sinceM;
+    var placed = double.nan;
+    var placedOff = double.infinity;
+    for (var k = 0; k + 1 < xs.length; k++) {
+      if (along[k + 1] < lo) continue;
+      if (along[k] > hi) break;
+      final len = along[k + 1] - along[k];
+      if (!(len > 0)) continue;
+      final dx = xs[k + 1] - xs[k];
+      final dy = ys[k + 1] - ys[k];
+      final t = math.min(
+          1.0,
+          math.max(
+              0.0, ((f.x - xs[k]) * dx + (f.y - ys[k]) * dy) / (len * len)));
+      if (_hypot(xs[k] + t * dx - f.x, ys[k] + t * dy - f.y) > toleranceM) {
+        continue;
+      }
+      final a = along[k] + t * len;
+      if (a < lo || a > hi) continue;
+      final off = (a - expect).abs();
+      if (off < placedOff) {
+        placedOff = off;
+        placed = a;
+      }
+    }
+    if (placed.isNaN) continue;
+    pos = placed;
+    lastIdx = i;
+    if (placed > furthest) furthest = placed;
+    if (placed <= cap && placed > reached) reached = placed;
+  }
+
+  final progressM = math.min(
+      courseM,
+      math.max(
+          0,
+          (lineM > 0 ? (reached / lineM) * segment.distanceM : 0.0)
+              .round()));
+  if (passed < count && (w.entered || furthest > cap)) {
+    return CourseAttempt(
+      outcome: ParkCourseAttemptOutcome.skippedCheckpoint,
+      progressM: progressM,
+      courseM: courseM,
+      missedCheckpoint: passed + 1,
+      checkpointCount: count,
+    );
+  }
+  return CourseAttempt(
+    outcome: w.entered
+        ? ParkCourseAttemptOutcome.offCourse
+        : ParkCourseAttemptOutcome.stoppedShort,
+    progressM: progressM,
+    courseM: courseM,
+    missedCheckpoint: null,
+    checkpointCount: count,
+  );
 }
 
 /// Latitude / longitude extent of a run track. Longitudes are unwrapped

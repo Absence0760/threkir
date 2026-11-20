@@ -18,6 +18,7 @@ import {
 	assignCompetitionRanks,
 	crownLabel,
 	SEGMENT_AGE_BANDS,
+	diagnoseGlobalSegmentAttempt,
 } from './segments';
 import type { TrackPoint } from '../types';
 
@@ -892,3 +893,68 @@ test('linesChain: a loop finishing on its start line, facing within 90 degrees o
 	assert.equal(linesChain({ ...at, bearingDeg: 90 }, { ...at, lat: 37.5 + 20 / 111_195, bearingDeg: 90 }), false);
 });
 
+
+// Why no time (issue #1446): a straight 1000 m course due east, its start line
+// at 0 m and its finish line at 1000 m, checkpoints at 250, 500 and 750 m, run
+// at 4 m/s with a fix a second. Mirrored in
+// apps/mobile_android/test/segments_test.dart.
+{
+	const LAT = 37.5;
+	const LNG = -77.5;
+	const toLng = (x: number) => LNG + (x / (6371008.8 * Math.cos((LAT * Math.PI) / 180))) * (180 / Math.PI);
+	const toLat = (y: number) => LAT + (y / 6371008.8) * (180 / Math.PI);
+	const at = (x: number, y = 0) => ({ lat: toLat(y), lng: toLng(x) });
+	const straight: GlobalSegmentGeometry = {
+		points: [at(0), at(500), at(1000)],
+		distance_m: 1000,
+		checkpoints: [at(250), at(500), at(750)],
+		startGate: { ...at(0), bearingDeg: 90, halfWidthM: 15 },
+		endGate: { ...at(1000), bearingDeg: 90, halfWidthM: 15 },
+	};
+	const walk = (path: [number, number][]): TrackPoint[] => {
+		const out: TrackPoint[] = [];
+		let t = 0;
+		for (let k = 1; k < path.length; k++) {
+			const [ax, ay] = path[k - 1];
+			const [bx, by] = path[k];
+			const steps = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / 4));
+			for (let s = k === 1 ? 0 : 1; s <= steps; s++) {
+				const f = s / steps;
+				out.push({ ...at(ax + f * (bx - ax), ay + f * (by - ay)), ts: new Date(Date.UTC(2026, 8, 1, 9) + t * 1000).toISOString() });
+				t++;
+			}
+		}
+		return out;
+	};
+
+	test('attempt: a run timed on the course has none', () => {
+		assert.equal(diagnoseGlobalSegmentAttempt(walk([[-20, 0], [1020, 0]]), straight), null);
+	});
+
+	test('attempt: a run that never leaves the start box has none, nor one on a segment without lines', () => {
+		assert.equal(diagnoseGlobalSegmentAttempt(walk([[-40, 0], [-12, 0]]), straight), null);
+		const circles = { ...straight, startGate: null, endGate: null };
+		assert.equal(diagnoseGlobalSegmentAttempt(walk([[-20, 0], [600, 0]]), circles), null);
+	});
+
+	test('attempt: stopping at 600 m is stopped_short at 600 m', () => {
+		const a = diagnoseGlobalSegmentAttempt(walk([[-20, 0], [600, 0]]), straight);
+		assert.ok(a);
+		assert.equal(a.outcome, 'stopped_short');
+		assert.ok(Math.abs(a.progressM - 600) <= 2, `progress ${a.progressM}`);
+		assert.equal(a.courseM, 1000);
+		assert.equal(a.missedCheckpoint, null);
+		assert.equal(a.checkpointCount, 3);
+	});
+
+	test('attempt: going 60 m round checkpoint 2 and finishing is skipped_checkpoint 2 at 400 m', () => {
+		const a = diagnoseGlobalSegmentAttempt(
+			walk([[-20, 0], [400, 0], [400, 60], [600, 60], [600, 0], [1020, 0]]),
+			straight,
+		);
+		assert.ok(a);
+		assert.equal(a.outcome, 'skipped_checkpoint');
+		assert.equal(a.missedCheckpoint, 2);
+		assert.ok(Math.abs(a.progressM - 400) <= 2, `progress ${a.progressM}`);
+	});
+}

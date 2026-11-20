@@ -17,7 +17,7 @@
  * Pure module — no Supabase, no DOM. Stress-tested in segments.test.ts.
  */
 
-import type { GlobalSegmentMatchedBy, TrackPoint } from '../types';
+import type { GlobalSegmentMatchedBy, ParkCourseAttemptOutcome, TrackPoint } from '../types';
 import {
 	GATE_REJECT_GAP_S,
 	GateCrossingDetector,
@@ -26,7 +26,7 @@ import {
 	type Gate,
 	type GateCrossing,
 } from '../geo/gate_crossing';
-import { COURSE_GATE_BOX_DEPTH_M, gateTimingEdges } from '../races/course_gates';
+import { COURSE_GATE_BOX_DEPTH_M, gateTimingEdges, planeXY } from '../races/course_gates';
 import { haversineMetres } from '../geo/haversine';
 import { unwrapLonDeg } from '../routes/geo';
 import { lineLat, lineLng, trackLine } from '../runs/track_line';
@@ -666,6 +666,397 @@ function passesCheckpoints(
 		cursor = hit;
 	}
 	return true;
+}
+
+/** Which of two outcomes a tie between attempts goes to. */
+const ATTEMPT_OUTCOME_RANK: Record<ParkCourseAttemptOutcome, number> = {
+	stopped_short: 0,
+	off_course: 1,
+	skipped_checkpoint: 2,
+	wrong_direction: 3,
+};
+
+/** Why a run that set out on a gated course got no time on it (issue #1446). */
+export interface CourseAttempt {
+	outcome: ParkCourseAttemptOutcome;
+	/** How far along the course line the run got while still on it, 0..courseM. */
+	progressM: number;
+	/** The length the length guard uses, rounded. */
+	courseM: number;
+	/** 1-based, the first checkpoint not passed in order; only for `skipped_checkpoint`. */
+	missedCheckpoint: number | null;
+	checkpointCount: number;
+}
+
+/**
+ * One attempt per input segment: why the run got no time on it, or null when
+ * it was timed, never set out on it, or the segment has no usable pair of
+ * lines (a circle-matched segment has no start box to set out from). Pure and
+ * read-only beside the timer: it calls `computeGlobalSegmentEfforts`' own
+ * rule first and only explains a null, so it can never disagree with it.
+ *
+ * An attempt opens where the run leaves the start box forward (the timer's own
+ * start, `gateTimingEdges`, with the same first-fix slack) and closes where it
+ * next enters the finish box having covered at least the length guard's lower
+ * bound, or where it ends in the finish box as the timer's tail rule reads it,
+ * or at the end of the recording. Attempts never overlap; on a loop whose
+ * finish opens the next lap (`linesChain`) the finish opens the next one. A run
+ * that crosses into the course backward through the finish box opens a reverse
+ * attempt: that is the one way a wrong-way run is ever seen, since it never
+ * leaves the start box forward.
+ *
+ * Three filters keep a run on one course from reporting every course it passes
+ * through (measured on fixtures/park_course_runs.json, where the six courses
+ * share trailheads and trails: without them a clean half marathon reported
+ * three courses it never set out on):
+ *
+ * - an attempt that spent at least `COURSE_ATTEMPT_TIMED_OVERLAP` of its time
+ *   inside an effort the run was timed by, on any segment, is dropped;
+ * - a forward attempt on a course with checkpoints counts only once it passed
+ *   the first one;
+ * - a reverse attempt counts only when it reached the start box from the
+ *   course side having covered the length guard's lower bound, and passed at
+ *   least two checkpoints in reverse order, more than in order. Its outcome is
+ *   `wrong_direction` and its progress 0: none of the course was run in its
+ *   direction.
+ *
+ * A forward attempt is then, in precedence order:
+ *
+ * - `skipped_checkpoint`: a checkpoint not passed in order (the timer's own
+ *   first-in-tolerance walk), and the run either entered the finish box or got
+ *   further along the line than that checkpoint and its tolerance.
+ * - `off_course`: entered the finish box with every checkpoint passed, yet not
+ *   timed: the covered distance broke the length guard.
+ * - `stopped_short`: anything else that ended before the finish box.
+ *
+ * Progress follows the run along the course line: each on-track fix (within
+ * `toleranceM` of the line) is placed at the point of the line nearest where
+ * the runner should be by now, searched from just behind the last placed point
+ * to as far ahead as the distance covered since then allows (1.5 times it,
+ * plus twice the tolerance), so a loop's start and finish, a lapped course's
+ * two laps and an out-and-back's two legs are told apart. The furthest placed
+ * point not past the first missed checkpoint is the progress, scaled from the
+ * polyline's own length to the stored one. Of several attempts the furthest
+ * counts, a tie going to the higher-ranked outcome.
+ *
+ * Mirrors `diagnoseGlobalSegmentAttempts` in
+ * `apps/mobile_android/lib/segments.dart`.
+ */
+export function diagnoseGlobalSegmentAttempts(
+	track: TrackPoint[],
+	segments: readonly GlobalSegmentGeometry[],
+	toleranceM = 35,
+): (CourseAttempt | null)[] {
+	const out: (CourseAttempt | null)[] = new Array(segments.length).fill(null);
+	const efforts = computeGlobalSegmentEfforts(track, segments, toleranceM);
+	const line = trackLine(track);
+	if (line.length < 2) return out;
+	const bounds = trackBounds(line);
+	const timed: TimedSpan[] = [];
+	for (const e of efforts) {
+		if (e !== null) {
+			const startMs = Date.parse(e.started_at);
+			timed.push({ startMs, endMs: startMs + e.time_seconds * 1000 });
+		}
+	}
+	let index: TrackDistanceIndex | null = null;
+	for (let i = 0; i < segments.length; i++) {
+		if (efforts[i] !== null) continue;
+		const segment = segments[i];
+		if (segment.points.length < 2 || !(segment.distance_m > 0)) continue;
+		const gates = segmentGates(segment);
+		if (gates === null) continue;
+		if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM + BOX_REACH_M)) continue;
+		if (index === null) index = distanceIndex(line);
+		out[i] = diagnoseByGates(line, index, segment, gates.start, gates.end, timed, toleranceM);
+	}
+	return out;
+}
+
+/** The single-segment form of `diagnoseGlobalSegmentAttempts`. */
+export function diagnoseGlobalSegmentAttempt(
+	track: TrackPoint[],
+	segment: GlobalSegmentGeometry,
+	toleranceM = 35,
+): CourseAttempt | null {
+	return diagnoseGlobalSegmentAttempts(track, [segment], toleranceM)[0];
+}
+
+/** A timed effort's span on the clock, epoch ms. */
+interface TimedSpan {
+	startMs: number;
+	endMs: number;
+}
+
+/**
+ * An attempt that spent at least this share of its time inside an effort the
+ * same run was timed by, on any segment, is that effort's run passing through:
+ * a half marathon crossing the 5K's start box is not a 5K attempt.
+ */
+export const COURSE_ATTEMPT_TIMED_OVERLAP = 0.5;
+
+interface AttemptWindow {
+	fromIdx: number;
+	toIdx: number;
+	reverse: boolean;
+	entered: boolean;
+}
+
+function diagnoseByGates(
+	line: TrackPoint[],
+	index: TrackDistanceIndex,
+	segment: GlobalSegmentGeometry,
+	startGate: Gate,
+	endGate: Gate,
+	timed: readonly TimedSpan[],
+	toleranceM: number,
+): CourseAttempt | null {
+	const minCovered = segment.distance_m * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
+	const edges = gateTimingEdges(startGate, endGate);
+	const exit = edges.startExit;
+	const entry = edges.finishEntry;
+	const startDetector = new GateCrossingDetector(exit);
+	const endDetector = new GateCrossingDetector(entry);
+	const chained = edges.layout === 'apart' && linesChain(startGate, endGate);
+
+	const windows: AttemptWindow[] = [];
+	let fwd: { fromIdx: number; coveredM: number } | null = null;
+	let rev: { fromIdx: number; coveredM: number } | null = null;
+	let prevIdx = -1;
+	let prevMs = -Infinity;
+	let tailIdx = -1;
+
+	for (let i = 0; i < line.length; i++) {
+		const p = line[i];
+		const tMs = p.ts ? Date.parse(p.ts) : NaN;
+		const lat = lineLat(p);
+		const lng = lineLng(p);
+		if (!Number.isFinite(tMs) || !Number.isFinite(lat) || !Number.isFinite(lng) || tMs <= prevMs) continue;
+		const fix = { lat, lng, tMs, coveredM: index.cum[i] };
+		const endCrossing = endDetector.offer(fix);
+		const startCrossing = startDetector.offer(fix);
+
+		const inFinish = gateProjection(entry, lat, lng);
+		if (inFinish.s >= -GLOBAL_SEGMENT_BOX_SLACK_M && inFinish.s <= edges.depthM && Math.abs(inFinish.u) <= entry.halfWidthM) {
+			if (tailIdx < 0) tailIdx = i;
+		} else {
+			tailIdx = -1;
+		}
+
+		let closedAtMs = -Infinity;
+		if (fwd !== null && endCrossing !== null && endCrossing.direction === 'forward' && endCrossing.coveredM - fwd.coveredM >= minCovered) {
+			windows.push({ fromIdx: fwd.fromIdx, toIdx: i, reverse: false, entered: true });
+			fwd = chained ? { fromIdx: prevIdx, coveredM: endCrossing.coveredM } : null;
+			closedAtMs = endCrossing.tMs;
+		}
+		if (fwd === null) {
+			if (startCrossing !== null && startCrossing.direction === 'forward' && startCrossing.tMs >= closedAtMs) {
+				fwd = { fromIdx: prevIdx, coveredM: startCrossing.coveredM };
+			} else if (prevIdx < 0) {
+				const atStart = gateProjection(exit, lat, lng);
+				if (atStart.s >= 0 && atStart.s <= GLOBAL_SEGMENT_BOX_SLACK_M && Math.abs(atStart.u) <= exit.halfWidthM) {
+					fwd = { fromIdx: i, coveredM: index.cum[i] };
+				}
+			}
+		}
+
+		if (rev !== null && startCrossing !== null && startCrossing.direction === 'backward' && startCrossing.coveredM - rev.coveredM >= minCovered) {
+			windows.push({ fromIdx: rev.fromIdx, toIdx: i, reverse: true, entered: true });
+			rev = null;
+		} else if (rev === null && endCrossing !== null && endCrossing.direction === 'backward') {
+			rev = { fromIdx: prevIdx, coveredM: endCrossing.coveredM };
+		}
+		prevIdx = i;
+		prevMs = tMs;
+	}
+	if (fwd !== null) {
+		const tail = tailIdx >= 0 && index.cum[tailIdx] - fwd.coveredM >= minCovered;
+		windows.push({ fromIdx: Math.max(fwd.fromIdx, 0), toIdx: tail ? tailIdx : prevIdx, reverse: false, entered: tail });
+	}
+	if (rev !== null) windows.push({ fromIdx: Math.max(rev.fromIdx, 0), toIdx: prevIdx, reverse: true, entered: false });
+	if (windows.length === 0) return null;
+
+	const course = courseLine(segment);
+	let best: CourseAttempt | null = null;
+	for (const w of windows) {
+		if (insideTimedEffort(line, w, timed)) continue;
+		const a = judgeWindow(line, index, segment, course, w, toleranceM);
+		if (a === null) continue;
+		if (
+			best === null ||
+			a.progressM > best.progressM ||
+			(a.progressM === best.progressM && ATTEMPT_OUTCOME_RANK[a.outcome] > ATTEMPT_OUTCOME_RANK[best.outcome])
+		) {
+			best = a;
+		}
+	}
+	return best;
+}
+
+function insideTimedEffort(line: TrackPoint[], w: AttemptWindow, timed: readonly TimedSpan[]): boolean {
+	if (timed.length === 0) return false;
+	const fromMs = Date.parse(line[w.fromIdx].ts ?? '');
+	const toMs = Date.parse(line[w.toIdx].ts ?? '');
+	const spanMs = toMs - fromMs;
+	if (!(spanMs > 0)) return false;
+	for (const t of timed) {
+		const overlap = Math.min(toMs, t.endMs) - Math.max(fromMs, t.startMs);
+		if (overlap >= COURSE_ATTEMPT_TIMED_OVERLAP * spanMs) return true;
+	}
+	return false;
+}
+
+/** The course polyline on the tangent plane at its first point, with the distance along it at each vertex. */
+interface CourseLine {
+	origin: { lat: number; lng: number };
+	xs: Float64Array;
+	ys: Float64Array;
+	along: Float64Array;
+	/** Distance along the line of each checkpoint, in order, each at or after the one before. */
+	checkpointAlong: number[];
+}
+
+function courseLine(segment: GlobalSegmentGeometry): CourseLine {
+	const pts = segment.points;
+	const origin = pts[0];
+	const xs = new Float64Array(pts.length);
+	const ys = new Float64Array(pts.length);
+	const along = new Float64Array(pts.length);
+	for (let k = 0; k < pts.length; k++) {
+		const q = planeXY(origin, pts[k]);
+		xs[k] = q.x;
+		ys[k] = q.y;
+		if (k > 0) along[k] = along[k - 1] + Math.hypot(xs[k] - xs[k - 1], ys[k] - ys[k - 1]);
+	}
+	const checkpointAlong: number[] = [];
+	let from = 0;
+	for (const cp of segment.checkpoints ?? []) {
+		const q = planeXY(origin, cp);
+		let bestD = Infinity;
+		let bestA = from;
+		for (let k = 0; k + 1 < pts.length; k++) {
+			const len = along[k + 1] - along[k];
+			if (!(len > 0) || along[k + 1] < from) continue;
+			const dx = xs[k + 1] - xs[k];
+			const dy = ys[k + 1] - ys[k];
+			let t = ((q.x - xs[k]) * dx + (q.y - ys[k]) * dy) / (len * len);
+			t = Math.max(t, (from - along[k]) / len, 0);
+			t = Math.min(t, 1);
+			const d = Math.hypot(xs[k] + t * dx - q.x, ys[k] + t * dy - q.y);
+			if (d < bestD) {
+				bestD = d;
+				bestA = along[k] + t * len;
+			}
+		}
+		checkpointAlong.push(bestA);
+		from = bestA;
+	}
+	return { origin, xs, ys, along, checkpointAlong };
+}
+
+/**
+ * How many checkpoints the track passes in order between two indices, by the
+ * timer's own walk (`passesCheckpoints`): each the first in-tolerance index at
+ * or after the previous one's.
+ */
+function checkpointsPassedInOrder(
+	track: TrackPoint[],
+	checkpoints: readonly { lat: number; lng: number }[],
+	fromIdx: number,
+	toIdx: number,
+	toleranceM: number,
+): number {
+	let cursor = fromIdx;
+	let passed = 0;
+	for (const cp of checkpoints) {
+		let hit = -1;
+		for (let i = cursor; i <= toIdx; i++) {
+			if (haversineMetres(lineLat(track[i]), lineLng(track[i]), cp.lat, cp.lng) <= toleranceM) {
+				hit = i;
+				break;
+			}
+		}
+		if (hit < 0) break;
+		passed++;
+		cursor = hit;
+	}
+	return passed;
+}
+
+function judgeWindow(
+	line: TrackPoint[],
+	index: TrackDistanceIndex,
+	segment: GlobalSegmentGeometry,
+	course: CourseLine,
+	w: AttemptWindow,
+	toleranceM: number,
+): CourseAttempt | null {
+	const checkpoints = segment.checkpoints ?? [];
+	const count = checkpoints.length;
+	const courseM = Math.max(1, Math.round(segment.distance_m));
+	const passed = checkpointsPassedInOrder(line, checkpoints, w.fromIdx, w.toIdx, toleranceM);
+	if (w.reverse) {
+		if (!w.entered || count < 2) return null;
+		const reversed = checkpointsPassedInOrder(line, [...checkpoints].reverse(), w.fromIdx, w.toIdx, toleranceM);
+		if (reversed < 2 || reversed <= passed) return null;
+		return { outcome: 'wrong_direction', progressM: 0, courseM, missedCheckpoint: null, checkpointCount: count };
+	}
+	if (count > 0 && passed === 0) return null;
+
+	const { xs, ys, along } = course;
+	const lineM = along[along.length - 1];
+	const cap = passed < count ? course.checkpointAlong[passed] + toleranceM : lineM;
+	let pos = 0;
+	let lastIdx = w.fromIdx;
+	let reached = 0;
+	let furthest = 0;
+	for (let i = w.fromIdx; i <= w.toIdx; i++) {
+		const p = line[i];
+		const lat = lineLat(p);
+		const lng = lineLng(p);
+		if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+		const f = planeXY(course.origin, { lat, lng });
+		const sinceM = index.cum[i] - index.cum[lastIdx];
+		const lo = pos - 2 * toleranceM;
+		const hi = pos + 1.5 * sinceM + 2 * toleranceM;
+		const expect = pos + sinceM;
+		let placed = NaN;
+		let placedOff = Infinity;
+		for (let k = 0; k + 1 < xs.length; k++) {
+			if (along[k + 1] < lo) continue;
+			if (along[k] > hi) break;
+			const len = along[k + 1] - along[k];
+			if (!(len > 0)) continue;
+			const dx = xs[k + 1] - xs[k];
+			const dy = ys[k + 1] - ys[k];
+			const t = Math.min(1, Math.max(0, ((f.x - xs[k]) * dx + (f.y - ys[k]) * dy) / (len * len)));
+			if (Math.hypot(xs[k] + t * dx - f.x, ys[k] + t * dy - f.y) > toleranceM) continue;
+			const a = along[k] + t * len;
+			if (a < lo || a > hi) continue;
+			const off = Math.abs(a - expect);
+			if (off < placedOff) {
+				placedOff = off;
+				placed = a;
+			}
+		}
+		if (Number.isNaN(placed)) continue;
+		pos = placed;
+		lastIdx = i;
+		if (placed > furthest) furthest = placed;
+		if (placed <= cap && placed > reached) reached = placed;
+	}
+
+	const progressM = Math.min(courseM, Math.max(0, Math.round(lineM > 0 ? (reached / lineM) * segment.distance_m : 0)));
+	if (passed < count && (w.entered || furthest > cap)) {
+		return { outcome: 'skipped_checkpoint', progressM, courseM, missedCheckpoint: passed + 1, checkpointCount: count };
+	}
+	return {
+		outcome: w.entered ? 'off_course' : 'stopped_short',
+		progressM,
+		courseM,
+		missedCheckpoint: null,
+		checkpointCount: count,
+	};
 }
 
 /**

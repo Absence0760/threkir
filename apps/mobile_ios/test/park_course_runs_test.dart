@@ -48,6 +48,14 @@ List<Waypoint> _decode(Map<String, dynamic> track, DateTime base) {
   return out;
 }
 
+Map<String, dynamic> _attemptJson(CourseAttempt a) => {
+      'outcome': a.outcome.wire,
+      'progress_m': a.progressM,
+      'course_m': a.courseM,
+      'missed_checkpoint': a.missedCheckpoint,
+      'checkpoint_count': a.checkpointCount,
+    };
+
 Gate _gate(Map<String, dynamic> g) => Gate(
       lat: (g['lat'] as num).toDouble(),
       lng: (g['lng'] as num).toDouble(),
@@ -130,8 +138,50 @@ void main() {
             recorded['started_offset_ms']);
         expect(r.matchedBy.name, recorded['matched_by']);
       }
+      final attempts = diagnoseGlobalSegmentAttempts(track, geometries);
+      final recordedAttempts = c['attempts'] as Map<String, dynamic>;
+      for (var i = 0; i < slugs.length; i++) {
+        final a = attempts[i];
+        expect(a == null ? null : _attemptJson(a), recordedAttempts[slugs[i]],
+            reason: '${slugs[i]}: why no time');
+      }
     });
   }
+
+  // Issue #1446: a run that set out on a course and got no time says which
+  // rule it missed and how far along it got.
+  test('each refused Beaver Lake run names the rule it missed', () {
+    Map<String, dynamic>? beaverOf(String key) =>
+        (caseBy(key)['attempts'] as Map<String, dynamic>)['beaver-lake-trail']
+            as Map<String, dynamic>?;
+    final shortcut = beaverOf('beaver_shortcut')!;
+    expect(shortcut['outcome'], 'skipped_checkpoint');
+    expect(shortcut['missed_checkpoint'], 2);
+    expect(shortcut['checkpoint_count'], 4);
+    expect(shortcut['course_m'], 3595);
+    // The shortcut leaves the trail at 1245 m, but its first stretch runs
+    // within the 35 m tolerance of the trail up the spur's neck.
+    expect(((shortcut['progress_m'] as int) - 1245).abs() <= 205, isTrue);
+    expect(beaverOf('beaver_cut')!['outcome'], 'skipped_checkpoint');
+    expect(beaverOf('beaver_cut')!['missed_checkpoint'], 2);
+    expect(beaverOf('beaver_wrong_way')!['outcome'], 'wrong_direction');
+    expect(beaverOf('beaver_wrong_way')!['progress_m'], 0);
+    final short = beaverOf('beaver_short')!;
+    expect(short['outcome'], 'stopped_short');
+    expect(((short['progress_m'] as int) - (3595 - 150)).abs() <= 35, isTrue);
+    expect(beaverOf('beaver_detour')!['outcome'], 'off_course');
+    expect(beaverOf('beaver_nearby'), isNull, reason: 'never crossed a line');
+  });
+
+  test(
+      'a run timed on any course has no attempt where it was timed or where '
+      'it passed through', () {
+    for (final c in cases) {
+      if ((c['matched'] as Map).isNotEmpty) {
+        expect(c['attempts'], isEmpty, reason: c['key'] as String);
+      }
+    }
+  });
 
   test('every course has a run of the net timed on it', () {
     for (final slug in slugs) {

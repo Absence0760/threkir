@@ -567,8 +567,14 @@ What the UI exposes during a recording, for quick reference when reading
 **Live park course timing (#1446, decisions § 2595).** A course the phone put
 on the watch (`ParkCourseBridge`, `/park_courses`) is a row at the top of the
 route picker captioned "Course · 5.0 km". Picking it makes `start()` build a
-`LiveCourseTimer` (`courseTimerFor`), fed every fresh fix by the race feed's
-rule (`raceFixOfferable`, `raceFixDeviceMs`) in its own catch. Leaving the
+`LiveCourseTimer` (`courseTimerFor`), fed every line fix the track file
+stores, at its stored `ts`, the fixes and instants the server's matcher reads:
+`RunRecordingService.onGps` publishes each non-`offTrack` fix to
+`recording/CourseFixFeed` right after `TrackWriter.append`, and
+`RunViewModel.observeCourseFixes` offers each to the timer in its own catch.
+Not the conflated `Metrics.latestPoint` on the device clock: that dropped any
+fix the screen was slow to collect, and a dropped fix inside a checkpoint
+circle left the wrist silent while the board timed the run. Leaving the
 start box forward says "Timing started", entering the finish box having passed
 every checkpoint in order within the length guard says "Finished! 8:42:10":
 each buzzes (the workout's step and completion buzzes) and speaks through

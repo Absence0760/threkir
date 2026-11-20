@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.runapp.watchwear.recording.Checkpoint
+import com.runapp.watchwear.recording.CourseFix
+import com.runapp.watchwear.recording.CourseFixFeed
 import com.runapp.watchwear.recording.CheckpointStore
 import com.runapp.watchwear.recording.checkpointActiveDurationS
 import com.runapp.watchwear.recording.GpsDistanceEstimator
@@ -574,10 +576,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// The last fix offered to the detector, by its GPS time: a dedupe key.
     private var lastRaceFixKey: Long = Long.MIN_VALUE
 
-    /// The park course this recording is timed on (#1446), and the last fix
-    /// it was offered. Null on any other run, and on a course it cannot time.
+    /// The park course this recording is timed on (#1446). Null on any other
+    /// run, and on a course it cannot time.
     private var courseTimer: LiveCourseTimer? = null
-    private var lastCourseFixKey: Long = Long.MIN_VALUE
     private var lastAppliedCoursesPushMs: Long = 0L
     private var raceStopDecision: RaceStopDecision? = null
     /// The device-clock instant the runner stopped racing (Stop or pause on
@@ -594,6 +595,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         observeRecording()
+        observeCourseFixes()
         observeQueue()
         observeConnectivity()
         observeRace()
@@ -767,27 +769,28 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    /// One fix to the course timer, by the race feed's rule: only while
-    /// recording, once per fix, on the device clock. A start or finish buzzes
-    /// and speaks through the recording service and shows on the running
-    /// screen. L4: the caller catches, so the run records on.
-    private fun advanceCourseTimer(m: RecordingRepository.Metrics) {
+    /// Every line fix the recording stores goes to the course timer at its
+    /// stored timestamp (`CourseFixFeed`), the fixes and instants the
+    /// server's matcher reads, so the wrist finishes when the board will time
+    /// the run. A start or finish buzzes and speaks through the recording
+    /// service and shows on the running screen. L4: each fix has its own
+    /// catch, so a timer fault neither stops the feed nor touches the run.
+    private fun observeCourseFixes() {
+        launchGuarded {
+            CourseFixFeed.fixes.collect { fix ->
+                try {
+                    advanceCourseTimer(fix)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "course timing failed; the run records on", e)
+                }
+            }
+        }
+    }
+
+    private fun advanceCourseTimer(fix: CourseFix) {
         val timer = courseTimer ?: return
-        val p = m.latestPoint ?: return
-        val offerable = raceFixOfferable(
-            recording = m.stage == RecordingRepository.Stage.Recording,
-            decided = false,
-            fixKey = p.epochMs,
-            lastFixKey = lastCourseFixKey,
-        )
-        if (!offerable) return
-        lastCourseFixKey = p.epochMs
-        val atMs = raceFixDeviceMs(
-            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
-            nowWallMs = System.currentTimeMillis(),
-            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
-        )
-        publishCourseEvents(timer.offer(p.lat, p.lng, atMs.toDouble()))
+        if (fix.runId != _state.value.thisRunId) return
+        publishCourseEvents(timer.offer(fix.lat, fix.lng, fix.epochMs.toDouble()))
     }
 
     /// The runner pressed Stop: a recording that ends in the finish box, or
@@ -854,11 +857,6 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                             handleRaceTimer(m)
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
-                        }
-                        try {
-                            advanceCourseTimer(m)
-                        } catch (e: Throwable) {
-                            Log.w(TAG, "course timing failed; the run records on", e)
                         }
                         // Debug builds only: the line-calibration capture
                         // (#1304 § 6) takes fixes by the race feed's own rule.
@@ -2035,7 +2033,6 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             courseCue = null,
         )
         courseTimer = courseTimerFor(route, _state.value.courses)
-        lastCourseFixKey = Long.MIN_VALUE
         RunRecordingService.start(
             context = getApplication(),
             runId = runId,
@@ -2282,7 +2279,6 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceEndedAfterStop = false
         lastRaceFixKey = Long.MIN_VALUE
         courseTimer = null
-        lastCourseFixKey = Long.MIN_VALUE
         raceTimer.endRecording()
         raceTimerRunId = null
         forgetUndoneFinish()

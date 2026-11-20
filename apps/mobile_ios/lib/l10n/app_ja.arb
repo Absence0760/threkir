@@ -6466,5 +6466,12 @@
   "filterBarRegion": "地域",
   "runCourseTimingStarted": "計測開始",
   "runCourseFinished": "ゴール！{time}",
-  "runCourseStoppedShort": "コースのタイムとしては記録されません。ランは保存されています。"
+  "runCourseStoppedShort": "コースのタイムとしては記録されません。ランは保存されています。",
+  "runDetailParkCourseAttempts": "タイムが記録されなかった公園コース",
+  "runDetailParkCourseAttemptStoppedShort": "{course}：タイムなし。{total}のうち{progress}を走りました。タイムを記録するにはコース全体を走ってください。",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}：タイムなし。{count}か所のうちチェックポイント{n}を通過しませんでした。すべて通過するにはコースラインから外れないでください。",
+  "runDetailParkCourseAttemptOffCourse": "{course}：タイムなし。コースから大きく外れました。コースラインから外れないでください。",
+  "runDetailParkCourseAttemptWrongDirection": "{course}：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。",
+  "runDetailParkCourseAttemptProgress": "{total}のうち{progress}",
+  "runDetailParkCourseAttemptProgressLabel": "コースをどこまで進んだか"
 }

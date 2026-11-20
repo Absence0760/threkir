@@ -24358,6 +24358,46 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runCourseStoppedShort =>
       'Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Percursos de parque sem tempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sem tempo. Correu $progress de $total. Corra o percurso completo para obter um tempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sem tempo. Falhou o ponto de controlo $n de $count. Mantenha-se na linha do percurso para passar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Até onde chegou no percurso';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -48693,4 +48733,44 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runCourseStoppedShort =>
       'Isso não vai contar como tempo do percurso. Sua corrida continua salva.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Percursos de parque sem tempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sem tempo. Você correu $progress de $total. Corra o percurso inteiro para ter um tempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sem tempo. Você pulou o ponto de controle $n de $count. Fique na linha do percurso para passar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sem tempo. Você se afastou demais do percurso. Fique na linha do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sem tempo. Você correu no sentido contrário. Siga as setas no mapa do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Até onde você chegou no percurso';
 }

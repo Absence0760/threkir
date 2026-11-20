@@ -24334,4 +24334,44 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runCourseStoppedShort =>
       'No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Recorridos de parque sin tiempo';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: sin tiempo. Corriste $progress de $total. Corre todo el recorrido para conseguir un tiempo.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: sin tiempo. Te saltaste el punto de control $n de $count. Mantente en la línea del recorrido para pasar por todos.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: sin tiempo. Te alejaste demasiado del recorrido. Mantente en la línea del recorrido.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: sin tiempo. Lo corriste en sentido contrario. Sigue las flechas del mapa del recorrido.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress de $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'Cuánto avanzaste en el recorrido';
 }

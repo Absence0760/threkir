@@ -22675,4 +22675,43 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runCourseStoppedShort => 'コースのタイムとしては記録されません。ランは保存されています。';
+
+  @override
+  String get runDetailParkCourseAttempts => 'タイムが記録されなかった公園コース';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course：タイムなし。$totalのうち$progressを走りました。タイムを記録するにはコース全体を走ってください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course：タイムなし。$countか所のうちチェックポイント$nを通過しませんでした。すべて通過するにはコースラインから外れないでください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course：タイムなし。コースから大きく外れました。コースラインから外れないでください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$totalのうち$progress';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel => 'コースをどこまで進んだか';
 }

@@ -31273,5 +31273,73 @@
   "runCourseStoppedShort": "This won't count as a course time. Your run is still saved.",
   "@runCourseStoppedShort": {
     "description": "One line on the finished-run summary when the runner stopped a park course after its timing started and before finishing it: no course time, but the run itself is kept"
+  },
+  "runDetailParkCourseAttempts": "Park courses with no time",
+  "@runDetailParkCourseAttempts": {
+    "description": "Run detail (owner only, #1446): group name read before the cards for park courses this run started but got no time on"
+  },
+  "runDetailParkCourseAttemptStoppedShort": "{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.",
+  "@runDetailParkCourseAttemptStoppedShort": {
+    "description": "Run detail park course attempt card: the run left the start but the recording ended before the finish. progress and total are distances in the runner's unit, e.g. 2.10 km of 5.00 km",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "progress": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.",
+  "@runDetailParkCourseAttemptSkippedCheckpoint": {
+    "description": "Run detail park course attempt card: the run missed a checkpoint (passed out of order or not at all). n is the first one missed, count the course's checkpoints",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptOffCourse": "{course}: no time. You ran too far off the course. Stay on the course line.",
+  "@runDetailParkCourseAttemptOffCourse": {
+    "description": "Run detail park course attempt card: every checkpoint passed but the run covered far more distance than the course, so it left the course line",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptWrongDirection": "{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.",
+  "@runDetailParkCourseAttemptWrongDirection": {
+    "description": "Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptProgress": "{progress} of {total}",
+  "@runDetailParkCourseAttemptProgress": {
+    "description": "Run detail park course attempt card: text under the progress bar, distances in the runner's unit, e.g. 2.10 km of 5.00 km",
+    "placeholders": {
+      "progress": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseAttemptProgressLabel": "How far along the course you got",
+  "@runDetailParkCourseAttemptProgressLabel": {
+    "description": "Screen-reader name of the progress bar on a park course attempt card; its value is the runDetailParkCourseAttemptProgress text"
   }
 }

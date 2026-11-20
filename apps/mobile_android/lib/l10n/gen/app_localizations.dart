@@ -37806,6 +37806,56 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This won\'t count as a course time. Your run is still saved.'**
   String get runCourseStoppedShort;
+
+  /// Run detail (owner only, #1446): group name read before the cards for park courses this run started but got no time on
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses with no time'**
+  String get runDetailParkCourseAttempts;
+
+  /// Run detail park course attempt card: the run left the start but the recording ended before the finish. progress and total are distances in the runner's unit, e.g. 2.10 km of 5.00 km
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.'**
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  );
+
+  /// Run detail park course attempt card: the run missed a checkpoint (passed out of order or not at all). n is the first one missed, count the course's checkpoints
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.'**
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  );
+
+  /// Run detail park course attempt card: every checkpoint passed but the run covered far more distance than the course, so it left the course line
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran too far off the course. Stay on the course line.'**
+  String runDetailParkCourseAttemptOffCourse(String course);
+
+  /// Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.'**
+  String runDetailParkCourseAttemptWrongDirection(String course);
+
+  /// Run detail park course attempt card: text under the progress bar, distances in the runner's unit, e.g. 2.10 km of 5.00 km
+  ///
+  /// In en, this message translates to:
+  /// **'{progress} of {total}'**
+  String runDetailParkCourseAttemptProgress(String progress, String total);
+
+  /// Screen-reader name of the progress bar on a park course attempt card; its value is the runDetailParkCourseAttemptProgress text
+  ///
+  /// In en, this message translates to:
+  /// **'How far along the course you got'**
+  String get runDetailParkCourseAttemptProgressLabel;
 }
 
 class _AppLocalizationsDelegate

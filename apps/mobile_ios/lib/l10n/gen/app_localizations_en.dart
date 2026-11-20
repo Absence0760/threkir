@@ -24079,4 +24079,44 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runCourseStoppedShort =>
       'This won\'t count as a course time. Your run is still saved.';
+
+  @override
+  String get runDetailParkCourseAttempts => 'Park courses with no time';
+
+  @override
+  String runDetailParkCourseAttemptStoppedShort(
+    String course,
+    String progress,
+    String total,
+  ) {
+    return '$course: no time. You ran $progress of $total. Run the whole course to get a time.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptSkippedCheckpoint(
+    String course,
+    int n,
+    int count,
+  ) {
+    return '$course: no time. You missed checkpoint $n of $count. Stay on the course line to pass every one.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptOffCourse(String course) {
+    return '$course: no time. You ran too far off the course. Stay on the course line.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptWrongDirection(String course) {
+    return '$course: no time. You ran it the wrong way round. Follow the arrows on the course map.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptProgress(String progress, String total) {
+    return '$progress of $total';
+  }
+
+  @override
+  String get runDetailParkCourseAttemptProgressLabel =>
+      'How far along the course you got';
 }

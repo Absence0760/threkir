@@ -6466,5 +6466,12 @@
   "filterBarRegion": "Região",
   "runCourseTimingStarted": "Cronometragem iniciada",
   "runCourseFinished": "Meta cortada! {time}",
-  "runCourseStoppedShort": "Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma."
+  "runCourseStoppedShort": "Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma.",
+  "runDetailParkCourseAttempts": "Percursos de parque sem tempo",
+  "runDetailParkCourseAttemptStoppedShort": "{course}: sem tempo. Correu {progress} de {total}. Corra o percurso completo para obter um tempo.",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: sem tempo. Falhou o ponto de controlo {n} de {count}. Mantenha-se na linha do percurso para passar por todos.",
+  "runDetailParkCourseAttemptOffCourse": "{course}: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.",
+  "runDetailParkCourseAttemptWrongDirection": "{course}: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.",
+  "runDetailParkCourseAttemptProgress": "{progress} de {total}",
+  "runDetailParkCourseAttemptProgressLabel": "Até onde chegou no percurso"
 }

@@ -6466,5 +6466,12 @@
   "filterBarRegion": "Region",
   "runCourseTimingStarted": "Zeitmessung gestartet",
   "runCourseFinished": "Im Ziel! {time}",
-  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert."
+  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert.",
+  "runDetailParkCourseAttempts": "Parkstrecken ohne Zeit",
+  "runDetailParkCourseAttemptStoppedShort": "{course}: keine Zeit. Du bist {progress} von {total} gelaufen. Lauf die ganze Strecke, um eine Zeit zu bekommen.",
+  "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: keine Zeit. Du hast Kontrollpunkt {n} von {count} verpasst. Bleib auf der Streckenlinie, um an jedem vorbeizulaufen.",
+  "runDetailParkCourseAttemptOffCourse": "{course}: keine Zeit. Du bist zu weit von der Strecke abgekommen. Bleib auf der Streckenlinie.",
+  "runDetailParkCourseAttemptWrongDirection": "{course}: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.",
+  "runDetailParkCourseAttemptProgress": "{progress} von {total}",
+  "runDetailParkCourseAttemptProgressLabel": "Wie weit du auf der Strecke gekommen bist"
 }

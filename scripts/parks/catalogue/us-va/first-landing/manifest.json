@@ -1,0 +1,852 @@
+{
+  "park": {
+    "slug": "first-landing",
+    "name": "First Landing State Park",
+    "kind": "park",
+    "agency": "state",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.dcr.virginia.gov/state-parks/first-landing",
+    "osm_boundary": "relation/392207"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner walks all four courses at First Landing against the DCR trail guide and the trail signs (the line is OSM's; DCR data is reference only until DCR confirms its terms in writing), checks the starts by the Trail Center against the lot and the park road, and confirms with DCR whether an organised run needs a special use permit."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-20",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "first-landing-5k",
+      "name": "First Landing State Park, 5 km",
+      "race_distance": "5k",
+      "course_shape": "loop",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4853.4,
+      "lead_in_m": 188.8,
+      "start_line_from_lead_in_start_m": 115.5,
+      "start_finish": {
+        "lat": 36.91544,
+        "lng": -76.039899
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/43026638,way/43026640,way/895276124,way/906684083",
+      "source_checked_at": "2026-11-20",
+      "geojson": "first-landing-5k.geojson",
+      "elevation_m": 0,
+      "checkpoints": [
+        {
+          "lat": 36.915626,
+          "lng": -76.026549
+        },
+        {
+          "lat": 36.912452,
+          "lng": -76.016346
+        },
+        {
+          "lat": 36.913455,
+          "lng": -76.029058
+        }
+      ],
+      "start_gate": {
+        "lat": 36.91544,
+        "lng": -76.039899,
+        "bearing_deg": 182.2,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 36.91544,
+        "lng": -76.039899,
+        "bearing_deg": 2.2,
+        "half_width_m": 15
+      },
+      "waypoint_count": 157,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Trail Center lot. The Bald Cypress Trail starts at the Trail Center, and the start line is on it, about 100 m along.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Bald Cypress Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Osmanthus Trail",
+            "at_m": 439
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 4227
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Cape Henry Trail",
+            "at_m": 4806
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Bald Cypress Trail",
+            "at_m": 4886
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "first-landing-10k",
+      "name": "First Landing State Park, 10 km",
+      "race_distance": "10k",
+      "course_shape": "loop",
+      "distance_m": 10000,
+      "laps": 1,
+      "lap_m": 9919.4,
+      "lead_in_m": 188.8,
+      "start_line_from_lead_in_start_m": 148.5,
+      "start_finish": {
+        "lat": 36.915207,
+        "lng": -76.039725
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/43026638,way/43026640,way/43026643,way/305177455,way/305178439,way/895276124,way/906683775,way/906684083",
+      "source_checked_at": "2026-11-20",
+      "geojson": "first-landing-10k.geojson",
+      "elevation_m": 37,
+      "checkpoints": [
+        {
+          "lat": 36.914289,
+          "lng": -76.018087
+        },
+        {
+          "lat": 36.914261,
+          "lng": -76.032051
+        },
+        {
+          "lat": 36.910346,
+          "lng": -76.027035
+        },
+        {
+          "lat": 36.909624,
+          "lng": -76.035058
+        }
+      ],
+      "start_gate": {
+        "lat": 36.915207,
+        "lng": -76.039725,
+        "bearing_deg": 150.2,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 36.915207,
+        "lng": -76.039725,
+        "bearing_deg": 330.2,
+        "half_width_m": 15
+      },
+      "waypoint_count": 312,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Trail Center lot. The Bald Cypress Trail starts at the Trail Center, and the start line is on it, about 120 m along.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Bald Cypress Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Osmanthus Trail",
+            "at_m": 406
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2000,
+            "order": 1,
+            "of": 4
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4000,
+            "order": 2,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 4194
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Cape Henry Trail",
+            "at_m": 4773
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 4773
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6000,
+            "order": 3,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Kingfisher Trail",
+            "at_m": 6536
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 6536
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Long Creek Trail",
+            "at_m": 7497
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8000,
+            "order": 4,
+            "of": 4
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Fox Run Trail",
+            "at_m": 8767
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Bald Cypress Trail",
+            "at_m": 9295
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "High Dune Trail",
+            "at_m": 9503
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Cape Henry Trail",
+            "at_m": 9863
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Bald Cypress Trail",
+            "at_m": 9919
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "first-landing-half",
+      "name": "First Landing State Park, half-marathon distance",
+      "race_distance": "half",
+      "course_shape": "loop",
+      "distance_m": 21097.5,
+      "laps": 1,
+      "lap_m": 20695.3,
+      "lead_in_m": 1121.7,
+      "start_line_from_lead_in_start_m": 920.6,
+      "start_finish": {
+        "lat": 36.916876,
+        "lng": -76.041888
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/43026638,way/43026640,way/43026643,way/152752600,way/305176721,way/305177455,way/310898949,way/895276124,way/895543105,way/906683773,way/906683774,way/906683775,way/906683776,way/906684083,way/1322714186,way/1322714187",
+      "source_checked_at": "2026-11-20",
+      "geojson": "first-landing-half.geojson",
+      "elevation_m": 111,
+      "checkpoints": [
+        {
+          "lat": 36.911885,
+          "lng": -76.018391
+        },
+        {
+          "lat": 36.91413,
+          "lng": -76.039455
+        },
+        {
+          "lat": 36.905,
+          "lng": -76.008944
+        },
+        {
+          "lat": 36.90403,
+          "lng": -76.02914
+        },
+        {
+          "lat": 36.89092,
+          "lng": -76.004945
+        },
+        {
+          "lat": 36.902832,
+          "lng": -76.028048
+        }
+      ],
+      "waypoint_count": 608,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Trail Center lot. The start line is on the Cape Henry Trail, about 150 m west of the Trail Center.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Cape Henry Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 335
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 335
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Osmanthus Trail",
+            "at_m": 741
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3014,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 4529
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "High Dune Trail",
+            "at_m": 5108
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 5108
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 5492
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 5492
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6028,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Cape Henry Trail",
+            "at_m": 6077
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 6077
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 7840
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9042,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Hill Lake Trail",
+            "at_m": 9544
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 9544
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Long Creek Trail",
+            "at_m": 11787
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11796
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12056,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Osprey Trail",
+            "at_m": 12607
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12784
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13268
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15070,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Long Creek Trail",
+            "at_m": 15249
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18084,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18526
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Fox Run Trail",
+            "at_m": 20044
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Bald Cypress Trail",
+            "at_m": 20572
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Cape Henry Trail",
+            "at_m": 20896
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 20896
+          },
+          {
+            "kind": "finish",
+            "at_m": 21098
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    },
+    {
+      "slug": "first-landing-marathon",
+      "name": "First Landing State Park, marathon distance (2 laps)",
+      "race_distance": "marathon",
+      "course_shape": "loop",
+      "distance_m": 42195,
+      "laps": 2,
+      "lap_m": 20695.3,
+      "lead_in_m": 1121.7,
+      "start_line_from_lead_in_start_m": 719.5,
+      "start_finish": {
+        "lat": 36.916678,
+        "lng": -76.043826
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/43026638,way/43026640,way/43026643,way/152752600,way/305176721,way/305177455,way/310898949,way/895276124,way/895543105,way/906683773,way/906683774,way/906683775,way/906683776,way/906684083,way/1322714186,way/1322714187",
+      "source_checked_at": "2026-11-20",
+      "geojson": "first-landing-marathon.geojson",
+      "elevation_m": 224,
+      "checkpoints": [
+        {
+          "lat": 36.911704,
+          "lng": -76.018634
+        },
+        {
+          "lat": 36.913002,
+          "lng": -76.037852
+        },
+        {
+          "lat": 36.901039,
+          "lng": -76.006505
+        },
+        {
+          "lat": 36.900252,
+          "lng": -76.026033
+        },
+        {
+          "lat": 36.893816,
+          "lng": -76.01039
+        },
+        {
+          "lat": 36.909611,
+          "lng": -76.035024
+        },
+        {
+          "lat": 36.91533,
+          "lng": -76.023521
+        },
+        {
+          "lat": 36.914238,
+          "lng": -76.038983
+        },
+        {
+          "lat": 36.907629,
+          "lng": -76.016283
+        },
+        {
+          "lat": 36.90518,
+          "lng": -76.026649
+        },
+        {
+          "lat": 36.891833,
+          "lng": -76.007665
+        },
+        {
+          "lat": 36.902558,
+          "lng": -76.028
+        }
+      ],
+      "waypoint_count": 1212,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the Trail Center lot. The start line is on the Cape Henry Trail, about 300 m west of the Trail Center.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Cape Henry Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 536
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 536
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Osmanthus Trail",
+            "at_m": 942
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3246,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 4730
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "High Dune Trail",
+            "at_m": 5309
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 5309
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Bald Cypress Trail",
+            "at_m": 5694
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 5694
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Cape Henry Trail",
+            "at_m": 6278
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 6278
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6492,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 8041
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9737,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "White Hill Lake Trail",
+            "at_m": 9745
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 9745
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Long Creek Trail",
+            "at_m": 11988
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11997
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Osprey Trail",
+            "at_m": 12808
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12983,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 12985
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 13470
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Long Creek Trail",
+            "at_m": 15450
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16229,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 18727
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19475,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Fox Run Trail",
+            "at_m": 20245
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Bald Cypress Trail",
+            "at_m": 20773
+          },
+          {
+            "kind": "lap",
+            "at_m": 21097,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Cape Henry Trail",
+            "at_m": 21097
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22720,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25966,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29212,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32458,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35703,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38949,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Cape Henry Trail",
+            "at_m": 41793
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 41793
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

@@ -225,6 +225,23 @@ class LiveCourseTracker {
     return computeGlobalSegmentEffort(line, segment) == null;
   }
 
+  /// The recording stopped on [line]: a run still timing that the board
+  /// times as it ends is finished here, at the board's time, and returned.
+  /// That is a recording whose last stretch is in the finish box, or up to
+  /// [kGlobalSegmentBoxSlackM] short of it, without having entered: the
+  /// matcher's tail rule, which no live fix can decide, since the runner may
+  /// yet cross the line and be timed at the crossing. The watches settle the
+  /// same way. Null when nothing more is finished.
+  LiveCourseEvent? settle(List<Waypoint> line) {
+    if (_phase != LiveCoursePhase.timing) return null;
+    final effort = computeGlobalSegmentEffort(line, segment);
+    if (effort == null) return null;
+    _phase = LiveCoursePhase.finished;
+    _finishedSeconds = effort.timeSeconds;
+    _clearAttempt();
+    return LiveCourseEvent.finished(effort.timeSeconds);
+  }
+
   void _reset() {
     _startDetector = GateCrossingDetector(_edges.startExit);
     _entryDetector = GateCrossingDetector(_edges.finishEntry);

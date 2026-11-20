@@ -82,8 +82,9 @@ List<Waypoint> _decodeRun(Map<String, dynamic> track, DateTime base) {
 }
 
 /// The checks every case answers: the tracker finishes only when the board
-/// times the recording at that moment, says its time, and is never left
-/// waiting on a recording the board times.
+/// times the recording at that moment, says its time, is never left waiting
+/// on a recording the board times, and settles at the stop one the board
+/// times only as it ends.
 void _expectAgreesWithMatcher(
   List<Waypoint> track,
   GlobalSegmentGeometry segment, {
@@ -107,7 +108,12 @@ void _expectAgreesWithMatcher(
   expect(tracker.phase, isNot(LiveCoursePhase.waiting),
       reason: 'the board times this recording, so it left the start box');
   expect(tracker.stopsShort(track), isFalse);
-  if (finishes.isEmpty) return;
+  if (finishes.isEmpty) {
+    // Timed only as it ends: the stop says it, at the board's time.
+    expect(tracker.settle(track)?.timeSeconds, whole.timeSeconds);
+    return;
+  }
+  expect(tracker.settle(track), isNull);
   final said = finishes.single.timeSeconds!;
   expect(tracker.finishedSeconds, said);
   if (singlePass) {
@@ -315,6 +321,50 @@ void main() {
       expect(fed.tracker.phase, LiveCoursePhase.timing);
       expect(computeGlobalSegmentEffort(track, segment), isNotNull);
       expect(fed.tracker.stopsShort(track), isFalse);
+    });
+
+    // The matcher times a recording that ends up to kGlobalSegmentBoxSlackM
+    // short of the finish box without entering it (its tail rule). No live
+    // fix can say so, since the runner may yet cross the line and be timed
+    // at the crossing; the stop settles it, either side of the slack.
+    test(
+        'stopping within the slack short of the finish box settles to the '
+        "board's time; beyond it, stopped short", () {
+      final within = [
+        ...run(-10, 390),
+        at(400 - (kGlobalSegmentBoxSlackM - 1), 101),
+      ];
+      final tracker = _feed(LiveCourseTracker.forSegment(segment)!, within)
+          .tracker;
+      expect(tracker.phase, LiveCoursePhase.timing,
+          reason: 'not finished live: the line may still be crossed');
+      final settled = tracker.settle(within);
+      expect(settled?.kind, LiveCourseEventKind.finished);
+      expect(settled!.timeSeconds,
+          computeGlobalSegmentEffort(within, segment)!.timeSeconds);
+      expect(tracker.phase, LiveCoursePhase.finished);
+      expect(tracker.finishedSeconds, settled.timeSeconds);
+      expect(tracker.stopsShort(within), isFalse);
+      expect(tracker.settle(within), isNull, reason: 'settled once');
+
+      final beyond = [
+        ...run(-10, 390),
+        at(400 - (kGlobalSegmentBoxSlackM + 2), 101),
+      ];
+      final short = _feed(LiveCourseTracker.forSegment(segment)!, beyond)
+          .tracker;
+      expect(computeGlobalSegmentEffort(beyond, segment), isNull);
+      expect(short.settle(beyond), isNull);
+      expect(short.phase, LiveCoursePhase.timing);
+      expect(short.stopsShort(beyond), isTrue);
+    });
+
+    test('a run finished live has nothing to settle', () {
+      final track = run(-10, 430);
+      final tracker = _feed(LiveCourseTracker.forSegment(segment)!, track)
+          .tracker;
+      expect(tracker.phase, LiveCoursePhase.finished);
+      expect(tracker.settle(track), isNull);
     });
 
     test('a new, shorter line starts the tracker over', () {

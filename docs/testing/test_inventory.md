@@ -490,7 +490,7 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
-### `apps/mobile_android/test/segments_test.dart` — 37 tests
+### `apps/mobile_android/test/segments_test.dart` — 41 tests
 
 Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone. Since #1446 a group of four `attempts` cases mirrors the web's: a timed run and a run that never leaves the start box (or a segment without lines) have no attempt, stopping at 600 m of a straight 1000 m course is `stopped_short` at 600 m, and going 60 m round checkpoint 2 before finishing is `skipped_checkpoint` 2 at 400 m (`diagnoseGlobalSegmentAttempt`).
 
@@ -774,7 +774,7 @@ TypeScript unit tests for the training plan engine, written against Node's `node
 - True when manually marked
 - True when both set
 
-### `apps/web/src/lib/segments/segments.test.ts` — 61 tests
+### `apps/web/src/lib/segments/segments.test.ts` — 65 tests
 
 TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`: Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone. Since #1446 four `attempt:` cases pin `diagnoseGlobalSegmentAttempt` (why no time) on a straight 1000 m course, test-for-test with the Dart twin.
 
@@ -1238,7 +1238,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI behaviour (the store screenshot test renders four screens under Robolectric but asserts nothing about them; `ScreenWiringTest`'s source-grep approach is still how screen wiring is held).
 
-### `apps/job_worker/internal/**/*_test.go` — 1116 tests across 112 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1117 tests across 113 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 

@@ -13,6 +13,7 @@ const REASON_KEY = {
 	stopped_short: 'runDetail.parkCourseAttemptStoppedShort',
 	skipped_checkpoint: 'runDetail.parkCourseAttemptSkippedCheckpoint',
 	off_course: 'runDetail.parkCourseAttemptOffCourse',
+	gps_gap: 'runDetail.parkCourseAttemptGpsGap',
 	wrong_direction: 'runDetail.parkCourseAttemptWrongDirection',
 } as const satisfies Record<ParkCourseAttemptOutcome, MessageKey>;
 

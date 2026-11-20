@@ -191,7 +191,7 @@ Deno.test('a failed checkpoint read scores nothing and fails the pass', async ()
   assert(!fake.calls.some((c) => c.name === 'record_segment_match'), 'nothing may be written');
 });
 
-Deno.test('every pass replaces the run\'s park course attempts after its efforts, and a failed write retries', async () => {
+Deno.test('every pass replaces the run\'s park course attempts after its efforts, and a failed write keeps the efforts', async () => {
   const ok = fakeClient({
     rpcs: {
       segment_match_run_source: SOURCE,
@@ -216,13 +216,22 @@ Deno.test('every pass replaces the run\'s park course attempts after its efforts
     },
     objects: { [TRACK_URL]: await gzip(track()) },
   });
-  let threw = false;
+  // The efforts are committed before the attempts, which only explain a
+  // missing time: a failed attempts write is logged, never a failed pass, so
+  // it cannot fail the job or stall a backfill batch on that run.
+  const logged: unknown[][] = [];
+  const realError = console.error;
+  console.error = (...args: unknown[]) => logged.push(args);
   try {
-    await scoreRun(failing.client, RUN);
-  } catch {
-    threw = true;
+    const result = await scoreRun(failing.client, RUN);
+    const written = failing.calls.find((c) => c.name === 'record_segment_match')!.args.p_efforts as unknown[];
+    assert(written.length > 0, 'the efforts were written');
+    assertEquals(result, { outcome: 'recorded', matched: written.length });
+  } finally {
+    console.error = realError;
   }
-  assert(threw, 'a failed attempt write must throw (500, retried)');
+  assertEquals(logged.length, 1);
+  assert(String(logged[0][1]).includes('23514'), `logged ${JSON.stringify(logged)}`);
 
   const stale = fakeClient({
     rpcs: {

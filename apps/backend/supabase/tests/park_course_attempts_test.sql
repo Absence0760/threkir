@@ -4,7 +4,7 @@
 -- grants, and the cascade on a run delete.
 
 begin;
-select plan(26);
+select plan(27);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -85,10 +85,17 @@ select is(
 
 -- ── the checks ────────────────────────────────────────────────────────────
 
+select lives_ok(
+  $$ update park_course_attempts set outcome = 'gps_gap', progress_m = 3595
+      where run_id = 'a7b00000-0000-0000-0000-000000000001' $$,
+  'gps_gap is an outcome: the run reached the finish across a gap too long to time');
+update park_course_attempts set outcome = 'stopped_short', progress_m = 3445
+ where run_id = 'a7b00000-0000-0000-0000-000000000001';
+
 select throws_ok(
   $$ insert into park_course_attempts (run_id, user_id, park_course_id, outcome, progress_m, course_m, missed_checkpoint, checkpoint_count, matcher_version)
      values ('a7b00000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-0000000000a1', 'a7a70000-0000-0000-0000-0000000000f1', 'lost', 1, 10, null, 0, 4) $$,
-  '23514', null, 'an outcome outside the four is refused');
+  '23514', null, 'an outcome outside the five is refused');
 select throws_ok(
   $$ update park_course_attempts set outcome = 'skipped_checkpoint' where run_id = 'a7b00000-0000-0000-0000-000000000001' $$,
   '23514', null, 'skipped_checkpoint needs the checkpoint it missed');

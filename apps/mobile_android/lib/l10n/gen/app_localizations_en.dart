@@ -24107,6 +24107,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: no time. Your recording has a gap where you reached the finish, so we couldn\'t time it. Keep recording until you\'re past the line.';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course: no time. You ran it the wrong way round. Follow the arrows on the course map.';
   }

@@ -368,6 +368,7 @@ const PARK_COURSE_ATTEMPT_OUTCOMES: readonly ParkCourseAttemptOutcome[] = [
 	'stopped_short',
 	'skipped_checkpoint',
 	'off_course',
+	'gps_gap',
 	'wrong_direction',
 ];
 

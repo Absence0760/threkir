@@ -535,12 +535,7 @@ GateCrossing? _enteredAcrossGap(
   GateFix fix,
   _PendingStart? since,
 ) {
-  if (since == null ||
-      !(prev.s < 0 || prev.u.abs() > halfWidthM) ||
-      cur.s < 0 ||
-      cur.u.abs() > halfWidthM) {
-    return null;
-  }
+  if (since == null || !_intoFinishLane(prev, cur, halfWidthM)) return null;
   final paceS = (prevMs - since.crossing.tMs) / 1000;
   final paceM = prevCoveredM - since.crossing.coveredM;
   if (!(paceS > 0) || !(paceM > 0)) return null;
@@ -555,6 +550,16 @@ GateCrossing? _enteredAcrossGap(
     gapped: true,
   );
 }
+
+/// The two fixes either side of a gap straddle the finish edge: the one
+/// before short of it or outside the box's lane, the one after in the lane
+/// at or past it. Mirrors `intoFinishLane` in
+/// `apps/web/src/lib/segments/segments.ts`.
+bool _intoFinishLane(
+        GateProjection prev, GateProjection cur, double halfWidthM) =>
+    (prev.s < 0 || prev.u.abs() > halfWidthM) &&
+    cur.s >= 0 &&
+    cur.u.abs() <= halfWidthM;
 
 /// Whether a gap of more than [kGateRejectGapS] before fix [toIdx] may still
 /// finish: at most [kGlobalSegmentFinishMaxGapS], and crossed at about the
@@ -626,13 +631,15 @@ bool _passesCheckpoints(
 }
 
 /// Which of two outcomes a tie between attempts goes to: wrong way round over
-/// a missed checkpoint over off course over stopped short. Mirrors
-/// `ATTEMPT_OUTCOME_RANK` in `apps/web/src/lib/segments/segments.ts`.
+/// a missed checkpoint over a gap at the finish over off course over stopped
+/// short. Mirrors `ATTEMPT_OUTCOME_RANK` in
+/// `apps/web/src/lib/segments/segments.ts`.
 int _attemptRank(ParkCourseAttemptOutcome o) => switch (o) {
       ParkCourseAttemptOutcome.stoppedShort => 0,
       ParkCourseAttemptOutcome.offCourse => 1,
-      ParkCourseAttemptOutcome.skippedCheckpoint => 2,
-      ParkCourseAttemptOutcome.wrongDirection => 3,
+      ParkCourseAttemptOutcome.gpsGap => 2,
+      ParkCourseAttemptOutcome.skippedCheckpoint => 3,
+      ParkCourseAttemptOutcome.wrongDirection => 4,
     };
 
 /// Why a run that set out on a gated course got no time on it (issue #1446).
@@ -729,7 +736,12 @@ class _AttemptWindow {
   final int toIdx;
   final bool reverse;
   final bool entered;
-  const _AttemptWindow(this.fromIdx, this.toIdx, this.reverse, this.entered);
+
+  /// Entered the finish box across a gap the timer refuses, within the
+  /// length guard.
+  final bool gapped;
+  const _AttemptWindow(
+      this.fromIdx, this.toIdx, this.reverse, this.entered, this.gapped);
 }
 
 class _OpenAttempt {
@@ -748,6 +760,7 @@ CourseAttempt? _diagnoseByGates(
   double toleranceM,
 ) {
   final minCovered = segment.distanceM * (1 - kGlobalSegmentLengthTolerance);
+  final maxCovered = segment.distanceM * (1 + kGlobalSegmentLengthTolerance);
   final edges = gateTimingEdges(startGate, endGate);
   final exit = edges.startExit;
   final entry = edges.finishEntry;
@@ -762,6 +775,8 @@ CourseAttempt? _diagnoseByGates(
   var prevIdx = -1;
   var prevMs = double.negativeInfinity;
   var tailIdx = -1;
+  var tailGapS = 0.0;
+  GateProjection prevEntry = (s: double.nan, u: double.nan);
 
   for (var i = 0; i < line.length; i++) {
     final p = line[i];
@@ -774,24 +789,47 @@ CourseAttempt? _diagnoseByGates(
     final fix = GateFix(lat: lat, lng: lng, tMs: tMs, coveredM: index.cum[i]);
     final endCrossing = endDetector.offer(fix);
     final startCrossing = startDetector.offer(fix);
+    final gapS = (tMs - prevMs) / 1000;
 
     final inFinish = gateProjection(entry, lat, lng);
     if (inFinish.s >= -kGlobalSegmentBoxSlackM &&
         inFinish.s <= edges.depthM &&
         inFinish.u.abs() <= entry.halfWidthM) {
-      if (tailIdx < 0) tailIdx = i;
+      if (tailIdx < 0) {
+        tailIdx = i;
+        tailGapS = prevIdx >= 0 ? gapS : 0;
+      }
     } else {
       tailIdx = -1;
     }
 
+    // The detector refuses a crossing across a gap longer than
+    // kGateRejectGapS, so a finish reached during a dropout is read the way
+    // the timer's own _enteredAcrossGap reads it.
+    ({double tMs, double coveredM, bool gapped})? entered;
+    if (endCrossing != null && endCrossing.direction == GateDirection.forward) {
+      entered =
+          (tMs: endCrossing.tMs, coveredM: endCrossing.coveredM, gapped: false);
+    } else if (prevIdx >= 0 &&
+        gapS > kGateRejectGapS &&
+        _intoFinishLane(prevEntry, inFinish, entry.halfWidthM)) {
+      entered = (
+        tMs: tMs,
+        coveredM: math.max(index.cum[prevIdx], index.cum[i] - inFinish.s),
+        gapped: true,
+      );
+    }
+    prevEntry = inFinish;
+
     var closedAtMs = double.negativeInfinity;
     if (fwd != null &&
-        endCrossing != null &&
-        endCrossing.direction == GateDirection.forward &&
-        endCrossing.coveredM - fwd.coveredM >= minCovered) {
-      windows.add(_AttemptWindow(fwd.fromIdx, i, false, true));
-      fwd = chained ? _OpenAttempt(prevIdx, endCrossing.coveredM) : null;
-      closedAtMs = endCrossing.tMs;
+        entered != null &&
+        entered.coveredM - fwd.coveredM >= minCovered) {
+      final gapped =
+          entered.gapped && entered.coveredM - fwd.coveredM <= maxCovered;
+      windows.add(_AttemptWindow(fwd.fromIdx, i, false, true, gapped));
+      fwd = chained ? _OpenAttempt(prevIdx, entered.coveredM) : null;
+      closedAtMs = entered.tMs;
     }
     if (fwd == null) {
       if (startCrossing != null &&
@@ -812,7 +850,7 @@ CourseAttempt? _diagnoseByGates(
         startCrossing != null &&
         startCrossing.direction == GateDirection.backward &&
         startCrossing.coveredM - rev.coveredM >= minCovered) {
-      windows.add(_AttemptWindow(rev.fromIdx, i, true, true));
+      windows.add(_AttemptWindow(rev.fromIdx, i, true, true, false));
       rev = null;
     } else if (rev == null &&
         endCrossing != null &&
@@ -823,13 +861,20 @@ CourseAttempt? _diagnoseByGates(
     prevMs = tMs;
   }
   if (fwd != null) {
-    final tail =
-        tailIdx >= 0 && index.cum[tailIdx] - fwd.coveredM >= minCovered;
+    final tailM =
+        tailIdx >= 0 ? index.cum[tailIdx] - fwd.coveredM : double.nan;
+    final tail = tailM >= minCovered;
     windows.add(_AttemptWindow(
-        math.max(fwd.fromIdx, 0), tail ? tailIdx : prevIdx, false, tail));
+      math.max(fwd.fromIdx, 0),
+      tail ? tailIdx : prevIdx,
+      false,
+      tail,
+      tail && tailGapS > kGateRejectGapS && tailM <= maxCovered,
+    ));
   }
   if (rev != null) {
-    windows.add(_AttemptWindow(math.max(rev.fromIdx, 0), prevIdx, true, false));
+    windows.add(
+        _AttemptWindow(math.max(rev.fromIdx, 0), prevIdx, true, false, false));
   }
   if (windows.isEmpty) return null;
 
@@ -1043,9 +1088,11 @@ CourseAttempt? _judgeWindow(
     );
   }
   return CourseAttempt(
-    outcome: w.entered
-        ? ParkCourseAttemptOutcome.offCourse
-        : ParkCourseAttemptOutcome.stoppedShort,
+    outcome: w.gapped
+        ? ParkCourseAttemptOutcome.gpsGap
+        : w.entered
+            ? ParkCourseAttemptOutcome.offCourse
+            : ParkCourseAttemptOutcome.stoppedShort,
     progressM: progressM,
     courseM: courseM,
     missedCheckpoint: null,

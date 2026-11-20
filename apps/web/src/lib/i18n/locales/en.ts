@@ -1725,6 +1725,7 @@ export const en = {
 	"runDetail.parkCourseAttemptStoppedShort": "{course}: no time. You ran {progress} of {total}. Run the whole course to get a time.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}: no time. You missed checkpoint {n} of {count}. Stay on the course line to pass every one.",
 	"runDetail.parkCourseAttemptOffCourse": "{course}: no time. You ran too far off the course. Stay on the course line.",
+	"runDetail.parkCourseAttemptGpsGap": "{course}: no time. Your recording has a gap where you reached the finish, so we couldn't time it. Keep recording until you're past the line.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.",
 	"runDetail.parkCourseAttemptProgress": "{progress} of {total}",
 	"runDetail.parkCourseAttemptBarLabel": "How far you got on {course}",

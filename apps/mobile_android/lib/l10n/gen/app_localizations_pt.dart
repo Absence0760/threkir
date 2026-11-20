@@ -24386,6 +24386,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sem tempo. A sua gravação tem uma falha no ponto em que chegou à meta, por isso não conseguimos cronometrá-la. Continue a gravar até passar a linha.';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.';
   }
@@ -48781,6 +48786,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String runDetailParkCourseAttemptOffCourse(String course) {
     return '$course: sem tempo. Você se afastou demais do percurso. Fique na linha do percurso.';
+  }
+
+  @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sem tempo. Sua gravação tem uma falha bem no ponto em que você chegou à linha de chegada, então não conseguimos cronometrá-la. Continue gravando até passar da linha.';
   }
 
   @override

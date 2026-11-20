@@ -244,9 +244,22 @@ explains a null, so no matcher version bump came with it.
   `skipped_checkpoint` (a checkpoint not passed in order, by the timer's own
   first-in-tolerance walk, and the run entered the finish box or got further
   along the line than that checkpoint; `missed_checkpoint` is the first one);
-  `off_course` (entered the finish box with every checkpoint passed, yet
-  untimed: the 25 % length guard); `stopped_short` (anything else that ended
-  before the finish box).
+  `gps_gap` (reached the finish box with every checkpoint passed and within
+  the length guard, but across a gap between fixes of more than 60 s, or ended
+  in it with such a gap before its last stretch there: the timer refused the
+  gap, so the card says the recording has a gap where the runner reached the
+  finish, not that they stopped short or left the course); `off_course`
+  (entered the finish box with every checkpoint passed, yet untimed: the 25 %
+  length guard); `stopped_short` (anything else that ended before the finish
+  box).
+- **A gap at the finish** is read the way the timer reads one. The gap
+  detector refuses any crossing across more than 60 s
+  (`GATE_REJECT_GAP_S`), so an attempt closes at the finish when the fix before
+  the gap is short of the finish edge or outside its lane and the fix after it
+  is in the lane at or past the edge (`intoFinishLane`, shared with the
+  timer's `enteredAcrossGap`), of any length. The timer itself accepts such a
+  gap only up to 300 s and at 0.4 to 1.5 times the runner's average speed, so
+  every gap the diagnosis sees at the finish is one it refused.
 - **Progress** follows the run along the course line: each fix within 35 m of
   the line is placed at the nearest point of the line to where the runner
   should be by now, searched from just behind the last placed point to 1.5
@@ -267,7 +280,11 @@ explains a null, so no matcher version bump came with it.
 **Server.** The `segment-match` function writes the attempts after the efforts
 on every pass, through `record_park_course_attempts` (same stale-bytes refusal;
 a re-score replaces the run's rows, an empty list included), into
-`park_course_attempts`, owner-only by RLS. Clients read
+`park_course_attempts`, owner-only by RLS. The attempts pass has its own
+`try`/`catch`: a throw in the diagnosis or a failed write is logged and the
+pass still returns the efforts it recorded, so it never fails the job or
+stalls a backfill batch on that run; the attempts then wait for the run's next
+scoring (`handler.test.ts`). Clients read
 `get_run_park_course_attempts` through web `fetchParkCourseAttempts` and Dart
 `ApiClient.fetchParkCourseAttempts`; both throw on a failed read, so the card
 section is left out and logged rather than shown empty. Reference:
@@ -275,7 +292,13 @@ section is left out and logged rather than shown empty. Reference:
 
 **Not covered.** A circle-matched segment (no usable pair of lines) has no start
 box and so no attempt. A runner who quits before the first checkpoint gets no
-card. A run scored before this shipped has no attempts until it is scored again
+card. A dropout whose first fix back is already off to the side of the finish
+box's lane (the runner turned away during it) is not read as reaching the
+finish, so it reads `stopped_short`; one whose first fix back is in the lane
+reads `gps_gap` however long the dropout. Pocahontas has no out-and-back or
+point-to-point course, so the fixture's two are synthetic (cut from Beaver
+Lake Trail's line), and no real course of either shape is in the boards
+pgTAP test yet. A run scored before this shipped has no attempts until it is scored again
 (a backfill or a track rewrite).
 
 ## Seasons and boards
@@ -1432,11 +1455,26 @@ These gate going live, not the code:
   `park_course_runs.test.ts` (what reaches `record_park_course_attempts`);
   `beaver_shortcut` / `beaver_cut` are `skipped_checkpoint` 2, `beaver_wrong_way`
   `wrong_direction`, `beaver_short` `stopped_short` 150 m short, `beaver_detour`
-  `off_course`, and no timed run has an attempt. Four synthetic `attempt:` cases
-  in `segments.test.ts` / `segments_test.dart`. pgTAP
+  `off_course`, and no timed run has an attempt. The two synthetic courses
+  (below) add the shapes Pocahontas lacks: on the out-and-back, whose
+  checkpoints do not mirror, `oab_clean` is timed with no attempt,
+  `oab_stopped_at_turn` is `stopped_short` at the turn (not `wrong_direction`,
+  although every forward start there also opens a reverse attempt) and
+  `oab_turned_early` is `skipped_checkpoint` 2; on the point to point,
+  `p2p_clean` is timed, `p2p_stopped_short` is `stopped_short` 400 m out and
+  `p2p_dropout_at_finish` (no fix from 60 m short of the line, through a stop,
+  to 6 m past it, about 260 s refused at a tenth of the runner's pace) is
+  `gps_gap` at the full length. Eight synthetic `attempt:` cases in
+  `segments.test.ts` / `segments_test.dart`, among them a 200 s dropout into
+  the finish box then a cool-down and a 400 s dropout ending 3 m short of it
+  (each `gps_gap`), a dropout mid-course and a stop (still `stopped_short`),
+  and an out-and-back with mirrored checkpoints (timed out and back,
+  `stopped_short` at the turn). pgTAP
   `park_course_attempts_test.sql` (the write, its stale and missing refusals,
   the replace, the CHECKs, owner-only reads of the table and the RPC, anon
-  refused both, no client write, the cascade on a run delete). Row readers:
+  refused both, no client write, the cascade on a run delete). The Art 20
+  export: Go `park_course_attempts_export_test.go` (one spec, the subject's
+  own rows by `user_id`, every column). Row readers:
   `park_courses.test.ts` (`parkCourseAttemptFromRow`) and core_models
   `park_course_attempt_test.dart`.
 - Reports and closures: pgTAP
@@ -1536,16 +1574,23 @@ These gate going live, not the code:
 - A run over a real course reaches its board (#1342 step 5c, the automated
   form of the hand test): `fixtures/park_course_runs.json`, seeded 1 Hz runs
   with about 5 m RMS of correlated GPS error over the six committed
-  Pocahontas lines (a minute in the lot, a lead-in, the course, a cool-down),
+  Pocahontas lines and two synthetic courses (a minute in the lot, a lead-in,
+  the course, a cool-down). The synthetic courses are the shapes the park
+  lacks, an out-and-back and a point to point, cut from Beaver Lake Trail's
+  line and moved 6 km south of the park (`syntheticCourses`), their GeoJSON
+  generated into `fixtures/park_course_runs/` and their runs left out of the
+  pgTAP block (no catalogue row exists for them);
   generated by `parks/course_run_fixture.ts` with `pnpm gen:park-course-runs`
   (`parks/course_run_fixture.test.ts` fails when it, or the generated block of
   the pgTAP test below, is stale). Cases: a clean run of every course within
   `2 × 8 m / pace` of its true elapsed time, a stop with sparse fixes under the
   trees, a shortcut that skips a checkpoint, the loop the wrong way, stopping
-  short, passing nearby, three laps, two 5K passes either way round, and one
-  lap of each two-lap course. Read by `parks/park_course_runs.test.ts` ↔
-  `test/park_course_runs_test.dart` (every case scored on all six courses, to
-  the millisecond), by Deno `segment-match/park_course_runs.test.ts` (the
+  short, passing nearby, three laps, two 5K passes either way round, one
+  lap of each two-lap course, and on the synthetic courses a clean run, a stop
+  short (at the turn of the out-and-back) and an early turn and a GPS dropout
+  at the finish. Read by `parks/park_course_runs.test.ts` ↔
+  `test/park_course_runs_test.dart` (every case scored on all eight courses,
+  to the millisecond), by Deno `segment-match/park_course_runs.test.ts` (the
   function's `scoreRun` sends exactly those efforts) and by pgTAP
   `park_course_boards_test.sql`, which loads the real catalogue through
   `private.load_park_catalogue`, checks the database's lines are the

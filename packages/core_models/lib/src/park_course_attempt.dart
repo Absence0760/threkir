@@ -12,6 +12,7 @@ enum ParkCourseAttemptOutcome {
   stoppedShort,
   skippedCheckpoint,
   offCourse,
+  gpsGap,
   wrongDirection;
 
   /// The column's spelling.
@@ -19,6 +20,7 @@ enum ParkCourseAttemptOutcome {
         ParkCourseAttemptOutcome.stoppedShort => 'stopped_short',
         ParkCourseAttemptOutcome.skippedCheckpoint => 'skipped_checkpoint',
         ParkCourseAttemptOutcome.offCourse => 'off_course',
+        ParkCourseAttemptOutcome.gpsGap => 'gps_gap',
         ParkCourseAttemptOutcome.wrongDirection => 'wrong_direction',
       };
 

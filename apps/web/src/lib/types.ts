@@ -653,7 +653,7 @@ export type OrganiserDisputeTargetKind =
 // Why a run that set out on a park course got no time on it
 // (`park_course_attempts.outcome`, issue #1446). The matcher computes it
 // (`diagnoseGlobalSegmentAttempts` in segments/segments.ts).
-export type ParkCourseAttemptOutcome = 'stopped_short' | 'skipped_checkpoint' | 'off_course' | 'wrong_direction';
+export type ParkCourseAttemptOutcome = 'stopped_short' | 'skipped_checkpoint' | 'off_course' | 'gps_gap' | 'wrong_direction';
 /** One row of `get_run_park_course_attempts`, as `fetchParkCourseAttempts` returns it. */
 export interface ParkCourseAttempt {
 	parkCourseId: string;

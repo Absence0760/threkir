@@ -38,7 +38,13 @@ void main() {
     }
     expect(
       ParkCourseAttemptOutcome.values.map((o) => o.wire),
-      ['stopped_short', 'skipped_checkpoint', 'off_course', 'wrong_direction'],
+      [
+        'stopped_short',
+        'skipped_checkpoint',
+        'off_course',
+        'gps_gap',
+        'wrong_direction',
+      ],
     );
   });
 

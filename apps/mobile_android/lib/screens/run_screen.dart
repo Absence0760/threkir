@@ -1292,6 +1292,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// would time it; the finished summary says so.
   bool _courseStoppedShort = false;
 
+  /// The recording stopped on a course the board times only as it ends (its
+  /// last stretch in the finish box or within the slack short of it), so no
+  /// live fix said "Finished!": the course time, for the finished summary.
+  double? _courseSettledSeconds;
+
   /// Reads the followed route's park course for this recording. Every
   /// failure leaves the recording untimed live and nothing else.
   Future<void> _loadLiveCourse() async {
@@ -1512,6 +1517,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _courseCueTimer = null;
     _courseCue.value = null;
     _courseStoppedShort = false;
+    _courseSettledSeconds = null;
   }
 
   /// A Log-run action over the finished summary: the same exit as its Done.
@@ -4403,7 +4409,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     unawaited(_persistStride(recorder));
     // L4: the stop is never held for this, and a failure only drops the note.
     try {
-      _courseStoppedShort = _liveCourse?.stopsShort(raw.track) ?? false;
+      final course = _liveCourse;
+      _courseSettledSeconds = course?.settle(raw.track)?.timeSeconds;
+      _courseStoppedShort = course?.stopsShort(raw.track) ?? false;
       _courseCueTimer?.cancel();
       _courseCue.value = null;
       _offCourseCue.value = null;
@@ -6293,8 +6301,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             syncError: _syncError,
             onDone: _discard,
             milestone: milestone,
-            courseNote:
-                _courseStoppedShort ? l10n.runCourseStoppedShort : null,
+            courseNote: _courseStoppedShort
+                ? l10n.runCourseStoppedShort
+                : _courseSettledSeconds != null
+                    ? l10n.runCourseFinished(
+                        formatEffortTime(_courseSettledSeconds!))
+                    : null,
             onGiveHealthConsent: _heartRateNotSaved
                 ? () => openHealthConsent(context,
                     api: widget.apiClient,

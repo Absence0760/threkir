@@ -64,6 +64,13 @@ test('off course and the wrong way round each say what to do instead', () => {
 	);
 });
 
+test('a gap at the finish says the recording could not be timed and to keep recording', () => {
+	assert.equal(
+		attemptCard(attempt({ outcome: 'gps_gap', progressM: 5000 }), 'km', 'en', t).reason,
+		"Lake Loop: no time. Your recording has a gap where you reached the finish, so we couldn't time it. Keep recording until you're past the line.",
+	);
+});
+
 test('the distances follow the runner unit, yards below a mile', () => {
 	const c = attemptCard(attempt({ progressM: 800, courseM: 8047 }), 'mi', 'en', t);
 	assert.equal(c.progress, '875 yd of 5.00 mi');
@@ -81,11 +88,11 @@ test('the bar stays inside its track for out-of-range numbers', () => {
 test('every outcome has its own sentence in a non-English catalogue too', () => {
 	const tj = (key: MessageKey, params?: Record<string, string | number>) =>
 		interpolate(ja[key], params, 'ja');
-	const outcomes = ['stopped_short', 'skipped_checkpoint', 'off_course', 'wrong_direction'] as const;
+	const outcomes = ['stopped_short', 'skipped_checkpoint', 'off_course', 'gps_gap', 'wrong_direction'] as const;
 	const reasons = outcomes.map(
 		(outcome) => attemptCard(attempt({ outcome, missedCheckpoint: outcome === 'skipped_checkpoint' ? 3 : null }), 'km', 'ja', tj).reason,
 	);
-	assert.equal(new Set(reasons).size, 4);
+	assert.equal(new Set(reasons).size, outcomes.length);
 	for (const r of reasons) {
 		assert.ok(r.startsWith('Lake Loop'), r);
 		assert.doesNotMatch(r, /\{\w+\}/, r);

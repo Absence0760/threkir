@@ -1711,6 +1711,7 @@ export const messages = {
 	"runDetail.parkCourseAttemptStoppedShort": "{course}: sem tempo. Correu {progress} de {total}. Corra o percurso todo para ter um tempo.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}: sem tempo. Falhou o ponto de controlo {n} de {count}. Mantenha-se na linha do percurso para passar por todos.",
 	"runDetail.parkCourseAttemptOffCourse": "{course}: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.",
+	"runDetail.parkCourseAttemptGpsGap": "{course}: sem tempo. A sua gravação tem uma falha no ponto em que chegou à meta, por isso não conseguimos cronometrá-la. Continue a gravar até passar a linha.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.",
 	"runDetail.parkCourseAttemptProgress": "{progress} de {total}",
 	"runDetail.parkCourseAttemptBarLabel": "Até onde chegou em {course}",

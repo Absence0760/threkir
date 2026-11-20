@@ -1707,6 +1707,7 @@ export const messages = {
 	"runDetail.parkCourseAttemptStoppedShort": "{course}：タイムなし。{total}のうち{progress}を走りました。コースを最後まで走るとタイムが記録されます。",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}：タイムなし。チェックポイント{n}（全{count}か所）を通過しませんでした。コースラインから外れずに走り、すべて通過してください。",
 	"runDetail.parkCourseAttemptOffCourse": "{course}：タイムなし。コースから大きく外れました。コースラインに沿って走ってください。",
+	"runDetail.parkCourseAttemptGpsGap": "{course}：タイムなし。ゴールに着いたところで記録が途切れていたため、タイムを計測できませんでした。ゴールラインを越えるまで記録を続けてください。",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}：タイムなし。逆回りで走りました。コースマップの矢印に沿って走ってください。",
 	"runDetail.parkCourseAttemptProgress": "{total}のうち{progress}",
 	"runDetail.parkCourseAttemptBarLabel": "{course}でどこまで進んだか",

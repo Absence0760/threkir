@@ -2,8 +2,9 @@
 // (issue #1342 step 5c). The Dart reader of fixtures/park_course_runs.json,
 // the case table the `segments` pair shares with
 // apps/web/src/lib/parks/park_course_runs.test.ts: synthetic 1 Hz runs with
-// realistic GPS error over the six committed Pocahontas course lines, each
-// scored against all six courses at once.
+// realistic GPS error over the six committed Pocahontas course lines and two
+// synthetic ones (an out-and-back and a point to point), each scored against
+// all eight courses at once.
 //
 // Each case is checked against what it is for (an effort within tolerance of
 // the true elapsed time, or none) and against `matched`, what the web matcher
@@ -15,6 +16,7 @@ import 'dart:io';
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/gate_crossing.dart';
+import '../lib/run_stats.dart' show haversineMetres;
 import '../lib/segments.dart';
 
 const _root = '../..';
@@ -171,6 +173,69 @@ void main() {
     expect(((short['progress_m'] as int) - (3595 - 150)).abs() <= 35, isTrue);
     expect(beaverOf('beaver_detour')!['outcome'], 'off_course');
     expect(beaverOf('beaver_nearby'), isNull, reason: 'never crossed a line');
+  });
+
+  // An out-and-back's finish entry is its start edge facing back, so every
+  // forward start also opens a reverse attempt; only a run back into the box
+  // past more reversed checkpoints than in-order ones keeps it. Its
+  // checkpoints (500 m out, the turn, 700 m from the finish) do not mirror.
+  test(
+      'an out-and-back: timed clean with no attempt, a stop at the turn is '
+      'stopped_short, an early turn skips the turn checkpoint', () {
+    const slug = 'synthetic-out-and-back';
+    Map<String, dynamic>? oab(String key) =>
+        (caseBy(key)['attempts'] as Map<String, dynamic>)[slug]
+            as Map<String, dynamic>?;
+    expect((caseBy('oab_clean')['matched'] as Map).containsKey(slug), isTrue);
+    expect(caseBy('oab_clean')['attempts'], isEmpty);
+    final turn = oab('oab_stopped_at_turn')!;
+    expect(turn['outcome'], 'stopped_short',
+        reason: 'a stop at the turn is not the wrong way round');
+    expect(((turn['progress_m'] as int) - 1400).abs() <= 35, isTrue);
+    final early = oab('oab_turned_early')!;
+    expect(early['outcome'], 'skipped_checkpoint');
+    expect(early['missed_checkpoint'], 2);
+    expect(early['checkpoint_count'], 3);
+    expect(((early['progress_m'] as int) - 1250).abs() <= 35, isTrue);
+    final g = geometries[slugs.indexOf(slug)];
+    expect(g.startGate!.lat, g.endGate!.lat);
+    expect(
+        ((g.endGate!.bearingDeg - g.startGate!.bearingDeg + 360) % 360 - 180)
+                .abs() <
+            1e-6,
+        isTrue,
+        reason: 'one spot facing opposite ways');
+    final cps = g.checkpoints;
+    expect(
+        haversineMetres(cps[0].lat, cps[0].lng, cps[2].lat, cps[2].lng) > 70,
+        isTrue,
+        reason: 'checkpoints 1 and 3 do not mirror');
+  });
+
+  test(
+      'a point to point: timed clean, stopped_short 400 m out, and a GPS '
+      'dropout at the finish is gps_gap', () {
+    const slug = 'synthetic-point-to-point';
+    Map<String, dynamic>? p2p(String key) =>
+        (caseBy(key)['attempts'] as Map<String, dynamic>)[slug]
+            as Map<String, dynamic>?;
+    expect((caseBy('p2p_clean')['matched'] as Map).containsKey(slug), isTrue);
+    final short = p2p('p2p_stopped_short')!;
+    expect(short['outcome'], 'stopped_short');
+    expect(((short['progress_m'] as int) - (2601 - 400)).abs() <= 35, isTrue);
+    final gap = p2p('p2p_dropout_at_finish')!;
+    expect(gap['outcome'], 'gps_gap',
+        reason: 'it reached the finish: not stopped short, not off course');
+    expect(gap['progress_m'], gap['course_m']);
+    final track = _decode(
+        caseBy('p2p_dropout_at_finish')['track'] as Map<String, dynamic>,
+        base);
+    var longest = 0;
+    for (var i = 1; i < track.length; i++) {
+      final s = track[i].timestamp!.difference(track[i - 1].timestamp!);
+      if (s.inSeconds > longest) longest = s.inSeconds;
+    }
+    expect(longest > 60 && longest <= 300, isTrue, reason: '$longest s');
   });
 
   test(

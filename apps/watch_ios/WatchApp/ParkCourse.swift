@@ -137,12 +137,13 @@ enum ParkCourseStore {
 
 /// What the running screen shows for the course: nothing until the runner
 /// leaves the start box, "Timing started" while a lap is timed, and
-/// "Finished!" with the time once one counts — kept on screen from then on,
-/// so a loop's next lap opening at the same instant never hides the time the
-/// runner just ran.
+/// "Finished!" once one counts, with the FASTEST lap's time — the one the
+/// course board keeps — kept on screen from then on, so a loop's next lap
+/// opening at the same instant never hides it ("Finished! Best 21:42" once
+/// there is more than one lap). Each lap still buzzes as it finishes.
 enum CourseTimingDisplay: Equatable {
     case timing
-    case finished(seconds: Double)
+    case finished(seconds: Double, laps: Int)
 
     /// The display after `events`, from `current`.
     static func next(_ current: CourseTimingDisplay?, after events: [CourseTimingEvent]) -> CourseTimingDisplay? {
@@ -153,7 +154,12 @@ enum CourseTimingDisplay: Equatable {
                 if case .finished? = display { continue }
                 display = .timing
             case let .finished(startMs, endMs):
-                display = .finished(seconds: (endMs - startMs) / 1000)
+                let lap = (endMs - startMs) / 1000
+                if case let .finished(best, laps)? = display {
+                    display = .finished(seconds: min(best, lap), laps: laps + 1)
+                } else {
+                    display = .finished(seconds: lap, laps: 1)
+                }
             }
         }
         return display

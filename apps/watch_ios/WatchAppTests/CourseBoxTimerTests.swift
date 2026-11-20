@@ -278,9 +278,51 @@ final class CourseBoxTimerTests: XCTestCase {
                      "a later start while timing does not buzz again")
         XCTAssertEqual(CourseTimingDisplay.haptic(for: [finish, .started(atMs: 1)], before: display), .finished)
         display = CourseTimingDisplay.next(display, after: [finish, .started(atMs: 31_330_000)])
-        XCTAssertEqual(display, .finished(seconds: 31_330))
+        XCTAssertEqual(display, .finished(seconds: 31_330, laps: 1))
         XCTAssertNil(CourseTimingDisplay.haptic(for: [.started(atMs: 9)], before: display),
                      "no start buzz once a lap has finished")
+    }
+
+    /// The board keeps the fastest lap, so the persistent line does too: a
+    /// slower later lap never replaces it, a faster one does, and a start
+    /// after a finish keeps it.
+    func testTheDisplayKeepsTheFastestLapTheBoardKeeps() {
+        var display = CourseTimingDisplay.next(nil, after: [.started(atMs: 0), .finished(startMs: 0, endMs: 1_301_600)])
+        XCTAssertEqual(display, .finished(seconds: 1301.6, laps: 1))
+        display = CourseTimingDisplay.next(display, after: [.started(atMs: 1_400_000)])
+        XCTAssertEqual(display, .finished(seconds: 1301.6, laps: 1), "a later start keeps the finish")
+        display = CourseTimingDisplay.next(display, after: [.finished(startMs: 1_400_000, endMs: 2_800_000)])
+        XCTAssertEqual(display, .finished(seconds: 1301.6, laps: 2), "a slower lap keeps the best")
+        display = CourseTimingDisplay.next(display, after: [.finished(startMs: 2_800_000, endMs: 4_000_000)])
+        XCTAssertEqual(display, .finished(seconds: 1200, laps: 3), "a faster lap is the new best")
+        XCTAssertEqual(CourseTimingDisplay.haptic(for: [.finished(startMs: 0, endMs: 1)], before: display), .finished,
+                       "every lap still buzzes")
+    }
+
+    /// Beaver Lake three times: the middle lap is the fastest, so the line
+    /// left on screen is not the last lap's time but the matcher's effort.
+    func testThreeLapsLeaveTheFastestOnScreen() throws {
+        let fixture = try json("fixtures/park_course_runs.json")
+        let base = try epochMs(try XCTUnwrap(fixture["base_time"] as? String))
+        let courses = try XCTUnwrap(fixture["courses"] as? [[String: Any]])
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let beaver = try XCTUnwrap(courses.first { $0["slug"] as? String == "beaver-lake-trail" })
+        let laps = try XCTUnwrap(cases.first { $0["key"] as? String == "beaver_three_laps" })
+        let timer = try XCTUnwrap(CourseBoxTimer(
+            startGate: try XCTUnwrap(gate(beaver["start_gate"])), endGate: try XCTUnwrap(gate(beaver["end_gate"])),
+            distanceM: d(beaver["distance_m"]), checkpoints: points(beaver["checkpoints"])))
+        var display: CourseTimingDisplay?
+        var said: [Double] = []
+        for fix in try decode(try XCTUnwrap(laps["track"] as? [String: Any]), base: base) {
+            let events = timer.offer(lat: fix.lat, lng: fix.lng, tMs: fix.tMs)
+            said += events.compactMap(\.finishSeconds)
+            display = CourseTimingDisplay.next(display, after: events)
+        }
+        if let last = timer.settle() { said += [last.finishSeconds!]; display = CourseTimingDisplay.next(display, after: [last]) }
+        XCTAssertEqual(said.count, 3)
+        let best = try XCTUnwrap(timer.bestSeconds)
+        XCTAssertEqual(display, .finished(seconds: best, laps: 3))
+        XCTAssertNotEqual(said.last, best, "the last lap is not the fastest here")
     }
 
     /// The board's format: rounded to the nearest second, no hour field under
@@ -316,7 +358,7 @@ final class CourseBoxTimerTests: XCTestCase {
         XCTAssertEqual(wm.courseTiming, .timing)
         XCTAssertEqual(buzzes, [.started])
         wm.locationManager(CLLocationManager(), didUpdateLocations: Array(fixes.dropFirst(50)))
-        XCTAssertEqual(wm.courseTiming, .finished(seconds: 100))
+        XCTAssertEqual(wm.courseTiming, .finished(seconds: 100, laps: 1))
         XCTAssertEqual(buzzes, [.started, .finished])
     }
 

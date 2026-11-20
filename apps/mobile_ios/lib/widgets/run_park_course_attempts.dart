@@ -194,8 +194,8 @@ String parkCourseAttemptProgressText(
   ParkCourseAttempt a,
   DistanceUnit unit,
 ) => l10n.runDetailParkCourseAttemptProgress(
-  UnitFormat.distance(a.progressM.toDouble(), unit),
-  UnitFormat.distance(a.courseM.toDouble(), unit),
+  UnitFormat.shortDistance(a.progressM.toDouble(), unit),
+  UnitFormat.shortDistance(a.courseM.toDouble(), unit),
 );
 
 /// The one sentence saying why [a] got no time and what to do next time.
@@ -208,8 +208,8 @@ String parkCourseAttemptText(
     case ParkCourseAttemptOutcome.stoppedShort:
       return l10n.runDetailParkCourseAttemptStoppedShort(
         a.courseName,
-        UnitFormat.distance(a.progressM.toDouble(), unit),
-        UnitFormat.distance(a.courseM.toDouble(), unit),
+        UnitFormat.shortDistance(a.progressM.toDouble(), unit),
+        UnitFormat.shortDistance(a.courseM.toDouble(), unit),
       );
     case ParkCourseAttemptOutcome.skippedCheckpoint:
       return l10n.runDetailParkCourseAttemptSkippedCheckpoint(

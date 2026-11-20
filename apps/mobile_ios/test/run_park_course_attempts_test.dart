@@ -166,7 +166,7 @@ void main() {
         attempts: [
           _attempt(
             ParkCourseAttemptOutcome.stoppedShort,
-            progressM: 1609,
+            progressM: 1610,
             courseM: 4828,
           ),
         ],
@@ -177,6 +177,41 @@ void main() {
     expect(find.textContaining('km'), findsNothing);
     expect(_barValue(tester), '1.00 mi of 3.00 mi');
     handle.dispose();
+  });
+
+  testWidgets('progress under a kilometre or a mile reads in the small unit, as on web', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeApi(
+        attempts: [
+          _attempt(
+            ParkCourseAttemptOutcome.stoppedShort,
+            progressM: 350,
+            courseM: 5000,
+          ),
+        ],
+      ),
+    );
+    expect(find.text('350 m of 5.00 km'), findsOneWidget);
+  });
+
+  testWidgets('progress under a mile reads in yards', (tester) async {
+    await _pump(
+      tester,
+      _FakeApi(
+        attempts: [
+          _attempt(
+            ParkCourseAttemptOutcome.stoppedShort,
+            progressM: 350,
+            courseM: 5000,
+          ),
+        ],
+      ),
+      unit: DistanceUnit.mi,
+    );
+    expect(find.text('383 yd of 3.11 mi'), findsOneWidget);
   });
 
   testWidgets('a missed checkpoint names which one, out of how many', (
@@ -231,7 +266,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('5.00 km of 5.00 km'), findsOneWidget);
-    expect(find.text('0.00 km of 5.00 km'), findsOneWidget);
+    expect(find.text('0 m of 5.00 km'), findsOneWidget);
   });
 
   testWidgets('a card opens its course', (tester) async {

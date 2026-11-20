@@ -24358,6 +24358,29 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runCourseStoppedShort =>
       'Não vai contar como tempo do percurso. A sua corrida fica guardada na mesma.';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Saiu do percurso. Volte ao ponto de controlo $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine => 'Saiu do percurso. Volte ao traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controlo $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controlo $number, concluído';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -48693,4 +48716,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runCourseStoppedShort =>
       'Isso não vai contar como tempo do percurso. Sua corrida continua salva.';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Você saiu do percurso. Volte para o ponto de controle $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Você saiu do percurso. Volte para o traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controle $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controle $number, concluído';
+  }
 }

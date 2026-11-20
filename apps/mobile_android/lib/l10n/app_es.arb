@@ -6466,5 +6466,10 @@
   "filterBarRegion": "Región",
   "runCourseTimingStarted": "Cronometraje iniciado",
   "runCourseFinished": "¡Meta! {time}",
-  "runCourseStoppedShort": "No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente."
+  "runCourseStoppedShort": "No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente.",
+  "runCourseOffCourseCheckpoint": "Te has salido del recorrido. Vuelve al punto de control {number}.",
+  "runCourseOffCourseLine": "Te has salido del recorrido. Vuelve al trazado.",
+  "runCourseTimingStartedNamed": "Cronometraje iniciado: {course}",
+  "runCourseCheckpointLabel": "Punto de control {number}",
+  "runCourseCheckpointPassedLabel": "Punto de control {number}, superado"
 }

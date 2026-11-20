@@ -6466,5 +6466,10 @@
   "filterBarRegion": "Région",
   "runCourseTimingStarted": "Chrono lancé",
   "runCourseFinished": "Arrivée ! {time}",
-  "runCourseStoppedShort": "Ce ne sera pas compté comme un temps sur le parcours. Votre course est quand même enregistrée."
+  "runCourseStoppedShort": "Ce ne sera pas compté comme un temps sur le parcours. Votre course est quand même enregistrée.",
+  "runCourseOffCourseCheckpoint": "Vous êtes sorti du parcours. Revenez au point de contrôle {number}.",
+  "runCourseOffCourseLine": "Vous êtes sorti du parcours. Revenez sur le tracé.",
+  "runCourseTimingStartedNamed": "Chrono lancé : {course}",
+  "runCourseCheckpointLabel": "Point de contrôle {number}",
+  "runCourseCheckpointPassedLabel": "Point de contrôle {number}, franchi"
 }

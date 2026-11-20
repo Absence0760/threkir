@@ -6466,5 +6466,10 @@
   "filterBarRegion": "Region",
   "runCourseTimingStarted": "Zeitmessung gestartet",
   "runCourseFinished": "Im Ziel! {time}",
-  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert."
+  "runCourseStoppedShort": "Das zählt nicht als Streckenzeit. Dein Lauf ist trotzdem gespeichert.",
+  "runCourseOffCourseCheckpoint": "Du bist von der Strecke abgekommen. Lauf zurück zu Kontrollpunkt {number}.",
+  "runCourseOffCourseLine": "Du bist von der Strecke abgekommen. Lauf zurück auf die Strecke.",
+  "runCourseTimingStartedNamed": "Zeitmessung gestartet: {course}",
+  "runCourseCheckpointLabel": "Kontrollpunkt {number}",
+  "runCourseCheckpointPassedLabel": "Kontrollpunkt {number}, passiert"
 }

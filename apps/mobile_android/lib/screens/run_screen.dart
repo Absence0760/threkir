@@ -279,6 +279,14 @@ class RunScreen extends StatefulWidget {
   final Future<GlobalSegmentGeometry?> Function(String routeId)?
       liveCourseLookup;
 
+  /// Reads the park courses whose start is near ([lat], [lng]) for a run
+  /// that follows no course (#1446). Defaults to
+  /// [ApiClient.fetchParkCoursesStartingIn] over a box around the point;
+  /// tests hand candidates in without a backend.
+  @visibleForTesting
+  final Future<List<LiveCourseCandidate>> Function(double lat, double lng)?
+      liveCourseNearbyLookup;
+
   const RunScreen({
     super.key,
     this.apiClient,
@@ -301,6 +309,7 @@ class RunScreen extends StatefulWidget {
     this.shown,
     this.preRunProbe = const PlatformPreRunProbe(),
     this.liveCourseLookup,
+    this.liveCourseNearbyLookup,
   });
 
   @override
@@ -1259,6 +1268,22 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   LiveCourseTracker? _liveCourse;
   int _liveCourseLoad = 0;
 
+  /// The course's name when it was found near the runner rather than
+  /// followed; "Timing started" then names it.
+  String? _liveCourseName;
+
+  /// The followed route's course lookup has settled, so a run without one
+  /// may look for a course near the runner.
+  bool _liveCourseSettled = false;
+
+  /// Nearby courses being followed silently until the runner starts one.
+  LiveCourseDetector? _courseDetector;
+  int _courseLooks = 0;
+  bool _courseLookInFlight = false;
+
+  /// The off-course warning's sentence while it shows; null hides it.
+  final ValueNotifier<String?> _offCourseCue = ValueNotifier(null);
+
   /// The big message over the map while it shows; null hides it.
   final ValueNotifier<String?> _courseCue = ValueNotifier(null);
   Timer? _courseCueTimer;
@@ -1272,8 +1297,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Future<void> _loadLiveCourse() async {
     final load = ++_liveCourseLoad;
     _liveCourse = null;
+    _liveCourseSettled = false;
     final routeId = _selectedRoute?.id;
-    if (routeId == null) return;
+    if (routeId == null) {
+      _liveCourseSettled = true;
+      return;
+    }
     try {
       final lookup = widget.liveCourseLookup;
       final GlobalSegmentGeometry? geometry;
@@ -1289,6 +1318,128 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _liveCourse = LiveCourseTracker.forSegment(geometry);
     } catch (e) {
       debugPrint('live course lookup failed: $e');
+    } finally {
+      if (load == _liveCourseLoad) _liveCourseSettled = true;
+    }
+  }
+
+  /// Looks for park courses starting near the runner, once at the first fix
+  /// and, when that finds none or fails, once more [kLiveCourseSecondLookM]
+  /// in. Every failure is silent: the run records as before and the server
+  /// still times it after upload.
+  Future<void> _lookForNearbyCourse(double lat, double lng) async {
+    final load = _liveCourseLoad;
+    _courseLookInFlight = true;
+    _courseLooks++;
+    try {
+      final List<LiveCourseCandidate> candidates;
+      final lookup = widget.liveCourseNearbyLookup;
+      if (lookup != null) {
+        candidates = await lookup(lat, lng);
+      } else {
+        final api = widget.apiClient;
+        if (api == null) return;
+        final box = courseSearchBox(lat, lng);
+        final listings = await api.fetchParkCoursesStartingIn(
+          minLat: box.minLat,
+          minLng: box.minLng,
+          maxLat: box.maxLat,
+          maxLng: box.maxLng,
+        );
+        candidates = nearbyCourseCandidates(listings, lat, lng);
+      }
+      if (!mounted || load != _liveCourseLoad || _liveCourse != null) return;
+      final detector = LiveCourseDetector(candidates);
+      if (!detector.isEmpty) _courseDetector = detector;
+    } catch (e) {
+      debugPrint('nearby course lookup failed: $e');
+    } finally {
+      if (load == _liveCourseLoad) _courseLookInFlight = false;
+    }
+  }
+
+  /// Feeds the line to the course being timed, or to the nearby courses
+  /// until the runner starts one. L4: called inside its own try/catch.
+  void _offerLiveCourse(List<cm.Waypoint> track, double distanceMetres) {
+    var course = _liveCourse;
+    if (course == null) {
+      final detector = _courseDetector;
+      if (detector != null) {
+        final adoption = detector.offer(track);
+        if (adoption != null) {
+          _courseDetector = null;
+          _liveCourse = adoption.tracker;
+          _liveCourseName = adoption.candidate.name;
+          for (final event in adoption.events) {
+            _onLiveCourseEvent(event);
+          }
+        }
+        return;
+      }
+      final pos = track.isEmpty ? null : track.last;
+      final mayLook = _liveCourseSettled &&
+          !_courseLookInFlight &&
+          pos != null &&
+          (_courseLooks == 0 ||
+              (_courseLooks == 1 && distanceMetres >= kLiveCourseSecondLookM));
+      if (mayLook) unawaited(_lookForNearbyCourse(pos.lat, pos.lng));
+      return;
+    }
+    for (final event in course.offer(track)) {
+      _onLiveCourseEvent(event);
+    }
+  }
+
+  /// The off-course sentence for [course], or null while it is on course.
+  String? _offCourseMessage(LiveCourseTracker course) {
+    if (!course.offCourse) return null;
+    final next = course.nextCheckpoint;
+    return next == null
+        ? _l10n.runCourseOffCourseLine
+        : _l10n.runCourseOffCourseCheckpoint(next);
+  }
+
+  /// Off the course line while timing: say how to get back, buzz, and show
+  /// it. Each effect is its own L4 step.
+  void _onOffCourse(LiveCourseTracker course) {
+    final message = _offCourseMessage(course);
+    if (message == null) return;
+    try {
+      _runHaptic(RunHapticPattern.paceSpeedUp);
+    } catch (e) {
+      debugPrint('off-course haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues &&
+          widget.preferences.voiceCueEnabled(VoiceCue.offRoute)) {
+        _ttsCue('offCourseCue',
+            () => widget.audioCues.announceGuidedCue(message));
+      }
+    } catch (e) {
+      debugPrint('off-course cue failed: $e');
+    }
+    try {
+      _announceA11yState(message);
+    } catch (e) {
+      debugPrint('off-course announce failed: $e');
+    }
+  }
+
+  /// The checkpoints to draw on the live map: numbered, and ticked once the
+  /// attempt has passed them. Empty when no course is timed live.
+  List<LiveCheckpointMark> _liveCheckpointMarks() {
+    try {
+      final course = _liveCourse;
+      if (course == null) return const [];
+      final passed = course.checkpointsPassed;
+      return [
+        for (final (i, c) in course.segment.checkpoints.indexed)
+          LiveCheckpointMark(
+              lat: c.lat, lng: c.lng, number: i + 1, passed: i < passed),
+      ];
+    } catch (e) {
+      debugPrint('live checkpoint marks failed: $e');
+      return const [];
     }
   }
 
@@ -1297,10 +1448,19 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// stops the others.
   void _onLiveCourseEvent(LiveCourseEvent event) {
     if (!mounted || _stopRequested) return;
+    if (event.kind == LiveCourseEventKind.offCourse) {
+      final course = _liveCourse;
+      if (course != null) _onOffCourse(course);
+      return;
+    }
+    if (event.kind == LiveCourseEventKind.backOnCourse) return;
     final finished = event.kind == LiveCourseEventKind.finished;
+    final name = _liveCourseName;
     final message = finished
         ? _l10n.runCourseFinished(formatEffortTime(event.timeSeconds!))
-        : _l10n.runCourseTimingStarted;
+        : name != null
+            ? _l10n.runCourseTimingStartedNamed(name)
+            : _l10n.runCourseTimingStarted;
     try {
       _runHaptic(finished
           ? RunHapticPattern.workoutComplete
@@ -1335,9 +1495,19 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// A course is being timed live: its off-course warning stands in for the
+  /// route's.
+  bool get _courseTiming => _liveCourse?.phase == LiveCoursePhase.timing;
+
   void _clearLiveCourse() {
     _liveCourseLoad++;
     _liveCourse = null;
+    _liveCourseName = null;
+    _liveCourseSettled = false;
+    _courseDetector = null;
+    _courseLooks = 0;
+    _courseLookInFlight = false;
+    _offCourseCue.value = null;
     _courseCueTimer?.cancel();
     _courseCueTimer = null;
     _courseCue.value = null;
@@ -3426,14 +3596,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // L4 — Live park course timing (#1446). The tracker reads the line the
       // recorder saves; a paused recording adds no fixes to it.
       try {
-        final course = _liveCourse;
-        if (course != null && !_stopRequested) {
-          for (final event in course.offer(track)) {
-            _onLiveCourseEvent(event);
-          }
-        }
+        if (!_stopRequested) _offerLiveCourse(track, snapshot.distanceMetres);
       } catch (e) {
         debugPrint('live course timing failed: $e');
+      }
+      // The off-course banner reads the tracker after every fix, so it
+      // clears with the attempt (finished, or back in the start box) and
+      // follows the next checkpoint while it shows.
+      try {
+        final course = _liveCourse;
+        _offCourseCue.value = course == null || _stopRequested
+            ? null
+            : _offCourseMessage(course);
+      } catch (e) {
+        debugPrint('off-course banner failed: $e');
       }
 
       // Debug builds only: the line-calibration capture (#1304 § 6) takes the
@@ -3485,7 +3661,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // audio_cues TTS bridge can throw if the engine hasn't initialised.
       try {
         final off = snapshot.offRouteDistanceMetres;
-        if (off != null) {
+        // A course being timed says the course's own warning instead.
+        if (off != null && !_courseTiming) {
           if (off > _offRouteThresholdMetres && !_offRouteWarned) {
             _offRouteWarned = true;
             if (widget.preferences.audioCues &&
@@ -4229,6 +4406,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _courseStoppedShort = _liveCourse?.stopsShort(raw.track) ?? false;
       _courseCueTimer?.cancel();
       _courseCue.value = null;
+      _offCourseCue.value = null;
     } catch (e) {
       debugPrint('course stopped-short check failed: $e');
     }
@@ -4867,6 +5045,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _liveShareActive.dispose();
     _courseCueTimer?.cancel();
     _courseCue.dispose();
+    _offCourseCue.dispose();
     super.dispose();
   }
 
@@ -5592,7 +5771,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           builder: (context, stats, _) => LiveRunMap(
             track: stats.track,
             currentPosition: stats.currentPosition ?? _currentPosition,
-            plannedRoute: _selectedRoute?.waypoints,
+            plannedRoute:
+                _selectedRoute?.waypoints ?? _liveCourse?.segment.points,
+            liveCheckpoints: isCountdown ? const [] : _liveCheckpointMarks(),
             offlinePackRouteId: _selectedRoute?.id,
             bottomPadding: isCountdown ? 0 : _statsOverlayHeight,
             activity: isCountdown ? null : _activityType,
@@ -5781,17 +5962,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             valueListenable: _statsNotifier,
             builder: (context, stats, _) {
               final off = stats.offRouteDistance;
-              return RunTopBanners(
-                offRouteMetres:
-                    off != null && off > _offRouteThresholdMetres ? off : null,
-                permissionLost: _permissionLost,
-                gpsLost: _gpsLost,
-                weakGps: _weakGps,
-                approximateLocation: _preciseLocationOff,
-                onTurnOnPreciseLocation: _openPreciseLocationSettings,
-                safetyNudgeVisible: _safetyNudgeVisible,
-                onSafetyNudgeShare: _onSafetyNudgeShare,
-                onSafetyNudgeDismiss: _dismissSafetyNudge,
+              return ValueListenableBuilder<String?>(
+                valueListenable: _offCourseCue,
+                builder: (context, offCourse, _) => RunTopBanners(
+                  offCourseMessage: offCourse,
+                  offRouteMetres: off != null &&
+                          off > _offRouteThresholdMetres &&
+                          !_courseTiming
+                      ? off
+                      : null,
+                  permissionLost: _permissionLost,
+                  gpsLost: _gpsLost,
+                  weakGps: _weakGps,
+                  approximateLocation: _preciseLocationOff,
+                  onTurnOnPreciseLocation: _openPreciseLocationSettings,
+                  safetyNudgeVisible: _safetyNudgeVisible,
+                  onSafetyNudgeShare: _onSafetyNudgeShare,
+                  onSafetyNudgeDismiss: _dismissSafetyNudge,
+                ),
               );
             },
           ),
@@ -6897,6 +7085,7 @@ class RunTopOverlay extends StatelessWidget {
 class RunTopBanners extends StatelessWidget {
   const RunTopBanners({
     super.key,
+    this.offCourseMessage,
     required this.offRouteMetres,
     required this.permissionLost,
     required this.gpsLost,
@@ -6907,6 +7096,11 @@ class RunTopBanners extends StatelessWidget {
     required this.onSafetyNudgeShare,
     required this.onSafetyNudgeDismiss,
   });
+
+  /// A timed park course's off-course sentence ("You're off the course.
+  /// Head back to checkpoint 3."); null hides it. Takes the off-route
+  /// banner's place while a course is timed.
+  final String? offCourseMessage;
 
   /// Metres off the planned route, already gated on the alert threshold by
   /// the caller; null hides the banner.
@@ -6933,6 +7127,30 @@ class RunTopBanners extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (offCourseMessage case final message?)
+          Center(
+            child: ListCard(
+              key: const ValueKey('course-off-course'),
+              color: semantic.danger,
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wrong_location,
+                      color: semantic.onDanger, size: 22),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: semantic.onDanger,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         // Off-route banner — independent of the status chain below, so
         // both can show at once and stack.
         if (offRouteMetres != null)

@@ -37806,6 +37806,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This won\'t count as a course time. Your run is still saved.'**
   String get runCourseStoppedShort;
+
+  /// Banner on the recording screen, also spoken, when the runner timing a park course has strayed far enough from the course line to miss its next checkpoint. Names the next checkpoint not yet passed, counted from 1.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re off the course. Head back to checkpoint {number}.'**
+  String runCourseOffCourseCheckpoint(int number);
+
+  /// Banner on the recording screen, also spoken, when the runner timing a park course has strayed from the course line after passing every checkpoint
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re off the course. Head back to the course line.'**
+  String get runCourseOffCourseLine;
+
+  /// Big message on the recording screen, also spoken, when the runner leaves the start box of a park course the app found near them (they did not pick it) and the course time starts
+  ///
+  /// In en, this message translates to:
+  /// **'Timing started: {course}'**
+  String runCourseTimingStartedNamed(String course);
+
+  /// Screen-reader label of a park course checkpoint on the live run map that the runner has not passed yet
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoint {number}'**
+  String runCourseCheckpointLabel(int number);
+
+  /// Screen-reader label of a park course checkpoint on the live run map that the runner has passed
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoint {number}, passed'**
+  String runCourseCheckpointPassedLabel(int number);
 }
 
 class _AppLocalizationsDelegate

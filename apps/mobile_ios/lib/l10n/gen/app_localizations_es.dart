@@ -24334,4 +24334,28 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runCourseStoppedShort =>
       'No contará como tiempo del recorrido. Tu carrera se ha guardado igualmente.';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Te has salido del recorrido. Vuelve al punto de control $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Te has salido del recorrido. Vuelve al trazado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometraje iniciado: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Punto de control $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Punto de control $number, superado';
+  }
 }

@@ -16,6 +16,7 @@ import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/gate_crossing.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/live_course_timing.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
@@ -135,6 +136,23 @@ Position _pos(double metresEast, int secondsFromStart) => Position(
       speedAccuracy: 1,
     );
 
+/// [metresEast] along the course, [metresNorth] off it.
+Position _posAt(double metresEast, double metresNorth, int secondsFromStart) {
+  final p = _pos(metresEast, secondsFromStart);
+  return Position(
+    longitude: p.longitude,
+    latitude: _lat + metresNorth / 111320,
+    timestamp: p.timestamp,
+    accuracy: 5,
+    altitude: 400,
+    altitudeAccuracy: 2,
+    heading: 90,
+    headingAccuracy: 5,
+    speed: 4,
+    speedAccuracy: 1,
+  );
+}
+
 /// 200 m due east: the start line at 0 m, the finish line at 200 m.
 final _course = GlobalSegmentGeometry(
   points: [
@@ -148,6 +166,18 @@ final _course = GlobalSegmentGeometry(
       lng: _lng + 200 / _metrePerDegLng,
       bearingDeg: 90,
       halfWidthM: 15),
+);
+
+/// The same course with checkpoints 100 m and 160 m along it.
+final _courseWithCheckpoints = GlobalSegmentGeometry(
+  points: _course.points,
+  distanceM: 200,
+  checkpoints: [
+    cm.Waypoint(lat: _lat, lng: _lng + 100 / _metrePerDegLng),
+    cm.Waypoint(lat: _lat, lng: _lng + 160 / _metrePerDegLng),
+  ],
+  startGate: _course.startGate,
+  endGate: _course.endGate,
 );
 
 const _routeId = 'park-course-route';
@@ -250,6 +280,8 @@ void main() {
     WidgetTester tester, {
     bool throwOnCue = false,
     GlobalSegmentGeometry? course,
+    bool followRoute = true,
+    Future<List<LiveCourseCandidate>> Function(double lat, double lng)? nearby,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -276,11 +308,12 @@ void main() {
         training: TrainingService(),
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
-        initialRoute: _route,
+        initialRoute: followRoute ? _route : null,
         liveCourseLookup: (id) async {
           looked.add(id);
           return id == _routeId ? course : null;
         },
+        liveCourseNearbyLookup: nearby ?? (lat, lng) async => const [],
       ),
     ));
     await tester.pump();
@@ -305,6 +338,23 @@ void main() {
     for (var m = fromM; m <= toM; m += 4) {
       geolocator.emit(_pos(m, clock++));
       await tester.pump(const Duration(milliseconds: 50));
+    }
+    tester.takeException();
+  }
+
+  /// One fix every second, 4 m apart, through each (east, north) point.
+  Future<void> runThrough(
+      WidgetTester tester, List<(double, double)> points) async {
+    for (var k = 0; k + 1 < points.length; k++) {
+      final (e0, n0) = points[k];
+      final (e1, n1) = points[k + 1];
+      final d = Offset(e1 - e0, n1 - n0).distance;
+      final steps = (d / 4).ceil().clamp(1, 1000);
+      for (var j = k == 0 ? 0 : 1; j <= steps; j++) {
+        final f = j / steps;
+        geolocator.emit(_posAt(e0 + (e1 - e0) * f, n0 + (n1 - n0) * f, clock++));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
     }
     tester.takeException();
   }
@@ -394,6 +444,136 @@ void main() {
 
     await holdFinish(tester);
     expect(find.byKey(const ValueKey('course-stopped-short')), findsNothing);
+    await unmount(tester);
+  });
+
+  const offCheckpoint1 = "You're off the course. Head back to checkpoint 1.";
+
+  testWidgets(
+      'straying off a timed course says which checkpoint to head back to, '
+      'once, with a buzz, and clears back on the line', (tester) async {
+    final s = await pumpRunScreen(tester, course: _courseWithCheckpoints);
+    await startRecording(tester);
+    await runEast(tester, -20, 40);
+    expect(find.text('Timing started'), findsOneWidget);
+
+    await runThrough(tester, [(40, 0), (60, 60), (80, 60)]);
+    expect(find.text(offCheckpoint1), findsOneWidget);
+    expect(find.byKey(const ValueKey('course-off-course')), findsOneWidget);
+    expect(s.cues.spoken.where((t) => t == offCheckpoint1), hasLength(1),
+        reason: 'said once while the runner stays off');
+    expect(haptics, contains('pace_speed_up'));
+    expect(find.textContaining('Off route'), findsNothing,
+        reason: "the course's warning stands in for the route's");
+
+    await runThrough(tester, [(80, 60), (90, 0), (120, 0)]);
+    expect(find.byKey(const ValueKey('course-off-course')), findsNothing);
+    expect(s.cues.spoken.where((t) => t == offCheckpoint1), hasLength(1));
+
+    await holdFinish(tester);
+    expect(s.runStore.captured, hasLength(1));
+    await unmount(tester);
+  });
+
+  testWidgets('the live map numbers each checkpoint and ticks it once passed',
+      (tester) async {
+    // A tall view, so both checkpoints are inside the followed camera at
+    // its recording zoom and the map does not cull their markers.
+    tester.view.physicalSize = const Size(2400, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpRunScreen(tester, course: _courseWithCheckpoints);
+    await startRecording(tester);
+    await runEast(tester, -20, 60);
+    expect(find.byKey(const ValueKey('live-checkpoint-1-ahead')), findsOneWidget);
+    expect(find.byKey(const ValueKey('live-checkpoint-2-ahead')), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsNothing);
+
+    await runEast(tester, 64, 120);
+    expect(
+        find.byKey(const ValueKey('live-checkpoint-1-passed')), findsOneWidget);
+    expect(find.byKey(const ValueKey('live-checkpoint-2-ahead')), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('live-checkpoint-1-passed')),
+            matching: find.byIcon(Icons.check)),
+        findsOneWidget,
+        reason: 'a tick, not colour alone');
+
+    await holdFinish(tester);
+    await unmount(tester);
+  });
+
+  testWidgets(
+      'without a followed course, a park course started nearby is timed and '
+      'named', (tester) async {
+    final looks = <(double, double)>[];
+    final s = await pumpRunScreen(
+      tester,
+      followRoute: false,
+      nearby: (lat, lng) async {
+        looks.add((lat, lng));
+        return [LiveCourseCandidate(name: 'Lake loop', segment: _course)];
+      },
+    );
+    await startRecording(tester);
+    await runEast(tester, -20, 60);
+    expect(find.text('Timing started: Lake loop'), findsOneWidget);
+    expect(s.cues.spoken, contains('Timing started: Lake loop'));
+
+    await runEast(tester, 64, 240);
+    expect(s.cues.spoken.where((t) => t.startsWith('Finished! ')),
+        hasLength(1));
+    expect(looks, hasLength(1), reason: 'found at the first look');
+
+    await holdFinish(tester);
+    expect(s.runStore.captured, hasLength(1));
+    await unmount(tester);
+  });
+
+  testWidgets(
+      'offline, the nearby-course read fails silently, looks once more after '
+      '200 m, and the run records as before', (tester) async {
+    var looks = 0;
+    final s = await pumpRunScreen(
+      tester,
+      followRoute: false,
+      nearby: (lat, lng) async {
+        looks++;
+        throw const SocketException('offline');
+      },
+    );
+    await startRecording(tester);
+    await runEast(tester, -20, 320);
+    expect(find.byKey(const ValueKey('course-timing-cue')), findsNothing);
+    expect(s.cues.spoken, isEmpty);
+    expect(looks, 2, reason: 'once at the start, once more 200 m in');
+
+    await holdFinish(tester);
+    expect(s.runStore.captured, hasLength(1));
+    expect(s.runStore.captured.single.distanceMetres, greaterThan(300));
+    await unmount(tester);
+  });
+
+  testWidgets(
+      'off course with a voice engine and a vibrator that both throw, the '
+      'warning still shows and every fix is recorded', (tester) async {
+    hapticsThrow = true;
+    final s = await pumpRunScreen(tester,
+        throwOnCue: true, course: _courseWithCheckpoints);
+    await startRecording(tester);
+    await runEast(tester, -20, 40);
+    await runThrough(
+        tester, [(40, 0), (60, 60), (140, 60), (150, 0), (240, 0)]);
+
+    expect(s.cues.spoken, contains(offCheckpoint1));
+    expect(haptics, contains('pace_speed_up'));
+    expect(find.textContaining('Finished! '), findsNothing,
+        reason: 'checkpoint 1 was missed, so the board would not time it');
+
+    await holdFinish(tester);
+    expect(s.runStore.captured, hasLength(1));
+    expect(s.runStore.captured.single.track.length, greaterThan(60));
     await unmount(tester);
   });
 }

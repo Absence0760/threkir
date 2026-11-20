@@ -10,6 +10,7 @@ import 'worst_case_layout.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
+  String? offCourseMessage,
   double? offRouteMetres,
   bool permissionLost = false,
   bool gpsLost = false,
@@ -26,6 +27,7 @@ Future<void> _pump(
         body: Align(
           alignment: Alignment.topCenter,
           child: RunTopBanners(
+            offCourseMessage: offCourseMessage,
             offRouteMetres: offRouteMetres,
             permissionLost: permissionLost,
             gpsLost: gpsLost,
@@ -82,6 +84,52 @@ void main() {
       await tester.pump();
     });
   }
+
+  // #1446: a timed park course's off-course warning is one plain sentence
+  // naming the fix, with an icon so it never rests on colour alone.
+  testWidgets('the off-course warning names the checkpoint to head back to',
+      (tester) async {
+    const message = "You're off the course. Head back to checkpoint 3.";
+    await _pump(tester, offCourseMessage: message);
+    expect(find.text(message), findsOneWidget);
+    expect(find.byKey(const ValueKey('course-off-course')), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('course-off-course')),
+            matching: find.byIcon(Icons.wrong_location)),
+        findsOneWidget);
+    expect(find.text(_offRoute), findsNothing);
+  });
+
+  testWidgets('no off-course sentence, no warning', (tester) async {
+    await _pump(tester);
+    expect(find.byKey(const ValueKey('course-off-course')), findsNothing);
+  });
+
+  worstCaseTestWidgets('Run top banners (off course)', (tester, locale) async {
+    final l10n = lookupAppLocalizations(locale);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            child: RunTopBanners(
+              offCourseMessage: l10n.runCourseOffCourseCheckpoint(12),
+              offRouteMetres: null,
+              permissionLost: false,
+              gpsLost: true,
+              weakGps: false,
+              safetyNudgeVisible: false,
+              onSafetyNudgeShare: () {},
+              onSafetyNudgeDismiss: () {},
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+  });
 
   // The real host: the band hangs from the top of the run screen's Stack and
   // must stop above the stats overlay. At 2x in de / es / fr the nudge alone

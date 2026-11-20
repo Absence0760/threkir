@@ -22675,4 +22675,27 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runCourseStoppedShort => 'コースのタイムとしては記録されません。ランは保存されています。';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'コースから外れています。チェックポイント$numberに戻ってください。';
+  }
+
+  @override
+  String get runCourseOffCourseLine => 'コースから外れています。コースに戻ってください。';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return '計測開始：$course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'チェックポイント$number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'チェックポイント$number、通過済み';
+  }
 }

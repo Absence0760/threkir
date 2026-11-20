@@ -67,6 +67,7 @@ insert into pcb_runs values
   ('beaver_cut', 'beaver-lake-trail', 37.380592, -77.593432, 37.387387, -77.581656, '[]'::jsonb),
   ('beaver_wrong_way', 'beaver-lake-trail', 37.380248, -77.593376, 37.387228, -77.581599, '[]'::jsonb),
   ('beaver_short', 'beaver-lake-trail', 37.380276, -77.593431, 37.387369, -77.581678, '[]'::jsonb),
+  ('beaver_detour', 'beaver-lake-trail', 37.380223, -77.593433, 37.387445, -77.580175, '[]'::jsonb),
   ('beaver_nearby', 'beaver-lake-trail', 37.380047, -77.594058, 37.386928, -77.58228, '[]'::jsonb),
   ('beaver_three_laps', 'beaver-lake-trail', 37.380167, -77.593458, 37.387358, -77.581637, '[{"slug":"beaver-lake-trail","time_seconds":971.4612543945312,"started_offset_ms":1455682,"matched_by":"gate"}]'::jsonb),
   ('5k_two_passes_slow_fast', 'swift-creek-5k', 37.386795, -77.577829, 37.395363, -77.562726, '[{"slug":"swift-creek-5k","time_seconds":1495.9956086425782,"started_offset_ms":2196417,"matched_by":"gate"}]'::jsonb),

@@ -5,7 +5,7 @@
 /// Run with `cd apps/backend && deno test --allow-read supabase/functions/segment-match/lib.test.ts`.
 
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { parsePayload, readPoints, scorableGeometries, serviceGate, serviceKeys } from './lib.ts';
+import { attemptRows, parsePayload, readPoints, scorableGeometries, serviceGate, serviceKeys } from './lib.ts';
 
 const RUN = '5b000000-0000-4000-8000-000000000001';
 const SEG = '5a5a0000-0000-4000-8000-0000000000d1';
@@ -109,4 +109,21 @@ Deno.test('scorableGeometries hands the matcher a segment\'s start and end lines
   const [geometry] = scorableGeometries(candidates, []).geometries;
   assertEquals(geometry.startGate, { lat: 37.5, lng: -77.5, bearingDeg: 0, halfWidthM: 15 });
   assertEquals(geometry.endGate, { lat: 37.504, lng: -77.5, bearingDeg: 0, halfWidthM: 20 });
+});
+
+Deno.test('attemptRows keys each attempt by its park course and drops a plain segment\'s (issue #1446)', () => {
+  const skipped = { outcome: 'skipped_checkpoint', progressM: 1447, courseM: 3595, missedCheckpoint: 2, checkpointCount: 4 };
+  const short = { outcome: 'stopped_short', progressM: 300, courseM: 1000, missedCheckpoint: null, checkpointCount: 0 };
+  assertEquals(
+    attemptRows(
+      ['course', 'plain', 'timed-course'],
+      [skipped, short, null],
+      [
+        { id: 'pc-1', global_segment_id: 'course', checkpoints: [] },
+        { id: 'pc-3', global_segment_id: 'timed-course', checkpoints: [] },
+      ],
+    ),
+    [{ park_course_id: 'pc-1', outcome: 'skipped_checkpoint', progress_m: 1447, course_m: 3595, missed_checkpoint: 2, checkpoint_count: 4 }],
+  );
+  assertEquals(attemptRows(['course'], [skipped], [{ global_segment_id: 'course', checkpoints: [] }]), []);
 });

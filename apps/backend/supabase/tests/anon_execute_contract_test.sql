@@ -218,6 +218,7 @@ insert into server_only (fn, keeps_service_role) values
   ('recompute_event_ranks', false),
   ('record_club_verification_check', true),
   ('record_map_match_result', true),
+  ('record_park_course_attempts', true),
   ('record_park_nps_alerts', true),
   ('record_segment_match', true),
   ('refresh_club_member_count', false),

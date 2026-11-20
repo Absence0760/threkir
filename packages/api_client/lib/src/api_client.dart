@@ -6384,6 +6384,22 @@ class ApiClient {
     ];
   }
 
+  /// Why one of the caller's own runs got no time on each park course it set
+  /// out on (`get_run_park_course_attempts`, issue #1446), for run detail's
+  /// "no time" cards beside the course chips. Mirrors web
+  /// `fetchParkCourseAttempts`. A row this build cannot read whole is left
+  /// out; throws on a failed read, as [fetchRunParkCourseTimes] does.
+  Future<List<ParkCourseAttempt>> fetchParkCourseAttempts(String runId) async {
+    final data = await _client.rpc('get_run_park_course_attempts',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        if (ParkCourseAttempt.fromRow(Map<String, dynamic>.from(r as Map))
+            case final a?)
+          a,
+    ];
+  }
+
   /// The signed-in runner's park course efforts started in `[start, end)`,
   /// each with its course and park, for the recap's park lines. Mirrors web
   /// `fetchRecapParkCourses`. Empty when signed out; throws on a failed read.

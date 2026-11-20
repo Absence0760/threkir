@@ -650,6 +650,27 @@ export type OrganiserDisputeTargetKind =
 	| 'gym_routine'
 	| 'challenge'
 	| 'race_listing';
+// Why a run that set out on a park course got no time on it
+// (`park_course_attempts.outcome`, issue #1446). The matcher computes it
+// (`diagnoseGlobalSegmentAttempts` in segments/segments.ts).
+export type ParkCourseAttemptOutcome = 'stopped_short' | 'skipped_checkpoint' | 'off_course' | 'wrong_direction';
+/** One row of `get_run_park_course_attempts`, as `fetchParkCourseAttempts` returns it. */
+export interface ParkCourseAttempt {
+	parkCourseId: string;
+	courseName: string;
+	parkName: string;
+	/** The park's region code (`parks.region_code`, e.g. `US-VA`). */
+	region: string;
+	parkSlug: string;
+	courseSlug: string;
+	outcome: ParkCourseAttemptOutcome;
+	/** How far along the course the run got while still on it, 0..courseM. */
+	progressM: number;
+	courseM: number;
+	/** 1-based; set only for `skipped_checkpoint`. */
+	missedCheckpoint: number | null;
+	checkpointCount: number;
+}
 // A park course is reported through ParkCourseReportDialog and the
 // park-course-report Edge Function, with reasons of its own (decisions § 2449).
 export type GeneralReportTargetKind = Exclude<

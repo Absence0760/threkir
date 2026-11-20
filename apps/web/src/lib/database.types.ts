@@ -3681,6 +3681,84 @@ export type Database = {
           },
         ]
       }
+      park_course_attempts: {
+        Row: {
+          checkpoint_count: number
+          course_m: number
+          created_at: string
+          id: string
+          matcher_version: number
+          missed_checkpoint: number | null
+          outcome: string
+          park_course_id: string
+          progress_m: number
+          run_id: string
+          user_id: string
+        }
+        Insert: {
+          checkpoint_count: number
+          course_m: number
+          created_at?: string
+          id?: string
+          matcher_version: number
+          missed_checkpoint?: number | null
+          outcome: string
+          park_course_id: string
+          progress_m: number
+          run_id: string
+          user_id: string
+        }
+        Update: {
+          checkpoint_count?: number
+          course_m?: number
+          created_at?: string
+          id?: string
+          matcher_version?: number
+          missed_checkpoint?: number | null
+          outcome?: string
+          park_course_id?: string
+          progress_m?: number
+          run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "park_course_attempts_park_course_id_fkey"
+            columns: ["park_course_id"]
+            isOneToOne: false
+            referencedRelation: "park_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_course_attempts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_course_attempts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "public_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_course_attempts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_course_attempts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       park_course_nps_alerts: {
         Row: {
           alert_id: string
@@ -8486,6 +8564,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_run_park_course_attempts: {
+        Args: { p_run_id: string }
+        Returns: {
+          checkpoint_count: number
+          course_m: number
+          course_name: string
+          course_slug: string
+          missed_checkpoint: number
+          outcome: string
+          park_course_id: string
+          park_name: string
+          park_slug: string
+          progress_m: number
+          region_code: string
+        }[]
+      }
       global_segment_completions: {
         Args: {
           p_limit?: number
@@ -9299,6 +9393,15 @@ export type Database = {
           p_track_version: string
         }
         Returns: boolean
+      }
+      record_park_course_attempts: {
+        Args: {
+          p_attempts: Json
+          p_matcher_version: number
+          p_run_id: string
+          p_track_version: string
+        }
+        Returns: string
       }
       record_park_nps_alerts: {
         Args: { p_flags: Json; p_park_id: string; p_seen_alert_ids: string[] }

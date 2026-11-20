@@ -763,6 +763,44 @@ $neutralised$;`,
     },
   ],
   [
+    'get_run_park_course_attempts',
+    {
+      why: 'drops `a.user_id = auth.uid()`; keeps the run the caller asked about and the joins to its course and park',
+      sql: `create or replace function public.get_run_park_course_attempts(p_run_id uuid)
+ returns table(park_course_id uuid, course_name text, park_name text, region_code text,
+               park_slug text, course_slug text, outcome text, progress_m integer,
+               course_m integer, missed_checkpoint smallint, checkpoint_count smallint)
+ language sql stable set search_path to 'public'
+as $neutralised$
+  select a.park_course_id, gs.name, pk.name, pk.region_code, pk.slug, pc.slug,
+         a.outcome, a.progress_m, a.course_m, a.missed_checkpoint, a.checkpoint_count
+    from park_course_attempts a
+    join park_courses pc on pc.id = a.park_course_id
+    join parks pk on pk.id = pc.park_id
+    join global_segments gs on gs.id = pc.global_segment_id
+   where a.run_id = p_run_id
+     and ${mine('a')};
+$neutralised$;`,
+      subject: 'park_course_attempts a',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+   values ('00000000-0000-0000-0000-00000000a7d1', 'guard witness course',
+           '[{"lat":37.0,"lng":-77.0},{"lat":37.004,"lng":-77.0}]', 450, true);
+ insert into parks (id, slug, name, agency, region_code, country_code, timezone, is_active)
+   values ('00000000-0000-0000-0000-00000000a7e1', 'guard-witness-park', 'guard witness park',
+           'state', 'US-VA', 'US', 'America/New_York', true);
+ insert into park_courses (id, park_id, global_segment_id, slug, course_shape, geometry_source, checkpoints)
+   values ('00000000-0000-0000-0000-00000000a7f1', '00000000-0000-0000-0000-00000000a7e1',
+           '00000000-0000-0000-0000-00000000a7d1', 'guard-witness', 'loop', 'osm', '[]');
+ insert into park_course_attempts (run_id, user_id, park_course_id, outcome, progress_m, course_m,
+                                   missed_checkpoint, checkpoint_count, matcher_version)
+   select r.id, r.user_id, '00000000-0000-0000-0000-00000000a7f1', 'stopped_short', 100, 450, null, 0, 4
+     from runs r order by r.id limit 1;`,
+        probe: `select count(*) from get_run_park_course_attempts((select id from runs order by id limit 1));`,
+      },
+    },
+  ],
+  [
     'gym_exercise_names',
     {
       why: 'drops `gw.user_id = auth.uid()`; keeps the blank-name filter and the canonical-key grouping',

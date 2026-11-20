@@ -272,6 +272,7 @@ function effortFromIndex(track, index, segment) {
     started_at: new Date(startTs).toISOString()
   };
 }
+var GLOBAL_SEGMENT_MATCHER_VERSION = 4;
 var GLOBAL_SEGMENT_BOX_SLACK_M = 5;
 var GLOBAL_SEGMENT_FINISH_MAX_GAP_S = 300;
 var BOX_REACH_M = COURSE_GATE_BOX_DEPTH_M + GLOBAL_SEGMENT_BOX_SLACK_M;
@@ -526,6 +527,243 @@ function passesCheckpoints(track, checkpoints, startIdx, endIdx, toleranceM) {
   }
   return true;
 }
+var ATTEMPT_OUTCOME_RANK = {
+  stopped_short: 0,
+  off_course: 1,
+  skipped_checkpoint: 2,
+  wrong_direction: 3
+};
+function diagnoseGlobalSegmentAttempts(track, segments, toleranceM = 35) {
+  const out = new Array(segments.length).fill(null);
+  const efforts = computeGlobalSegmentEfforts(track, segments, toleranceM);
+  const line = trackLine(track);
+  if (line.length < 2) return out;
+  const bounds = trackBounds(line);
+  const timed = [];
+  for (const e of efforts) {
+    if (e !== null) {
+      const startMs = Date.parse(e.started_at);
+      timed.push({ startMs, endMs: startMs + e.time_seconds * 1e3 });
+    }
+  }
+  let index = null;
+  for (let i = 0; i < segments.length; i++) {
+    if (efforts[i] !== null) continue;
+    const segment = segments[i];
+    if (segment.points.length < 2 || !(segment.distance_m > 0)) continue;
+    const gates = segmentGates(segment);
+    if (gates === null) continue;
+    if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM + BOX_REACH_M)) continue;
+    if (index === null) index = distanceIndex(line);
+    out[i] = diagnoseByGates(line, index, segment, gates.start, gates.end, timed, toleranceM);
+  }
+  return out;
+}
+var COURSE_ATTEMPT_TIMED_OVERLAP = 0.5;
+function diagnoseByGates(line, index, segment, startGate, endGate, timed, toleranceM) {
+  const minCovered = segment.distance_m * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
+  const edges = gateTimingEdges(startGate, endGate);
+  const exit = edges.startExit;
+  const entry = edges.finishEntry;
+  const startDetector = new GateCrossingDetector(exit);
+  const endDetector = new GateCrossingDetector(entry);
+  const chained = edges.layout === "apart" && linesChain(startGate, endGate);
+  const windows = [];
+  let fwd = null;
+  let rev = null;
+  let prevIdx = -1;
+  let prevMs = -Infinity;
+  let tailIdx = -1;
+  for (let i = 0; i < line.length; i++) {
+    const p = line[i];
+    const tMs = p.ts ? Date.parse(p.ts) : NaN;
+    const lat = lineLat(p);
+    const lng = lineLng(p);
+    if (!Number.isFinite(tMs) || !Number.isFinite(lat) || !Number.isFinite(lng) || tMs <= prevMs) continue;
+    const fix = { lat, lng, tMs, coveredM: index.cum[i] };
+    const endCrossing = endDetector.offer(fix);
+    const startCrossing = startDetector.offer(fix);
+    const inFinish = gateProjection(entry, lat, lng);
+    if (inFinish.s >= -GLOBAL_SEGMENT_BOX_SLACK_M && inFinish.s <= edges.depthM && Math.abs(inFinish.u) <= entry.halfWidthM) {
+      if (tailIdx < 0) tailIdx = i;
+    } else {
+      tailIdx = -1;
+    }
+    let closedAtMs = -Infinity;
+    if (fwd !== null && endCrossing !== null && endCrossing.direction === "forward" && endCrossing.coveredM - fwd.coveredM >= minCovered) {
+      windows.push({ fromIdx: fwd.fromIdx, toIdx: i, reverse: false, entered: true });
+      fwd = chained ? { fromIdx: prevIdx, coveredM: endCrossing.coveredM } : null;
+      closedAtMs = endCrossing.tMs;
+    }
+    if (fwd === null) {
+      if (startCrossing !== null && startCrossing.direction === "forward" && startCrossing.tMs >= closedAtMs) {
+        fwd = { fromIdx: prevIdx, coveredM: startCrossing.coveredM };
+      } else if (prevIdx < 0) {
+        const atStart = gateProjection(exit, lat, lng);
+        if (atStart.s >= 0 && atStart.s <= GLOBAL_SEGMENT_BOX_SLACK_M && Math.abs(atStart.u) <= exit.halfWidthM) {
+          fwd = { fromIdx: i, coveredM: index.cum[i] };
+        }
+      }
+    }
+    if (rev !== null && startCrossing !== null && startCrossing.direction === "backward" && startCrossing.coveredM - rev.coveredM >= minCovered) {
+      windows.push({ fromIdx: rev.fromIdx, toIdx: i, reverse: true, entered: true });
+      rev = null;
+    } else if (rev === null && endCrossing !== null && endCrossing.direction === "backward") {
+      rev = { fromIdx: prevIdx, coveredM: endCrossing.coveredM };
+    }
+    prevIdx = i;
+    prevMs = tMs;
+  }
+  if (fwd !== null) {
+    const tail = tailIdx >= 0 && index.cum[tailIdx] - fwd.coveredM >= minCovered;
+    windows.push({ fromIdx: Math.max(fwd.fromIdx, 0), toIdx: tail ? tailIdx : prevIdx, reverse: false, entered: tail });
+  }
+  if (rev !== null) windows.push({ fromIdx: Math.max(rev.fromIdx, 0), toIdx: prevIdx, reverse: true, entered: false });
+  if (windows.length === 0) return null;
+  const course = courseLine(segment);
+  let best = null;
+  for (const w of windows) {
+    if (insideTimedEffort(line, w, timed)) continue;
+    const a = judgeWindow(line, index, segment, course, w, toleranceM);
+    if (a === null) continue;
+    if (best === null || a.progressM > best.progressM || a.progressM === best.progressM && ATTEMPT_OUTCOME_RANK[a.outcome] > ATTEMPT_OUTCOME_RANK[best.outcome]) {
+      best = a;
+    }
+  }
+  return best;
+}
+function insideTimedEffort(line, w, timed) {
+  if (timed.length === 0) return false;
+  const fromMs = Date.parse(line[w.fromIdx].ts ?? "");
+  const toMs = Date.parse(line[w.toIdx].ts ?? "");
+  const spanMs = toMs - fromMs;
+  if (!(spanMs > 0)) return false;
+  for (const t of timed) {
+    const overlap = Math.min(toMs, t.endMs) - Math.max(fromMs, t.startMs);
+    if (overlap >= COURSE_ATTEMPT_TIMED_OVERLAP * spanMs) return true;
+  }
+  return false;
+}
+function courseLine(segment) {
+  const pts = segment.points;
+  const origin = pts[0];
+  const xs = new Float64Array(pts.length);
+  const ys = new Float64Array(pts.length);
+  const along = new Float64Array(pts.length);
+  for (let k = 0; k < pts.length; k++) {
+    const q = planeXY(origin, pts[k]);
+    xs[k] = q.x;
+    ys[k] = q.y;
+    if (k > 0) along[k] = along[k - 1] + Math.hypot(xs[k] - xs[k - 1], ys[k] - ys[k - 1]);
+  }
+  const checkpointAlong = [];
+  let from = 0;
+  for (const cp of segment.checkpoints ?? []) {
+    const q = planeXY(origin, cp);
+    let bestD = Infinity;
+    let bestA = from;
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const len = along[k + 1] - along[k];
+      if (!(len > 0) || along[k + 1] < from) continue;
+      const dx = xs[k + 1] - xs[k];
+      const dy = ys[k + 1] - ys[k];
+      let t = ((q.x - xs[k]) * dx + (q.y - ys[k]) * dy) / (len * len);
+      t = Math.max(t, (from - along[k]) / len, 0);
+      t = Math.min(t, 1);
+      const d = Math.hypot(xs[k] + t * dx - q.x, ys[k] + t * dy - q.y);
+      if (d < bestD) {
+        bestD = d;
+        bestA = along[k] + t * len;
+      }
+    }
+    checkpointAlong.push(bestA);
+    from = bestA;
+  }
+  return { origin, xs, ys, along, checkpointAlong };
+}
+function checkpointsPassedInOrder(track, checkpoints, fromIdx, toIdx, toleranceM) {
+  let cursor = fromIdx;
+  let passed = 0;
+  for (const cp of checkpoints) {
+    let hit = -1;
+    for (let i = cursor; i <= toIdx; i++) {
+      if (haversineMetres(lineLat(track[i]), lineLng(track[i]), cp.lat, cp.lng) <= toleranceM) {
+        hit = i;
+        break;
+      }
+    }
+    if (hit < 0) break;
+    passed++;
+    cursor = hit;
+  }
+  return passed;
+}
+function judgeWindow(line, index, segment, course, w, toleranceM) {
+  const checkpoints = segment.checkpoints ?? [];
+  const count = checkpoints.length;
+  const courseM = Math.max(1, Math.round(segment.distance_m));
+  const passed = checkpointsPassedInOrder(line, checkpoints, w.fromIdx, w.toIdx, toleranceM);
+  if (w.reverse) {
+    if (!w.entered || count < 2) return null;
+    const reversed = checkpointsPassedInOrder(line, [...checkpoints].reverse(), w.fromIdx, w.toIdx, toleranceM);
+    if (reversed < 2 || reversed <= passed) return null;
+    return { outcome: "wrong_direction", progressM: 0, courseM, missedCheckpoint: null, checkpointCount: count };
+  }
+  if (count > 0 && passed === 0) return null;
+  const { xs, ys, along } = course;
+  const lineM = along[along.length - 1];
+  const cap = passed < count ? course.checkpointAlong[passed] + toleranceM : lineM;
+  let pos = 0;
+  let lastIdx = w.fromIdx;
+  let reached = 0;
+  let furthest = 0;
+  for (let i = w.fromIdx; i <= w.toIdx; i++) {
+    const p = line[i];
+    const lat = lineLat(p);
+    const lng = lineLng(p);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const f = planeXY(course.origin, { lat, lng });
+    const sinceM = index.cum[i] - index.cum[lastIdx];
+    const lo = pos - 2 * toleranceM;
+    const hi = pos + 1.5 * sinceM + 2 * toleranceM;
+    const expect = pos + sinceM;
+    let placed = NaN;
+    let placedOff = Infinity;
+    for (let k = 0; k + 1 < xs.length; k++) {
+      if (along[k + 1] < lo) continue;
+      if (along[k] > hi) break;
+      const len = along[k + 1] - along[k];
+      if (!(len > 0)) continue;
+      const dx = xs[k + 1] - xs[k];
+      const dy = ys[k + 1] - ys[k];
+      const t = Math.min(1, Math.max(0, ((f.x - xs[k]) * dx + (f.y - ys[k]) * dy) / (len * len)));
+      if (Math.hypot(xs[k] + t * dx - f.x, ys[k] + t * dy - f.y) > toleranceM) continue;
+      const a = along[k] + t * len;
+      if (a < lo || a > hi) continue;
+      const off = Math.abs(a - expect);
+      if (off < placedOff) {
+        placedOff = off;
+        placed = a;
+      }
+    }
+    if (Number.isNaN(placed)) continue;
+    pos = placed;
+    lastIdx = i;
+    if (placed > furthest) furthest = placed;
+    if (placed <= cap && placed > reached) reached = placed;
+  }
+  const progressM = Math.min(courseM, Math.max(0, Math.round(lineM > 0 ? reached / lineM * segment.distance_m : 0)));
+  if (passed < count && (w.entered || furthest > cap)) {
+    return { outcome: "skipped_checkpoint", progressM, courseM, missedCheckpoint: passed + 1, checkpointCount: count };
+  }
+  return {
+    outcome: w.entered ? "off_course" : "stopped_short",
+    progressM,
+    courseM,
+    missedCheckpoint: null,
+    checkpointCount: count
+  };
+}
 var CONSERVATIVE_METRES_PER_DEG = 110574;
 function trackBounds(track) {
   const refLon = lineLng(track[0]);
@@ -627,7 +865,9 @@ function trackExtent(points) {
   return { minLat, minLng, maxLat, maxLng };
 }
 export {
+  GLOBAL_SEGMENT_MATCHER_VERSION,
   computeGlobalSegmentEfforts,
+  diagnoseGlobalSegmentAttempts,
   globalSegmentGeometry,
   parseCourseCheckpoints,
   trackExtent

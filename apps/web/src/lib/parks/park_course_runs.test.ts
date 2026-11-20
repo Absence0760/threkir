@@ -17,10 +17,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
 	computeGlobalSegmentEfforts,
+	diagnoseGlobalSegmentAttempts,
 	type GlobalSegmentEffortResult,
 	type GlobalSegmentGeometry,
 } from '../segments/segments';
 import {
+	attemptOf,
 	caseDefs,
 	courseEndBearing,
 	decodeTrack,
@@ -83,8 +85,42 @@ for (const c of fixture.cases) {
 			assert.equal(Date.parse(r.started_at) - baseMs, recorded.started_offset_ms);
 			assert.equal(r.matched_by, recorded.matched_by);
 		});
+		const attempts = diagnoseGlobalSegmentAttempts(track, geometries);
+		attempts.forEach((a, i) => {
+			assert.deepEqual(a === null ? undefined : attemptOf(a), c.attempts[slugs[i]], `${slugs[i]}: why no time`);
+		});
 	});
 }
+
+// Issue #1446: a run that set out on a course and got no time says which rule
+// it missed and how far along it got.
+test('each refused Beaver Lake run names the rule it missed', () => {
+	const beaverOf = (key: string) => caseBy(key).attempts['beaver-lake-trail'];
+	const shortcut = beaverOf('beaver_shortcut');
+	assert.equal(shortcut?.outcome, 'skipped_checkpoint');
+	assert.equal(shortcut?.missed_checkpoint, 2);
+	assert.equal(shortcut?.checkpoint_count, 4);
+	assert.equal(shortcut?.course_m, 3595);
+	// The shortcut leaves the trail at 1245 m, but its first stretch runs
+	// within the 35 m tolerance of the trail up the spur's neck, so the
+	// furthest point on the line short of checkpoint 2 lies a little past it.
+	assert.ok(Math.abs((shortcut?.progress_m ?? 0) - 1245) <= 205, `left at 1245 m, reported ${shortcut?.progress_m} m`);
+	assert.equal(beaverOf('beaver_cut')?.outcome, 'skipped_checkpoint');
+	assert.equal(beaverOf('beaver_cut')?.missed_checkpoint, 2);
+	assert.equal(beaverOf('beaver_wrong_way')?.outcome, 'wrong_direction');
+	assert.equal(beaverOf('beaver_wrong_way')?.progress_m, 0);
+	const short = beaverOf('beaver_short');
+	assert.equal(short?.outcome, 'stopped_short');
+	assert.ok(Math.abs((short?.progress_m ?? 0) - (3595 - 150)) <= 35, `stopped 150 m short, reported ${short?.progress_m} m`);
+	assert.equal(beaverOf('beaver_detour')?.outcome, 'off_course');
+	assert.equal(beaverOf('beaver_nearby'), undefined, 'never crossed a line');
+});
+
+test('a run timed on any course has no attempt where it was timed or where it passed through', () => {
+	for (const c of fixture.cases) {
+		if (Object.keys(c.matched).length > 0) assert.deepEqual(c.attempts, {}, c.key);
+	}
+});
 
 test('the fixture covers every case issue #1342 step 5c lists', () => {
 	const keys = new Set(fixture.cases.map((c) => c.key));
@@ -100,6 +136,7 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 		'beaver_cut',
 		'beaver_wrong_way',
 		'beaver_short',
+		'beaver_detour',
 		'beaver_nearby',
 		'beaver_three_laps',
 		'5k_two_passes_slow_fast',

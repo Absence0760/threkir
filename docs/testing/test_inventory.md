@@ -490,9 +490,9 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
-### `apps/mobile_android/test/segments_test.dart` — 33 tests
+### `apps/mobile_android/test/segments_test.dart` — 37 tests
 
-Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
+Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone. Since #1446 a group of four `attempts` cases mirrors the web's: a timed run and a run that never leaves the start box (or a segment without lines) have no attempt, stopping at 600 m of a straight 1000 m course is `stopped_short` at 600 m, and going 60 m round checkpoint 2 before finishing is `skipped_checkpoint` 2 at 400 m (`diagnoseGlobalSegmentAttempt`).
 
 ### `apps/mobile_android/test/privacy_test.dart` — 21 tests
  Three more pin that a coordinate-less (NaN) fix at either end is dropped without ending the trim, that a fix placed only by its smoothed pair ends it when out, and that an all-coordinate-less track returns empty.
@@ -774,9 +774,9 @@ TypeScript unit tests for the training plan engine, written against Node's `node
 - True when manually marked
 - True when both set
 
-### `apps/web/src/lib/segments/segments.test.ts` — 57 tests
+### `apps/web/src/lib/segments/segments.test.ts` — 61 tests
 
-TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`: Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
+TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`: Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone. Since #1446 four `attempt:` cases pin `diagnoseGlobalSegmentAttempt` (why no time) on a straight 1000 m course, test-for-test with the Dart twin.
 
 - Computes elapsed time over a clean segment (5 m/s straight-line track, 500m segment ≈ 100s).
 - Returns null when the run is shorter than the segment end.
@@ -1497,7 +1497,7 @@ Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An org
 
 Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1513 deno tests across 119 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1515 deno tests across 119 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -2051,7 +2051,7 @@ fix, and a companion case proves it reads all of them and bites on a bump.
 
 The client bounds on a catalogue effort (`20271224000500`, corrected by `20271225000200`, decisions § 2474): a forged 1 s effort and one starting hours before its run are refused; the 60 s start slack refuses 61 s and admits 60 s; on a paused run (`duration_s` 3000 over a 3600 s span) an effort starting after `started_at + duration_s` and one longer than `duration_s` both land; a ride admits 16 m/s and a walk, a hike and a stroller run refuse it on the foot cap; a client UPDATE is refused by privilege, and with one admitted inside the test the trigger still refuses a forged time; the service role is not held to any of it.
 
-### `apps/web/src/lib/core/data.test.ts` — 65 tests
+### `apps/web/src/lib/core/data.test.ts` — 66 tests
 
 Source guards on the data layer, plus three for the catalogue fallback's client bounds: each effort is screened by the trigger's rule before the stale delete, one refused row in a batch costs only that row (`writeEffortsIsolatingRefusals`, a non-refusal failure still withholds the stamp), and `globalSegmentEffortRefusal` mirrors the trigger (paused-run efforts admitted, the 60 s slack, the foot cap on walk / hike / stroller, the ride cap).
 

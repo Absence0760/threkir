@@ -159,7 +159,10 @@ test.describe('races & courses', () => {
 		]);
 		await expect(strip.getByRole('link', { name: 'Races & courses' })).toHaveAttribute('aria-current', 'page');
 		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
-		await expect(page.getByRole('heading', { level: 1, name: 'Races & courses' })).toBeVisible();
+		// The run surface's title heads the page; Races & courses renders no
+		// second title of its own below the strip.
+		await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+		await expect(page.getByTestId('run-surface-header').getByRole('heading', { level: 1 })).toBeVisible();
 		await expect(page).toHaveTitle(/^Races & courses/);
 	});
 

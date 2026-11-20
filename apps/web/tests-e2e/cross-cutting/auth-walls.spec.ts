@@ -257,9 +257,10 @@ test.describe('anonymous walls', () => {
 		page
 	}) => {
 		await page.goto('/segments');
-		await expect(
-			page.getByRole('heading', { name: /Famous segments/ })
-		).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('routes-explore-segments')).toHaveAttribute('aria-current', 'page', {
+			timeout: 10_000
+		});
+		await expect(page).toHaveTitle(/Famous segments/);
 		await expect(page).toHaveURL(/\/segments$/);
 	});
 

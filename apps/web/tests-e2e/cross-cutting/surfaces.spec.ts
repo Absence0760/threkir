@@ -291,9 +291,7 @@ test.describe('navigation — the segment catalogue under the run surface', () =
 			.click();
 		await page.getByTestId('routes-explore-segments').click();
 		await expect(page).toHaveURL(/\/segments$/, { timeout: 10_000 });
-		await expect(
-			page.getByRole('heading', { name: /Famous segments/ })
-		).toBeVisible({ timeout: 10_000 });
+		await expect(page).toHaveTitle(/Famous segments/, { timeout: 10_000 });
 	});
 
 	test('the catalogue carries the strip back to the other run surfaces', async ({

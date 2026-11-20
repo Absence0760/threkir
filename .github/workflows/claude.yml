@@ -22,8 +22,9 @@ env:
 
 jobs:
   claude:
+    # 21693150 is the owner's account ID; unlike the login it survives a username rename.
     if: |
-      github.actor == 'Absence0760' && (
+      github.actor_id == '21693150' && (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||

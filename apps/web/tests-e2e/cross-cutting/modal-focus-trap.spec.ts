@@ -17,7 +17,7 @@ test.describe('Modal focus trap', () => {
 
 	test('Tab and Shift+Tab cycle inside the Add-run modal', async ({ page }) => {
 		await page.goto('/runs');
-		await page.getByRole('button', { name: '+ Add run' }).click();
+		await page.getByRole('button', { name: 'Add run' }).click();
 
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible();
@@ -58,7 +58,7 @@ test.describe('Modal focus trap', () => {
 		// Escape still closes and restores focus to the opener.
 		await page.keyboard.press('Escape');
 		await expect(dialog).toHaveCount(0);
-		await expect(page.getByRole('button', { name: '+ Add run' })).toBeFocused();
+		await expect(page.getByRole('button', { name: 'Add run' })).toBeFocused();
 	});
 });
 

@@ -904,7 +904,7 @@ test.describe('/settings/preferences — landing page for old links', () => {
 		for (const [href, name] of [
 			['/settings/display', 'Units & display'],
 			['/settings/recording', 'Recording & voice'],
-			['/settings/training', 'Training'],
+			['/settings/training', 'Training preferences'],
 			['/settings/privacy', 'Privacy & sharing'],
 			['/settings/notifications', 'Notifications'],
 			['/settings/body', 'Body metrics'],

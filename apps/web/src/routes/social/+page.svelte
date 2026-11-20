@@ -7,6 +7,8 @@
 	import SocialClubs from '#lib/components/SocialClubs.svelte';
 	import SocialDiscover from '#lib/components/SocialDiscover.svelte';
 	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -25,6 +27,10 @@
 	const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
 
 	let tab = $state<Tab>('feed');
+	// One primary action per tab on the title row, as mobile's FAB: Clubs
+	// creates a club, Challenges a challenge; the other tabs have none.
+	let createClubOpen = $state(false);
+	let createChallengeOpen = $state(false);
 
 	$effect(() => {
 		const t = page.url.searchParams.get('tab');
@@ -58,12 +64,21 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader
-		flush
-		kicker={m('socialHub.kicker')}
-		title={m('socialHub.heading')}
-		subtitle={m('socialHub.tagline')}
-	/>
+	<PageHeader flush title={m('socialHub.heading')}>
+		{#snippet actions()}
+			{#if tab === 'clubs'}
+				<button class="btn btn-primary" type="button" onclick={() => (createClubOpen = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('socialClubs.createClub')}
+				</button>
+			{:else if tab === 'challenges'}
+				<button class="btn btn-primary" type="button" onclick={() => (createChallengeOpen = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('challenges.create')}
+				</button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 
 	<div class="tabs" role="tablist" aria-label={m('socialHub.sectionsLabel')}>
 		{#each TABS as t}
@@ -95,7 +110,7 @@
 		{:else if tab === 'people'}
 			<SocialPeople />
 		{:else if tab === 'clubs'}
-			<SocialClubs />
+			<SocialClubs bind:createOpen={createClubOpen} />
 		{:else if tab === 'challenges'}
 			<div class="challenges-tab">
 				<ChallengesPanel />
@@ -106,6 +121,20 @@
 		{/if}
 	</div>
 </div>
+
+<Modal
+	open={createChallengeOpen}
+	onclose={() => (createChallengeOpen = false)}
+	title={m('challenges.create')}
+>
+	<ChallengeEditor
+		oncreated={(ch) => {
+			createChallengeOpen = false;
+			goto(`/challenges/${ch.id}`);
+		}}
+		oncancel={() => (createChallengeOpen = false)}
+	/>
+</Modal>
 
 <style>
 	.challenges-tab {

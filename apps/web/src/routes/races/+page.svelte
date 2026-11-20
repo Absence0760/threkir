@@ -26,7 +26,6 @@
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import PageHeader from '#lib/components/PageHeader.svelte';
 	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import ListCard from '#lib/components/ListCard.svelte';
@@ -618,14 +617,8 @@
 {/snippet}
 
 <div class="races-page">
-	<RunSurfaceTabs active="races" ownHeading />
-	<PageHeader title={m('races.pageTitle')} subtitle={m('races.pageSubtitle')} flush>
+	<RunSurfaceTabs active="races">
 		{#snippet help()}<HelpLink route="/races" />{/snippet}
-		{#if suggestionsToReview > 0}
-			<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
-				{m('raceCourse.queueLink', { n: suggestionsToReview })}
-			</a>
-		{/if}
 		{#snippet actions()}
 			<button
 				type="button"
@@ -636,7 +629,7 @@
 				{m('races.submitRace')}
 			</button>
 		{/snippet}
-	</PageHeader>
+	</RunSurfaceTabs>
 
 	<!-- Filters belong to the race calendar, so the Courses view, which hides
 	     it, keeps the search and the Show chips. -->
@@ -653,6 +646,11 @@
 		/>
 		{#if geoError && !filtersOpen && show !== 'courses'}
 			<p class="near-error" role="status">{geoError}</p>
+		{/if}
+		{#if suggestionsToReview > 0}
+			<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
+				{m('raceCourse.queueLink', { n: suggestionsToReview })}
+			</a>
 		{/if}
 	</div>
 
@@ -1016,8 +1014,7 @@
 		font-size: 1.1rem;
 	}
 	.review-link {
-		display: inline-block;
-		margin-top: var(--space-xs);
+		align-self: flex-start;
 		font-weight: 600;
 	}
 	.filters {

@@ -9,7 +9,7 @@ import { USER_A, USER_B } from '../fixtures/users';
 /**
  * Races & courses (issue #1352): `/races` holds two sections, the race
  * calendar ("Upcoming races") and the park courses ("Run any time"), each
- * loading and failing on its own. The run-surface strip is five tabs in the
+ * loading and failing on its own. The run-surface strip is four tabs in the
  * mobile order with no Parks tab, and `/parks` stays reachable directly and
  * from the section's "See all N courses" heading link, which shows only when
  * the list is cut short (issue #1374). Run any time lists parks, each opening
@@ -159,7 +159,10 @@ test.describe('races & courses', () => {
 		]);
 		await expect(strip.getByRole('link', { name: 'Races & courses' })).toHaveAttribute('aria-current', 'page');
 		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
-		await expect(page.getByRole('heading', { level: 1, name: 'Races & courses' })).toBeVisible();
+		// The run surface's title heads the page; Races & courses renders no
+		// second title of its own below the strip.
+		await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+		await expect(page.getByTestId('run-surface-header').getByRole('heading', { level: 1 })).toBeVisible();
 		await expect(page).toHaveTitle(/^Races & courses/);
 	});
 

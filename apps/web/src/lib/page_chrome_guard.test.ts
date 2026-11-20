@@ -373,28 +373,36 @@ test('every ALLOW entry still needs its exemption', () => {
 });
 
 // Every root page has a title (issue #1374): each page the sidebar links to
-// says its name in a visible PageHeader, as the mobile app's four bottom-nav
-// roots do. /history and /runs carried only a visually hidden h1, so nothing
-// on the screen said which surface it was. A root reached through a shared
-// view names the file that renders the header.
+// says its name in a visible PageHeader, as the mobile app's bottom-nav roots
+// do. /history and /runs once carried only a visually hidden h1, so nothing on
+// the screen said which surface it was. A root reached through a shared view
+// or component names the file that renders the header.
 const ROOT_HEADER_FILE: Record<string, string> = {
 	'/dashboard': 'routes/dashboard/DashboardView.svelte',
+	'/runs': 'lib/components/RunSurfaceTabs.svelte',
 };
 const ROOT_EXEMPT: Record<string, string> = {
-	'/runs':
-		"the run-surface strip opens the page and its highlighted tab names the surface; a visible title above a tab of the same name said it twice and pushed the controls down (decisions § 2584)",
 	'/messages':
 		'a two-pane inbox: the conversation list heads itself with a visible h2 and the open thread names the other person, so a page-wide title would sit over both panes',
 };
 
-test('every sidebar root page says its title in a visible PageHeader', () => {
+function sidebarRoots(): string[] {
 	const layout = readFileSync(join(SRC, 'routes/+layout.svelte'), 'utf8');
 	const hrefs = [...layout.matchAll(/\{ href: '(\/[a-z-]+)', labelKey: '[^']+'/g)].map((m) => m[1]);
 	assert.ok(hrefs.length >= 5, 'the sidebar items were not found in +layout.svelte');
+	return hrefs;
+}
+
+function rootHeaderFile(href: string): string {
+	return ROOT_HEADER_FILE[href] ?? `routes${href}/+page.svelte`;
+}
+
+test('every sidebar root page says its title in a visible PageHeader', () => {
+	const hrefs = sidebarRoots();
 	const missing: string[] = [];
 	for (const href of hrefs) {
 		if (ROOT_EXEMPT[href]) continue;
-		const file = ROOT_HEADER_FILE[href] ?? `routes${href}/+page.svelte`;
+		const file = rootHeaderFile(href);
 		const source = readFileSync(join(SRC, file), 'utf8');
 		if (!/<PageHeader\b/.test(source)) missing.push(`  src/${file} (${href})`);
 	}
@@ -402,4 +410,68 @@ test('every sidebar root page says its title in a visible PageHeader', () => {
 	for (const href of Object.keys(ROOT_EXEMPT)) {
 		assert.ok(hrefs.includes(href), `${href} is no longer a sidebar root; drop its ROOT_EXEMPT entry`);
 	}
+});
+
+// The attribute names on every `<PageHeader>` element in a file, found by the
+// Svelte parser so a string in a script or a comment cannot trip it.
+function pageHeaderProps(source: string): string[][] {
+	const out: string[][] = [];
+	const visit = (node: unknown): void => {
+		if (Array.isArray(node)) return node.forEach(visit);
+		if (!node || typeof node !== 'object') return;
+		const el = node as { type?: string; name?: string; attributes?: { name?: string }[]; fragment?: { nodes?: unknown[] } };
+		if (el.type === 'Component' && el.name === 'PageHeader') {
+			const names = (el.attributes ?? []).map((a) => a.name ?? '');
+			for (const child of el.fragment?.nodes ?? []) {
+				const c = child as { type?: string; expression?: { name?: string } };
+				if (c.type === 'SnippetBlock' && c.expression?.name) names.push(c.expression.name);
+			}
+			out.push(names);
+		}
+		for (const [key, value] of Object.entries(node)) if (key !== 'metadata') visit(value);
+	};
+	visit(parse(source, { modern: true }).fragment);
+	return out;
+}
+
+const HEADER_LINE_PROPS = ['kicker', 'subtitle', 'sub'];
+
+test('the PageHeader prop reader sees attributes, shorthands and snippet props', () => {
+	assert.deepEqual(pageHeaderProps('<PageHeader title="x" />'), [['title']]);
+	assert.deepEqual(pageHeaderProps('<PageHeader title="x" kicker="k" subtitle={s} />'), [['title', 'kicker', 'subtitle']]);
+	assert.deepEqual(pageHeaderProps('<PageHeader title="x" {subtitle} />'), [['title', 'subtitle']]);
+	assert.deepEqual(pageHeaderProps('<PageHeader title="x">{#snippet sub()}<p>a</p>{/snippet}</PageHeader>'), [['title', 'sub']]);
+	assert.deepEqual(pageHeaderProps('<!-- <PageHeader kicker="k" /> --><p>x</p>'), []);
+});
+
+// A root page's title row is its name and its one primary action, nothing else
+// (the mobile root pages carry no eyebrow and no tagline): a kicker over the
+// title or a subtitle under it pushes the page's content down and says what
+// the sidebar item and the title already say.
+test('no sidebar root PageHeader carries a kicker or a subtitle', () => {
+	const failures: string[] = [];
+	for (const href of sidebarRoots()) {
+		if (ROOT_EXEMPT[href]) continue;
+		const file = rootHeaderFile(href);
+		for (const props of pageHeaderProps(readFileSync(join(SRC, file), 'utf8'))) {
+			const extra = props.filter((p) => HEADER_LINE_PROPS.includes(p));
+			if (extra.length > 0) failures.push(`  src/${file} (${href}): ${extra.join(', ')}`);
+		}
+	}
+	assert.deepEqual(failures, [], 'a sidebar root PageHeader has a line besides its title:\n' + failures.join('\n'));
+});
+
+// RunSurfaceTabs renders the run surface's one title above its strip, so a
+// tab page that also renders a PageHeader shows two titles, one of them below
+// the strip (Races & courses and Segments did, until the strip carried the
+// title). A tab page puts its primary action in the strip's `actions`.
+test('no page that renders RunSurfaceTabs renders its own PageHeader', () => {
+	const failures: string[] = [];
+	for (const path of walk(SRC)) {
+		const rel = relative(SRC, path);
+		if (rel === 'lib/components/RunSurfaceTabs.svelte') continue;
+		const source = readFileSync(path, 'utf8');
+		if (/<RunSurfaceTabs\b/.test(source) && /<PageHeader\b/.test(source)) failures.push(`  src/${rel}`);
+	}
+	assert.deepEqual(failures, [], 'a run-surface tab renders a second title:\n' + failures.join('\n'));
 });

@@ -6,7 +6,6 @@
 	import { onMount } from 'svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
-	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import {
 		fetchMyClubsWithError,
 		fetchRaceCourseReviewQueue,
@@ -64,7 +63,6 @@
 <svelte:head><title>{m('raceCourse.queueTitle')}</title></svelte:head>
 
 <div class="queue-page">
-	<RunSurfaceTabs active="races" ownHeading />
 	<PageHeader
 		flush
 		back={{ href: '/races', label: m('raceCourse.queueBack') }}

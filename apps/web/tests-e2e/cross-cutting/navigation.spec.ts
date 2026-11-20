@@ -78,13 +78,13 @@ test.describe('/runs run list', () => {
 		// /runs was un-redirected into the dedicated run-management surface
 		// (decisions §63 amendment): full list + filters + Add run + Heatmap,
 		// parallel to /gym + /nutrition. /history is now the unified timeline.
-		// Assert /runs stays put (no bounce) and the run list mounts (its
-		// PageHeader h1 + source-filter toolbar anchor the page).
+		// Assert /runs stays put (no bounce) and the run list mounts (the
+		// run surface's PageHeader h1 + source-filter toolbar anchor the page).
 		await page.goto('/runs');
 		await expect(page).toHaveURL(/\/runs$/);
 		await expect(
-			page.getByRole('heading', { level: 1, name: 'Runs' })
-		).toBeAttached();
+			page.getByTestId('run-surface-header').getByRole('heading', { level: 1, name: 'Training' })
+		).toBeVisible();
 		await expect(page.getByLabel('Source')).toBeVisible({ timeout: 10_000 });
 	});
 });

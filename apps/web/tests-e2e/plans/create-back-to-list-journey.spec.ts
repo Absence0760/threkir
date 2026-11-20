@@ -51,7 +51,7 @@ test.describe('/plans — create then back to the list', () => {
 
 		await test.step('reach /plans by clicking', async () => {
 			await page.goto('/dashboard');
-			await page.locator('nav.sidebar').getByRole('link', { name: 'Runs', exact: true }).click();
+			await page.locator('nav.sidebar').getByRole('link', { name: 'Training', exact: true }).click();
 			await page.waitForURL(/\/runs$/, { timeout: 10_000 });
 			await page
 				.getByRole('navigation', { name: /Run surface sections/ })

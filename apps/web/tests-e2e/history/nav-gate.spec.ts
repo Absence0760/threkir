@@ -75,7 +75,7 @@ test.describe('History nav gate', () => {
 			const reads = presenceReads(page);
 			await page.goto('/dashboard');
 			await reads;
-			await expect(navLabel(page, 'Runs')).toBeVisible({ timeout: 15_000 });
+			await expect(navLabel(page, 'Training')).toBeVisible({ timeout: 15_000 });
 			await expect(navLabel(page, 'History')).toHaveCount(0);
 
 			await page.goto('/history');

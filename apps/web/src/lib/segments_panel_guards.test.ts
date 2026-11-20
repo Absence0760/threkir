@@ -369,7 +369,6 @@ test('run detail routes into the catalogue from its Famous segments block', () =
 test('the catalogue-browse copy is localized in all six catalogues', () => {
 	const keys = [
 		'segments.browseTitle',
-		'segments.browseIntro',
 		'segments.browseSearchPlaceholder',
 		'segments.browseAllRegions',
 		'segments.browseAllSurfaces',

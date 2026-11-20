@@ -49,13 +49,13 @@ test.describe('/runs', () => {
 		page
 	}) => {
 		// Regression guard: the toolbar used to wrap as a whole, so a wide
-		// filter cluster shoved the Heatmap / Select / Add run actions onto
+		// filter cluster shoved the Heatmap / Select actions onto
 		// their own line. The actions must now sit on the same row as the
 		// segmented control (top-aligned), pinned to the toolbar's right edge,
 		// with the selects wrapping BELOW them — never the actions wrapping.
 		await page.setViewportSize({ width: 1400, height: 900 });
 		await page.goto('/runs');
-		await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeAttached();
+		await expect(page.getByTestId('run-surface-header').getByRole('heading', { level: 1, name: 'Training' })).toBeVisible();
 		const actions = page.locator('.toolbar-actions');
 		const activity = page.locator('.activity-group');
 		const selects = page.locator('.select-group');
@@ -575,7 +575,7 @@ test.describe('/runs', () => {
 		await expect(page.locator('.run-card').first()).toBeVisible();
 
 		// ── Create ──
-		await page.getByRole('button', { name: '+ Add run' }).click();
+		await page.getByRole('button', { name: 'Add run' }).click();
 
 		// RunEditor: started_at is pre-filled to "now"; activity defaults
 		// to 'run'; we set distance + duration explicitly so the row

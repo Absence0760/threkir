@@ -751,15 +751,8 @@
 <svelte:head><title>{m('nutrition.heading')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<PageHeader title={m('nutrition.heading')}>
+	<PageHeader flush title={m('nutrition.heading')}>
 		{#snippet actions()}
-			<!-- Ungated on purpose: Targets is this surface's entry point to the
-			     number every ring is measured against, so a user with none yet is
-			     exactly who needs to reach it (multi_modal.md, §63 amendment). -->
-			<a class="btn btn-secondary" href="/nutrition/targets" data-testid="nutrition-targets-link">
-				<span class="material-symbols" aria-hidden="true">flag</span>
-				{m('nutrition.targets.link')}
-			</a>
 			<button class="btn btn-primary" type="button" onclick={() => (showLog = true)} data-testid="log-food">{m('nutrition.logFood')}</button>
 		{/snippet}
 	</PageHeader>
@@ -769,37 +762,46 @@
 	{/if}
 
 	<div class="day-bar">
-		<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>
-			<button
-				bind:this={prevDayBtn}
-				class="icon-btn day-step"
-				type="button"
-				onclick={() => void goToDay(stepDiaryDate(viewDate, -1, new Date()))}
-				aria-label={m('nutrition.day.previous')}
-				data-testid="diary-prev-day"
-			>
-				<span class="material-symbols" aria-hidden="true">chevron_left</span>
-			</button>
-			<span class="day-label" aria-live="polite" data-testid="diary-day">{dayLabel}</span>
-			<button
-				class="icon-btn day-step"
-				type="button"
-				disabled={!canGoForward}
-				onclick={() => void stepForward()}
-				aria-label={m('nutrition.day.next')}
-				data-testid="diary-next-day"
-			>
-				<span class="material-symbols" aria-hidden="true">chevron_right</span>
-			</button>
-			{#if !isViewingToday}
+		<div class="day-row">
+			<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>
 				<button
-					class="btn btn-outline btn-sm"
+					bind:this={prevDayBtn}
+					class="icon-btn day-step"
 					type="button"
-					onclick={() => void goToToday()}
-					data-testid="diary-today"
-				>{m('dash.today')}</button>
-			{/if}
-		</nav>
+					onclick={() => void goToDay(stepDiaryDate(viewDate, -1, new Date()))}
+					aria-label={m('nutrition.day.previous')}
+					data-testid="diary-prev-day"
+				>
+					<span class="material-symbols" aria-hidden="true">chevron_left</span>
+				</button>
+				<span class="day-label" aria-live="polite" data-testid="diary-day">{dayLabel}</span>
+				<button
+					class="icon-btn day-step"
+					type="button"
+					disabled={!canGoForward}
+					onclick={() => void stepForward()}
+					aria-label={m('nutrition.day.next')}
+					data-testid="diary-next-day"
+				>
+					<span class="material-symbols" aria-hidden="true">chevron_right</span>
+				</button>
+				{#if !isViewingToday}
+					<button
+						class="btn btn-outline btn-sm"
+						type="button"
+						onclick={() => void goToToday()}
+						data-testid="diary-today"
+					>{m('dash.today')}</button>
+				{/if}
+			</nav>
+			<!-- Ungated on purpose: Targets is this surface's entry point to the
+			     number every ring is measured against, so a user with none yet is
+			     exactly who needs to reach it (multi_modal.md, §63 amendment). -->
+			<a class="btn btn-secondary btn-sm" href="/nutrition/targets" data-testid="nutrition-targets-link">
+				<span class="material-symbols" aria-hidden="true">flag</span>
+				{m('nutrition.targets.link')}
+			</a>
+		</div>
 		{#if !isViewingToday}
 			<p class="section-hint" data-testid="diary-backfill-hint">
 				<span class="material-symbols hint-icon" aria-hidden="true">history</span>
@@ -1372,13 +1374,26 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	/* Cancels .page-header's bottom margin so the stepper reads as part of the
-	   header rather than as a floating row above the first card. */
 	.day-bar {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);
-		margin-block-start: calc(var(--space-xl) * -1);
+	}
+	.day-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
+	.day-row > a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		text-decoration: none;
+	}
+	.day-row > a .material-symbols {
+		font-size: 1.1rem;
 	}
 	.day-nav {
 		display: flex;

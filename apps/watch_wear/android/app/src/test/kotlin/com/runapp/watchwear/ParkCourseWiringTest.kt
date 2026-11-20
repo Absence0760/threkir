@@ -31,17 +31,29 @@ class ParkCourseWiringTest {
     private val ui = read("ui/RunWatchApp.kt")
 
     @Test
-    fun `start builds the timer from the picked course, the stage tick feeds it, each in its own catch`() {
+    fun `start builds the timer from the picked course, and every stored line fix feeds it at its stored ts`() {
         assertTrue(body(vm, "fun start(").contains("courseTimer = courseTimerFor(route, _state.value.courses)"))
-        val tick = body(vm, "private fun observeRecording(")
-        assertTrue(
-            "the course feed has its own try, after the race's",
-            Regex("""try \{\s+advanceCourseTimer\(m\)\s+\} catch""").containsMatchIn(tick),
-        )
+        // The service publishes each line fix right after the track file
+        // stores it, in its own catch, and never an offTrack one (the server
+        // drops those from the line it times).
+        val gps = body(service, "private fun onGps(")
+        val append = gps.indexOf("trackWriter?.append(")
+        val publish = gps.indexOf("if (track) publishCourseFix(p)")
+        assertTrue("published right after the append", append >= 0 && publish > append)
+        val pub = body(service, "private fun publishCourseFix(")
+        assertTrue(pub.contains("CourseFixFeed.publish(CourseFix.of(runId, p))"))
+        assertTrue("L4: its own catch", pub.contains("catch (e: Throwable)"))
+        // The view model reads the feed, not the conflated metrics, each fix
+        // in its own catch, at the fix's stored instant, for this run only.
+        assertTrue(body(vm, "init {").contains("observeCourseFixes()"))
+        val observe = body(vm, "private fun observeCourseFixes(")
+        assertTrue(observe.contains("CourseFixFeed.fixes.collect"))
+        assertTrue(Regex("""try \{\s+advanceCourseTimer\(fix\)\s+\} catch""").containsMatchIn(observe))
         val advance = body(vm, "private fun advanceCourseTimer(")
-        assertTrue(advance.contains("raceFixOfferable("))
-        assertTrue("the device clock, as the race feed", advance.contains("raceFixDeviceMs("))
-        assertTrue(advance.contains("timer.offer("))
+        assertTrue(advance.contains("fix.runId != _state.value.thisRunId"))
+        assertTrue(advance.contains("timer.offer(fix.lat, fix.lng, fix.epochMs.toDouble())"))
+        assertTrue("never the latest point alone", !advance.contains("latestPoint"))
+        assertTrue("the stage tick no longer feeds it", !body(vm, "private fun observeRecording(").contains("advanceCourseTimer"))
     }
 
     @Test
@@ -70,5 +82,16 @@ class ParkCourseWiringTest {
         assertTrue(ui.contains("courseCue = state.courseCue"))
         assertTrue("shown in the ambient branch and the live one", Regex("courseCueText\\(courseCue\\)").findAll(ui).count() >= 2)
         assertTrue(body(vm, "private fun observeParkCourses(").contains("parkCourseBridge.current()"))
+    }
+
+    @Test
+    fun `the running screen and the summary say the best lap once there are two, from the cue`() {
+        val text = body(ui, "private fun courseCueText(")
+        assertTrue(text.contains("if (cue.laps > 1) R.string.course_finished_best else R.string.course_finished"))
+        val call = ui.indexOf("Stage.PostRun -> PostRunScreen(")
+        assertTrue(call >= 0)
+        assertTrue("the summary gets the cue", ui.substring(call, ui.indexOf("Stage.RoutePicker", call)).contains("courseCue = state.courseCue"))
+        val post = body(ui, "internal fun PostRunScreen(")
+        assertTrue("a finished course on the summary", post.contains("if (courseCue?.finishedS != null)"))
     }
 }

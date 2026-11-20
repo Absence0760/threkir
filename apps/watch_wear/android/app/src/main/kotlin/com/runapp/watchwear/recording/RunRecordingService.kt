@@ -859,6 +859,7 @@ class RunRecordingService : Service() {
             Triple(bankedDistanceM() + distanceEstimator.distanceM, livePace.secondsPerKm, opensSegment)
         }
         trackWriter?.append(p, distM = newDistance, offTrack = !track, segmentStart = segmentStart)
+        if (track) publishCourseFix(p)
         if (!track) {
             RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
             announceProgress(newDistance, pace)
@@ -899,6 +900,16 @@ class RunRecordingService : Service() {
             )
         }
         announceProgress(newDistance, pace)
+    }
+
+    /// The stored line fix to the live course timer, at its stored `ts`
+    /// (`CourseFixFeed`). L4: the timer's feed never costs the recording a fix.
+    private fun publishCourseFix(p: GpsPoint) {
+        try {
+            CourseFixFeed.publish(CourseFix.of(runId, p))
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "course fix not published; the run records on", e)
+        }
     }
 
     /// The split announcement and the pace-drift alert, after every fix that

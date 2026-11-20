@@ -116,6 +116,7 @@
     <string name="race_start_crossed">Ligne de départ franchie, chrono lancé</string>
     <string name="course_timing_started">Chrono lancé</string>
     <string name="course_finished">Arrivée ! %1$s</string>
+    <string name="course_finished_best">Arrivée ! Meilleur %1$s</string>
     <string name="route_course_caption">Parcours · %1$s</string>
     <string name="race_finish_recorded">Arrivée enregistrée</string>
     <string name="race_undo_resume">Pas terminé ? Reprendre</string>

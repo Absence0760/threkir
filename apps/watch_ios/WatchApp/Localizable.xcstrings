@@ -2776,7 +2776,7 @@
       }
     },
     "Finished! %@": {
-      "comment": "Park course finish on the run and summary screens, shown with a buzz when the runner enters the finish box on a lap that counts (#1446). %@ is the course time as h:mm:ss, e.g. 8:42:10. The exclamation matches the phone's runRaceFinishedAuto.",
+      "comment": "Park course finish on the run and summary screens, shown with a buzz when the runner enters the finish box on a lap that counts (#1446). %@ is the course time as m:ss under an hour or h:mm:ss, e.g. 21:42 or 8:42:10. The exclamation matches the phone's runRaceFinishedAuto.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2812,6 +2812,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chegada! %@"
+          }
+        }
+      }
+    },
+    "Finished! Best %@": {
+      "comment": "Park course finish on the run and summary screens once the runner has finished more than one lap (#1446). %@ is the FASTEST lap's time, the one the course board keeps, as m:ss under an hour or h:mm:ss, e.g. 21:42. Each lap still buzzes as it finishes. Matches \"Finished! %@\".",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Ziel! Bestzeit %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Meta! Mejor %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée ! Meilleur %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴール！ベスト %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chegada! Melhor %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chegada! Melhor %@"
           }
         }
       }

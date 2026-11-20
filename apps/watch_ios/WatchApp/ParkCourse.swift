@@ -137,12 +137,13 @@ enum ParkCourseStore {
 
 /// What the running screen shows for the course: nothing until the runner
 /// leaves the start box, "Timing started" while a lap is timed, and
-/// "Finished!" with the time once one counts — kept on screen from then on,
-/// so a loop's next lap opening at the same instant never hides the time the
-/// runner just ran.
+/// "Finished!" once one counts, with the FASTEST lap's time — the one the
+/// course board keeps — kept on screen from then on, so a loop's next lap
+/// opening at the same instant never hides it ("Finished! Best 21:42" once
+/// there is more than one lap). Each lap still buzzes as it finishes.
 enum CourseTimingDisplay: Equatable {
     case timing
-    case finished(seconds: Double)
+    case finished(seconds: Double, laps: Int)
 
     /// The display after `events`, from `current`.
     static func next(_ current: CourseTimingDisplay?, after events: [CourseTimingEvent]) -> CourseTimingDisplay? {
@@ -153,7 +154,12 @@ enum CourseTimingDisplay: Equatable {
                 if case .finished? = display { continue }
                 display = .timing
             case let .finished(startMs, endMs):
-                display = .finished(seconds: (endMs - startMs) / 1000)
+                let lap = (endMs - startMs) / 1000
+                if case let .finished(best, laps)? = display {
+                    display = .finished(seconds: min(best, lap), laps: laps + 1)
+                } else {
+                    display = .finished(seconds: lap, laps: 1)
+                }
             }
         }
         return display
@@ -171,11 +177,14 @@ enum CourseTimingDisplay: Equatable {
         return nil
     }
 
-    /// `8:42:10` — hours always shown, so a 50 mile time and a 5K read the
-    /// same way: `0:21:36`. Whole seconds, truncated, as a stopwatch reads.
+    /// A course time as the board reads it: whole seconds, rounded to the
+    /// nearest, `8:42:11` from an hour and `21:42` under one — the rule of
+    /// the web's `formatDuration`, the phone's `formatEffortTime` and Wear's
+    /// `formatCourseTime`, so the wrist never reads a second short of them.
     static func clock(seconds: Double) -> String {
-        let total = max(0, Int(seconds.isFinite ? seconds : 0))
-        return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+        let total = seconds.isFinite ? Int(max(0, seconds).rounded()) : 0
+        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 }
 

@@ -298,18 +298,31 @@ fun formatCourseTime(elapsedS: Double): String {
     }
 }
 
-/// What the running screen says about the course: "Timing started" while a
-/// lap is timed and none has finished since, else "Finished!" with the last
-/// lap's time. Null before the first start.
-data class CourseCueView(val finishedS: Double?)
+/// What the running screen and the summary say about the course: "Timing
+/// started" until a lap finishes, then "Finished!" with the FASTEST lap's
+/// time, the one the board keeps, for the rest of the run ("Finished! Best
+/// 21:42" once there is more than one). Each lap is still announced with its
+/// own time as it finishes. Null before the first start.
+data class CourseCueView(val finishedS: Double?, val laps: Int = 0)
 
-/// The cue after [events], from [current]: the last event wins.
-fun courseCueAfter(current: CourseCueView?, events: List<CourseEvent>): CourseCueView? =
-    when (val last = events.lastOrNull()) {
-        null -> current
-        is CourseEvent.Started -> CourseCueView(finishedS = null)
-        is CourseEvent.Finished -> CourseCueView(finishedS = last.elapsedS)
+/// The cue after [events], from [current]. A start after a finish keeps the
+/// finish: a loop's next lap must not hide the time the board will show.
+fun courseCueAfter(current: CourseCueView?, events: List<CourseEvent>): CourseCueView? {
+    var cue = current
+    for (e in events) {
+        cue = when (e) {
+            is CourseEvent.Started -> if (cue?.finishedS != null) cue else CourseCueView(finishedS = null)
+            is CourseEvent.Finished -> {
+                val best = cue?.finishedS
+                CourseCueView(
+                    finishedS = if (best == null) e.elapsedS else minOf(best, e.elapsedS),
+                    laps = (cue?.laps ?: 0) + 1,
+                )
+            }
+        }
     }
+    return cue
+}
 
 /// The timer for a run on [route]: the course it is, when it is one of
 /// [courses] and the timer can time it; null for a saved route, a course no

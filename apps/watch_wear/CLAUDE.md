@@ -567,17 +567,26 @@ What the UI exposes during a recording, for quick reference when reading
 **Live park course timing (#1446, decisions § 2595).** A course the phone put
 on the watch (`ParkCourseBridge`, `/park_courses`) is a row at the top of the
 route picker captioned "Course · 5.0 km". Picking it makes `start()` build a
-`LiveCourseTimer` (`courseTimerFor`), fed every fresh fix by the race feed's
-rule (`raceFixOfferable`, `raceFixDeviceMs`) in its own catch. Leaving the
+`LiveCourseTimer` (`courseTimerFor`), fed every line fix the track file
+stores, at its stored `ts`, the fixes and instants the server's matcher reads:
+`RunRecordingService.onGps` publishes each non-`offTrack` fix to
+`recording/CourseFixFeed` right after `TrackWriter.append`, and
+`RunViewModel.observeCourseFixes` offers each to the timer in its own catch.
+Not the conflated `Metrics.latestPoint` on the device clock: that dropped any
+fix the screen was slow to collect, and a dropped fix inside a checkpoint
+circle left the wrist silent while the board timed the run. Leaving the
 start box forward says "Timing started", entering the finish box having passed
 every checkpoint in order within the length guard says "Finished! 8:42:10":
 each buzzes (the workout's step and completion buzzes) and speaks through
-`RunRecordingService.courseCue`, and the running screen shows the last one in
-`title3` above the clock, in ambient too. Stop settles the timer first, so a
+`RunRecordingService.courseCue`, every lap with its own time. The running
+screen shows the cue in `title3` above the clock, in ambient too, and the
+post-run summary shows a finished one: once a lap finishes it stays on the
+FASTEST lap's time, the one the board keeps ("Finished! Best 21:42" from the
+second lap, `course_finished_best`), and a later start does not hide it. Stop settles the timer first, so a
 recording that ends in the finish box (or 5 m short) finishes there. The rule
 is the server matcher's (`LiveCourseTimerTest` replays
-`fixtures/park_course_runs.json` and must match its efforts to the
-millisecond); the board's time is still the server's. The phone writes
+`fixtures/park_course_runs.json` and `SegmentsGateCasesTest` every box case of
+`fixtures/segments_gate_cases.json`, both to the matcher's millisecond); the board's time is still the server's. The phone writes
 `/park_courses` (`apps/mobile_android/lib/watch_park_courses.dart` through
 `WearParkCoursesBridge.kt`, contract `fixtures/wear_park_courses_payload.json`,
 path and keys held by `DataLayerContractTest`): the courses the runner opened

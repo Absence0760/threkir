@@ -1,5 +1,13 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.CourseFix
+import com.runapp.watchwear.recording.CourseFixFeed
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -90,7 +98,7 @@ class LiveCourseTimerTest {
         val slugs = courses.map { it["slug"]!!.jsonPrimitive.content }
         val specs = courses.map { spec(it) }
         assertEquals(6, slugs.size)
-        assertEquals(18, cases.size)
+        assertEquals(19, cases.size)
         for (c in cases) {
             val key = c["key"]!!.jsonPrimitive.content
             val fixes = decode(c["track"]!!.jsonObject)
@@ -153,6 +161,40 @@ class LiveCourseTimerTest {
         assertEquals("one start cue: the finish opens each later lap", 1, r.events.count { it is CourseEvent.Started })
         for (i in 1 until laps.size) assertTrue("lap ${i + 1} starts after lap $i ends", laps[i].startMs >= laps[i - 1].endMs)
         assertTrue("4:30/km is the fastest lap", laps[1].elapsedS < laps[0].elapsedS && laps[1].elapsedS < laps[2].elapsedS)
+    }
+
+    /// The recording publishes every stored line fix to `CourseFixFeed` the
+    /// instant it is written, and the screen's collector is slower than GPS
+    /// (a fix a millisecond here, against a collector that takes two). A
+    /// conflated feed would hand the timer only the latest point; this one
+    /// hands it every fix, at its stored instant, so the three laps finish as
+    /// they do fed directly.
+    @Test
+    fun `a burst of fixes faster than the screen reaches the timer whole, at each fix's stored instant`() {
+        val c = cases.first { it["key"]!!.jsonPrimitive.content == "beaver_three_laps" }
+        val beaver = courses.first { it["slug"]!!.jsonPrimitive.content == "beaver-lake-trail" }
+        val fixes = decode(c["track"]!!.jsonObject).take(CourseFixFeed.BUFFER)
+        val direct = run(spec(beaver), fixes).timer.finished
+        assertTrue("the slice holds a finished lap", direct.isNotEmpty())
+
+        val runId = "burst-${System.nanoTime()}"
+        val timer = LiveCourseTimer(spec(beaver))
+        val seen = mutableListOf<Long>()
+        runBlocking {
+            val collector = launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
+                CourseFixFeed.fixes.collect { f ->
+                    if (f.runId != runId) return@collect
+                    seen.add(f.epochMs)
+                    timer.offer(f.lat, f.lng, f.epochMs.toDouble())
+                    if (seen.size % 100 == 0) delay(2)
+                }
+            }
+            for (f in fixes) CourseFixFeed.publish(CourseFix(runId, f.lat, f.lng, f.tMs.toLong()))
+            withTimeout(30_000) { while (seen.size < fixes.size) delay(5) }
+            collector.cancel()
+        }
+        assertEquals("every fix, in order, at its stored instant", fixes.map { it.tMs.toLong() }, seen)
+        assertEquals(direct, timer.finished)
     }
 
     @Test
@@ -223,14 +265,38 @@ class LiveCourseTimerTest {
     }
 
     @Test
-    fun `the screen says the last thing the timer did`() {
+    fun `the screen says timing started, then keeps the best finished lap, the one the board keeps`() {
         assertNull(courseCueAfter(null, emptyList()))
         val started = courseCueAfter(null, listOf(CourseEvent.Started(0.0)))
         assertEquals(CourseCueView(finishedS = null), started)
-        val done = courseCueAfter(started, listOf(CourseEvent.Finished(0.0, 965_000.0)))
-        assertEquals(CourseCueView(finishedS = 965.0), done)
+        val done = courseCueAfter(started, listOf(CourseEvent.Finished(0.0, 1_301_600.0)))
+        assertEquals(CourseCueView(finishedS = 1301.6, laps = 1), done)
         assertEquals("a quiet fix keeps the cue", done, courseCueAfter(done, emptyList()))
-        assertEquals(started, courseCueAfter(done, listOf(CourseEvent.Started(1.0))))
+        assertEquals("a later start keeps the finish", done, courseCueAfter(done, listOf(CourseEvent.Started(1.0))))
+        val slower = courseCueAfter(done, listOf(CourseEvent.Finished(1_400_000.0, 2_800_000.0)))
+        assertEquals("a slower second lap keeps the first lap's time", CourseCueView(finishedS = 1301.6, laps = 2), slower)
+        val faster = courseCueAfter(slower, listOf(CourseEvent.Finished(2_800_000.0, 4_000_000.0)))
+        assertEquals(CourseCueView(finishedS = 1200.0, laps = 3), faster)
+        assertEquals("21:42", formatCourseTime(done!!.finishedS!!))
+    }
+
+    @Test
+    fun `three laps on Beaver Lake leave the screen on the fastest lap, the matcher's effort`() {
+        val c = cases.first { it["key"]!!.jsonPrimitive.content == "beaver_three_laps" }
+        val beaver = courses.first { it["slug"]!!.jsonPrimitive.content == "beaver-lake-trail" }
+        val timer = LiveCourseTimer(spec(beaver))
+        var cue: CourseCueView? = null
+        val said = mutableListOf<Double>()
+        for (f in decode(c["track"]!!.jsonObject)) {
+            val events = timer.offer(f.lat, f.lng, f.tMs)
+            said += events.filterIsInstance<CourseEvent.Finished>().map { it.elapsedS }
+            cue = courseCueAfter(cue, events)
+        }
+        timer.settle()?.let { said += it.elapsedS; cue = courseCueAfter(cue, listOf(it)) }
+        assertEquals("each lap is announced with its own time", timer.finished.map { it.elapsedS }, said)
+        assertEquals(3, cue!!.laps)
+        assertEquals(timer.best!!.elapsedS, cue!!.finishedS!!, 0.0)
+        assertTrue("the last lap is not the fastest here", said.last() != cue!!.finishedS)
     }
 
     @Test

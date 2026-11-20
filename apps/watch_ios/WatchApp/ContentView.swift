@@ -980,7 +980,8 @@ struct RouteGuidanceView: View {
 // MARK: - Park course timing
 
 /// The park course line (#1446): "Timing started" once the runner leaves the
-/// start box, "Finished! 8:42:10" once a lap counts, and — on the summary of a
+/// start box, "Finished! 8:42:10" once a lap counts ("Finished! Best 21:42",
+/// the fastest, once several have), and — on the summary of a
 /// run stopped mid-course — that it is not a course time. One short line in
 /// large type, read at a glance mid-stride; the buzz that comes with each is
 /// `WorkoutManager.courseHaptic`.
@@ -990,8 +991,14 @@ struct CourseTimingView: View {
 
     var body: some View {
         switch display {
-        case .finished(let seconds):
-            Text("Finished! \(CourseTimingDisplay.clock(seconds: seconds))")
+        case let .finished(seconds, laps):
+            Group {
+                if laps > 1 {
+                    Text("Finished! Best \(CourseTimingDisplay.clock(seconds: seconds))")
+                } else {
+                    Text("Finished! \(CourseTimingDisplay.clock(seconds: seconds))")
+                }
+            }
                 .font(.headline)
                 .foregroundColor(AppTheme.coral)
                 .lineLimit(1)

@@ -1,6 +1,7 @@
 {
   "feature_flags": {
-    "health_backlog_purge": { "enabled": false }
+    "health_backlog_purge": { "enabled": false },
+    "park_course_attempt_closures": { "enabled": false }
   },
   "function_env": {},
   "web_env": {},

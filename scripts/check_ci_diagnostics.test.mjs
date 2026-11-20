@@ -599,6 +599,13 @@ const NOT_A_GUARD = new Map([
 	['scripts/markdown_lines.mjs', 'a lexer, consumed by three guards'],
 	['scripts/shell_lex.mjs', 'a lexer, consumed by two guards'],
 	['scripts/web_icon_font.mjs', "the icon extractor, consumed by the generator and its suite"],
+	[
+		'scripts/next_decision_number.mjs',
+		'a local dev tool: it asks GitHub (gh, network) for every open PR\'s decisions numbers '
+			+ 'and prints the next free one before an entry is written; it enforces nothing. The '
+			+ 'numbering guard is decisions_numbering_guard.test.ts, and the tool\'s own pure suite '
+			+ 'runs in parity-types',
+	],
 	['scripts/gen_web_icon_font.mjs', 'a generator; its output is what the guard checks'],
 	['scripts/gen_catalogue_fold_table.mjs', 'a generator; its output is what the guard checks'],
 	[

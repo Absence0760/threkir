@@ -1,5 +1,5 @@
 <script lang="ts">
-	import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import terrainHero960 from '#lib/assets/marketing/terrain-hero-960.webp?no-inline';
 	import terrainHero1600 from '#lib/assets/marketing/terrain-hero-1600.webp?no-inline';
 	import terrainHero2400 from '#lib/assets/marketing/terrain-hero-2400.webp?no-inline';
@@ -179,7 +179,7 @@
 					<span class="source source--{i + 1}" data-pop>{name}</span>
 				{/each}
 				<span class="sync-core" data-pop>
-					<img src={logoMarkUrl} alt="" width="44" height="44" />
+					<img src={BRAND_URLS.logoMark} alt="" width="44" height="44" />
 				</span>
 			</div>
 		</article>

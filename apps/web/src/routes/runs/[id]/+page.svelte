@@ -1,5 +1,5 @@
 <script lang="ts">
-	import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import grisnirBadgeUrl from '#lib/assets/grisnir/grisnir-badge-256.png?no-inline';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { page } from '$app/state';
@@ -3061,7 +3061,7 @@
 	<div class="share-card-inner">
 		{#if shareCardMark}
 			<div class="share-card-eyebrow">
-				<img src={logoMarkUrl} alt="" class="share-card-mark" />
+				<img src={BRAND_URLS.logoMark} alt="" class="share-card-mark" />
 				Threkir
 			</div>
 		{/if}

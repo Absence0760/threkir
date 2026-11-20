@@ -1,5 +1,5 @@
 <script lang="ts">
-	import wordmarkLightUrl from '#lib/assets/brand/wordmark-light.svg?no-inline';
+	import { BRAND_URLS } from '#lib/assets/brand.ts';
 	import terrainPanel800 from '#lib/assets/marketing/terrain-panel-800.webp?no-inline';
 	import terrainPanel1200 from '#lib/assets/marketing/terrain-panel-1200.webp?no-inline';
 	import type { Snippet } from 'svelte';
@@ -44,7 +44,7 @@
 		     home, and a hidden subtree left it focusable but nameless (axe
 		     aria-hidden-focus; WCAG 4.1.2 + 2.4.3). -->
 		<a href="/" class="panel-logo">
-			<img src={wordmarkLightUrl} alt="Threkir" />
+			<img src={BRAND_URLS.wordmarkLight} alt="Threkir" />
 		</a>
 
 		{#if panel}

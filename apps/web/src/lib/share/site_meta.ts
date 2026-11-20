@@ -11,7 +11,6 @@
 
 import { normaliseSiteUrl } from './share_meta';
 import { serialiseJsonLd } from '../util/json_ld';
-import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -33,7 +32,7 @@ export function buildOrganizationJsonLd(base: string | null | undefined): string
 		'@type': 'Organization',
 		name: SITE_NAME,
 		url: `${b}/`,
-		logo: `${b}${staticAsset('/icon-512.png')}`,
+		logo: `${b}/icon-512.png?v=2af38642dc`,
 		description: SITE_DESCRIPTION,
 	};
 	return serialiseJsonLd(graph);

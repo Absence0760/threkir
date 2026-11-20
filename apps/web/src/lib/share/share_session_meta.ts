@@ -22,7 +22,6 @@ import { expandSessionSteps } from '../social/session_steps';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedSession } from './share_session_lookup';
-import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -163,7 +162,7 @@ export function buildShareSessionHead(input: ShareSessionMetaInput): ShareSessio
 		title: buildSessionShareTitle(session, displayName),
 		description: buildSessionShareDescription(session, displayName),
 		canonical: buildSessionShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}${staticAsset('/og-default.png')}`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildSessionJsonLd(session, { id, base: siteUrl, displayName }),
 	};
 }

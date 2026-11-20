@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { staticAsset } from '#lib/assets/static_asset.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -39,13 +38,13 @@
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={canonicalUrl} />
 	<meta property="og:site_name" content="Threkir" />
-	<meta property="og:image" content={staticAsset('/og-default.png')} />
+	<meta property="og:image" content="/og-default.png?v=8d3a97552b" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={title} />
 	<meta name="twitter:description" content={description} />
-	<meta name="twitter:image" content={staticAsset('/og-default.png')} />
+	<meta name="twitter:image" content="/og-default.png?v=8d3a97552b" />
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 

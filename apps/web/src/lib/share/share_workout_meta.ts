@@ -24,7 +24,6 @@ import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedWorkout, SharedWorkoutSet } from './share_workout_lookup';
-import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -160,7 +159,7 @@ export function buildShareWorkoutHead(input: ShareWorkoutMetaInput): ShareWorkou
 		title: buildWorkoutShareTitle(workout, displayName),
 		description: buildWorkoutShareDescription(workout, displayName),
 		canonical: buildWorkoutShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}${staticAsset('/og-default.png')}`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildWorkoutJsonLd(workout, { id, base: siteUrl, displayName }),
 	};
 }

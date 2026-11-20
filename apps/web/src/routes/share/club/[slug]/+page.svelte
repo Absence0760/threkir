@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { staticAsset } from '#lib/assets/static_asset.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -17,7 +16,7 @@
 	let description = $derived(buildClubShareDescription(data.club));
 	let canonicalUrl = $derived(buildClubShareCanonical(data.siteUrl, data.slug));
 	let jsonLd = $derived(buildClubJsonLd(data.club, { slug: data.slug, base: data.siteUrl }));
-	let ogImage = $derived(data.club?.avatar_url || staticAsset('/og-default.png'));
+	let ogImage = $derived(data.club?.avatar_url || '/og-default.png?v=8d3a97552b');
 
 	let hasClub = $derived(!!data.club);
 	let appHref = $derived(`/clubs/${data.slug}`);

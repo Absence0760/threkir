@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { staticAsset } from '#lib/assets/static_asset.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { m, structureLocale } from '#lib/i18n/store.svelte.ts';
 	import { formatDate } from '#lib/format/time.ts';
@@ -57,7 +56,7 @@
 	const pageTitle = $derived(buildGuideTitle(data.guide.title));
 	const pageDesc = $derived(buildGuideDescription(data.guide.description));
 	const canonicalUrl = $derived(buildLearnCanonical(data.siteUrl, `/learn/${data.guide.slug}`));
-	const ogImage = $derived(data.guide.heroImage || staticAsset('/og-default.png'));
+	const ogImage = $derived(data.guide.heroImage || '/og-default.png?v=8d3a97552b');
 	const jsonLd = $derived(
 		buildGuideJsonLd({
 			title: data.guide.title,

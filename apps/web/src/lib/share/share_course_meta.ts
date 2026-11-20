@@ -12,7 +12,6 @@ import { collapseAndClip } from '../util/clip_text';
 import { courseOffersWayfinding, regionName } from '../parks/park_courses';
 import { GUIDE_EN, routeGuideEnglish } from '../parks/route_guide';
 import { courseShareKey, type SharedCourse } from './share_course_lookup';
-import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -120,7 +119,7 @@ export function buildShareCourseHead(input: ShareCourseMetaInput): ShareCourseHe
 		title: buildCourseShareTitle(course),
 		description: buildCourseShareDescription(course),
 		canonical: buildCourseShareCanonical(siteUrl, key),
-		ogImageUrl: `${base}${staticAsset('/og-default.png')}`,
+		ogImageUrl: `${base}/og-default.png?v=8d3a97552b`,
 		jsonLd: buildCourseJsonLd(course, { key, base: siteUrl }),
 	};
 }

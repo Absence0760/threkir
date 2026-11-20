@@ -15,8 +15,6 @@
 	/// which does both) — they're injected via {@html} because a literal
 	/// <script> in Svelte markup would be hoisted and compiled away.
 
-	import { staticAsset } from '#lib/assets/static_asset.ts';
-
 	interface Props {
 		title: string;
 		description: string;
@@ -37,7 +35,7 @@
 		title,
 		description,
 		canonical,
-		image = staticAsset('/og-default.png'),
+		image = '/og-default.png?v=8d3a97552b',
 		ogType = 'website',
 		jsonLd,
 	}: Props = $props();

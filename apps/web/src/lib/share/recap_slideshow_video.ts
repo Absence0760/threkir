@@ -14,7 +14,7 @@ import type { YearInRunningRecap } from '../runs/recap';
 import { VIDEO_HEIGHT, VIDEO_WIDTH } from '../video/frame_clock';
 import { createFrameSink, videoAbortError, type FrameSink } from '../video/encode_video';
 import type { VideoEncoderPlan } from '../video/video_encoder';
-import logoMarkUrl from '#lib/assets/brand/logo-mark.svg?no-inline';
+import { BRAND_URLS } from '#lib/assets/brand.ts';
 
 const W = VIDEO_WIDTH;
 const H = VIDEO_HEIGHT;
@@ -158,7 +158,7 @@ export async function renderRecapSlideshow(input: RecapSlideshowInput): Promise<
 	under.height = H;
 	const underCtx = under.getContext('2d');
 	if (!ctx || !underCtx) throw new Error('no 2D canvas');
-	const mark = await loadImage(logoMarkUrl);
+	const mark = await loadImage(BRAND_URLS.logoMark);
 	let sink: FrameSink | null = createFrameSink(input.plan, out, tl.fps);
 	let underSlide = -1;
 	try {

@@ -1320,8 +1320,9 @@ void main() {
     });
 
     testWidgets(
-        'the full guide names each road the course crosses, at the traffic '
-        'light when it has one, and each stretch along a road', (tester) async {
+        'the short guide counts the road crossings; the full guide names '
+        'each road, at the traffic light when it has one, and each stretch '
+        'along a road', (tester) async {
       tallView(tester);
       await tester.pumpWidget(
         _host(
@@ -1359,6 +1360,14 @@ void main() {
       final guide = find.byKey(const Key('park-course-guide'));
       Finder inGuide(String text) =>
           find.descendant(of: guide, matching: find.textContaining(text));
+      final steps = find.byKey(const Key('park-course-guide-steps'));
+      expect(
+        find.descendant(
+          of: steps,
+          matching: find.text('2 road crossings on this course. Watch for cars.'),
+        ),
+        findsOneWidget,
+      );
       expect(inGuide('cross Hunter Mill Road'), findsNothing,
           reason: 'folded away until asked for');
       final all = find.text('Show all steps');

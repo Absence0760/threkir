@@ -8126,6 +8126,7 @@ export const messages = {
 	"parks.guide.lap": "{at}：{n}/{total}周目を開始し、ループをもう一度走ります。",
 	"parks.guide.finish": "{at}：フィニッシュ。",
 	"parks.guide.laps": "{total, plural, other {周回コースを#周します。}}",
+	"parks.guide.roadCrossings": "{total, plural, other {このコースでは道路を#回渡ります。車に注意してください。}}",
 	"parks.guide.repeatLoop": "同じ周回コースをもう一度走ります。",
 	"parks.guide.lapHeader": "{n}周目",
 	"parks.guide.kmHeader": "{from}〜{to}",

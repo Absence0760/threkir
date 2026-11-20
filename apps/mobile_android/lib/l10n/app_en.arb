@@ -30408,6 +30408,15 @@
       }
     }
   },
+  "parkGuideRoadCrossings": "{total, plural, one {{total} road crossing on this course. Watch for cars.} other {{total} road crossings on this course. Watch for cars.}}",
+  "@parkGuideRoadCrossings": {
+    "description": "Park course route guide, short view (web parks.guide.roadCrossings): how many times the course crosses a motor road, each lap counted. Shown only when it is at least 1.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "parkGuideRepeatLoop": "Repeat the loop.",
   "@parkGuideRepeatLoop": {
     "description": "Park course route guide, full view (web parks.guide.repeatLoop): what a lap after the first says, instead of its steps again."

@@ -101,14 +101,15 @@ test.describe('park course route guide (web)', () => {
 			'Drafted from map data, not yet checked on the ground.',
 		);
 		await expect(page.getByTestId('park-course-guide-getting-there')).toHaveText('Park by the boathouse.');
-		// The short view: the start, the direction, the turn, the finish. No
-		// checkpoint (the map marks it) and no road crossing (the full view has it).
+		// The short view: the start, the direction, how many road crossings, the
+		// turn, the finish. No checkpoint (the map marks it); the full view names the road.
 		const steps = page.getByTestId('park-course-guide-steps').getByRole('listitem');
 		await expect(steps.first()).toHaveText('Start on Lake Trail.');
 		await expect(steps.nth(1)).toHaveText('Run the loop clockwise.');
-		await expect(steps.nth(2)).toContainText('turn left onto Ridge Trail.');
-		await expect(steps.nth(3)).toContainText('finish.');
-		await expect(steps).toHaveCount(4);
+		await expect(steps.nth(2)).toHaveText('1 road crossing on this course. Watch for cars.');
+		await expect(steps.nth(3)).toContainText('turn left onto Ridge Trail.');
+		await expect(steps.nth(4)).toContainText('finish.');
+		await expect(steps).toHaveCount(5);
 		const all = page.getByTestId('park-course-guide-all');
 		await expect(all).not.toHaveAttribute('open');
 		await all.getByText('Show all steps').click();

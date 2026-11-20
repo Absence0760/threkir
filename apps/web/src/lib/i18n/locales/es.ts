@@ -8131,6 +8131,7 @@ export const messages = {
 	"parks.guide.lap": "{at}: empieza la vuelta {n} de {total} y repite el circuito.",
 	"parks.guide.finish": "{at}: meta.",
 	"parks.guide.laps": "{total, plural, one {# vuelta al circuito.} other {# vueltas al circuito.}}",
+	"parks.guide.roadCrossings": "{total, plural, one {# cruce de carretera en este recorrido. Cuidado con los coches.} other {# cruces de carretera en este recorrido. Cuidado con los coches.}}",
 	"parks.guide.repeatLoop": "Repite el circuito.",
 	"parks.guide.lapHeader": "Vuelta {n}",
 	"parks.guide.kmHeader": "De {from} a {to}",

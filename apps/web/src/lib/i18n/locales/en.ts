@@ -8160,6 +8160,7 @@ export const en = {
 	"parks.guide.lap": "{at}: start lap {n} of {total} and repeat the loop.",
 	"parks.guide.finish": "{at}: finish.",
 	"parks.guide.laps": "{total, plural, one {# lap of the loop.} other {# laps of the loop.}}",
+	"parks.guide.roadCrossings": "{total, plural, one {# road crossing on this course. Watch for cars.} other {# road crossings on this course. Watch for cars.}}",
 	"parks.guide.repeatLoop": "Repeat the loop.",
 	"parks.guide.lapHeader": "Lap {n}",
 	"parks.guide.kmHeader": "{from} to {to}",

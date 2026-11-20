@@ -6306,6 +6306,7 @@
   "parkGuideLap": "{at}: Runde {n} von {total} beginnen, die Schleife noch einmal laufen.",
   "parkGuideFinish": "{at}: Ziel.",
   "parkGuideLaps": "{total, plural, one {{total} Runde der Schleife.} other {{total} Runden der Schleife.}}",
+  "parkGuideRoadCrossings": "{total, plural, one {{total} Straßenüberquerung auf dieser Strecke. Achte auf Autos.} other {{total} Straßenüberquerungen auf dieser Strecke. Achte auf Autos.}}",
   "parkGuideRepeatLoop": "Lauf die Schleife noch einmal.",
   "parkGuideLapHeader": "Runde {n}",
   "parkGuideKmHeader": "{from} bis {to}",

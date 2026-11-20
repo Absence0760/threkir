@@ -22060,6 +22060,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoadCrossings(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: 'このコースでは道路を$total回渡ります。車に注意してください。',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get parkGuideRepeatLoop => '同じ周回コースをもう一度走ります。';
 
   @override

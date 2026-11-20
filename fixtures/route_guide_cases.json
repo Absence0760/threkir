@@ -2399,7 +2399,7 @@
    ]
   },
   {
-   "name": "a linear course: road stretches and road crossings read in the full view, not the summary",
+   "name": "a linear course: the summary counts its road crossings, the full view reads each one and each road stretch",
    "guide": {
     "version": 1,
     "lang": "en",
@@ -2439,6 +2439,10 @@
      "name": "Washington and Old Dominion Trail"
     },
     {
+     "key": "roadCrossings",
+     "total": 2
+    },
+    {
      "key": "finish",
      "at": 8000
     }
@@ -2474,6 +2478,200 @@
       {
        "key": "finish",
        "at": 8000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "one road crossing reads as one, after the direction",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 300,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 500,
+      "crossing": "road",
+      "name": "Park Road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "roadCrossings",
+     "total": 1
+    },
+    {
+     "key": "leftNamed",
+     "at": 300,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "finish",
+     "at": 1000
+    }
+   ],
+   "sections": [
+    {
+     "lap": null,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "leftNamed",
+       "at": 300,
+       "name": "Ridge Trail"
+      },
+      {
+       "key": "crossRoadNamed",
+       "at": 500,
+       "name": "Park Road"
+      },
+      {
+       "key": "bridge",
+       "at": 600
+      },
+      {
+       "key": "finish",
+       "at": 1000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a lapped course counts the first lap's road crossings once a lap, and a later one once",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "counterclockwise"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 200,
+      "crossing": "road",
+      "signal": true
+     },
+     {
+      "kind": "crossing",
+      "at_m": 700,
+      "crossing": "road",
+      "name": "Oak Street"
+     },
+     {
+      "kind": "lap",
+      "at_m": 1000,
+      "lap": 2,
+      "of": 2
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1900,
+      "crossing": "road",
+      "name": "Elm Street"
+     },
+     {
+      "kind": "finish",
+      "at_m": 2000
+     }
+    ]
+   },
+   "summary": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "counterclockwise"
+    },
+    {
+     "key": "laps",
+     "total": 2
+    },
+    {
+     "key": "roadCrossings",
+     "total": 5
+    },
+    {
+     "key": "lap",
+     "at": 1000,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "finish",
+     "at": 2000
+    }
+   ],
+   "sections": [
+    {
+     "lap": 1,
+     "from": 0,
+     "to": 1000,
+     "lines": [
+      {
+       "key": "crossRoadSignal",
+       "at": 200
+      },
+      {
+       "key": "crossRoadNamed",
+       "at": 700,
+       "name": "Oak Street"
+      }
+     ]
+    },
+    {
+     "lap": 2,
+     "from": 1000,
+     "to": 2000,
+     "lines": [
+      {
+       "key": "repeatLoop"
+      },
+      {
+       "key": "finish",
+       "at": 2000
       }
      ]
     }

@@ -36837,6 +36837,12 @@ abstract class AppLocalizations {
   /// **'{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}'**
   String parkGuideLaps(int total);
 
+  /// Park course route guide, short view (web parks.guide.roadCrossings): how many times the course crosses a motor road, each lap counted. Shown only when it is at least 1.
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, one {{total} road crossing on this course. Watch for cars.} other {{total} road crossings on this course. Watch for cars.}}'**
+  String parkGuideRoadCrossings(int total);
+
   /// Park course route guide, full view (web parks.guide.repeatLoop): what a lap after the first says, instead of its steps again.
   ///
   /// In en, this message translates to:

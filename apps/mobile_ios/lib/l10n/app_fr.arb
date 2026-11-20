@@ -6306,6 +6306,7 @@
   "parkGuideLap": "{at} : début du tour {n} sur {total}, refaites la boucle.",
   "parkGuideFinish": "{at} : arrivée.",
   "parkGuideLaps": "{total, plural, one {{total} tour de la boucle.} other {{total} tours de la boucle.}}",
+  "parkGuideRoadCrossings": "{total, plural, one {{total} traversée de route sur ce parcours. Attention aux voitures.} other {{total} traversées de route sur ce parcours. Attention aux voitures.}}",
   "parkGuideRepeatLoop": "Refaites la boucle.",
   "parkGuideLapHeader": "Tour {n}",
   "parkGuideKmHeader": "De {from} à {to}",

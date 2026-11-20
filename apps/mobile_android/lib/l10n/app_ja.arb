@@ -6306,6 +6306,7 @@
   "parkGuideLap": "{at}：{n}/{total}周目を開始し、ループをもう一度走ります。",
   "parkGuideFinish": "{at}：フィニッシュ。",
   "parkGuideLaps": "{total, plural, other {周回コースを{total}周します。}}",
+  "parkGuideRoadCrossings": "{total, plural, other {このコースでは道路を{total}回渡ります。車に注意してください。}}",
   "parkGuideRepeatLoop": "同じ周回コースをもう一度走ります。",
   "parkGuideLapHeader": "{n}周目",
   "parkGuideKmHeader": "{from}〜{to}",

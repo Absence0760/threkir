@@ -6306,6 +6306,7 @@
   "parkGuideLap": "{at}: comece a volta {n} de {total} e repita o circuito.",
   "parkGuideFinish": "{at}: chegada.",
   "parkGuideLaps": "{total, plural, one {{total} volta no circuito.} other {{total} voltas no circuito.}}",
+  "parkGuideRoadCrossings": "{total, plural, one {{total} travessia de estrada neste percurso. Cuidado com os carros.} other {{total} travessias de estrada neste percurso. Cuidado com os carros.}}",
   "parkGuideRepeatLoop": "Repita o circuito.",
   "parkGuideLapHeader": "Volta {n}",
   "parkGuideKmHeader": "De {from} a {to}",

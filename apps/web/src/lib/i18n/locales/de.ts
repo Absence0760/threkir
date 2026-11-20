@@ -8131,6 +8131,7 @@ export const messages = {
 	"parks.guide.lap": "{at}: Runde {n} von {total} beginnen, die Schleife noch einmal laufen.",
 	"parks.guide.finish": "{at}: Ziel.",
 	"parks.guide.laps": "{total, plural, one {# Runde der Schleife.} other {# Runden der Schleife.}}",
+	"parks.guide.roadCrossings": "{total, plural, one {# Straßenüberquerung auf dieser Strecke. Achte auf Autos.} other {# Straßenüberquerungen auf dieser Strecke. Achte auf Autos.}}",
 	"parks.guide.repeatLoop": "Lauf die Schleife noch einmal.",
 	"parks.guide.lapHeader": "Runde {n}",
 	"parks.guide.kmHeader": "{from} bis {to}",

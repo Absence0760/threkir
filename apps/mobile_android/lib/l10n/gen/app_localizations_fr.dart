@@ -23742,6 +23742,18 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoadCrossings(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other:
+          '$total traversées de route sur ce parcours. Attention aux voitures.',
+      one: '$total traversée de route sur ce parcours. Attention aux voitures.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get parkGuideRepeatLoop => 'Refaites la boucle.';
 
   @override

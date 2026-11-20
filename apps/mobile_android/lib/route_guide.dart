@@ -288,6 +288,7 @@ const List<String> kGuideLineKeys = [
   'lap',
   'finish',
   'laps',
+  'roadCrossings',
   'repeatLoop',
 ];
 
@@ -424,7 +425,8 @@ const int kGuideSectionM = 5000;
 /// runner reads in seconds, and the rest folded away. Twin of web's
 /// `routeGuideView`.
 ///
-/// - `summary`: the start, the direction, how many laps, the turns where the
+/// - `summary`: the start, the direction, how many laps, how many times the
+///   course crosses a road (only when it does; each lap counted), the turns where the
 ///   trail changes (a left or right onto a different trail or kind of way)
 ///   on the first lap, where each later lap starts (so nobody stops at the
 ///   box after the first), and the finish.
@@ -489,6 +491,15 @@ const int kGuideSectionM = 5000;
     }
   }
   if (laps > 1) intro.add(GuideLine('laps', total: laps));
+  var roadCrossings = 0;
+  for (final s in guide.steps) {
+    if (s.kind == 'crossing' && s.crossing == 'road') {
+      roadCrossings += lapAt != null && s.atM < lapAt ? laps : 1;
+    }
+  }
+  if (roadCrossings > 0) {
+    intro.add(GuideLine('roadCrossings', total: roadCrossings));
+  }
   final sections = <GuideSection>[];
   if (lapAt != null && laps > 1) {
     sections.add(GuideSection(
@@ -615,6 +626,7 @@ const Map<String, String> guideEn = {
   'lap': '{at}: start lap {n} of {total} and repeat the loop.',
   'finish': '{at}: finish.',
   'laps': '{total, plural, one {{total} lap of the loop.} other {{total} laps of the loop.}}',
+  'roadCrossings': '{total, plural, one {{total} road crossing on this course. Watch for cars.} other {{total} road crossings on this course. Watch for cars.}}',
   'repeatLoop': 'Repeat the loop.',
 };
 
@@ -697,6 +709,7 @@ String guideLineMessage(
     'lap' => l10n.parkGuideLap(s('at'), i('n'), i('total')),
     'finish' => l10n.parkGuideFinish(s('at')),
     'laps' => l10n.parkGuideLaps(i('total')),
+    'roadCrossings' => l10n.parkGuideRoadCrossings(i('total')),
     'repeatLoop' => l10n.parkGuideRepeatLoop,
     _ => '',
   };

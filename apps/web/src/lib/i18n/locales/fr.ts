@@ -8131,6 +8131,7 @@ export const messages = {
 	"parks.guide.lap": "{at} : début du tour {n} sur {total}, refaites la boucle.",
 	"parks.guide.finish": "{at} : arrivée.",
 	"parks.guide.laps": "{total, plural, one {# tour de la boucle.} other {# tours de la boucle.}}",
+	"parks.guide.roadCrossings": "{total, plural, one {# traversée de route sur ce parcours. Attention aux voitures.} other {# traversées de route sur ce parcours. Attention aux voitures.}}",
 	"parks.guide.repeatLoop": "Refaites la boucle.",
 	"parks.guide.lapHeader": "Tour {n}",
 	"parks.guide.kmHeader": "De {from} à {to}",

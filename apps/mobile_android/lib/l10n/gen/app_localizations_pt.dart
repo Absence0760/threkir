@@ -23705,6 +23705,17 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String parkGuideRoadCrossings(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total travessias de estrada neste percurso. Atenção aos carros.',
+      one: '$total travessia de estrada neste percurso. Atenção aos carros.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get parkGuideRepeatLoop => 'Repita o circuito.';
 
   @override
@@ -48013,6 +48024,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other: '$total voltas no circuito.',
       one: '$total volta no circuito.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parkGuideRoadCrossings(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other:
+          '$total travessias de estrada neste percurso. Cuidado com os carros.',
+      one: '$total travessia de estrada neste percurso. Cuidado com os carros.',
     );
     return '$_temp0';
   }

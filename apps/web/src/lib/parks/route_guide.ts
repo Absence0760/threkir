@@ -202,6 +202,7 @@ export const GUIDE_LINE_KEYS = [
 	'lap',
 	'finish',
 	'laps',
+	'roadCrossings',
 	'repeatLoop',
 ] as const;
 export type GuideLineKey = (typeof GUIDE_LINE_KEYS)[number];
@@ -317,7 +318,8 @@ export const GUIDE_SECTION_M = 5000;
  * How a course page shows its guide (decisions § 2582): a short view a
  * runner reads in seconds, and the rest folded away.
  *
- * - `summary`: the start, the direction, how many laps, the turns where the
+ * - `summary`: the start, the direction, how many laps, how many times the
+ *   course crosses a road (only when it does; each lap counted), the turns where the
  *   trail changes (a left or right onto a different trail or kind of way) on
  *   the first lap, where each later lap starts (so nobody stops at the box
  *   after the first), and the finish.
@@ -382,6 +384,9 @@ export function routeGuideView(guide: RouteGuide): { summary: GuideLine[]; secti
 		}
 	}
 	if (laps > 1) intro.push({ key: 'laps', total: laps });
+	const crossed = guide.steps.filter((s) => s.kind === 'crossing' && s.crossing === 'road');
+	const roadCrossings = crossed.reduce((n, s) => n + (s.at_m < lapAt ? laps : 1), 0);
+	if (roadCrossings > 0) intro.push({ key: 'roadCrossings', total: roadCrossings });
 	const sections: GuideSection[] = [];
 	if (laps > 1) {
 		sections.push({ lap: 1, from: 0, to: lapAt, lines: body.filter((b) => b.at < lapAt).map((b) => b.line) });
@@ -481,6 +486,7 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 	lap: "{at}: start lap {n} of {total} and repeat the loop.",
 	finish: "{at}: finish.",
 	laps: "{total, plural, one {# lap of the loop.} other {# laps of the loop.}}",
+	roadCrossings: "{total, plural, one {# road crossing on this course. Watch for cars.} other {# road crossings on this course. Watch for cars.}}",
 	repeatLoop: "Repeat the loop.",
 };
 

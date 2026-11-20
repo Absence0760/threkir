@@ -740,7 +740,9 @@ changes and climbs on the way, the checkpoints and the laps.
 - **Short first** (decisions § 2582). The course page and the share page
   show the short view from `routeGuideView` (the `route_guide` pair, case
   table `views`): the start, the direction, how many laps ("2 laps of the
-  loop."), the first lap's turns where the trail changes (a left or right
+  loop."), how many times the course crosses a road ("12 road crossings on
+  this course. Watch for cars.", only when there is at least one; a crossing
+  on the loop counts once a lap, and the full view names each road), the first lap's turns where the trail changes (a left or right
   onto a different trail or kind of way; a straight-on or a turn that stays
   on the same trail is left out), where each later lap starts ("25.0 km:
   start lap 2 of 2 and repeat the loop.", so nobody stops at the box after

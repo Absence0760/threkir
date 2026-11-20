@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/// The two Wearable Data Layer contracts, read off BOTH rails and compared.
+/// The Wearable Data Layer contracts, read off BOTH rails and compared.
 ///
 /// The phone writes a `DataItem` at a path with a set of `DataMap` keys; the
 /// watch listens at a path and reads a set of keys. Neither side can see the
@@ -54,6 +54,12 @@ class DataLayerContractTest {
         ).readText()
     }
 
+    private val phoneParkCourses: String by lazy {
+        repoFile(
+            "apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearParkCoursesBridge.kt",
+        ).readText()
+    }
+
     /// `const val PATH = "/x"` on either rail.
     private fun pathConst(src: String, where: String): String =
         Regex("""const val PATH = "([^"]+)"""").find(src)?.groupValues?.get(1)
@@ -63,9 +69,20 @@ class DataLayerContractTest {
     private fun writtenKeys(src: String): Set<String> =
         Regex("""dataMap\.put\w+\("([^"]+)"""").findAll(src).map { it.groupValues[1] }.toSet()
 
-    /// `dm.getString("k")` / `getLong` — what the watch reads.
-    private fun readKeys(src: String): Set<String> =
-        Regex("""\bdm\.get\w+\("([^"]+)"""").findAll(src).map { it.groupValues[1] }.toSet()
+    /// `dm.getString("k")` / `getLong` — what the watch reads. A key named
+    /// by a `const val KEY_X = "k"` (as `ParkCourseBridge` names its three)
+    /// is resolved to its string, so a constant cannot hide a key from the
+    /// comparison; one that resolves to nothing fails rather than vanishing.
+    private fun readKeys(src: String): Set<String> {
+        val consts = Regex("""const val (\w+) = "([^"]+)"""").findAll(src)
+            .associate { it.groupValues[1] to it.groupValues[2] }
+        val literal = Regex("""\bdm\.get\w+\("([^"]+)"""").findAll(src).map { it.groupValues[1] }
+        val named = Regex("""\bdm\.(?:get|containsKey)\w*\((\w+)\)""").findAll(src).map {
+            val name = it.groupValues[1]
+            consts[name] ?: error("watch reads DataMap key `$name`, which is no `const val` string")
+        }
+        return (literal + named).toSet()
+    }
 
     private fun assertKeysAgree(written: Set<String>, read: Set<String>, contract: String) {
         assertTrue(
@@ -140,6 +157,36 @@ class DataLayerContractTest {
             read = readKeys(watchSource("WorkoutBridge.kt")),
             contract = "/todays_workout",
         )
+    }
+
+    @Test
+    fun `the park courses bridge path is the same string on both rails`() {
+        assertEquals(
+            "phone WearParkCoursesBridge.PATH and watch ParkCourseBridge.PATH " +
+                "must be identical — a mismatch means a navigated course reaches " +
+                "the graph and never the route picker",
+            pathConst(phoneParkCourses, "phone WearParkCoursesBridge.kt"),
+            pathConst(watchSource("ParkCourseBridge.kt"), "watch ParkCourseBridge.kt"),
+        )
+    }
+
+    @Test
+    fun `the park courses bridge writes and reads the same DataMap keys`() {
+        assertKeysAgree(
+            written = writtenKeys(phoneParkCourses),
+            read = readKeys(watchSource("ParkCourseBridge.kt")),
+            contract = "/park_courses",
+        )
+    }
+
+    @Test
+    fun `the park courses payload version is the one the watch reads`() {
+        // The watch drops any other version whole (never as "no courses"),
+        // so a phone that bumped its number alone would go silent.
+        val phone = Regex("""const val PAYLOAD_VERSION = (\d+)""")
+            .find(phoneParkCourses)?.groupValues?.get(1)?.toInt()
+            ?: error("no `const val PAYLOAD_VERSION` in phone WearParkCoursesBridge.kt")
+        assertEquals(PARK_COURSES_PAYLOAD_VERSION, phone)
     }
 
     @Test

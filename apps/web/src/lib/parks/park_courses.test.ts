@@ -535,6 +535,7 @@ test('parkKindOf: only an explicit trail is a trail', () => {
 			checkpointCount: 4,
 		});
 		assert.equal(parkCourseAttemptFromRow({ ...row, outcome: 'stopped_short', missed_checkpoint: null })?.missedCheckpoint, null);
+		assert.equal(parkCourseAttemptFromRow({ ...row, outcome: 'gps_gap', missed_checkpoint: null })?.outcome, 'gps_gap');
 	});
 
 	test('parkCourseAttemptFromRow leaves out a row it cannot read whole rather than guessing', () => {

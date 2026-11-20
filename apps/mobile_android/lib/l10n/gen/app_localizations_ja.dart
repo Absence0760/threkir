@@ -22703,6 +22703,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course：タイムなし。ゴールに着いたところで記録が途切れていたため、タイムを計測できませんでした。ゴールラインを越えるまで記録を続けてください。';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。';
   }

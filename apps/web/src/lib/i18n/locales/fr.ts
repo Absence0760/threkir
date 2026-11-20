@@ -1712,6 +1712,7 @@ export const messages = {
 	"runDetail.parkCourseAttemptStoppedShort": "{course} : pas de temps. Vous avez couru {progress} sur {total}. Courez tout le parcours pour obtenir un temps.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course} : pas de temps. Vous avez manqué le point de contrôle {n} sur {count}. Restez sur le tracé du parcours pour passer par chacun.",
 	"runDetail.parkCourseAttemptOffCourse": "{course} : pas de temps. Votre course s'est trop écartée du parcours. Restez sur le tracé du parcours.",
+	"runDetail.parkCourseAttemptGpsGap": "{course} : pas de temps. Votre enregistrement présente une interruption au moment où vous avez atteint l'arrivée, nous n'avons donc pas pu le chronométrer. Continuez d'enregistrer jusqu'à avoir franchi la ligne.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course} : pas de temps. Vous l'avez couru dans le mauvais sens. Suivez les flèches sur la carte du parcours.",
 	"runDetail.parkCourseAttemptProgress": "{progress} sur {total}",
 	"runDetail.parkCourseAttemptBarLabel": "Votre progression sur {course}",

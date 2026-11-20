@@ -6471,6 +6471,7 @@
   "runDetailParkCourseAttemptStoppedShort": "{course}: sem tempo. Correu {progress} de {total}. Corra o percurso completo para obter um tempo.",
   "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: sem tempo. Falhou o ponto de controlo {n} de {count}. Mantenha-se na linha do percurso para passar por todos.",
   "runDetailParkCourseAttemptOffCourse": "{course}: sem tempo. Afastou-se demasiado do percurso. Mantenha-se na linha do percurso.",
+  "runDetailParkCourseAttemptGpsGap": "{course}: sem tempo. A sua gravação tem uma falha no ponto em que chegou à meta, por isso não conseguimos cronometrá-la. Continue a gravar até passar a linha.",
   "runDetailParkCourseAttemptWrongDirection": "{course}: sem tempo. Correu-o no sentido contrário. Siga as setas no mapa do percurso.",
   "runDetailParkCourseAttemptProgress": "{progress} de {total}",
   "runDetailParkCourseAttemptProgressLabel": "Até onde chegou no percurso",

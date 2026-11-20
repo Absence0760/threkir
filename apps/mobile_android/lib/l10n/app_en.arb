@@ -31317,6 +31317,15 @@
       }
     }
   },
+  "runDetailParkCourseAttemptGpsGap": "{course}: no time. Your recording has a gap where you reached the finish, so we couldn't time it. Keep recording until you're past the line.",
+  "@runDetailParkCourseAttemptGpsGap": {
+    "description": "Run detail park course attempt card: the run reached the finish, but across a gap in the recording (GPS dropped out or the recording was paused) too long to time, so it got no time",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailParkCourseAttemptWrongDirection": "{course}: no time. You ran it the wrong way round. Follow the arrows on the course map.",
   "@runDetailParkCourseAttemptWrongDirection": {
     "description": "Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)",

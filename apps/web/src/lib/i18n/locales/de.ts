@@ -1712,6 +1712,7 @@ export const messages = {
 	"runDetail.parkCourseAttemptStoppedShort": "{course}: keine Zeit. Du bist {progress} von {total} gelaufen. Lauf die ganze Strecke, um eine Zeit zu bekommen.",
 	"runDetail.parkCourseAttemptSkippedCheckpoint": "{course}: keine Zeit. Du hast Kontrollpunkt {n} von {count} verpasst. Bleib auf der Streckenlinie, damit du an jedem vorbeikommst.",
 	"runDetail.parkCourseAttemptOffCourse": "{course}: keine Zeit. Du bist zu weit von der Strecke abgekommen. Bleib auf der Streckenlinie.",
+	"runDetail.parkCourseAttemptGpsGap": "{course}: keine Zeit. Deine Aufzeichnung hat eine Lücke an der Stelle, an der du ins Ziel gekommen bist, deshalb konnten wir keine Zeit messen. Lass die Aufzeichnung laufen, bis du über die Ziellinie bist.",
 	"runDetail.parkCourseAttemptWrongDirection": "{course}: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.",
 	"runDetail.parkCourseAttemptProgress": "{progress} von {total}",
 	"runDetail.parkCourseAttemptBarLabel": "Wie weit du auf {course} gekommen bist",

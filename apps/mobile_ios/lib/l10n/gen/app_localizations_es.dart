@@ -24362,6 +24362,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: sin tiempo. Tu grabación tiene un corte justo donde llegaste a la meta, así que no pudimos cronometrarla. Sigue grabando hasta pasar la línea.';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course: sin tiempo. Lo corriste en sentido contrario. Sigue las flechas del mapa del recorrido.';
   }

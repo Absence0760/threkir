@@ -244,9 +244,22 @@ explains a null, so no matcher version bump came with it.
   `skipped_checkpoint` (a checkpoint not passed in order, by the timer's own
   first-in-tolerance walk, and the run entered the finish box or got further
   along the line than that checkpoint; `missed_checkpoint` is the first one);
-  `off_course` (entered the finish box with every checkpoint passed, yet
-  untimed: the 25 % length guard); `stopped_short` (anything else that ended
-  before the finish box).
+  `gps_gap` (reached the finish box with every checkpoint passed and within
+  the length guard, but across a gap between fixes of more than 60 s, or ended
+  in it with such a gap before its last stretch there: the timer refused the
+  gap, so the card says the recording has a gap where the runner reached the
+  finish, not that they stopped short or left the course); `off_course`
+  (entered the finish box with every checkpoint passed, yet untimed: the 25 %
+  length guard); `stopped_short` (anything else that ended before the finish
+  box).
+- **A gap at the finish** is read the way the timer reads one. The gap
+  detector refuses any crossing across more than 60 s
+  (`GATE_REJECT_GAP_S`), so an attempt closes at the finish when the fix before
+  the gap is short of the finish edge or outside its lane and the fix after it
+  is in the lane at or past the edge (`intoFinishLane`, shared with the
+  timer's `enteredAcrossGap`), of any length. The timer itself accepts such a
+  gap only up to 300 s and at 0.4 to 1.5 times the runner's average speed, so
+  every gap the diagnosis sees at the finish is one it refused.
 - **Progress** follows the run along the course line: each fix within 35 m of
   the line is placed at the nearest point of the line to where the runner
   should be by now, searched from just behind the last placed point to 1.5
@@ -1432,8 +1445,11 @@ These gate going live, not the code:
   `park_course_runs.test.ts` (what reaches `record_park_course_attempts`);
   `beaver_shortcut` / `beaver_cut` are `skipped_checkpoint` 2, `beaver_wrong_way`
   `wrong_direction`, `beaver_short` `stopped_short` 150 m short, `beaver_detour`
-  `off_course`, and no timed run has an attempt. Four synthetic `attempt:` cases
-  in `segments.test.ts` / `segments_test.dart`. pgTAP
+  `off_course`, and no timed run has an attempt. Seven synthetic `attempt:` cases
+  in `segments.test.ts` / `segments_test.dart`, three of them gaps: a 200 s
+  dropout into the finish box then a cool-down and a 400 s dropout ending 3 m
+  short of it are each `gps_gap`, a dropout mid-course and a stop is still
+  `stopped_short`. pgTAP
   `park_course_attempts_test.sql` (the write, its stale and missing refusals,
   the replace, the CHECKs, owner-only reads of the table and the RPC, anon
   refused both, no client write, the cascade on a run delete). Row readers:

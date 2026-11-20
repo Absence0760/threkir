@@ -957,4 +957,37 @@ test('linesChain: a loop finishing on its start line, facing within 90 degrees o
 		assert.equal(a.missedCheckpoint, 2);
 		assert.ok(Math.abs(a.progressM - 400) <= 2, `progress ${a.progressM}`);
 	});
+
+	// `b` starts gapS seconds after `a`'s last fix: a GPS dropout.
+	const dropout = (a: TrackPoint[], b: TrackPoint[], gapS: number): TrackPoint[] => {
+		const shift = Date.parse(a[a.length - 1].ts!) + gapS * 1000 - Date.parse(b[0].ts!);
+		return [...a, ...b.map((p) => ({ ...p, ts: new Date(Date.parse(p.ts!) + shift).toISOString() }))];
+	};
+
+	test('attempt: reaching the finish across a 200 s dropout, then cooling down, is gps_gap at the full length', () => {
+		// 54 m in 200 s against 4 m/s so far: the timer refuses the gap.
+		const track = dropout(walk([[-20, 0], [950, 0]]), walk([[1004, 0], [1100, 0]]), 200);
+		assert.equal(computeGlobalSegmentEffort(track, straight), null);
+		const a = diagnoseGlobalSegmentAttempt(track, straight);
+		assert.ok(a);
+		assert.equal(a.outcome, 'gps_gap');
+		assert.ok(a.progressM >= 990, `progress ${a.progressM}`);
+		assert.equal(a.missedCheckpoint, null);
+	});
+
+	test('attempt: a recording ending 3 m short of the finish after a 400 s dropout is gps_gap', () => {
+		const track = dropout(walk([[-20, 0], [950, 0]]), walk([[997, 0], [998, 0]]), 400);
+		assert.equal(computeGlobalSegmentEffort(track, straight), null);
+		const a = diagnoseGlobalSegmentAttempt(track, straight);
+		assert.ok(a);
+		assert.equal(a.outcome, 'gps_gap');
+	});
+
+	test('attempt: a dropout mid-course and then stopping at 600 m is still stopped_short', () => {
+		const track = dropout(walk([[-20, 0], [300, 0]]), walk([[500, 0], [600, 0]]), 200);
+		const a = diagnoseGlobalSegmentAttempt(track, straight);
+		assert.ok(a);
+		assert.equal(a.outcome, 'stopped_short');
+		assert.ok(Math.abs(a.progressM - 600) <= 2, `progress ${a.progressM}`);
+	});
 }

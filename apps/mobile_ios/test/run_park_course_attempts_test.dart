@@ -234,6 +234,26 @@ void main() {
     expect(find.text('0.00 km of 5.00 km'), findsOneWidget);
   });
 
+  testWidgets('a gap at the finish says the recording could not be timed', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeApi(
+        attempts: [_attempt(ParkCourseAttemptOutcome.gpsGap, progressM: 5000)],
+      ),
+    );
+    expect(
+      find.text(
+        "Beaver Lake Trail: no time. Your recording has a gap where you "
+        "reached the finish, so we couldn't time it. Keep recording until "
+        "you're past the line.",
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('5.00 km of 5.00 km'), findsOneWidget);
+  });
+
   testWidgets('a card opens its course', (tester) async {
     final api = _FakeApi(
       attempts: [_attempt(ParkCourseAttemptOutcome.stoppedShort)],

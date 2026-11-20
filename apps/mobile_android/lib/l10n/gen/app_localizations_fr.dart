@@ -24426,6 +24426,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course : pas de temps. Votre enregistrement présente une interruption au moment où vous avez atteint l\'arrivée, nous n\'avons donc pas pu le chronométrer. Continuez d\'enregistrer jusqu\'à avoir franchi la ligne.';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course : pas de temps. Vous l\'avez couru dans le mauvais sens. Suivez les flèches sur la carte du parcours.';
   }

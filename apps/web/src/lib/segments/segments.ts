@@ -539,8 +539,7 @@ function enteredAcrossGap(
 	fix: { tMs: number; coveredM: number },
 	since: PendingStart | undefined,
 ): GateCrossing | null {
-	if (since === undefined || !(prev.s < 0 || Math.abs(prev.u) > halfWidthM)) return null;
-	if (cur.s < 0 || Math.abs(cur.u) > halfWidthM) return null;
+	if (since === undefined || !intoFinishLane(prev, cur, halfWidthM)) return null;
 	const paceS = (prevFix.tMs - since.crossing.tMs) / 1000;
 	const paceM = prevFix.coveredM - since.crossing.coveredM;
 	if (!(paceS > 0) || !(paceM > 0)) return null;
@@ -555,6 +554,15 @@ function enteredAcrossGap(
 		offsetM: cur.u,
 		gapped: true,
 	};
+}
+
+/**
+ * The two fixes either side of a gap straddle the finish edge: the one before
+ * short of it or outside the box's lane, the one after in the lane at or past
+ * it.
+ */
+function intoFinishLane(prev: { s: number; u: number }, cur: { s: number; u: number }, halfWidthM: number): boolean {
+	return (prev.s < 0 || Math.abs(prev.u) > halfWidthM) && cur.s >= 0 && Math.abs(cur.u) <= halfWidthM;
 }
 
 function firstFixStart(fix: { tMs: number; coveredM: number }, offsetM: number): GateCrossing {
@@ -672,8 +680,9 @@ function passesCheckpoints(
 const ATTEMPT_OUTCOME_RANK: Record<ParkCourseAttemptOutcome, number> = {
 	stopped_short: 0,
 	off_course: 1,
-	skipped_checkpoint: 2,
-	wrong_direction: 3,
+	gps_gap: 2,
+	skipped_checkpoint: 3,
+	wrong_direction: 4,
 };
 
 /** Why a run that set out on a gated course got no time on it (issue #1446). */
@@ -725,6 +734,11 @@ export interface CourseAttempt {
  * - `skipped_checkpoint`: a checkpoint not passed in order (the timer's own
  *   first-in-tolerance walk), and the run either entered the finish box or got
  *   further along the line than that checkpoint and its tolerance.
+ * - `gps_gap`: entered the finish box with every checkpoint passed across a
+ *   gap between fixes longer than GATE_REJECT_GAP_S, or ended in it with
+ *   such a gap before its last stretch there, within the length guard, yet
+ *   not timed: the timer refused the gap (`plausibleGap`). The runner reached
+ *   the finish; the recording cannot say when.
  * - `off_course`: entered the finish box with every checkpoint passed, yet not
  *   timed: the covered distance broke the length guard.
  * - `stopped_short`: anything else that ended before the finish box.
@@ -800,6 +814,8 @@ interface AttemptWindow {
 	toIdx: number;
 	reverse: boolean;
 	entered: boolean;
+	/** Entered the finish box across a gap the timer refuses, within the length guard. */
+	gapped: boolean;
 }
 
 function diagnoseByGates(
@@ -812,6 +828,7 @@ function diagnoseByGates(
 	toleranceM: number,
 ): CourseAttempt | null {
 	const minCovered = segment.distance_m * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
+	const maxCovered = segment.distance_m * (1 + GLOBAL_SEGMENT_LENGTH_TOLERANCE);
 	const edges = gateTimingEdges(startGate, endGate);
 	const exit = edges.startExit;
 	const entry = edges.finishEntry;
@@ -825,6 +842,8 @@ function diagnoseByGates(
 	let prevIdx = -1;
 	let prevMs = -Infinity;
 	let tailIdx = -1;
+	let tailGapS = 0;
+	let prevEntry = { s: NaN, u: NaN };
 
 	for (let i = 0; i < line.length; i++) {
 		const p = line[i];
@@ -835,19 +854,35 @@ function diagnoseByGates(
 		const fix = { lat, lng, tMs, coveredM: index.cum[i] };
 		const endCrossing = endDetector.offer(fix);
 		const startCrossing = startDetector.offer(fix);
+		const gapS = (tMs - prevMs) / 1000;
 
 		const inFinish = gateProjection(entry, lat, lng);
 		if (inFinish.s >= -GLOBAL_SEGMENT_BOX_SLACK_M && inFinish.s <= edges.depthM && Math.abs(inFinish.u) <= entry.halfWidthM) {
-			if (tailIdx < 0) tailIdx = i;
+			if (tailIdx < 0) {
+				tailIdx = i;
+				tailGapS = prevIdx >= 0 ? gapS : 0;
+			}
 		} else {
 			tailIdx = -1;
 		}
 
+		// The detector refuses a crossing across a gap longer than
+		// GATE_REJECT_GAP_S, so a finish reached during a dropout is read the
+		// way the timer's own `enteredAcrossGap` reads it.
+		let entered: { tMs: number; coveredM: number; gapped: boolean } | null = null;
+		if (endCrossing !== null && endCrossing.direction === 'forward') {
+			entered = { tMs: endCrossing.tMs, coveredM: endCrossing.coveredM, gapped: false };
+		} else if (prevIdx >= 0 && gapS > GATE_REJECT_GAP_S && intoFinishLane(prevEntry, inFinish, entry.halfWidthM)) {
+			entered = { tMs, coveredM: Math.max(index.cum[prevIdx], index.cum[i] - inFinish.s), gapped: true };
+		}
+		prevEntry = inFinish;
+
 		let closedAtMs = -Infinity;
-		if (fwd !== null && endCrossing !== null && endCrossing.direction === 'forward' && endCrossing.coveredM - fwd.coveredM >= minCovered) {
-			windows.push({ fromIdx: fwd.fromIdx, toIdx: i, reverse: false, entered: true });
-			fwd = chained ? { fromIdx: prevIdx, coveredM: endCrossing.coveredM } : null;
-			closedAtMs = endCrossing.tMs;
+		if (fwd !== null && entered !== null && entered.coveredM - fwd.coveredM >= minCovered) {
+			const gapped = entered.gapped && entered.coveredM - fwd.coveredM <= maxCovered;
+			windows.push({ fromIdx: fwd.fromIdx, toIdx: i, reverse: false, entered: true, gapped });
+			fwd = chained ? { fromIdx: prevIdx, coveredM: entered.coveredM } : null;
+			closedAtMs = entered.tMs;
 		}
 		if (fwd === null) {
 			if (startCrossing !== null && startCrossing.direction === 'forward' && startCrossing.tMs >= closedAtMs) {
@@ -861,7 +896,7 @@ function diagnoseByGates(
 		}
 
 		if (rev !== null && startCrossing !== null && startCrossing.direction === 'backward' && startCrossing.coveredM - rev.coveredM >= minCovered) {
-			windows.push({ fromIdx: rev.fromIdx, toIdx: i, reverse: true, entered: true });
+			windows.push({ fromIdx: rev.fromIdx, toIdx: i, reverse: true, entered: true, gapped: false });
 			rev = null;
 		} else if (rev === null && endCrossing !== null && endCrossing.direction === 'backward') {
 			rev = { fromIdx: prevIdx, coveredM: endCrossing.coveredM };
@@ -870,10 +905,17 @@ function diagnoseByGates(
 		prevMs = tMs;
 	}
 	if (fwd !== null) {
-		const tail = tailIdx >= 0 && index.cum[tailIdx] - fwd.coveredM >= minCovered;
-		windows.push({ fromIdx: Math.max(fwd.fromIdx, 0), toIdx: tail ? tailIdx : prevIdx, reverse: false, entered: tail });
+		const tailM = tailIdx >= 0 ? index.cum[tailIdx] - fwd.coveredM : NaN;
+		const tail = tailM >= minCovered;
+		windows.push({
+			fromIdx: Math.max(fwd.fromIdx, 0),
+			toIdx: tail ? tailIdx : prevIdx,
+			reverse: false,
+			entered: tail,
+			gapped: tail && tailGapS > GATE_REJECT_GAP_S && tailM <= maxCovered,
+		});
 	}
-	if (rev !== null) windows.push({ fromIdx: Math.max(rev.fromIdx, 0), toIdx: prevIdx, reverse: true, entered: false });
+	if (rev !== null) windows.push({ fromIdx: Math.max(rev.fromIdx, 0), toIdx: prevIdx, reverse: true, entered: false, gapped: false });
 	if (windows.length === 0) return null;
 
 	const course = courseLine(segment);
@@ -1051,7 +1093,7 @@ function judgeWindow(
 		return { outcome: 'skipped_checkpoint', progressM, courseM, missedCheckpoint: passed + 1, checkpointCount: count };
 	}
 	return {
-		outcome: w.entered ? 'off_course' : 'stopped_short',
+		outcome: w.gapped ? 'gps_gap' : w.entered ? 'off_course' : 'stopped_short',
 		progressM,
 		courseM,
 		missedCheckpoint: null,

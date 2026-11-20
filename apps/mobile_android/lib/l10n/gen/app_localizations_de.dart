@@ -24362,6 +24362,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseAttemptGpsGap(String course) {
+    return '$course: keine Zeit. Deine Aufzeichnung hat eine Lücke an der Stelle, an der du ins Ziel gekommen bist, deshalb konnten wir keine Zeit messen. Lass die Aufzeichnung laufen, bis du über die Ziellinie bist.';
+  }
+
+  @override
   String runDetailParkCourseAttemptWrongDirection(String course) {
     return '$course: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.';
   }

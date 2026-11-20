@@ -24,7 +24,7 @@ create table public.park_course_attempts (
   park_course_id    uuid not null references public.park_courses(id) on delete cascade,
   outcome           text not null
                       constraint park_course_attempts_outcome_check
-                      check (outcome in ('stopped_short', 'skipped_checkpoint', 'off_course', 'wrong_direction')),
+                      check (outcome in ('stopped_short', 'skipped_checkpoint', 'off_course', 'gps_gap', 'wrong_direction')),
   progress_m        integer not null
                       constraint park_course_attempts_progress_check check (progress_m >= 0),
   course_m          integer not null

@@ -37839,6 +37839,12 @@ abstract class AppLocalizations {
   /// **'{course}: no time. You ran too far off the course. Stay on the course line.'**
   String runDetailParkCourseAttemptOffCourse(String course);
 
+  /// Run detail park course attempt card: the run reached the finish, but across a gap in the recording (GPS dropped out or the recording was paused) too long to time, so it got no time
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no time. Your recording has a gap where you reached the finish, so we couldn\'t time it. Keep recording until you\'re past the line.'**
+  String runDetailParkCourseAttemptGpsGap(String course);
+
   /// Run detail park course attempt card: the checkpoints were passed in reverse order (the course run backwards)
   ///
   /// In en, this message translates to:

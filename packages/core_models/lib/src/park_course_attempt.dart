@@ -12,15 +12,17 @@ enum ParkCourseAttemptOutcome {
   stoppedShort,
   skippedCheckpoint,
   offCourse,
+  gpsGap,
   wrongDirection;
 
   /// The column's spelling.
   String get wire => switch (this) {
-        ParkCourseAttemptOutcome.stoppedShort => 'stopped_short',
-        ParkCourseAttemptOutcome.skippedCheckpoint => 'skipped_checkpoint',
-        ParkCourseAttemptOutcome.offCourse => 'off_course',
-        ParkCourseAttemptOutcome.wrongDirection => 'wrong_direction',
-      };
+    ParkCourseAttemptOutcome.stoppedShort => 'stopped_short',
+    ParkCourseAttemptOutcome.skippedCheckpoint => 'skipped_checkpoint',
+    ParkCourseAttemptOutcome.offCourse => 'off_course',
+    ParkCourseAttemptOutcome.gpsGap => 'gps_gap',
+    ParkCourseAttemptOutcome.wrongDirection => 'wrong_direction',
+  };
 
   /// Null for a value this build does not know.
   static ParkCourseAttemptOutcome? fromWire(Object? value) {

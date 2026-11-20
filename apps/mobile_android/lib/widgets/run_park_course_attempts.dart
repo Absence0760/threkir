@@ -219,6 +219,8 @@ String parkCourseAttemptText(
       );
     case ParkCourseAttemptOutcome.offCourse:
       return l10n.runDetailParkCourseAttemptOffCourse(a.courseName);
+    case ParkCourseAttemptOutcome.gpsGap:
+      return l10n.runDetailParkCourseAttemptGpsGap(a.courseName);
     case ParkCourseAttemptOutcome.wrongDirection:
       return l10n.runDetailParkCourseAttemptWrongDirection(a.courseName);
   }

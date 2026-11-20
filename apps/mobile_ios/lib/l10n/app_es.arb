@@ -6471,6 +6471,7 @@
   "runDetailParkCourseAttemptStoppedShort": "{course}: sin tiempo. Corriste {progress} de {total}. Corre todo el recorrido para conseguir un tiempo.",
   "runDetailParkCourseAttemptSkippedCheckpoint": "{course}: sin tiempo. Te saltaste el punto de control {n} de {count}. Mantente en la línea del recorrido para pasar por todos.",
   "runDetailParkCourseAttemptOffCourse": "{course}: sin tiempo. Te alejaste demasiado del recorrido. Mantente en la línea del recorrido.",
+  "runDetailParkCourseAttemptGpsGap": "{course}: sin tiempo. Tu grabación tiene un corte justo donde llegaste a la meta, así que no pudimos cronometrarla. Sigue grabando hasta pasar la línea.",
   "runDetailParkCourseAttemptWrongDirection": "{course}: sin tiempo. Lo corriste en sentido contrario. Sigue las flechas del mapa del recorrido.",
   "runDetailParkCourseAttemptProgress": "{progress} de {total}",
   "runDetailParkCourseAttemptProgressLabel": "Cuánto avanzaste en el recorrido",

@@ -1466,7 +1466,9 @@ These gate going live, not the code:
   `stopped_short` at the turn). pgTAP
   `park_course_attempts_test.sql` (the write, its stale and missing refusals,
   the replace, the CHECKs, owner-only reads of the table and the RPC, anon
-  refused both, no client write, the cascade on a run delete). Row readers:
+  refused both, no client write, the cascade on a run delete). The Art 20
+  export: Go `park_course_attempts_export_test.go` (one spec, the subject's
+  own rows by `user_id`, every column). Row readers:
   `park_courses.test.ts` (`parkCourseAttemptFromRow`) and core_models
   `park_course_attempt_test.dart`.
 - Reports and closures: pgTAP

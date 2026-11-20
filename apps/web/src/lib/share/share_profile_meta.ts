@@ -8,6 +8,7 @@ import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedProfile } from './share_profile_lookup';
+import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -77,7 +78,7 @@ export function buildShareProfileHead(input: ShareProfileMetaInput): ShareProfil
 	// Prefer the runner's avatar as the OG image when present (a personal
 	// face-card unfurls better than the generic brand card); fall back to
 	// the branded 1200x630 card otherwise.
-	const ogImageUrl = profile?.avatar_url || `${base}/og-default.png`;
+	const ogImageUrl = profile?.avatar_url || `${base}${staticAsset('/og-default.png')}`;
 	return {
 		title: buildProfileShareTitle(profile),
 		description: buildProfileShareDescription(profile),

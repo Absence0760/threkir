@@ -79,6 +79,9 @@ render_png 512 "$WEB/icon-512.png"
 for f in favicon.png apple-touch-icon.png icon-192.png icon-512.png; do
   magick "$WEB/$f" +dither -colors 256 -define png:compression-level=9 "PNG8:$WEB/$f"
 done
+# These keep fixed public paths, so the app names them with a ?v= of their
+# content (decisions § 2600); refresh it, or the unit job fails.
+node "$REPO_ROOT/scripts/gen_static_asset_versions.mjs"
 
 # 3. Garmin (size read from the existing file) ------------------------------
 echo "[garmin]"

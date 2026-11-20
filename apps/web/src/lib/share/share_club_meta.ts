@@ -8,6 +8,7 @@ import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedClub } from './share_club_lookup';
+import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -83,7 +84,7 @@ export function buildShareClubHead(input: ShareClubMetaInput): ShareClubHead {
 		title: buildClubShareTitle(club),
 		description: buildClubShareDescription(club),
 		canonical: buildClubShareCanonical(siteUrl, slug),
-		ogImageUrl: club?.avatar_url || `${base}/og-default.png`,
+		ogImageUrl: club?.avatar_url || `${base}${staticAsset('/og-default.png')}`,
 		jsonLd: buildClubJsonLd(club, { slug, base: siteUrl }),
 	};
 }

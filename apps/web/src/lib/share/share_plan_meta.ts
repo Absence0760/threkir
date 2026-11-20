@@ -16,6 +16,7 @@ import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedPlan, SharedPlanAuthor } from './share_plan_lookup';
+import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -122,7 +123,7 @@ export function buildSharePlanHead(input: SharePlanMetaInput): SharePlanHead {
 		title: buildPlanShareTitle(plan),
 		description: buildPlanShareDescription(plan),
 		canonical: buildPlanShareCanonical(siteUrl, id),
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}${staticAsset('/og-default.png')}`,
 		jsonLd: buildPlanJsonLd(plan, { id, base: siteUrl }),
 	};
 }

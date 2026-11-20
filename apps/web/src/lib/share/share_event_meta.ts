@@ -18,6 +18,7 @@ import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
 import type { SharedEvent } from './share_event_lookup';
+import { staticAsset } from '../assets/static_asset';
 
 const SITE_NAME = 'Threkir';
 
@@ -119,7 +120,7 @@ export function buildShareEventHead(input: ShareEventMetaInput): ShareEventHead 
 		description: buildEventShareDescription(event),
 		canonical: buildEventShareCanonical(siteUrl, id),
 		// Events have no dedicated OG renderer yet — use the branded card.
-		ogImageUrl: `${base}/og-default.png`,
+		ogImageUrl: `${base}${staticAsset('/og-default.png')}`,
 		jsonLd: buildEventJsonLd(event, { id, base: siteUrl }),
 	};
 }

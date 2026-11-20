@@ -146,7 +146,7 @@ test('buildCourseJsonLd — no geometry means no geo; a non-https park site is n
 test('buildShareCourseHead — canonical comes from the row, and the head names no runner', () => {
 	const head = buildShareCourseHead({ key: 'us-va/fixture-state-park/lake-loop/', course: c(), siteUrl: SITE });
 	assert.equal(head.canonical, `${SITE}/share/course/${KEY}`);
-	assert.equal(head.ogImageUrl, `${SITE}/og-default.png`);
+	assert.match(head.ogImageUrl, /^https:\/\/threkir\.com\/og-default\.png\?v=[0-9a-f]{10}$/);
 	const tags = renderShareCourseHeadTags(head);
 	assert.match(tags, /<link rel="canonical" href="https:\/\/threkir\.com\/share\/course\/us-va\/fixture-state-park\/lake-loop">/);
 	assert.match(tags, /<script type="application\/ld\+json">/);

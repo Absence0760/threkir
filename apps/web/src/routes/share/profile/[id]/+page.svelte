@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { staticAsset } from '#lib/assets/static_asset.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -21,7 +22,7 @@
 	let description = $derived(buildProfileShareDescription(data.profile));
 	let canonicalUrl = $derived(buildProfileShareCanonical(data.siteUrl, data.id));
 	let jsonLd = $derived(buildProfileJsonLd(data.profile, { id: data.id, base: data.siteUrl }));
-	let ogImage = $derived(data.profile?.avatar_url || '/og-default.png');
+	let ogImage = $derived(data.profile?.avatar_url || staticAsset('/og-default.png'));
 
 	let hasProfile = $derived(!!data.profile);
 	let name = $derived(profileDisplayName(data.profile));

@@ -50,8 +50,8 @@ sw.addEventListener('push', (event) => {
 	const title = payload.title || 'Threkir';
 	const options = {
 		body: payload.body ?? '',
-		icon: payload.icon || '/favicon.png',
-		badge: payload.badge || '/favicon.png',
+		icon: payload.icon || '/favicon.png?v=307f2c5d5f',
+		badge: payload.badge || '/favicon.png?v=307f2c5d5f',
 		tag: payload.tag,
 		data: { url: payload.url || '/dashboard', ...(payload.data || {}) },
 	};

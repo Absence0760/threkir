@@ -165,7 +165,7 @@ test('buildShareWorkoutHead — canonical, branded OG image, JSON-LD in one shap
 		siteUrl: 'https://threkir.com/',
 	});
 	assert.equal(head.canonical, 'https://threkir.com/share/workout/w-1');
-	assert.equal(head.ogImageUrl, 'https://threkir.com/og-default.png');
+	assert.match(head.ogImageUrl, /^https:\/\/threkir\.com\/og-default\.png\?v=[0-9a-f]{10}$/);
 	assert.equal(head.title, 'Leg day — Threkir');
 	assert.equal(JSON.parse(head.jsonLd).url, head.canonical);
 });

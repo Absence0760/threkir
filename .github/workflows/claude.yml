@@ -23,7 +23,7 @@ env:
 jobs:
   claude:
     if: |
-      github.actor == 'Absence0760' && (
+      github.actor_id == '21693150' && (  # owner's account ID: survives a username rename
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||

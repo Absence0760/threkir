@@ -23,6 +23,10 @@ class ActivityTimelineList extends StatelessWidget {
   final void Function(ActivityRow row) onTapLift;
   final Future<void> Function() onRefresh;
 
+  /// Padding after the last row, so whatever floats over the end of the list
+  /// (the page's FAB, the shell's centre button) does not cover it.
+  final double endPadding;
+
   const ActivityTimelineList({
     super.key,
     required this.activities,
@@ -30,6 +34,7 @@ class ActivityTimelineList extends StatelessWidget {
     required this.onTapRun,
     required this.onTapLift,
     required this.onRefresh,
+    this.endPadding = 16,
   });
 
   @override
@@ -66,7 +71,7 @@ class ActivityTimelineList extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, endPadding),
         itemCount: groups.length,
         itemBuilder: (context, i) {
           final g = groups[i];

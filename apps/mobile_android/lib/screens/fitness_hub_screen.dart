@@ -49,7 +49,10 @@ import 'runs_screen.dart';
 /// the one FAB: every tab body is a ui_kit `HubTabBody`, which inside
 /// the hub's [HubTabScope] draws no app bar or title of its own, puts its
 /// secondary actions in its control row and hands its primary action to the
-/// hub, which shows the active tab's as its FAB (issue #1374). One strip in
+/// hub, which shows the active tab's as its FAB (issue #1374). A tab's
+/// occasional actions (Runs' Add past run and Import, Races' Add a race) go
+/// to the hub's ⋮ at the end of the title row instead, where Today keeps its
+/// own. One strip in
 /// every configuration: gym and food join the same row rather than stacking a
 /// second strip inside Runs.
 ///
@@ -312,6 +315,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
       controller: _controller,
       labels: [
         for (final t in _tabs) t.label(l10n),
+      ],
+      actions: [
+        ValueListenableBuilder<FitnessTab>(
+          valueListenable: _tab,
+          builder: (_, tab, _) =>
+              HubMenu(actions: _actions, tab: tab, tooltip: l10n.commonMore),
+        ),
       ],
       children: [
         for (final t in _tabs)

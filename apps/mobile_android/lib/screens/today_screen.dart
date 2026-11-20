@@ -1127,12 +1127,20 @@ class _TodayScreenState extends State<TodayScreen>
           PopupMenuItem(
             key: const Key('dashboardMenuAddRun'),
             value: _HomeMenuAction.addRun,
-            child: Text(l10n.dashboardLeadAddRun),
+            child: ListTile(
+              leading: const Icon(Icons.add),
+              title: Text(l10n.historyAddPastRun),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
           PopupMenuItem(
             key: const Key('dashboardMenuImport'),
             value: _HomeMenuAction.importRuns,
-            child: Text(l10n.dashboardImportRuns),
+            child: ListTile(
+              leading: const Icon(Icons.file_download_outlined),
+              title: Text(l10n.dashboardImportRuns),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
         ],
       ),

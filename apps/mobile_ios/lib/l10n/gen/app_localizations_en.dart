@@ -2927,9 +2927,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddRun => 'Add run';
 
   @override
-  String get historyAddRunTooltip => 'Add a run manually';
-
-  @override
   String get historyAddPastRun => 'Add past run';
 
   @override
@@ -18685,9 +18682,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planFinishFailed => 'Couldn\'t finish the plan. Try again.';
-
-  @override
-  String get dashboardLeadAddRun => 'Add a run';
 
   @override
   String get runRaceStopTitle => 'Race paused';

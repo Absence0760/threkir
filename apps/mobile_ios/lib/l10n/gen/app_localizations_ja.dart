@@ -2806,9 +2806,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyAddRun => 'ランを追加';
 
   @override
-  String get historyAddRunTooltip => '手動でランを追加';
-
-  @override
   String get historyAddPastRun => '過去のランを追加';
 
   @override
@@ -17532,9 +17529,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planFinishFailed => 'プランを完了できませんでした。もう一度お試しください。';
-
-  @override
-  String get dashboardLeadAddRun => 'ランを追加';
 
   @override
   String get runRaceStopTitle => 'レース一時停止中';

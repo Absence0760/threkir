@@ -2970,9 +2970,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get historyAddRun => 'Adicionar corrida';
 
   @override
-  String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
-
-  @override
   String get historyAddPastRun => 'Adicionar corrida anterior';
 
   @override
@@ -18895,9 +18892,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível terminar o plano. Tente novamente.';
 
   @override
-  String get dashboardLeadAddRun => 'Adicionar corrida';
-
-  @override
   String get runRaceStopTitle => 'Prova em pausa';
 
   @override
@@ -27280,9 +27274,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyAddRun => 'Adicionar corrida';
-
-  @override
-  String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
 
   @override
   String get historyAddPastRun => 'Adicionar corrida anterior';
@@ -43187,9 +43178,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planFinishFailed =>
       'Não foi possível finalizar o plano. Tente novamente.';
-
-  @override
-  String get dashboardLeadAddRun => 'Adicionar corrida';
 
   @override
   String get runRaceStopTitle => 'Prova pausada';

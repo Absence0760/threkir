@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 /// A two-tab hub shaped like the app's: one strip, a TabBarView of scoped
-/// bodies, and the active tab's action as the hub's FAB.
+/// bodies, the active tab's action as the hub's FAB and its menu as the
+/// hub's ⋮.
 class _Hub extends StatefulWidget {
   const _Hub({required this.bodies});
 
@@ -25,7 +26,8 @@ class _HubState extends State<_Hub> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          toolbarHeight: 0,
+          key: const Key('hub-bar'),
+          actions: [HubMenu(actions: _actions, tab: _tabs.index)],
           bottom: TabBar(
             controller: _tabs,
             tabs: [for (var i = 0; i < widget.bodies.length; i++) Tab(text: 'tab $i')],
@@ -276,6 +278,187 @@ void main() {
     expect(find.descendant(of: fab, matching: find.text('Build')), findsOneWidget,
         reason: 'at rest at the end the list has scrolled clear of it');
   });
+
+  group('Menu', () {
+    final menuButton = find.byKey(const Key('hub-menu'));
+    HubMenuItem item(String label, VoidCallback onSelected) => HubMenuItem(
+          label: label,
+          icon: Icons.add,
+          onSelected: onSelected,
+          itemKey: Key('item-$label'),
+        );
+
+    testWidgets('the hub shows the active tab\'s menu in its bar, and none on '
+        'a tab without one', (tester) async {
+      var added = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [
+          HubTabBody(
+            title: 'Runs',
+            menu: [item('Add past run', () => added++)],
+            body: const Text('runs'),
+          ),
+          const HubTabBody(title: 'Plans', body: Text('plans')),
+        ]),
+      ));
+      await tester.pump();
+      expect(
+        find.descendant(
+            of: find.byKey(const Key('hub-bar')), matching: menuButton),
+        findsOneWidget,
+      );
+      expect(find.byType(FloatingActionButton), findsNothing,
+          reason: 'a menu entry is not a primary action');
+      expect(find.byTooltip('Show menu'), findsOneWidget);
+
+      await tester.tap(menuButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('item-Add past run')));
+      await tester.pumpAndSettle();
+      expect(added, 1);
+
+      await tester.tap(find.text('tab 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('plans'), findsOneWidget);
+      expect(menuButton, findsNothing);
+
+      await tester.tap(find.text('tab 0'));
+      await tester.pumpAndSettle();
+      expect(menuButton, findsOneWidget);
+    });
+
+    testWidgets('a hub can name its ⋮', (tester) async {
+      final actions = HubPrimaryActions()
+        ..publishMenu(0, [item('Import', () {})]);
+      addTearDown(actions.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+              actions: [HubMenu(actions: actions, tab: 0, tooltip: 'More')]),
+        ),
+      ));
+      expect(find.byTooltip('More'), findsOneWidget);
+    });
+
+    testWidgets('selecting hides the menu, and closing the selection brings '
+        'it back', (tester) async {
+      final key = GlobalKey<_SelectableState>();
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [
+          _Selectable(key: key, menu: [item('Import', () {})]),
+        ]),
+      ));
+      await tester.pump();
+      expect(menuButton, findsOneWidget);
+
+      key.currentState!.select(true);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(menuButton, findsNothing);
+
+      key.currentState!.select(false);
+      await tester.pump();
+      await tester.pump();
+      expect(menuButton, findsOneWidget);
+    });
+
+    testWidgets('an entry calls the body\'s newest callback', (tester) async {
+      var which = '';
+      Widget body(String tag) => HubTabBody(
+            title: 't',
+            menu: [item('Go', () => which = tag)],
+            body: const SizedBox(),
+          );
+      final key = GlobalKey<_SwapState>();
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [_Swap(key: key, a: body('old'), b: body('new'))]),
+      ));
+      await tester.pump();
+      key.currentState!.swap();
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(menuButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('item-Go')));
+      await tester.pumpAndSettle();
+      expect(which, 'new');
+    });
+
+    testWidgets('a body that leaves the hub takes its menu with it',
+        (tester) async {
+      final key = GlobalKey<_SwapState>();
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [
+          _Swap(
+            key: key,
+            a: HubTabBody(
+              title: 't',
+              menu: [item('Go', () {})],
+              body: const SizedBox(),
+            ),
+            b: const SizedBox(),
+          ),
+        ]),
+      ));
+      await tester.pump();
+      expect(menuButton, findsOneWidget);
+      key.currentState!.swap();
+      await tester.pump();
+      await tester.pump();
+      expect(menuButton, findsNothing);
+    });
+
+    testWidgets('on its own the menu is the app bar\'s ⋮', (tester) async {
+      var imported = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: HubTabBody(
+          title: 'Runs',
+          menu: [item('Import', () => imported++)],
+          body: const Text('content'),
+        ),
+      ));
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: menuButton),
+        findsOneWidget,
+      );
+      expect(find.byType(FloatingActionButton), findsNothing);
+      await tester.tap(menuButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('item-Import')));
+      await tester.pumpAndSettle();
+      expect(imported, 1);
+    });
+  });
+}
+
+class _Selectable extends StatefulWidget {
+  const _Selectable({super.key, required this.menu});
+
+  final List<HubMenuItem> menu;
+
+  @override
+  State<_Selectable> createState() => _SelectableState();
+}
+
+class _SelectableState extends State<_Selectable> {
+  bool _selecting = false;
+
+  void select(bool on) => setState(() => _selecting = on);
+
+  @override
+  Widget build(BuildContext context) => HubTabBody(
+        title: 'Runs',
+        menu: widget.menu,
+        selection: _selecting
+            ? HubSelection(
+                title: '1 selected',
+                closeTooltip: 'Close',
+                onClose: () => select(false),
+              )
+            : null,
+        body: const SizedBox(),
+      );
 }
 
 class _Swap extends StatefulWidget {

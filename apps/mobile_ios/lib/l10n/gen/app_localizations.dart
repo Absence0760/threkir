@@ -4841,13 +4841,7 @@ abstract class AppLocalizations {
   /// **'Add run'**
   String get historyAddRun;
 
-  /// Tooltip on the add-run floating action button
-  ///
-  /// In en, this message translates to:
-  /// **'Add a run manually'**
-  String get historyAddRunTooltip;
-
-  /// Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one
+  /// Label of the Runs list's manual-entry menu item and empty-state action: adds a run that already happened, as distinct from the centre button, which records one
   ///
   /// In en, this message translates to:
   /// **'Add past run'**
@@ -29526,12 +29520,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t finish the plan. Try again.'**
   String get planFinishFailed;
-
-  /// Button on the dashboard week card that opens the manual add-a-run form
-  ///
-  /// In en, this message translates to:
-  /// **'Add a run'**
-  String get dashboardLeadAddRun;
 
   /// Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped
   ///

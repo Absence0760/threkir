@@ -2973,9 +2973,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyAddRun => 'Ajouter une course';
 
   @override
-  String get historyAddRunTooltip => 'Ajouter une course manuellement';
-
-  @override
   String get historyAddPastRun => 'Ajouter une course passée';
 
   @override
@@ -18914,9 +18911,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planFinishFailed => 'Impossible de terminer le plan. Réessayez.';
-
-  @override
-  String get dashboardLeadAddRun => 'Ajouter une course';
 
   @override
   String get runRaceStopTitle => 'Course en pause';

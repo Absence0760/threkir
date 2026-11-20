@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun, deleteRun } from '../fixtures/simulate';
@@ -39,8 +40,18 @@ function geocoderBody(url: string, places: FakePlace[]): string {
 		: JSON.stringify(places.map((p) => ({ display_name: p.name, lat: String(p.lat), lon: String(p.lng) })));
 }
 
-async function answerPlaces(page: Page, places: FakePlace[], asked: URL[] = []) {
-	await page.route(GEOCODER, (route) => {
+// Every case gets an empty geocoder so none reaches the real one; it counts
+// nothing, so it is a net rather than a mock a case depends on.
+async function quietGeocoder(page: Page) {
+	await page.route(GEOCODER, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: geocoderBody(route.request().url(), []) }),
+	);
+}
+
+// A case that searches answers through mockRoute, so if the pattern stops
+// matching the case fails instead of asking the real geocoder.
+async function answerPlaces(page: Page, mockRoute: MockRoute, places: FakePlace[], asked: URL[] = []) {
+	await mockRoute(page, GEOCODER, (route) => {
 		asked.push(new URL(route.request().url()));
 		return route.fulfill({ status: 200, contentType: 'application/json', body: geocoderBody(route.request().url(), places) });
 	});
@@ -143,7 +154,7 @@ test.describe('races & courses', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ page }) => {
-		await answerPlaces(page, []);
+		await quietGeocoder(page);
 	});
 
 	test('the run-surface strip is four tabs in the mobile order, with no Parks or Segments tab', async ({ page }) => {
@@ -484,13 +495,13 @@ test.describe('races & courses', () => {
 		}
 	});
 
-	test('in Courses, a park name lists the park first, with a place only offered below it', async ({ page }) => {
+	test('in Courses, a park name lists the park first, with a place only offered below it', async ({ page, mockRoute }) => {
 		let planted: Planted | null = null;
 		try {
 			planted = await plantCourse();
 			const asked: URL[] = [];
 			// Registered after the empty answer, so it is the one that answers.
-			await answerPlaces(page, [{ name: 'Anchorage, Alaska, United States', lat: START.lat, lng: START.lng }], asked);
+			await answerPlaces(page, mockRoute, [{ name: 'Anchorage, Alaska, United States', lat: START.lat, lng: START.lng }], asked);
 			await page.goto('/races?show=courses');
 			const anyTime = page.getByTestId('races-any-time');
 			await expect(anyTime.getByTestId('races-any-time-park').first()).toBeVisible({ timeout: 10_000 });
@@ -524,13 +535,13 @@ test.describe('races & courses', () => {
 		}
 	});
 
-	test('in Courses, picking a place sets the near chip and orders the parks from it', async ({ page }) => {
+	test('in Courses, picking a place sets the near chip and orders the parks from it', async ({ page, mockRoute }) => {
 		let planted: Planted[] = [];
 		try {
 			const north = { lat: START.lat + 2, lng: START.lng };
 			planted = [await plantCourse(), await plantCourse(north)];
 			const [south, far] = planted;
-			await answerPlaces(page, [
+			await answerPlaces(page, mockRoute, [
 				// Far from every course: never offered.
 				{ name: 'Zzyzxtown, Somewhere Else', lat: -33.9, lng: 151.2 },
 				{ name: 'Zzyzxtown, Alaska, United States', lat: north.lat + 0.05, lng: north.lng },

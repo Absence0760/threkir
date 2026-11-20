@@ -31341,5 +31341,49 @@
   "runDetailParkCourseAttemptProgressLabel": "How far along the course you got",
   "@runDetailParkCourseAttemptProgressLabel": {
     "description": "Screen-reader name of the progress bar on a park course attempt card; its value is the runDetailParkCourseAttemptProgress text"
+  },
+  "runCourseOffCourseCheckpoint": "You're off the course. Head back to checkpoint {number}.",
+  "@runCourseOffCourseCheckpoint": {
+    "description": "Banner on the recording screen, also spoken, when the runner timing a park course has strayed far enough from the course line to miss its next checkpoint. Names the next checkpoint not yet passed, counted from 1.",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "runCourseOffCourseLine": "You're off the course. Head back to the course line.",
+  "@runCourseOffCourseLine": {
+    "description": "Banner on the recording screen, also spoken, when the runner timing a park course has strayed from the course line after passing every checkpoint"
+  },
+  "runCourseTimingStartedNamed": "Timing started: {course}",
+  "@runCourseTimingStartedNamed": {
+    "description": "Big message on the recording screen, also spoken, when the runner leaves the start box of a park course the app found near them (they did not pick it) and the course time starts",
+    "placeholders": {
+      "course": {
+        "type": "String",
+        "example": "Beaver Lake Trail"
+      }
+    }
+  },
+  "runCourseCheckpointLabel": "Checkpoint {number}",
+  "@runCourseCheckpointLabel": {
+    "description": "Screen-reader label of a park course checkpoint on the live run map that the runner has not passed yet",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "runCourseCheckpointPassedLabel": "Checkpoint {number}, passed",
+  "@runCourseCheckpointPassedLabel": {
+    "description": "Screen-reader label of a park course checkpoint on the live run map that the runner has passed",
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "3"
+      }
+    }
   }
 }

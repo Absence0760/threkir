@@ -6473,5 +6473,10 @@
   "runDetailParkCourseAttemptOffCourse": "{course}: sem tempo. Você se afastou demais do percurso. Fique na linha do percurso.",
   "runDetailParkCourseAttemptWrongDirection": "{course}: sem tempo. Você correu no sentido contrário. Siga as setas no mapa do percurso.",
   "runDetailParkCourseAttemptProgress": "{progress} de {total}",
-  "runDetailParkCourseAttemptProgressLabel": "Até onde você chegou no percurso"
+  "runDetailParkCourseAttemptProgressLabel": "Até onde você chegou no percurso",
+  "runCourseOffCourseCheckpoint": "Você saiu do percurso. Volte para o ponto de controle {number}.",
+  "runCourseOffCourseLine": "Você saiu do percurso. Volte para o traçado.",
+  "runCourseTimingStartedNamed": "Cronometragem iniciada: {course}",
+  "runCourseCheckpointLabel": "Ponto de controle {number}",
+  "runCourseCheckpointPassedLabel": "Ponto de controle {number}, concluído"
 }

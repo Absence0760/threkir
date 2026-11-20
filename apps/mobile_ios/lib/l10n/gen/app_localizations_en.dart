@@ -24119,4 +24119,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runDetailParkCourseAttemptProgressLabel =>
       'How far along the course you got';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'You\'re off the course. Head back to checkpoint $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'You\'re off the course. Head back to the course line.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Timing started: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Checkpoint $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Checkpoint $number, passed';
+  }
 }

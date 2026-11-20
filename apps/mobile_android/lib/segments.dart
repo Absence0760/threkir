@@ -149,6 +149,10 @@ const double kGlobalSegmentFinishMaxGapS = 300;
 const double kGlobalSegmentGapSpeedMin = 0.4;
 const double kGlobalSegmentGapSpeedMax = 1.5;
 
+/// How close a run must pass each checkpoint (and, for a segment matched by
+/// the circles, its start and end) to count.
+const double kGlobalSegmentToleranceM = 35;
+
 /// Covered distance between the start and end must be within this fraction
 /// of the segment's stored length, whichever way the segment is matched.
 const double kGlobalSegmentLengthTolerance = 0.25;
@@ -234,7 +238,7 @@ class GlobalSegmentGeometry {
 GlobalSegmentEffortResult? computeGlobalSegmentEffort(
   List<Waypoint> track,
   GlobalSegmentGeometry segment, {
-  double toleranceM = 35,
+  double toleranceM = kGlobalSegmentToleranceM,
 }) =>
     computeGlobalSegmentEfforts(track, [segment], toleranceM: toleranceM).first;
 
@@ -256,7 +260,7 @@ GlobalSegmentEffortResult? computeGlobalSegmentEffort(
 List<GlobalSegmentEffortResult?> computeGlobalSegmentEfforts(
   List<Waypoint> track,
   List<GlobalSegmentGeometry> segments, {
-  double toleranceM = 35,
+  double toleranceM = kGlobalSegmentToleranceM,
 }) {
   final out = List<GlobalSegmentEffortResult?>.filled(segments.length, null);
   final line = trackLine(track);
@@ -579,22 +583,46 @@ bool _passesCheckpoints(
   int startIdx,
   int endIdx,
   double toleranceM,
-) {
-  if (checkpoints.isEmpty) return true;
-  var cursor = startIdx;
-  for (final cp in checkpoints) {
+) =>
+    advanceCheckpointWalk(track, checkpoints,
+            passed: 0,
+            fromIdx: startIdx,
+            toIdx: endIdx,
+            toleranceM: toleranceM)
+        .passed ==
+    checkpoints.length;
+
+/// The checkpoint rule [computeGlobalSegmentEffort] scores by, resumable so a
+/// live reader can walk a growing line without rescanning it (the run
+/// screen's checkpoint markers, #1446). Starting at [fromIdx] with [passed]
+/// checkpoints already passed, each next checkpoint takes the first track
+/// index within [toleranceM] at or after the previous one's. Returns how many
+/// are passed through [toIdx] and the index the walk resumes from.
+({int passed, int nextIdx}) advanceCheckpointWalk(
+  List<Waypoint> track,
+  List<Waypoint> checkpoints, {
+  required int passed,
+  required int fromIdx,
+  required int toIdx,
+  required double toleranceM,
+}) {
+  var cursor = fromIdx;
+  var k = passed;
+  while (k < checkpoints.length) {
+    final cp = checkpoints[k];
     var hit = -1;
-    for (var i = cursor; i <= endIdx; i++) {
+    for (var i = cursor; i <= toIdx; i++) {
       if (haversineMetres(track[i].lineLat, track[i].lineLng, cp.lat, cp.lng) <=
           toleranceM) {
         hit = i;
         break;
       }
     }
-    if (hit < 0) return false;
+    if (hit < 0) return (passed: k, nextIdx: math.max(cursor, toIdx + 1));
+    k++;
     cursor = hit;
   }
-  return true;
+  return (passed: k, nextIdx: cursor);
 }
 
 /// Which of two outcomes a tie between attempts goes to: wrong way round over

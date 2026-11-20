@@ -6107,6 +6107,41 @@ class ApiClient {
     );
   }
 
+  /// The listed park courses whose start line lies inside the box, with their
+  /// catalogue segment, for live course timing on a run that follows no
+  /// course (#1446). The box is all that leaves the phone, the same kind of
+  /// read as the route and segment map queries. A closed course takes no
+  /// times, so it is left out; RLS hides an inactive park's courses and a
+  /// pulled segment. Throws on a failed read.
+  Future<List<ParkCourseListing>> fetchParkCoursesStartingIn({
+    required double minLat,
+    required double minLng,
+    required double maxLat,
+    required double maxLng,
+  }) async {
+    const lat = '${GlobalSegmentRow.table}.${GlobalSegmentRow.colStartGateLat}';
+    const lng = '${GlobalSegmentRow.table}.${GlobalSegmentRow.colStartGateLng}';
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, ${GlobalSegmentRow.table}!inner(*)')
+        .neq(ParkCourseRow.colStatus, 'closed')
+        .gte(lat, minLat)
+        .lte(lat, maxLat)
+        .gte(lng, minLng)
+        .lte(lng, maxLng)
+        .limit(50);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Walked by keyset
   /// like [fetchAllParkCourses]. Throws on a failed read.

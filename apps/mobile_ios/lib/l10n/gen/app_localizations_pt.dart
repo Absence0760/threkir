@@ -24398,6 +24398,29 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runDetailParkCourseAttemptProgressLabel =>
       'Até onde chegou no percurso';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Saiu do percurso. Volte ao ponto de controlo $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine => 'Saiu do percurso. Volte ao traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controlo $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controlo $number, concluído';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -48773,4 +48796,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runDetailParkCourseAttemptProgressLabel =>
       'Até onde você chegou no percurso';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Você saiu do percurso. Volte para o ponto de controle $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Você saiu do percurso. Volte para o traçado.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Cronometragem iniciada: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Ponto de controle $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Ponto de controle $number, concluído';
+  }
 }

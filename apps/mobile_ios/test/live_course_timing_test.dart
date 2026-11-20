@@ -8,6 +8,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -392,6 +393,314 @@ void main() {
 
     test('checkpoints the parser refuses, nothing to follow', () {
       expect(liveCourseGeometry(listing(checkpoints: 'oops')), isNull);
+    });
+  });
+
+  group('checkpoints and the off-course warning', () {
+    const lat0 = 37.5;
+    const lng0 = -77.5;
+    const mPerDegLng = 111195 * 0.7933533402912352;
+    Waypoint at(double northM, int s, {double eastM = 0}) => Waypoint(
+          lat: lat0 + northM / 111195,
+          lng: lng0 + eastM / mPerDegLng,
+          timestamp: DateTime.utc(2026, 11, 20, 8).add(Duration(seconds: s)),
+        );
+    // 600 m north, checkpoints at 200 m and 400 m.
+    final segment = GlobalSegmentGeometry(
+      points: [at(0, 0), at(600, 0)],
+      distanceM: 600,
+      checkpoints: [at(200, 0), at(400, 0)],
+      startGate:
+          const Gate(lat: lat0, lng: lng0, bearingDeg: 0, halfWidthM: 15),
+      endGate: Gate(
+          lat: lat0 + 600 / 111195, lng: lng0, bearingDeg: 0, halfWidthM: 15),
+    );
+    // One fix a second, 4 m apart, along [points] (north, east) metres.
+    List<Waypoint> path(List<(double, double)> points) {
+      final out = <Waypoint>[];
+      var s = 0;
+      for (var k = 0; k + 1 < points.length; k++) {
+        final (n0, e0) = points[k];
+        final (n1, e1) = points[k + 1];
+        final d = math.sqrt((n1 - n0) * (n1 - n0) + (e1 - e0) * (e1 - e0));
+        final steps = math.max(1, (d / 4).ceil());
+        for (var j = k == 0 ? 0 : 1; j <= steps; j++) {
+          final f = j / steps;
+          out.add(at(n0 + (n1 - n0) * f, s++, eastM: e0 + (e1 - e0) * f));
+        }
+      }
+      return out;
+    }
+
+    List<LiveCourseEventKind> kinds(List<LiveCourseEvent> events) =>
+        [for (final e in events) e.kind];
+
+    test('passing each checkpoint ticks it, by the matcher\'s own walk', () {
+      final tracker = LiveCourseTracker.forSegment(segment)!;
+      _feed(tracker, path([(-10, 0), (150, 0)]));
+      expect(tracker.checkpointsPassed, 0);
+      expect(tracker.nextCheckpoint, 1);
+      final t2 = _feed(LiveCourseTracker.forSegment(segment)!,
+              path([(-10, 0), (250, 0)]))
+          .tracker;
+      expect(t2.checkpointsPassed, 1);
+      expect(t2.nextCheckpoint, 2);
+      final t3 = _feed(LiveCourseTracker.forSegment(segment)!,
+              path([(-10, 0), (450, 0)]))
+          .tracker;
+      expect(t3.checkpointsPassed, 2);
+      expect(t3.nextCheckpoint, isNull);
+    });
+
+    test('a finished course has every checkpoint ticked', () {
+      final fed = _feed(
+          LiveCourseTracker.forSegment(segment)!, path([(-10, 0), (620, 0)]));
+      expect(fed.tracker.phase, LiveCoursePhase.finished);
+      expect(fed.tracker.checkpointsPassed, 2);
+      expect(fed.tracker.offCourse, isFalse);
+    });
+
+    test(
+        'straying past the tolerance names the next checkpoint, once, and '
+        'clears back on the line', () {
+      final fed = _feed(
+        LiveCourseTracker.forSegment(segment)!,
+        path([(-10, 0), (250, 0), (270, 60), (290, 60), (300, 0), (350, 0)]),
+      );
+      expect(
+          kinds(fed.events),
+          [
+            LiveCourseEventKind.started,
+            LiveCourseEventKind.offCourse,
+            LiveCourseEventKind.backOnCourse,
+          ]);
+      expect(fed.tracker.offCourse, isFalse);
+      expect(fed.tracker.nextCheckpoint, 2);
+    });
+
+    test('while off, the warning holds and names checkpoint 2', () {
+      final fed = _feed(LiveCourseTracker.forSegment(segment)!,
+          path([(-10, 0), (250, 0), (270, 60), (300, 60)]));
+      expect(fed.tracker.offCourse, isTrue);
+      expect(fed.tracker.nextCheckpoint, 2);
+      expect(fed.tracker.offsetFromLineM, greaterThan(kLiveCourseOffCourseM));
+    });
+
+    test('jitter at the edge of the tolerance does not say it again', () {
+      // In and out between 30 m and 40 m off the line: above 35 m once, and
+      // never back under 25 m, so one warning and no clear.
+      final fed = _feed(
+        LiveCourseTracker.forSegment(segment)!,
+        path([
+          (-10, 0),
+          (100, 0),
+          (110, 40),
+          for (var k = 0; k < 8; k++) ...[(120.0 + 8 * k, 30), (124.0 + 8 * k, 40)],
+        ]),
+      );
+      expect(
+          kinds(fed.events)
+              .where((k) => k == LiveCourseEventKind.offCourse)
+              .length,
+          1);
+      expect(kinds(fed.events), isNot(contains(LiveCourseEventKind.backOnCourse)));
+    });
+
+    test('after the last checkpoint, it points back to the course line', () {
+      final fed = _feed(LiveCourseTracker.forSegment(segment)!,
+          path([(-10, 0), (450, 0), (470, 80)]));
+      expect(fed.tracker.offCourse, isTrue);
+      expect(fed.tracker.nextCheckpoint, isNull);
+    });
+
+    test('nothing is said off the line before the start', () {
+      final fed = _feed(LiveCourseTracker.forSegment(segment)!,
+          path([(-200, 80), (-60, 80)]));
+      expect(fed.events, isEmpty);
+      expect(fed.tracker.offCourse, isFalse);
+      expect(fed.tracker.offsetFromLineM, isNull);
+    });
+
+    test('back into the start box clears the warning and the ticks', () {
+      final fed = _feed(LiveCourseTracker.forSegment(segment)!,
+          path([(-10, 0), (220, 0), (220, 60), (30, 60), (30, 0), (-10, 0)]));
+      expect(fed.tracker.phase, LiveCoursePhase.waiting);
+      expect(fed.tracker.offCourse, isFalse);
+      expect(fed.tracker.checkpointsPassed, 0);
+    });
+
+    test('the resumable walk agrees with one walk over the whole line', () {
+      final line = path([(-10, 0), (220, 0), (250, 50), (420, 0)]);
+      var state = (passed: 0, nextIdx: 0);
+      for (var i = 0; i < line.length; i++) {
+        state = advanceCheckpointWalk(line, segment.checkpoints,
+            passed: state.passed,
+            fromIdx: state.nextIdx,
+            toIdx: i,
+            toleranceM: kGlobalSegmentToleranceM);
+      }
+      final once = advanceCheckpointWalk(line, segment.checkpoints,
+          passed: 0,
+          fromIdx: 0,
+          toIdx: line.length - 1,
+          toleranceM: kGlobalSegmentToleranceM);
+      expect(state.passed, once.passed);
+      expect(once.passed, 2);
+    });
+  });
+
+  group('finding a course the runner did not pick', () {
+    const lat0 = 37.5;
+    const lng0 = -77.5;
+    const mPerDegLng = 111195 * 0.7933533402912352;
+    Waypoint at(double northM, double eastM, [int s = 0]) => Waypoint(
+          lat: lat0 + northM / 111195,
+          lng: lng0 + eastM / mPerDegLng,
+          timestamp: DateTime.utc(2026, 11, 20, 8).add(Duration(seconds: s)),
+        );
+    // A course from ([n0], [e0]) heading [bearing] for 400 m.
+    LiveCourseCandidate course(String name, double n0, double e0,
+        {double bearing = 0, List<Waypoint> via = const []}) {
+      final rad = bearing * math.pi / 180;
+      final start = at(n0, e0);
+      final end = at(n0 + 400 * math.cos(rad), e0 + 400 * math.sin(rad));
+      return LiveCourseCandidate(
+        name: name,
+        segment: GlobalSegmentGeometry(
+          points: [start, ...via, end],
+          distanceM: 400,
+          startGate: Gate(
+              lat: start.lat,
+              lng: start.lng,
+              bearingDeg: bearing,
+              halfWidthM: 15),
+          endGate: Gate(
+              lat: end.lat, lng: end.lng, bearingDeg: bearing, halfWidthM: 15),
+        ),
+      );
+    }
+
+    List<Waypoint> walk(List<(double, double)> points) {
+      final out = <Waypoint>[];
+      var s = 0;
+      for (var k = 0; k + 1 < points.length; k++) {
+        final (n0, e0) = points[k];
+        final (n1, e1) = points[k + 1];
+        final d = math.sqrt((n1 - n0) * (n1 - n0) + (e1 - e0) * (e1 - e0));
+        final steps = math.max(1, (d / 4).ceil());
+        for (var j = k == 0 ? 0 : 1; j <= steps; j++) {
+          final f = j / steps;
+          out.add(at(n0 + (n1 - n0) * f, e0 + (e1 - e0) * f, s++));
+        }
+      }
+      return out;
+    }
+
+    LiveCourseAdoption? feed(LiveCourseDetector d, List<Waypoint> track) {
+      final line = <Waypoint>[];
+      for (final w in track) {
+        line.add(w);
+        final a = d.offer(line);
+        if (a != null) return a;
+      }
+      return null;
+    }
+
+    test('no candidates, nothing to follow', () {
+      final d = LiveCourseDetector(const []);
+      expect(d.isEmpty, isTrue);
+      expect(feed(d, walk([(-20, 0), (100, 0)])), isNull);
+    });
+
+    test('one course, adopted when its start box is left forward', () {
+      final d = LiveCourseDetector([course('Lake loop', 0, 0)]);
+      final line = walk([(-20, 0), (40, 0)]);
+      final a = feed(d, line)!;
+      expect(a.candidate.name, 'Lake loop');
+      expect([for (final e in a.events) e.kind], [LiveCourseEventKind.started]);
+      expect(a.tracker.phase, LiveCoursePhase.timing);
+    });
+
+    test('standing near a course without leaving its start box adopts '
+        'nothing', () {
+      final d = LiveCourseDetector([course('Lake loop', 0, 0)]);
+      expect(feed(d, walk([(-30, 0), (-8, 0), (-30, 0)])), isNull);
+    });
+
+    test('of two courses, the one whose start box is left is adopted', () {
+      final d = LiveCourseDetector([
+        course('North path', 0, 0),
+        course('East path', 0, 150, bearing: 90),
+      ]);
+      final a = feed(d, walk([(0, 120), (0, 200)]))!;
+      expect(a.candidate.name, 'East path');
+    });
+
+    test('two courses sharing a start wait until the line picks one', () {
+      // Both leave the same start north; one bends east 100 m in.
+      final d = LiveCourseDetector([
+        course('Straight', 0, 0),
+        course('Bend', 0, 0, via: [at(100, 0), at(100, 300)]),
+      ]);
+      final first = walk([(-20, 0), (60, 0)]);
+      expect(feed(d, first), isNull,
+          reason: 'both started on the same fix and both are under the line');
+      final a = feed(d, walk([(-20, 0), (100, 0), (100, 80)]))!;
+      expect(a.candidate.name, 'Bend');
+    });
+
+    test('nearbyCourseCandidates keeps open courses whose start is in reach',
+        () {
+      ParkCourseListing listing(String id, double startLat, String status) =>
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson({
+              'id': id,
+              'park_id': 'p1',
+              'global_segment_id': 's$id',
+              'slug': id,
+              'course_shape': 'point_to_point',
+              'status': status,
+              'geometry_source': 'osm',
+              'checkpoints': const [],
+              'created_at': '2026-11-20T00:00:00Z',
+            }),
+            segment: GlobalSegmentRow.fromJson({
+              'id': 's$id',
+              'name': 'Course $id',
+              'waypoints': [
+                {'lat': startLat, 'lng': lng0},
+                {'lat': startLat + 0.004, 'lng': lng0},
+              ],
+              'distance_m': 444,
+              'surface': 'trail',
+              'is_active': true,
+              'created_at': '2026-11-20T00:00:00Z',
+              'start_gate_lat': startLat,
+              'start_gate_lng': lng0,
+              'start_gate_bearing_deg': 0,
+              'start_gate_half_width_m': 15,
+              'end_gate_lat': startLat + 0.004,
+              'end_gate_lng': lng0,
+              'end_gate_bearing_deg': 0,
+              'end_gate_half_width_m': 15,
+            }),
+          );
+      final got = nearbyCourseCandidates([
+        listing('near', lat0 + 100 / 111195, 'open'),
+        listing('far', lat0 + 2000 / 111195, 'open'),
+        listing('shut', lat0, 'closed'),
+      ], lat0, lng0);
+      expect([for (final c in got) c.name], ['Course near']);
+    });
+
+    test('the search box spans the radius around the runner', () {
+      final b = courseSearchBox(lat0, lng0);
+      expect(b.minLat, lessThan(lat0));
+      expect(b.maxLat, greaterThan(lat0));
+      expect((b.maxLat - b.minLat) * 111195,
+          closeTo(2 * kLiveCourseDetectRadiusM, 1));
+      expect((b.maxLng - b.minLng) * mPerDegLng,
+          closeTo(2 * kLiveCourseDetectRadiusM, 1));
     });
   });
 }

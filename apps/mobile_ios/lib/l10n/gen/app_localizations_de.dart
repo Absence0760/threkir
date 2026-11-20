@@ -24374,4 +24374,28 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runDetailParkCourseAttemptProgressLabel =>
       'Wie weit du auf der Strecke gekommen bist';
+
+  @override
+  String runCourseOffCourseCheckpoint(int number) {
+    return 'Du bist von der Strecke abgekommen. Lauf zurück zu Kontrollpunkt $number.';
+  }
+
+  @override
+  String get runCourseOffCourseLine =>
+      'Du bist von der Strecke abgekommen. Lauf zurück auf die Strecke.';
+
+  @override
+  String runCourseTimingStartedNamed(String course) {
+    return 'Zeitmessung gestartet: $course';
+  }
+
+  @override
+  String runCourseCheckpointLabel(int number) {
+    return 'Kontrollpunkt $number';
+  }
+
+  @override
+  String runCourseCheckpointPassedLabel(int number) {
+    return 'Kontrollpunkt $number, passiert';
+  }
 }

@@ -6473,5 +6473,10 @@
   "runDetailParkCourseAttemptOffCourse": "{course}: keine Zeit. Du bist zu weit von der Strecke abgekommen. Bleib auf der Streckenlinie.",
   "runDetailParkCourseAttemptWrongDirection": "{course}: keine Zeit. Du bist die Strecke falsch herum gelaufen. Folge den Pfeilen auf der Streckenkarte.",
   "runDetailParkCourseAttemptProgress": "{progress} von {total}",
-  "runDetailParkCourseAttemptProgressLabel": "Wie weit du auf der Strecke gekommen bist"
+  "runDetailParkCourseAttemptProgressLabel": "Wie weit du auf der Strecke gekommen bist",
+  "runCourseOffCourseCheckpoint": "Du bist von der Strecke abgekommen. Lauf zurück zu Kontrollpunkt {number}.",
+  "runCourseOffCourseLine": "Du bist von der Strecke abgekommen. Lauf zurück auf die Strecke.",
+  "runCourseTimingStartedNamed": "Zeitmessung gestartet: {course}",
+  "runCourseCheckpointLabel": "Kontrollpunkt {number}",
+  "runCourseCheckpointPassedLabel": "Kontrollpunkt {number}, passiert"
 }

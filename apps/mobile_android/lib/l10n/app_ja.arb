@@ -6473,5 +6473,10 @@
   "runDetailParkCourseAttemptOffCourse": "{course}：タイムなし。コースから大きく外れました。コースラインから外れないでください。",
   "runDetailParkCourseAttemptWrongDirection": "{course}：タイムなし。逆方向に走りました。コースマップの矢印に従ってください。",
   "runDetailParkCourseAttemptProgress": "{total}のうち{progress}",
-  "runDetailParkCourseAttemptProgressLabel": "コースをどこまで進んだか"
+  "runDetailParkCourseAttemptProgressLabel": "コースをどこまで進んだか",
+  "runCourseOffCourseCheckpoint": "コースから外れています。チェックポイント{number}に戻ってください。",
+  "runCourseOffCourseLine": "コースから外れています。コースに戻ってください。",
+  "runCourseTimingStartedNamed": "計測開始：{course}",
+  "runCourseCheckpointLabel": "チェックポイント{number}",
+  "runCourseCheckpointPassedLabel": "チェックポイント{number}、通過済み"
 }

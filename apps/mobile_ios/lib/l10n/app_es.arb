@@ -6473,5 +6473,10 @@
   "runDetailParkCourseAttemptOffCourse": "{course}: sin tiempo. Te alejaste demasiado del recorrido. Mantente en la línea del recorrido.",
   "runDetailParkCourseAttemptWrongDirection": "{course}: sin tiempo. Lo corriste en sentido contrario. Sigue las flechas del mapa del recorrido.",
   "runDetailParkCourseAttemptProgress": "{progress} de {total}",
-  "runDetailParkCourseAttemptProgressLabel": "Cuánto avanzaste en el recorrido"
+  "runDetailParkCourseAttemptProgressLabel": "Cuánto avanzaste en el recorrido",
+  "runCourseOffCourseCheckpoint": "Te has salido del recorrido. Vuelve al punto de control {number}.",
+  "runCourseOffCourseLine": "Te has salido del recorrido. Vuelve al trazado.",
+  "runCourseTimingStartedNamed": "Cronometraje iniciado: {course}",
+  "runCourseCheckpointLabel": "Punto de control {number}",
+  "runCourseCheckpointPassedLabel": "Punto de control {number}, superado"
 }

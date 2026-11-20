@@ -29213,6 +29213,22 @@
   "@parksLegendStartFinish": {
     "description": "Map key item: one marker for a course that starts and finishes in the same place (#1352)."
   },
+  "parksMapJumpStart": "Show the start on the map",
+  "@parksMapJumpStart": {
+    "description": "Accessible name of the Start tag on a park course map and of the Start entry in its key: tapping either moves the map to the start box."
+  },
+  "parksMapJumpFinish": "Show the finish on the map",
+  "@parksMapJumpFinish": {
+    "description": "Accessible name of the Finish tag on a park course map and of the Finish entry in its key: tapping either moves the map to the finish box."
+  },
+  "parksMapJumpStartFinish": "Show the start and finish on the map",
+  "@parksMapJumpStartFinish": {
+    "description": "Accessible name of the one Start and finish tag on a park course map (and its key entry) where the start and finish share a box: tapping it moves the map there."
+  },
+  "parksMapJumpWholeCourse": "Show the whole course",
+  "@parksMapJumpWholeCourse": {
+    "description": "Name and tooltip of the icon button in a park course map's controls that zooms the map back out to the whole course."
+  },
   "parksEndsTitle": "Start and finish points",
   "@parksEndsTitle": {
     "description": "Heading of the block on a course page that gives the start and finish as coordinates to copy or open in a maps app."

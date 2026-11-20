@@ -22889,6 +22889,18 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksLegendStartFinish => 'Partida e meta';
 
   @override
+  String get parksMapJumpStart => 'Mostrar a partida no mapa';
+
+  @override
+  String get parksMapJumpFinish => 'Mostrar a chegada no mapa';
+
+  @override
+  String get parksMapJumpStartFinish => 'Mostrar a partida e a chegada no mapa';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Mostrar o percurso completo';
+
+  @override
   String get parksEndsTitle => 'Pontos de partida e chegada';
 
   @override
@@ -47170,6 +47182,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksLegendStartFinish => 'Largada e chegada';
+
+  @override
+  String get parksMapJumpStart => 'Mostrar a largada no mapa';
+
+  @override
+  String get parksMapJumpFinish => 'Mostrar a chegada no mapa';
+
+  @override
+  String get parksMapJumpStartFinish => 'Mostrar a largada e a chegada no mapa';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Mostrar o percurso inteiro';
 
   @override
   String get parksEndsTitle => 'Pontos de largada e chegada';

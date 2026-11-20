@@ -21,6 +21,7 @@
 		mapBoxInk,
 		mapStartZoneColour,
 		MAP_ARROW_INK,
+		MAP_CONTROL_INK,
 		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
@@ -29,6 +30,8 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
 	import { minMax } from '#lib/util/min_max.ts';
+	import type { CourseJumpTarget } from '#lib/parks/course_jump.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
 	import { buildCumulative, buildSegment, type SelectedSegment } from '#lib/runs/track_segment.ts';
@@ -160,6 +163,14 @@
 		/// zoomed in, the checkpoint names only once zoomed in, and no badge
 		/// under a checkpoint dot. Null = every map's usual layers.
 		courseOverview?: { lapM: number | null; badgeAtOverview: (label: number) => boolean } | null;
+		/// A park course's jump-to controls: the start and finish tags on the
+		/// map become buttons named by `names`, and a Whole course icon button
+		/// joins the zoom controls; each calls `onJump` with its target. Null =
+		/// tags that are only labels and no extra control.
+		courseJump?: {
+			names: Record<CourseJumpTarget, string>;
+			onJump: (target: CourseJumpTarget) => void;
+		} | null;
 		/// Bindable: whether the map draws at least one km / mile badge, read
 		/// once each render settles (after a zoom, a style swap or the first
 		/// load), so a map key can name the badges only while they are there.
@@ -188,6 +199,7 @@
 		gateBoxes = null,
 		turnaround = null,
 		courseOverview = null,
+		courseJump = null,
 		distanceBadgesShown = $bindable(false),
 	}: Props = $props();
 
@@ -261,6 +273,8 @@
 
 	let mapContainer = $state<HTMLDivElement>();
 	let map: maplibregl.Map;
+	/// Whether the first style load, and the entrance fit inside it, has run.
+	let styleLoadedOnce = false;
 	let stopResizeWatch: (() => void) | null = null;
 	let animating = $state(false);
 	let animationFrame: number;
@@ -316,6 +330,72 @@
 		animationMarker?.remove();
 	}
 
+	/// Fit the camera to `bounds`, as a course page's jump controls ask: an
+	/// eased move, or a jump when the reader asked for less motion, never
+	/// closer than `maxZoom`. Once the camera settles the container carries
+	/// `data-map-target` and `data-map-zoom`, so a test can see where it went.
+	export function jumpTo(
+		target: string,
+		bounds: { south: number; west: number; north: number; east: number },
+		maxZoom?: number,
+	): void {
+		if (!map) return;
+		// Before the style loads, the entrance fit is still to come and would
+		// undo this jump, so wait for it and jump after.
+		if (!styleLoadedOnce) {
+			map.once('load', () => jumpTo(target, bounds, maxZoom));
+			return;
+		}
+		// Stop a move still in flight (the entrance fit) first: stopping it
+		// fires its own moveend, which would otherwise be read as this one's.
+		map.stop();
+		mapContainer?.removeAttribute('data-map-target');
+		map.once('moveend', () => {
+			mapContainer?.setAttribute('data-map-target', target);
+			mapContainer?.setAttribute('data-map-zoom', map.getZoom().toFixed(2));
+		});
+		map.fitBounds(
+			[
+				[bounds.west, bounds.south],
+				[bounds.east, bounds.north],
+			],
+			// An undefined maxZoom would override the map's own and fit to NaN.
+			{ padding: 50, animate: !motion.reduced, ...(maxZoom === undefined ? {} : { maxZoom }) },
+		);
+	}
+
+	/// The Whole course button under the zoom and compass buttons: a MapLibre
+	/// control group, so it takes their size, focus ring and stacking. The
+	/// title is the pointer's tooltip; the label is its name.
+	function wholeCourseControl(name: string, run: () => void): maplibregl.IControl {
+		let group: HTMLDivElement | null = null;
+		return {
+			onAdd() {
+				group = document.createElement('div');
+				group.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'map-whole-course';
+				button.dataset.testid = 'map-whole-course';
+				button.title = name;
+				button.setAttribute('aria-label', name);
+				const icon = document.createElement('span');
+				icon.className = 'material-symbols';
+				icon.setAttribute('aria-hidden', 'true');
+				icon.textContent = 'zoom_out_map';
+				icon.style.color = MAP_CONTROL_INK;
+				button.appendChild(icon);
+				button.addEventListener('click', run);
+				group.appendChild(button);
+				return group;
+			},
+			onRemove() {
+				group?.remove();
+				group = null;
+			},
+		};
+	}
+
 	let startMarker: maplibregl.Marker | undefined;
 	let endMarker: maplibregl.Marker | undefined;
 	let boxMarkers: maplibregl.Marker[] = [];
@@ -323,14 +403,18 @@
 	/// A start or finish box's name tag: filled with the box's colour, so it
 	/// is the green or red box at the whole-course zoom, with its flag and
 	/// name. A box the start and finish share is one colour, the start's,
-	/// like the box. The name is text, never markup.
-	function boxMarkerElement(which: 'start' | 'finish' | 'both', name: string): HTMLDivElement {
+	/// like the box. The name is text, never markup. With `courseJump` the tag
+	/// is a button that takes the map to its box.
+	function boxMarkerElement(which: 'start' | 'finish' | 'both', name: string): HTMLElement {
+		const target: CourseJumpTarget = which === 'both' ? 'startFinish' : which;
+		const jump = courseJump;
 		return tagElement(
 			`gate-box-marker-${which}`,
 			which === 'finish' ? mapFinishZoneColour(darkBasemap) : mapStartZoneColour(darkBasemap),
 			mapBoxInk(darkBasemap),
 			gateFlagSvg(which, darkBasemap),
 			name,
+			jump ? { label: jump.names[target], run: () => jump.onJump(target) } : undefined,
 		);
 	}
 
@@ -347,10 +431,26 @@
 		return lng <= (w + e) / 2 ? 'left' : 'right';
 	}
 
-	function tagElement(testid: string, background: string, ink: string, iconSvg: string, name: string): HTMLDivElement {
-		const el = document.createElement('div');
-		el.className = 'map-tag';
+	function tagElement(
+		testid: string,
+		background: string,
+		ink: string,
+		iconSvg: string,
+		name: string,
+		action?: { label: string; run: () => void },
+	): HTMLElement {
+		const el = document.createElement(action ? 'button' : 'div');
+		el.className = action ? 'map-tag map-tag-action' : 'map-tag';
 		el.dataset.testid = testid;
+		if (action) {
+			el.setAttribute('type', 'button');
+			el.setAttribute('aria-label', action.label);
+			el.addEventListener('click', (e) => {
+				// The map's own click handlers would read it as a click on the map.
+				e.stopPropagation();
+				action.run();
+			});
+		}
 		el.style.background = background;
 		el.style.color = ink;
 		el.style.borderColor = mapOverlayOutline(darkBasemap);
@@ -946,8 +1046,18 @@
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
+		const jumpControl = courseJump;
+		if (jumpControl) {
+			map.addControl(
+				wholeCourseControl(jumpControl.names.course, () => jumpControl.onJump('course')),
+				'top-right',
+			);
+		}
 
-		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
+		map.on('load', () => {
+			applyOverlayStep(overlayDraw.styleReady(true));
+			styleLoadedOnce = true;
+		});
 		// 'idle' fires once a render has settled, never mid-zoom, so the
 		// answer does not flicker while the map moves.
 		map.on('idle', () => {
@@ -1193,7 +1303,9 @@
 	style:--map-label-halo={mapLabelHalo(darkBasemap)}
 >
 	{#if mapConsented}
-		<div bind:this={mapContainer} class="run-map" aria-hidden="true"></div>
+		<!-- Hidden from screen readers, except where the map carries controls of
+		     its own (a park course's jump-to buttons), which they must reach. -->
+		<div bind:this={mapContainer} class="run-map" aria-hidden={courseJump ? undefined : 'true'}></div>
 		{#if animatable}
 			<button class="replay-btn" onclick={() => animating ? stopAnimation() : startAnimation()}>
 				<span class="material-symbols">{animating ? 'stop' : 'play_arrow'}</span>
@@ -1406,8 +1518,9 @@
 	}
 
 	/* A start or finish box's name tag, or the turn-around's: big enough to
-	   read first on the whole-course view, and never a hit target (the map
-	   stays pannable). */
+	   read first on the whole-course view, and a hit target only as a park
+	   course's jump-to button (.map-tag-action), so the map stays pannable
+	   around it. */
 	:global(.map-tag) {
 		display: inline-flex;
 		align-items: center;
@@ -1421,6 +1534,22 @@
 		white-space: nowrap;
 		pointer-events: none;
 		box-shadow: var(--shadow-md);
+	}
+	:global(.map-tag-action) {
+		pointer-events: auto;
+		cursor: pointer;
+		font-family: inherit;
+	}
+	:global(.map-tag-action:hover) {
+		box-shadow: var(--shadow-lg);
+	}
+	:global(.map-tag-action:focus-visible) {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	:global(.map-whole-course .material-symbols) {
+		font-size: 1.25rem;
+		line-height: 29px;
 	}
 	:global(.segment-pin) {
 		width: 14px;

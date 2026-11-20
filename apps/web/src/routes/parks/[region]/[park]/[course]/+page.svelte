@@ -62,6 +62,7 @@
 		type CourseKeyKind,
 	} from '#lib/parks/course_map.ts';
 	import { gateBoxParts } from '#lib/races/course_gates.ts';
+	import { COURSE_JUMP_MAX_ZOOM, courseJumps, type CourseJumpTarget } from '#lib/parks/course_jump.ts';
 	import { PUBLIC_MAPTILER_KEY } from '$app/env/public';
 	import { basemapIsDarkFromEnv } from '#lib/routes/map-style.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -194,6 +195,38 @@
 		const said = courseBoxInstruction(boxGates, turn !== null, course?.laps);
 		return m(said.key, said.params);
 	});
+	// Where the map's jump-to controls take it: the start and finish tags on
+	// the map and their entries in the key (one Start and finish where they
+	// share a box), and the Whole course button among the zoom controls.
+	const jumps = $derived(courseJumps({ gates: boxGates, line: mapTrack, endsShared: finishesAtStart(mapTrack) }));
+	let runMap = $state<ReturnType<typeof RunMap>>();
+	let mapLoaded = $state(false);
+	function jumpMap(target: CourseJumpTarget) {
+		const jump = jumps.find((j) => j.target === target);
+		if (jump) runMap?.jumpTo(target, jump.bounds, target === 'course' ? undefined : COURSE_JUMP_MAX_ZOOM);
+	}
+	const courseJump = $derived(
+		jumps.length > 0
+			? {
+					names: {
+						start: m('parks.mapJumpStart'),
+						finish: m('parks.mapJumpFinish'),
+						startFinish: m('parks.mapJumpStartFinish'),
+						course: m('parks.mapJumpWholeCourse'),
+					},
+					onJump: jumpMap,
+				}
+			: null,
+	);
+	// The key's start and finish entries, by the target they jump to.
+	const KEY_JUMP: Partial<Record<CourseKeyKind, CourseJumpTarget>> = {
+		start: 'start',
+		startBox: 'start',
+		finish: 'finish',
+		finishBox: 'finish',
+		startFinish: 'startFinish',
+		startFinishBox: 'startFinish',
+	};
 	const gateBoxes = $derived(
 		boxGates
 			? {
@@ -348,7 +381,15 @@
 			checkpointMarkers: checkpointPins.length,
 			turnaround: turnaround !== null,
 			badgesShown,
-		}).map((kind) => ({ kind, label: KEY_LABEL[kind]() })),
+		}).map((kind) => {
+			const target = KEY_JUMP[kind];
+			// A jump only once the map is there to move.
+			const action =
+				target && mapLoaded && courseJump && jumps.some((j) => j.target === target)
+					? { label: courseJump.names[target], run: () => jumpMap(target) }
+					: undefined;
+			return { kind, label: KEY_LABEL[kind](), action };
+		}),
 	);
 	// The profile and the map share an index, so the profile needs a height
 	// on every point of the line or none at all.
@@ -431,7 +472,7 @@
 				{#if mapTrack.length >= 2}
 					<section class="map-block" aria-label={m('parks.courseMapLabel')}>
 						<div class="map-wrap">
-							<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} bind:distanceBadgesShown={badgesShown} />
+							<RunMap bind:this={runMap} bind:loaded={mapLoaded} track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} {gateBoxes} {turnaround} {courseOverview} {courseJump} bind:distanceBadgesShown={badgesShown} />
 						</div>
 						<ParkMapLegend items={legendItems} testid="park-course-legend" />
 						{#if credit}

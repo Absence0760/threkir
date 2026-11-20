@@ -22863,6 +22863,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksLegendStartFinish => 'Salida y meta';
 
   @override
+  String get parksMapJumpStart => 'Mostrar la salida en el mapa';
+
+  @override
+  String get parksMapJumpFinish => 'Mostrar la meta en el mapa';
+
+  @override
+  String get parksMapJumpStartFinish =>
+      'Mostrar la salida y la meta en el mapa';
+
+  @override
+  String get parksMapJumpWholeCourse => 'Mostrar el recorrido completo';
+
+  @override
   String get parksEndsTitle => 'Puntos de salida y meta';
 
   @override

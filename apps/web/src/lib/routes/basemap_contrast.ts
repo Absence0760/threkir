@@ -65,6 +65,12 @@ export function mapTrackLine(darkBasemap: boolean): string {
 export const MAP_ARROW_INK = '#172554';
 export const MAP_ARROW_OUTLINE = '#FFFFFF';
 
+/// Ink for an icon of our own inside a MapLibre control group. The group is
+/// white on every basemap and theme (maplibre-gl.css), so the icon must not
+/// inherit the page's text colour, which is near-white in dark mode. Matches
+/// the stock zoom and compass glyphs.
+export const MAP_CONTROL_INK = '#333333';
+
 /// Transient amber accent — the selected-segment highlight, the animated
 /// replay trace, and a coarse (privacy-clipped) last-seen position. Twin of
 /// mobile's `mapAccentColour`, same two rungs.

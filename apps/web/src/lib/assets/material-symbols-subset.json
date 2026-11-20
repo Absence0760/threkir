@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 75092,
-		"sha256": "7c99323fe19b270be5c066759f6dce9af1cbb4fcb5684c959e16a3e1c472326d",
-		"glyphs": 337,
-		"ligatures": 454
+		"bytes": 75232,
+		"sha256": "34ea2c0ed2a8572e28f4054ace49fd540e5e6206f902b82db89cc3c97a88866c",
+		"glyphs": 338,
+		"ligatures": 455
 	},
 	"icons": [
 		"10k",
@@ -375,6 +375,7 @@
 		"wifi_off",
 		"woman",
 		"work",
-		"workspace_premium"
+		"workspace_premium",
+		"zoom_out_map"
 	]
 }

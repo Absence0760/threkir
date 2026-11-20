@@ -1011,6 +1011,8 @@ class ParkCourseScreen extends StatefulWidget {
 }
 
 class _ParkCourseScreenState extends State<ParkCourseScreen> {
+  /// The course map, which the key's start and finish entries move.
+  final _map = GlobalKey<ParkCourseMapState>();
   ParkBoardKind _kind = ParkBoardKind.fastest;
   late BoardPeriod _period =
       widget.initialPeriod ?? BoardPeriod.year(widget.listing.season);
@@ -1352,12 +1354,15 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ],
                 if (geometry.length >= 2) ...[
                   const SizedBox(height: 16),
-                  ParkCourseMap(
+                  KeyedSubtree(
                     key: const Key('park-course-map'),
-                    line: geometry,
-                    checkpoints: checkpoints,
-                    shape: course.courseShape,
-                    zones: zones,
+                    child: ParkCourseMap(
+                      key: _map,
+                      line: geometry,
+                      checkpoints: checkpoints,
+                      shape: course.courseShape,
+                      zones: zones,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   ParkCourseMapLegend(
@@ -1365,6 +1370,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                     checkpointCount: marks.where((k) => !k.isTurn).length,
                     hasTurn: hasTurn,
                     zones: zones,
+                    onJump: (target) => _map.currentState?.jumpTo(target),
                   ),
                   const SizedBox(height: 8),
                   Text(
